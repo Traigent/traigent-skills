@@ -1,0 +1,64 @@
+name: Forensics Gate
+
+# Scans every skill in this public repo with repo-forensics before merge.
+#
+# Policy: ZERO TOLERANCE. Any finding of any severity (critical/high/medium/
+# low) fails the gate — there is no "advisory" tier. The baseline is 0
+# findings, so the gate only ever fires on something genuinely new. If a
+# finding is a false positive, the fix is to make the scanner stop flagging
+# it (or remove the offending pattern), never to wave it through.
+#
+# The scanner is VENDORED at tools/repo-forensics (a pinned copy of the
+# Traigent repo-forensics snapshot, origin alexgreensh/repo-forensics). Vendored
+# means no network fetch and no token, so the gate runs on PRs from forks (the
+# surface we most want scanned). We run --skill-scan (the skill-vetting mode,
+# 9 scanners incl. skill-threat detection — apt for a skills repo). We do NOT
+# fetch the public upstream: it has drifted and its correlation engine
+# false-positives on our own SDK docs; our vendored snapshot is 0 findings.
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# Principle of least privilege.
+permissions:
+  contents: read
+
+concurrency:
+  group: forensics-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  repo-forensics:
+    name: repo-forensics
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: '3.11'
+
+      - name: Run repo-forensics (skill-scan, block on ANY finding)
+        run: |
+          set +e
+          # Scan the skills/ payload (what users install). Not the repo root —
+          # that would scan this workflow and the vendored scanner itself.
+          OUT="$(bash tools/repo-forensics/run_forensics.sh "$GITHUB_WORKSPACE/skills" --skill-scan --format summary 2>&1)"
+          rc=$?
+          set -e
+          echo "$OUT"
+
+          # Exit codes: 0 clean / 1 warn (medium/low) / 2 critical / >=3 infra
+          # failure. Zero tolerance: anything non-zero fails the gate.
+          if [ "$rc" -ne 0 ]; then
+            echo "::error::repo-forensics is not clean (exit ${rc}). Every finding blocks — fix the issue, or if it is a false positive, fix the scanner so it stops flagging it."
+            exit 1
+          fi
+
+          echo "repo-forensics: clean — 0 findings."

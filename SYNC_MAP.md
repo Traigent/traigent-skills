@@ -12,3 +12,5 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 | `traigent-analyze-results` | `traigent/api/types.py` (OptimizationResult, TrialResult, StopReason), `traigent/core/optimized_function.py` (apply_best_config) |
 | `traigent-integrations` | `traigent/integrations/*`, `docs/architecture/integrations-inventory.md` |
 | `traigent-debugging` | `traigent/utils/exceptions.py`, `traigent/utils/env_config.py` |
+| `traigent-structural-spine` | `traigent/api/decorators.py`, `traigent/api/parameter_ranges.py`, `traigent/api/constraint_builders.py`, `docs/user-guide/tuned_variables.md` |
+| `show-significant-tuned-variables` | `traigent/utils/importance.py` (ParameterImportanceAnalyzer), `traigent/utils/insights.py` (get_optimization_insights), optimization trial artifact schema |
