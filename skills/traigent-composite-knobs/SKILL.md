@@ -81,6 +81,13 @@ def answer(text: str) -> tuple[str, dict[str, float]]:
 
 The evaluator recognizes exactly a two-item tuple `(output, metrics)` where `metrics` is numeric and identifier-keyed. Other return shapes are not unpacked.
 
+With the tuple return, use the BUILT-IN evaluator (expected outputs in
+`eval_dataset`, no custom `scoring_function`): a custom `scoring_function` or
+3-arg `metric_functions` is currently NOT invoked with the unpacked prediction
+on this path, and every trial silently scores `accuracy=0.0` (known SDK
+issue). Uniform zero accuracy next to a sane built-in `score` means scoring
+wiring, not a bad agent.
+
 ## WHEN-TO-USE DECISION TABLE
 
 | Pattern | Agent shape it fits | What it tunes | Key CVARs |

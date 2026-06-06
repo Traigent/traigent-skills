@@ -66,10 +66,6 @@ CONFIGURATION_SPACE = {
 }
 
 
-def exact_match(prediction: str, expected: str) -> float:
-    return 1.0 if prediction.strip().lower() == expected.strip().lower() else 0.0
-
-
 def _normalize_answer(answer: str) -> str:
     return answer.strip().lower()
 
@@ -106,8 +102,15 @@ def _call_answer_model(question: str, cfg: dict) -> str:
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
+        # Built-in evaluator: expected outputs live in the JSONL rows and are
+        # exact-matched against the function's output. With the composite
+        # (output, metrics) tuple return, USE THE BUILT-IN EVALUATOR — a custom
+        # `scoring_function` (and 3-arg `metric_functions`) is currently NOT
+        # invoked with the unpacked prediction on this path and every trial
+        # silently scores accuracy=0.0 (known SDK issue). If you see uniform
+        # zero accuracy alongside a sane built-in `score`, suspect this wiring,
+        # not your agent.
         eval_dataset="evals/qa.jsonl",
-        scoring_function=exact_match,
     ),
     objectives=["accuracy", "cost"],
     configuration_space=CONFIGURATION_SPACE,
@@ -174,6 +177,18 @@ export TRAIGENT_RUN_COST_LIMIT=5.00
 ```
 
 Use `TRAIGENT_BACKEND_URL` only when the client has a non-default backend endpoint. Provider keys depend on the models in the config space.
+
+## Dataset gotchas (operational)
+
+- **The eval dataset file is validated at DECORATION (import) time**, not at
+  `optimize()` time. Write/generate the JSONL before the module defining the
+  decorated function is imported, or import fails with a path
+  `ValidationError`.
+- **Hybrid mode enforces dataset path containment**: the dataset file must
+  reside under the SDK working directory of the process running the
+  optimization. Offline/mock runs accept absolute paths anywhere; the hybrid
+  run rejects them. Keep the JSONL in a scratch dir under the project root
+  (e.g. `.boost-scratch/tickets.jsonl`).
 
 ## Per-shape variations
 
