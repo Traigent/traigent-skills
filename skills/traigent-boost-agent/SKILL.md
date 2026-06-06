@@ -54,6 +54,11 @@ print(recommendations["caveat"] or RECOMMENDATION_CAVEAT)
    - For coding agents, `recommend_configuration_space("code_gen")` includes the `agent_computer_interface` knob pack: `repo_context_strategy`, `file_view_window`, `edit_granularity`, `test_selection_strategy`, and `patch_review_mode`. Its CVAR vocabulary and manual runtime guidance live in each row's `apply_guidance`.
    - For long-context/RAG agents, `recommend_configuration_space("rag")` includes `retrieval_k` plus the `context_budget` knob pack: `context_selection_policy`, `context_order`, `summary_style`, `compression_ratio`, and `citation_policy`. Its CVAR vocabulary and manual runtime guidance also live in `apply_guidance`.
    - For range syntax, constraints, and typed parameters, cross-reference `traigent-configuration-space` instead of duplicating it.
+   - **Catalog fallback**: if the client's agent shape matches no catalog type
+     (e.g. a single-call classifier — neither `code_gen` nor `rag`), drive the
+     configuration space from the client's REAL knobs (prompt/style variants,
+     temperature, sample count) instead of forcing a catalog type. Still print
+     the caveat; note in the report that the space is client-derived.
 
 3. SELECT A COMPOSITE with this SHAPE-to-PATTERN decision table.
 
@@ -103,6 +108,12 @@ CONFIGURATION_SPACE = {
    - Report baseline vs `results.best_config` delta for the agreed metrics, cost, token use, trial count, failed trials, and `results.stop_reason`.
    - Use `traigent-analyze-results` for `OptimizationResult` inspection and `show-significant-tuned-variables` to explain which knobs mattered.
    - If results are flat, noisy, failed, or negative, call it a no-boost result. Do not hide it or promote a winner that does not beat the baseline on the eval set.
+   - When wire-proofing against a Traigent backend, expect the run's
+     configuration-record count to differ from `len(results.trials)` — the
+     backend de-duplicates/aggregates repeated configs. Assert your claims
+     (e.g. composite telemetry present) over the RETURNED records, and note
+     that aggregate `results.total_cost` can be `None` even when per-trial
+     cost measures are `0.0`.
 
 ## Claim scope
 
