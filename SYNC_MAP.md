@@ -14,4 +14,6 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 | `traigent-integrations` | `traigent/integrations/*`, `docs/architecture/integrations-inventory.md` |
 | `traigent-debugging` | `traigent/utils/exceptions.py`, `traigent/utils/env_config.py` |
 | `traigent-structural-spine` | `traigent/api/decorators.py`, `traigent/api/parameter_ranges.py`, `traigent/api/constraint_builders.py`, `docs/user-guide/tuned_variables.md` |
+| `traigent-composite-knobs` | `traigent/knobs/patterns.py`, `traigent/knobs/runtime.py`, `traigent/knobs/telemetry.py`, `examples/advanced/composite-knobs/*`, `docs/traceability/concepts/composite-knobs.md` |
+| `traigent-boost-agent` | `traigent/config_generator/recommendations.py`, `traigent/config_generator/catalog/tvar_catalog.v1.json`, `traigent/api/decorators.py`, `traigent/core/optimized_function.py`, `traigent/knobs/patterns.py`, `traigent/knobs/runtime.py`, `traigent/knobs/telemetry.py`, `traigent/testing/*` |
 | `show-significant-tuned-variables` | `traigent/utils/importance.py` (ParameterImportanceAnalyzer), `traigent/utils/insights.py` (get_optimization_insights), optimization trial artifact schema |
