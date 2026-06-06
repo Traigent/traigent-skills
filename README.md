@@ -1,6 +1,6 @@
 # Traigent SDK Skills
 
-User-facing [Agent Skills](https://agentskills.io/) for the **Traigent SDK** — zero-code LLM optimization using decorators. Wrap any function with `@traigent.optimize()`, declare a configuration space, and let Traigent search for the best model / prompt / parameter combination against your eval dataset.
+User-facing [Agent Skills](https://agentskills.io/) for the **Traigent SDKs** — zero-code LLM optimization using the Python decorator flow or the native JavaScript/TypeScript SDK. Wrap a Python function with `@traigent.optimize()` or a JS/TS function with `optimize(spec)(agentFn)`, declare a configuration space, and let Traigent search for the best model / prompt / parameter combination against your eval dataset.
 
 These skills work across **all major AI coding agents**: Claude Code, Cursor, GitHub Copilot, Gemini CLI, OpenAI Codex, Windsurf, Junie, and [30+ more](https://skills.sh/).
 
@@ -14,6 +14,7 @@ These skills guide your agent through the full Traigent optimization lifecycle, 
 | ----- | ----------- |
 | [traigent-quickstart](skills/traigent-quickstart/) | Install and set up the Traigent SDK — `pip install`, environment variables (`TRAIGENT_API_KEY`), mock mode, eval dataset creation in JSONL, and a first `@traigent.optimize` decorated function. |
 | [traigent](skills/traigent/) | The end-to-end driver: setup → **dry-run validation (mock mode)** → real execution. Always validates the full pipeline in mock mode before spending on real API calls. Start here when optimizing a function for the first time. |
+| [traigent-js](skills/traigent-js/) | Set up and run native JavaScript/TypeScript optimization with `@traigent/sdk` — `optimize(spec)(agentFn)`, `param.*` search spaces, evaluation blocks, trial context, budgets, injection modes, and hybrid config-space authoring. |
 | [traigent-configuration-space](skills/traigent-configuration-space/) | Define which parameters the optimizer can tune and how — `Range`, `IntRange`, `Choices`, `LogRange` types, factory presets like `Range.temperature()` and `Choices.model()`, inter-parameter constraints, and `ConfigSpace` bundling. |
 | [traigent-decorator-setup](skills/traigent-decorator-setup/) | Configure `@traigent.optimize()` beyond the basics — `EvaluationOptions` (datasets, custom evaluators, scoring), `InjectionOptions` (how optimized configs reach your function), `ExecutionOptions` (sync/async, timeouts, local-only), and multi-objective optimization. |
 | [traigent-run-optimization](skills/traigent-run-optimization/) | Run optimization end-to-end — async/sync execution via `func.optimize()` and `optimize_sync()`, algorithm selection (grid, random, bayesian, optuna), trial limits, cost budgets, `ParallelConfig` for concurrent trials, and `CostLimitExceeded` handling. |
@@ -36,7 +37,7 @@ npx skills add Traigent/traigent-skills --skill traigent-quickstart
 
 # Install several
 npx skills add Traigent/traigent-skills \
-  --skill traigent-quickstart --skill traigent-configuration-space --skill traigent-run-optimization
+  --skill traigent-quickstart --skill traigent-js --skill traigent-run-optimization
 
 # Install all of them
 npx skills add Traigent/traigent-skills --skill '*'
@@ -89,10 +90,12 @@ These skills are **pure Markdown** — no executable scripts, no network calls, 
 
 **To use the skills themselves: nothing.** They're plain Markdown instructions your AI coding agent reads — no runtime, no scripts, nothing to install.
 
-The skills *teach your agent to drive the Traigent SDK*, so to actually run an optimization you'll need the SDK in your own project:
+The skills *teach your agent to drive the Traigent SDKs*, so to actually run an optimization you'll need the relevant SDK in your own project:
 
 - Python 3.11–3.13
 - Traigent SDK — `pip install traigent`
+- Node.js 18, 20, or 22
+- Traigent JS SDK — `npm install @traigent/sdk`
 
 ## Maintenance
 

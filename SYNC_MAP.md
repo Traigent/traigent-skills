@@ -1,11 +1,12 @@
 # Skill-to-SDK Sync Map
 
-When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Traigent) Python SDK repo), review the corresponding skills here for accuracy.
+When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Traigent) Python SDK repo or [`traigent-js`](https://github.com/Traigent/traigent-js) JavaScript/TypeScript SDK repo), review the corresponding skills here for accuracy.
 
 | Skill | SDK Source Dependencies |
 |-------|----------------------|
 | `traigent-quickstart` | `docs/getting-started/*`, `pyproject.toml`, `examples/quickstart/` |
 | `traigent` | `traigent/api/decorators.py`, `traigent/utils/env_config.py` (mock/offline flags), `traigent/core/optimized_function.py` (optimize/optimize_sync) |
+| `traigent-js` | `traigent-js/src/optimization/*`, `traigent-js/src/core/context.ts`, `traigent-js/src/seamless/*`, `traigent-js/src/integrations/*`, `traigent-js/src/routing/*`, `traigent-js/README.md`, `traigent-js/docs/*` |
 | `traigent-configuration-space` | `traigent/api/parameter_ranges.py`, `traigent/api/constraint_builders.py`, `docs/user-guide/tuned_variables.md` |
 | `traigent-decorator-setup` | `traigent/api/decorators.py` (EvaluationOptions, InjectionOptions, ExecutionOptions), `docs/user-guide/injection_modes.md` |
 | `traigent-run-optimization` | `traigent/core/optimized_function.py` (optimize/optimize_sync), `traigent/core/orchestrator.py`, `traigent/config/parallel.py` |
