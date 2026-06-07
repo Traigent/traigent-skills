@@ -110,6 +110,12 @@ A factory returns a `CompositeKnob` declaration bundle: `.structure` is the IR r
 
 Spread `.members` into the surrounding configuration space. Do not treat the composite as binding values. Member bindings remain `Tuned`, `Calibrated`, or `Fixed`; the composite only references names and declares control flow. CVARs such as thresholds must be calibrated and passed at execution time through `calibrated_values`.
 
+The vocabulary, in one line: **TVARs are searched, CVARs are calibrated,
+policies govern control flow, KPIs/objectives score outcomes.** For
+domain-specific structural knob vocabularies (text2SQL, RAG/multi-hop QA),
+cross-reference `traigent-structural-spine` — this skill extends it with
+composite control flow; it does not replace it.
+
 ## Telemetry
 
 Composite telemetry is content-free and starts in `run.measures`.
@@ -122,6 +128,13 @@ Composite telemetry is content-free and starts in `run.measures`.
 | Loop (`self_debug`, `self_refine`, `react_tool_loop`, `verification_gate`) | `iterations_used`, `stop_reason` |
 
 Use `merge_composite_measures(metrics, run, prefix="composite")` to flatten finite numeric telemetry into the existing measures channel. Structured maps are flattened by gate index. Non-numeric enum values such as `stop_reason` remain observable on `run.measures` but are not copied to numeric measures.
+
+**Wire boundary (deliberate)**: composite structure, members, and provenance
+are SDK-local metadata — nothing about a composite crosses the backend wire
+except these numeric `composite_*` measures riding the EXISTING measures
+channel. Do not invent new request/response fields for composites; a future
+composite wire summary is a Schema-first change (TraigentSchema), not an SDK
+patch.
 
 ## Claim Scope
 
