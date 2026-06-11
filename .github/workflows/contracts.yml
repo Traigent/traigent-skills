@@ -1,0 +1,104 @@
+name: Skill Contracts
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contracts-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  released-contracts:
+    name: released-contracts
+    if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install harness dependencies
+        run: python -m pip install pytest pyyaml packaging
+
+      - name: Run released SDK buckets
+        run: |
+          set -euo pipefail
+          while IFS= read -r version; do
+            [ -n "$version" ] || continue
+            python -m venv ".bucket-$version"
+            ".bucket-$version/bin/pip" install pytest pyyaml packaging "traigent==$version"
+            ".bucket-$version/bin/python" -m pytest tests/contract --sdk-version="$version" -q
+          done < <(python tools/contract/list_buckets.py)
+
+  develop-contracts:
+    name: develop-contracts
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install develop SDK and harness dependencies
+        run: |
+          python -m pip install pytest pyyaml packaging
+          python -m pip install "git+https://github.com/Traigent/Traigent@develop"
+
+      - name: Run develop contract drift check
+        id: contracts
+        run: |
+          set +e
+          python -m pytest tests/contract --sdk-version=develop -q > contract-failures.txt 2>&1
+          rc=$?
+          set -e
+          cat contract-failures.txt
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Create or update drift issue
+        if: steps.contracts.outputs.rc != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: Skill contract drift vs SDK develop
+        run: |
+          set -euo pipefail
+          {
+            echo "Nightly skill contract checks failed against Traigent develop."
+            echo
+            echo "Workflow: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo '```'
+            cat contract-failures.txt
+            echo '```'
+          } > issue-body.md
+
+          issue="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // ""')"
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --body-file issue-body.md
+          else
+            gh issue create --title "$TITLE" --body-file issue-body.md
+          fi
