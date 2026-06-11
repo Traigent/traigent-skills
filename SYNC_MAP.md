@@ -19,3 +19,9 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 | `traigent-composite-knobs` | `traigent/knobs/patterns.py`, `traigent/knobs/runtime.py`, `traigent/knobs/telemetry.py`, `examples/advanced/composite-knobs/*`, `docs/traceability/concepts/composite-knobs.md` |
 | `traigent-boost-agent` | `traigent/config_generator/recommendations.py`, `traigent/config_generator/catalog/tvar_catalog.v1.json`, `traigent/api/decorators.py`, `traigent/core/optimized_function.py`, `traigent/knobs/patterns.py`, `traigent/knobs/runtime.py`, `traigent/knobs/telemetry.py`, `traigent/testing/*` |
 | `show-significant-tuned-variables` | `traigent/utils/importance.py`, `traigent/utils/insights.py`, `optimization trial artifact schema` |
+| `traigent-curate-dataset` | `traigent/generation/*`, `traigent/analytics/example_insights.py`, `traigent/evaluators/base.py`, `traigent/api/decorators.py`, `traigent/core/optimized_function.py`, `traigent/testing/*` |
+| `traigent-choose-metric` | `traigent/api/decorators.py`, `traigent/core/optimized_function.py` |
+| `traigent-build-evaluator` | `traigent/api/decorators.py`, `traigent/api/types.py`, `traigent/evaluators/base.py`, `traigent/evaluators/local.py`, `traigent/evaluators/hybrid_api.py` |
+| `traigent-evaluator-audit` | `traigent/api/decorators.py`, `traigent/api/types.py` |
+| `traigent-iterate` | `traigent/utils/insights.py`, `traigent/utils/importance.py`, `traigent/analytics/example_insights.py`, `traigent/core/optimized_function.py`, `traigent/api/types.py` |
+| `traigent-ci-safety-gate` | `traigent/api/decorators.py`, `traigent/api/safety.py`, `traigent/tvl/promotion_gate.py`, `traigent/tvl/models.py`, `traigent/tvl/__main__.py` |
