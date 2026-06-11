@@ -4,7 +4,7 @@ description: "Guide users through Traigent optimization: setup, dry-run validati
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.1.0"
 ---
 
 # Traigent: Dry-Run First, Real When Ready
@@ -12,6 +12,22 @@ metadata:
 ## Your Role
 
 When a user asks you to optimize a function with Traigent, **always start with a dry run**. Real optimization costs real tokens and money. Never run real optimization until the user explicitly asks.
+Present a cost estimate and get the user's explicit approval before any paid run.
+
+## The Lifecycle at a Glance
+
+| Stage | Skill |
+|---|---|
+| Dataset | `traigent-curate-dataset` |
+| Metric | `traigent-choose-metric` |
+| Evaluator | `traigent-build-evaluator` plus `traigent-evaluator-audit` |
+| Optimize | this skill plus `traigent-run-optimization` |
+| Iterate | `traigent-iterate` |
+| Gate | `traigent-ci-safety-gate` |
+
+After completion, use `traigent-iterate` to choose the next single hypothesis and `traigent-ci-safety-gate` before promoting a winning config.
+
+Planned: a playbook artifact may eventually package this lifecycle; today, follow the skill sequence above.
 
 **Workflow:**
 

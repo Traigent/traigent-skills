@@ -125,6 +125,9 @@ skills:
       - traigent.knobs.patterns
       - traigent.knobs.runtime
       - traigent.knobs.telemetry
+      - traigent.utils.insights
+      - traigent.utils.importance
+      - traigent.analytics
     sdk_paths:
       - traigent/config_generator/recommendations.py
       - traigent/config_generator/catalog/tvar_catalog.v1.json
@@ -133,6 +136,9 @@ skills:
       - traigent/knobs/patterns.py
       - traigent/knobs/runtime.py
       - traigent/knobs/telemetry.py
+      - traigent/utils/insights.py
+      - traigent/utils/importance.py
+      - traigent/analytics/example_insights.py
       - traigent/testing/*
 
   show-significant-tuned-variables:

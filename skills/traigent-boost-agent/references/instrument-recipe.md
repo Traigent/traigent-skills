@@ -180,7 +180,7 @@ Use `TRAIGENT_BACKEND_URL` only when the client has a non-default backend endpoi
 
 ## Dataset gotchas (operational)
 
-- **The eval dataset file is validated at DECORATION (import) time**, not at
+- **The evaluation dataset file is validated at DECORATION (import) time**, not at
   `optimize()` time. Write/generate the JSONL before the module defining the
   decorated function is imported, or import fails with a path
   `ValidationError`.

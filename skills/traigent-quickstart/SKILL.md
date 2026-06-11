@@ -1,6 +1,6 @@
 ---
 name: traigent-quickstart
-description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an eval dataset, or get started with @traigent.optimize. Covers pip install, environment variables, mock mode, and running a first optimization."
+description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, environment variables, mock mode, and running a first optimization."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -184,6 +184,7 @@ You can include additional fields for metadata, but `input` and `output` are req
 - Include at least 10-20 examples for meaningful optimization.
 - Cover edge cases and diverse inputs.
 - Ensure ground-truth `output` values are consistent and well-defined.
+- For evaluation dataset creation beyond this minimal JSONL, use `traigent-curate-dataset`.
 
 ## Verify Installation
 
@@ -202,7 +203,7 @@ import traigent
 print(traigent.get_version_info())
 ```
 
-### Validate an eval dataset
+### Validate an evaluation dataset
 
 ```bash
 traigent validate eval_queries.jsonl
