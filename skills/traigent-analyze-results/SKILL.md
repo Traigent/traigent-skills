@@ -4,7 +4,7 @@ description: "Analyze Traigent optimization results: best config, trial comparis
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -128,6 +128,20 @@ if len(sorted_trials) >= 2:
     for key in best.config:
         if best.config[key] != worst.config[key]:
             print(f"  {key}: best={best.config[key]}, worst={worst.config[key]}")
+```
+
+### Configuration Insights
+
+Use `get_optimization_insights(results)` for a first structured pass over top configurations, performance summary, parameter insights, and recommendations. Treat it as analysis input; deciding the next experiment belongs in `traigent-iterate`.
+
+```python
+from traigent.utils.insights import get_optimization_insights
+
+insights = get_optimization_insights(results)
+print(insights.get("top_configurations", []))
+print(insights.get("performance_summary", {}))
+print(insights.get("parameter_insights", {}))
+print(insights.get("recommendations", []))
 ```
 
 ## Cost and Performance
@@ -321,3 +335,9 @@ else:
 
 - [OptimizationResult and TrialResult API Reference](references/optimization-result-api.md)
 - [Convergence Analysis Patterns](references/convergence-patterns.md)
+
+## See Also
+
+| Skill | Use |
+|---|---|
+| `traigent-iterate` | Decide what to do next when results are flat, noisy, negative, budget-bound, or weak-example heavy. |
