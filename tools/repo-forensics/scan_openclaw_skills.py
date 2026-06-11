@@ -139,7 +139,7 @@ def _read(path):
 def is_openclaw_skill(repo_path):
     """Return True if repo looks like an OpenClaw/NanoClaw/ClawHub skill.
     Requires at least one OpenClaw-specific marker. SKILL.md alone needs
-    frontmatter (---) to distinguish from generic Claude skills.
+    frontmatter (---) to distinguish."""uish from generic Claude skills.
     """
     # OpenClaw-specific markers (not found in generic repos)
     for name in (".clawhubignore", "SOUL.md", "AGENTS.md"):
