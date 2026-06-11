@@ -132,15 +132,16 @@ name: Traigent safety gate
 
 on:
   pull_request:
-  schedule:
-    - cron: "17 3 * * *"
 
 jobs:
+  # PR job: offline wiring check only — static env, zero spend. The paid
+  # nightly job is a separate job with its own static env; see
+  # references/gate-workflow.md for the full two-job workflow.
   safety-gate:
     runs-on: ubuntu-latest
     env:
-      TRAIGENT_RUN_COST_LIMIT: ${{ github.event_name == 'pull_request' && '0.00' || '5.00' }}
-      TRAIGENT_OFFLINE_MODE: ${{ github.event_name == 'pull_request' && 'true' || 'false' }}
+      TRAIGENT_RUN_COST_LIMIT: "0.00"
+      TRAIGENT_OFFLINE_MODE: "true"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
