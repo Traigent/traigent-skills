@@ -129,9 +129,11 @@ results = await func.optimize(max_trials=50, algorithm="optuna")
 | `"bayesian"` | Model-guided | Medium-Large | 15-100 |
 | `"optuna"` | Advanced sampling | Large | 30+ |
 
+<!-- PROTECTED -->
 ## Cost Controls
 
 Traigent tracks LLM API costs in real time and enforces budgets to prevent runaway spending.
+<!-- /PROTECTED -->
 
 ### Setting a Cost Limit
 
@@ -381,3 +383,7 @@ asyncio.run(main())
 - `references/algorithms.md` - Detailed algorithm comparison
 - `references/parallel-config.md` - Full ParallelConfig reference
 - `references/cost-management.md` - Cost enforcement details
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

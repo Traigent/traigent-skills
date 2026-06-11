@@ -50,7 +50,9 @@ print(recommendations["caveat"] or RECOMMENDATION_CAVEAT)
 ```
 
    - Valid public agent types are returned by `list_recommendation_agent_types()`; the current catalog exposes `code_gen` and `rag`.
+   <!-- PROTECTED -->
    - Treat `RECOMMENDATION_CAVEAT` as mandatory user-facing context: recommendations are search-space starting points, not universal performance claims.
+   <!-- /PROTECTED -->
    - For coding agents, `recommend_configuration_space("code_gen")` includes the `agent_computer_interface` knob pack: `repo_context_strategy`, `file_view_window`, `edit_granularity`, `test_selection_strategy`, and `patch_review_mode`. Its CVAR vocabulary and manual runtime guidance live in each row's `apply_guidance`.
    - For long-context/RAG agents, `recommend_configuration_space("rag")` includes `retrieval_k` plus the `context_budget` knob pack: `context_selection_policy`, `context_order`, `summary_style`, `compression_ratio`, and `citation_policy`. Its CVAR vocabulary and manual runtime guidance also live in `apply_guidance`.
    - For range syntax, constraints, and typed parameters, cross-reference `traigent-configuration-space` instead of duplicating it.
@@ -92,7 +94,9 @@ CONFIGURATION_SPACE = {
 ```
 
    - Inside the function, read `cfg = traigent.get_config()`, route tuned values into the real prompt/retriever/tool/model call, execute the composite if selected, and return exactly `(output, metrics)` when you need per-trial numeric measures.
+   <!-- PROTECTED -->
    - Keep metrics content-free where required: accuracy, pass rate, cost, latency, token counts, route ids, iteration counts, and composite telemetry are fine. Do not put prompts, answers, retrieved documents, secrets, or PII into metrics.
+   <!-- /PROTECTED -->
 
 5. VALIDATE in mock mode FIRST.
    - Cross-reference `traigent-quickstart` and `traigent-debugging` for mock/offline setup.
@@ -107,7 +111,9 @@ CONFIGURATION_SPACE = {
 7. REPORT honestly.
    - Report baseline vs `results.best_config` delta for the agreed metrics, cost, token use, trial count, failed trials, and `results.stop_reason`.
    - Use `traigent-analyze-results` for `OptimizationResult` inspection and `show-significant-tuned-variables` to explain which knobs mattered.
+   <!-- PROTECTED -->
    - If results are flat, noisy, failed, or negative, call it a no-boost result. Do not hide it or promote a winner that does not beat the baseline on the eval set.
+   <!-- /PROTECTED -->
    - When wire-proofing against a Traigent backend, expect the run's
      configuration-record count to differ from `len(results.trials)` — the
      backend de-duplicates/aggregates repeated configs. Assert your claims
@@ -115,9 +121,15 @@ CONFIGURATION_SPACE = {
      that aggregate `results.total_cost` can be `None` even when per-trial
      cost measures are `0.0`.
 
+<!-- PROTECTED -->
 ## Claim scope
 
 - End-to-end optimization results are observations from the client's eval dataset and run conditions.
 - Per-variable calibration certificates are the only procedural calibration claims; they do not certify future product behavior.
 - Acceptable winner wording: `Calibration-backed winner (client-attested)`.
 - Never say `guarantee`, never imply universal lift, and never present catalog recommendations as proof that the client agent will improve.
+<!-- /PROTECTED -->
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

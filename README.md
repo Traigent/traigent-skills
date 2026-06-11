@@ -103,6 +103,12 @@ The skills *teach your agent to drive the Traigent SDKs*, so to actually run an 
 
 [`SYNC_MAP.md`](SYNC_MAP.md) maps each skill to the Traigent SDK source files it documents. When the SDK changes, review the corresponding skills for accuracy.
 
+## Skill governance
+
+Skill updates use protected regions, per-skill provenance, and versioned, score-gated changes. `SKILL.md` frontmatter is implicitly protected because YAML must remain first; invariant claim-scope, caveat, and safety constraints are wrapped with `<!-- PROTECTED -->` markers, and each skill has a `provenance.json` document hash.
+
+Optimizer-proposed edits are accepted only through reviewed PRs that pass a strictly-greater held-out baseline. Marker and provenance adoption keeps existing `metadata.version: "1.0"` values; the version bump discipline starts with the next instructional content change. See [skill-evals/README.md](skill-evals/README.md).
+
 ## License
 
 Apache-2.0 — see [LICENSE](LICENSE). Same as the Traigent SDK.

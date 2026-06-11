@@ -305,3 +305,7 @@ answer = answer_question("What is the capital of France?")
 - `references/evaluation-options.md` - Full EvaluationOptions field reference
 - `references/injection-modes.md` - Detailed injection mode comparison
 - `references/execution-modes.md` - Full ExecutionOptions field reference
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

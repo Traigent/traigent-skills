@@ -236,7 +236,9 @@ pip install traigent[dev]             # Development tools
 
 ## Mock Mode
 
+<!-- PROTECTED -->
 Test your optimization setup without making real API calls or connecting to the backend. The recommended activation is in-code (production-blocked, visible in code review); the env-var path below remains as a legacy fallback that works in non-production.
+<!-- /PROTECTED -->
 
 **Recommended (in-code):**
 
@@ -411,3 +413,7 @@ This pattern ensures your application remains functional even when optimization 
 - [Complete Error Reference](references/error-reference.md)
 - [Mock Mode Details](references/mock-mode.md)
 - [Logging Configuration](references/logging-config.md)
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

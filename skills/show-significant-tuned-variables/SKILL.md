@@ -51,6 +51,7 @@ The script writes these files into `--output-dir`:
 - `insights.md`: short human-readable summary using honest claim language.
 - `video_card.json`: compact payload: `top_variables`, `n_trials`, `objective`, and `caption`.
 
+<!-- PROTECTED -->
 ## Honesty Rule
 
 Never overclaim significance:
@@ -58,6 +59,7 @@ Never overclaim significance:
 - With fewer than 20 trials, importances are labelled `directional`, not statistically significant.
 - A variable is called `significant` only if its bootstrap CI lower bound is greater than 0.
 - The ranking is observational: "on this fixed Spider slice, in this run." It is not proof of causal attribution.
+<!-- /PROTECTED -->
 
 The primary importance is the spread between the best and worst per-value mean objective. The script also reports variance-decomposition share: between-group variance divided by total variance.
 
@@ -87,3 +89,7 @@ cat /tmp/significant-tuned-variables/video_card.json
 For each knob, the script groups trials by the knob's value, computes mean objective per value, ranks by the max-min spread, and reports variance share as a companion statistic. Bootstrap confidence intervals use trial resampling with replacement and fixed seed `55`.
 
 The script also attempts to adapt trials to `traigent.utils.importance.ParameterImportanceAnalyzer` for a variance-based SDK cross-check. If that adaptation is unavailable or returns no output, it skips gracefully and states that the skill's own variance/bootstrap method was used, inspired by the SDK analyzer. Do not fabricate SDK analyzer output.
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

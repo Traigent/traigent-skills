@@ -68,12 +68,16 @@ enable_mock_mode_for_quickstart()
 export TRAIGENT_OFFLINE_MODE=true
 ```
 
+<!-- PROTECTED -->
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
+<!-- /PROTECTED -->
 - `TRAIGENT_OFFLINE_MODE=true` skips backend communication so you do not need a running Traigent backend.
 
 ### Legacy Env-Var Path
 
+<!-- PROTECTED -->
 The previous quickstart docs taught `export TRAIGENT_MOCK_LLM=true`. That env var still works in non-production environments for backward compatibility with existing fixtures, but it is hard-blocked when `ENVIRONMENT=production` (an `OSError` is raised at SDK import). Prefer the in-code API for new code.
+<!-- /PROTECTED -->
 
 ### Using a .env File
 
@@ -222,3 +226,7 @@ traigent validate --dataset eval_queries.jsonl
 - **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options (grid, random, bayesian, optuna, etc.).
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.
 - **Use framework integrations** -- Install `traigent[integrations]` for LangChain, OpenAI, and Anthropic adapters.
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

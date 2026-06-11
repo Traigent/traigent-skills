@@ -207,9 +207,11 @@ response = classify("What category is this email?")
 
 `apply_best_config()` sets the configuration so that subsequent calls to `traigent.get_config()` inside the decorated function return the best configuration from the optimization run.
 
+<!-- PROTECTED -->
 ### Safety Check Before Applying
 
 Verify results before applying:
+<!-- /PROTECTED -->
 
 ```python
 results = classify.optimize(dataset="eval_data.jsonl")
@@ -321,3 +323,7 @@ else:
 
 - [OptimizationResult and TrialResult API Reference](references/optimization-result-api.md)
 - [Convergence Analysis Patterns](references/convergence-patterns.md)
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

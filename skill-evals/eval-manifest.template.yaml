@@ -1,0 +1,26 @@
+# schema: skill-eval-manifest/v1
+#
+# skill:
+#   name: traigent-quickstart
+#   doc_hash: "<16-char-sha256-prefix>"
+#
+# corpus:
+#   ref: "private://<opaque-corpus-id>"
+#
+# scorer_families:
+#   - exit-code
+#   - static
+#   - artifact
+#   - hygiene
+#
+# splits:
+#   train_ref: "private://<opaque-train-split-id>"
+#   selection_ref: "private://<opaque-selection-split-id>"
+#   test_ref: "private://<opaque-test-split-id>"
+#   test_policy: "locked"
+#
+# fixture_shas:
+#   "<fixture-name>": "sha256:<fixture-sha>"
+#
+# harness:
+#   commit: "<private-harness-commit-sha>"
