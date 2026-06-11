@@ -145,6 +145,9 @@ skills:
     docs:
       - optimization trial artifact schema
   traigent-curate-dataset:
+    backend_prefixes:
+      - /api/v1/datasets
+      - /api/v1/analytics/example-scoring
     modules:
       - traigent.generation
       - traigent.analytics
@@ -184,6 +187,10 @@ skills:
       - traigent/api/decorators.py
       - traigent/api/types.py
   traigent-iterate:
+    backend_prefixes:
+      - /api/v1/experiment-runs
+      - /api/v1/optimization-comparisons
+      - /api/v1/analytics/example-scoring
     modules:
       - traigent.utils.insights
       - traigent.utils.importance
