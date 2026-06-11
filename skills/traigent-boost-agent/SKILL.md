@@ -4,12 +4,14 @@ description: "End-to-end playbook for adding Traigent to an existing client agen
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Boost Agent
 
 ## When to Use
+
+Requires `traigent>=0.13.0.dev1`.
 
 Use this skill when the user asks you to:
 

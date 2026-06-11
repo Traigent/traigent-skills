@@ -34,13 +34,11 @@ def custom_evaluator(
 
 - `func` - The original decorated function (not wrapped).
 - `config` - The configuration being tested in this trial (e.g., `{"model": "gpt-4", "temperature": 0.5}`).
-- `example` - A single row from the eval dataset as a dictionary.
+- `example` - An `EvaluationExample` with `input_data`, `expected_output`, and optional `metadata`.
 
 ### Return Value
 
-Must return an `ExampleResult` (or compatible dict) containing at minimum:
-- `score` (float) - The primary score for this example.
-- `prediction` (str) - The model output.
+Must return an `ExampleResult` containing the example inputs, expected output, actual output, metrics, execution time, and success state.
 
 ### Example
 
@@ -50,15 +48,19 @@ from traigent.evaluators.base import ExampleResult
 def my_evaluator(func, config, example):
     import time
     start = time.time()
-    prediction = func(example["question"])
+    prediction = func(example.input_data["question"])
     latency = time.time() - start
 
-    score = 1.0 if example["expected"] in prediction else 0.0
+    score = 1.0 if example.expected_output in prediction else 0.0
 
     return ExampleResult(
-        score=score,
-        prediction=prediction,
-        measures={"latency_ms": latency * 1000},
+        example_id=str(example.metadata.get("id", "example")),
+        input_data=example.input_data,
+        expected_output=example.expected_output,
+        actual_output=prediction,
+        metrics={"score": score, "latency_ms": latency * 1000},
+        execution_time=latency,
+        success=True,
     )
 
 @traigent.optimize(
