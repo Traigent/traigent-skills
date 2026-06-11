@@ -51,6 +51,8 @@ skills:
       - traigent/api/decorators.py
     docs:
       - docs/user-guide/injection_modes.md
+    backend_prefixes:
+      - /api/v1/hybrid/optimizer
 
   traigent-run-optimization:
     modules:

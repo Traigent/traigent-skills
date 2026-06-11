@@ -18,16 +18,20 @@ def format_dead_teaching(
     sdk_version: str,
     taught: str,
     problem: str,
+    fix_menu: str | None = None,
 ) -> str:
+    fix = fix_menu or (
+        "  fix one : (a) raise this skill's min_sdk_version in sync_map.yml AND add\n"
+        '                    "Requires `traigent>=X.Y.Z`" to its When to Use section\n'
+        "                (b) replace the taught API with one available at the declared floor\n"
+        "                (c) mark the block `# contract: skip` ONLY if it is illustrative pseudo-code"
+    )
     return (
         f"DEAD TEACHING  {fact.rel_path(repo_root)}:{fact.line}\n"
         f"  teaches : {taught}\n"
         f"  against : traigent=={sdk_version}  (this skill's min_sdk_version bucket)\n"
         f"  problem : {problem}\n"
-        "  fix one : (a) raise this skill's min_sdk_version in sync_map.yml AND add\n"
-        '                    "Requires `traigent>=X.Y.Z`" to its When to Use section\n'
-        "                (b) replace the taught API with one available at the declared floor\n"
-        "                (c) mark the block `# contract: skip` ONLY if it is illustrative pseudo-code"
+        f"{fix}"
     )
 
 

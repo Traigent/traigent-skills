@@ -1,0 +1,2175 @@
+{
+  "generated_from": {
+    "commit_sha": "cabbac8fee8461e62ea4322ecdc5c77a2b311a65",
+    "ref": "origin/develop",
+    "repo": "Traigent/TraigentBackend"
+  },
+  "routes": [
+    {
+      "blueprint": "admin",
+      "method": "DELETE",
+      "path_template": "/api/v1/admin/users/<user_id>",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "DELETE",
+      "path_template": "/api/v1/agents/<path:agent_id>",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "DELETE",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "DELETE",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/examples/<string:example_id>",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "DELETE",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/files/<string:file_id>",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "DELETE",
+      "path_template": "/api/v1/configuration-runs/<config_run_id>",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "DELETE",
+      "path_template": "/api/v1/costs/budget/<budget_id>",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "DELETE",
+      "path_template": "/api/v1/datasets/<string:dataset_id>",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "DELETE",
+      "path_template": "/api/v1/datasets/<string:dataset_id>/examples/<string:example_id>",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "DELETE",
+      "path_template": "/api/v1/datasets/<string:dataset_id>/files/<string:file_id>",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "example_set",
+      "method": "DELETE",
+      "path_template": "/api/v1/example-sets/<string:set_id>",
+      "source_file": "src/routes/example_set_routes.py"
+    },
+    {
+      "blueprint": "example_set",
+      "method": "DELETE",
+      "path_template": "/api/v1/example-sets/<string:set_id>/examples/<string:example_id>",
+      "source_file": "src/routes/example_set_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "DELETE",
+      "path_template": "/api/v1/experiments/<experiment_id>",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "DELETE",
+      "path_template": "/api/v1/keys/<key_id>",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "DELETE",
+      "path_template": "/api/v1/keys/<key_id>/resources/<resource_type>/<resource_id>",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "DELETE",
+      "path_template": "/api/v1/measures/<string:measure_id>",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "mfa",
+      "method": "DELETE",
+      "path_template": "/api/v1/mfa/disable",
+      "source_file": "src/routes/mfa_routes.py"
+    },
+    {
+      "blueprint": "model",
+      "method": "DELETE",
+      "path_template": "/api/v1/models/<model_id>",
+      "source_file": "src/routes/model_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "DELETE",
+      "path_template": "/api/v1/monitoring/security/<path:path>",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "DELETE",
+      "path_template": "/api/v1/planner/drafts/<draft_id>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "retrieval_config",
+      "method": "DELETE",
+      "path_template": "/api/v1/retrieval-configs/<string:config_id>",
+      "source_file": "src/routes/retrieval_config_routes.py"
+    },
+    {
+      "blueprint": "traigent_session",
+      "method": "DELETE",
+      "path_template": "/api/v1/sessions/<session_id>",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "DELETE",
+      "path_template": "/api/v1/traigent-sessions",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "DELETE",
+      "path_template": "/api/v1/traigent-sessions/",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "DELETE",
+      "path_template": "/api/v1/traigent-sessions/<path:subpath>",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "DELETE",
+      "path_template": "/prompts/<path:prompt_name>",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "app",
+      "method": "GET",
+      "path_template": "/",
+      "source_file": "src/app.py"
+    },
+    {
+      "blueprint": "health",
+      "method": "GET",
+      "path_template": "/api/health",
+      "source_file": "src/routes/health_routes.py"
+    },
+    {
+      "blueprint": "health",
+      "method": "GET",
+      "path_template": "/api/health/cors",
+      "source_file": "src/routes/health_routes.py"
+    },
+    {
+      "blueprint": "health",
+      "method": "GET",
+      "path_template": "/api/health/detailed",
+      "source_file": "src/routes/health_routes.py"
+    },
+    {
+      "blueprint": "health",
+      "method": "GET",
+      "path_template": "/api/health/live",
+      "source_file": "src/routes/health_routes.py"
+    },
+    {
+      "blueprint": "health",
+      "method": "GET",
+      "path_template": "/api/health/ready",
+      "source_file": "src/routes/health_routes.py"
+    },
+    {
+      "blueprint": "openapi",
+      "method": "GET",
+      "path_template": "/api/openapi.json",
+      "source_file": "src/routes/openapi_routes.py"
+    },
+    {
+      "blueprint": "rate_limits_compat",
+      "method": "GET",
+      "path_template": "/api/rate-limits/health",
+      "source_file": "src/routes/rate_limit_compat_routes.py"
+    },
+    {
+      "blueprint": "rate_limits_compat",
+      "method": "GET",
+      "path_template": "/api/rate-limits/status",
+      "source_file": "src/routes/rate_limit_compat_routes.py"
+    },
+    {
+      "blueprint": "rate_limits_compat",
+      "method": "GET",
+      "path_template": "/api/rate-limits/status/user/<user_id>",
+      "source_file": "src/routes/rate_limit_compat_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "GET",
+      "path_template": "/api/v1/admin/access-codes",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "GET",
+      "path_template": "/api/v1/admin/access-codes/usage",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "GET",
+      "path_template": "/api/v1/admin/stats",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "GET",
+      "path_template": "/api/v1/admin/users",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "GET",
+      "path_template": "/api/v1/admin/users/<user_id>",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1/agents",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1/agents/<path:agent_id>",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1/agents/<path:agent_id>/check-deletion",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1/agents/<path:agent_id>/experiments",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1/agents/<path:agent_id>/export",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1/agents/<path:agent_id>/model-parameters",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1/agents/admin/stats",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1/agents/agent-types",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1/agents/optimization-summaries",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "example_scoring",
+      "method": "GET",
+      "path_template": "/api/v1/analytics/example-scoring/<experiment_run_id>/dataset-quality",
+      "source_file": "src/routes/example_scoring_routes.py"
+    },
+    {
+      "blueprint": "example_scoring",
+      "method": "GET",
+      "path_template": "/api/v1/analytics/example-scoring/<experiment_run_id>/scores",
+      "source_file": "src/routes/example_scoring_routes.py"
+    },
+    {
+      "blueprint": "example_scoring",
+      "method": "GET",
+      "path_template": "/api/v1/analytics/example-scoring/<experiment_run_id>/summary",
+      "source_file": "src/routes/example_scoring_routes.py"
+    },
+    {
+      "blueprint": "example_scoring",
+      "method": "GET",
+      "path_template": "/api/v1/analytics/example-scoring/jobs/<job_id>",
+      "source_file": "src/routes/example_scoring_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "GET",
+      "path_template": "/api/v1/audit/alerts",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "GET",
+      "path_template": "/api/v1/audit/health",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "GET",
+      "path_template": "/api/v1/audit/logs",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "GET",
+      "path_template": "/api/v1/audit/logs/<int:log_id>",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "GET",
+      "path_template": "/api/v1/audit/retention-policies",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "GET",
+      "path_template": "/api/v1/audit/security/incidents",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "GET",
+      "path_template": "/api/v1/audit/soc2/compliance-report",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "GET",
+      "path_template": "/api/v1/audit/soc2/security-incidents",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "GET",
+      "path_template": "/api/v1/audit/statistics",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "GET",
+      "path_template": "/api/v1/auth/.well-known/jwks.json",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "GET",
+      "path_template": "/api/v1/auth/csrf-token",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "GET",
+      "path_template": "/api/v1/auth/me",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "GET",
+      "path_template": "/api/v1/auth/sso/oidc/callback",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "GET",
+      "path_template": "/api/v1/auth/sso/oidc/login",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "GET",
+      "path_template": "/api/v1/auth/status",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "GET",
+      "path_template": "/api/v1/benchmarks",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "GET",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "GET",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/examples",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "GET",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/files",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "GET",
+      "path_template": "/api/v1/benchmarks/generation-sessions/<string:session_id>/status",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "best_configs",
+      "method": "GET",
+      "path_template": "/api/v1/best-configs",
+      "source_file": "src/routes/best_config_routes.py"
+    },
+    {
+      "blueprint": "best_configs",
+      "method": "GET",
+      "path_template": "/api/v1/best-configs/<config_id>",
+      "source_file": "src/routes/best_config_routes.py"
+    },
+    {
+      "blueprint": "best_configs",
+      "method": "GET",
+      "path_template": "/api/v1/best-configs/<config_id>/versions",
+      "source_file": "src/routes/best_config_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/enforcement-controls",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/plans",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/portal",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/spend-approvals",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/spend-policy",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/subscription",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "subscription_billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/subscription/catalog",
+      "source_file": "src/routes/subscription_billing_routes.py"
+    },
+    {
+      "blueprint": "subscription_billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/subscription/current",
+      "source_file": "src/routes/subscription_billing_routes.py"
+    },
+    {
+      "blueprint": "subscription_billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/subscription/entitlements",
+      "source_file": "src/routes/subscription_billing_routes.py"
+    },
+    {
+      "blueprint": "subscription_billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/subscription/usage-buckets",
+      "source_file": "src/routes/subscription_billing_routes.py"
+    },
+    {
+      "blueprint": "subscription_billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/subscription/usage-periods/<period_id>",
+      "source_file": "src/routes/subscription_billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/usage",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/usage/check",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/usage/history",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/wallet",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/wallet/ledger",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/wallet/top-up-packs",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/wallet/top-ups/<string:intent_id>",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "GET",
+      "path_template": "/api/v1/configuration-runs/<config_run_id>",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "GET",
+      "path_template": "/api/v1/configuration-runs/runs/<experiment_run_id>/configurations",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "coordination",
+      "method": "GET",
+      "path_template": "/api/v1/coordination/entities/<entity_type>",
+      "source_file": "src/routes/coordination_routes.py"
+    },
+    {
+      "blueprint": "coordination",
+      "method": "GET",
+      "path_template": "/api/v1/coordination/entities/<entity_type>/<entity_id>",
+      "source_file": "src/routes/coordination_routes.py"
+    },
+    {
+      "blueprint": "coordination",
+      "method": "GET",
+      "path_template": "/api/v1/coordination/entities/types",
+      "source_file": "src/routes/coordination_routes.py"
+    },
+    {
+      "blueprint": "coordination",
+      "method": "GET",
+      "path_template": "/api/v1/coordination/health",
+      "source_file": "src/routes/coordination_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "GET",
+      "path_template": "/api/v1/costs/alerts",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "GET",
+      "path_template": "/api/v1/costs/analytics/<benchmark_id>",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "GET",
+      "path_template": "/api/v1/costs/budget",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "GET",
+      "path_template": "/api/v1/costs/budget/<budget_id>",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "GET",
+      "path_template": "/api/v1/costs/budget/check",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "GET",
+      "path_template": "/api/v1/costs/stats",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "GET",
+      "path_template": "/api/v1/costs/usage",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "GET",
+      "path_template": "/api/v1/costs/usage/user/<user_id>",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "GET",
+      "path_template": "/api/v1/costs/users",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "dashboard",
+      "method": "GET",
+      "path_template": "/api/v1/dashboard/bootstrap",
+      "source_file": "src/routes/dashboard_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "GET",
+      "path_template": "/api/v1/datasets",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset_version",
+      "method": "GET",
+      "path_template": "/api/v1/datasets/<dataset_id>/versions",
+      "source_file": "src/routes/dataset_version_routes.py"
+    },
+    {
+      "blueprint": "dataset_version",
+      "method": "GET",
+      "path_template": "/api/v1/datasets/<dataset_id>/versions/<version_id>",
+      "source_file": "src/routes/dataset_version_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "GET",
+      "path_template": "/api/v1/datasets/<string:dataset_id>",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "GET",
+      "path_template": "/api/v1/datasets/<string:dataset_id>/examples",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "GET",
+      "path_template": "/api/v1/datasets/<string:dataset_id>/files",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "demo",
+      "method": "GET",
+      "path_template": "/api/v1/demo/basic",
+      "source_file": "src/routes/demo_routes.py"
+    },
+    {
+      "blueprint": "example_set",
+      "method": "GET",
+      "path_template": "/api/v1/example-sets",
+      "source_file": "src/routes/example_set_routes.py"
+    },
+    {
+      "blueprint": "example_set",
+      "method": "GET",
+      "path_template": "/api/v1/example-sets/<string:set_id>",
+      "source_file": "src/routes/example_set_routes.py"
+    },
+    {
+      "blueprint": "example_set",
+      "method": "GET",
+      "path_template": "/api/v1/example-sets/<string:set_id>/examples",
+      "source_file": "src/routes/example_set_routes.py"
+    },
+    {
+      "blueprint": "expense",
+      "method": "GET",
+      "path_template": "/api/v1/expenses/alerts",
+      "source_file": "src/routes/expense_routes.py"
+    },
+    {
+      "blueprint": "expense",
+      "method": "GET",
+      "path_template": "/api/v1/expenses/budgets",
+      "source_file": "src/routes/expense_routes.py"
+    },
+    {
+      "blueprint": "expense",
+      "method": "GET",
+      "path_template": "/api/v1/expenses/statistics",
+      "source_file": "src/routes/expense_routes.py"
+    },
+    {
+      "blueprint": "expense",
+      "method": "GET",
+      "path_template": "/api/v1/expenses/tracking",
+      "source_file": "src/routes/expense_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/<experiment_id>/runs",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>/status",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>/configurations",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "report",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>/report-payload",
+      "source_file": "src/routes/report_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>/results",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>/status",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>/traces",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "GET",
+      "path_template": "/api/v1/experiments",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "GET",
+      "path_template": "/api/v1/experiments/<experiment_id>",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "GET",
+      "path_template": "/api/v1/experiments/admin/stats",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "report",
+      "method": "GET",
+      "path_template": "/api/v1/features/report-module-status",
+      "source_file": "src/routes/report_routes.py"
+    },
+    {
+      "blueprint": "harness",
+      "method": "GET",
+      "path_template": "/api/v1/harness/sessions",
+      "source_file": "src/routes/harness_routes.py"
+    },
+    {
+      "blueprint": "harness",
+      "method": "GET",
+      "path_template": "/api/v1/harness/sessions/<session_id>",
+      "source_file": "src/routes/harness_routes.py"
+    },
+    {
+      "blueprint": "hybrid",
+      "method": "GET",
+      "path_template": "/api/v1/hybrid/optimizer/<session_id>/next",
+      "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "hybrid",
+      "method": "GET",
+      "path_template": "/api/v1/hybrid/sessions/<session_id>/status",
+      "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "GET",
+      "path_template": "/api/v1/keys",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "GET",
+      "path_template": "/api/v1/keys/<key_id>",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "GET",
+      "path_template": "/api/v1/keys/<key_id>/analytics",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "GET",
+      "path_template": "/api/v1/keys/<key_id>/resources",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "GET",
+      "path_template": "/api/v1/keys/<key_id>/usage",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "GET",
+      "path_template": "/api/v1/keys/accessible-resources",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "GET",
+      "path_template": "/api/v1/keys/admin/all",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "GET",
+      "path_template": "/api/v1/keys/admin/rotation-candidates",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "GET",
+      "path_template": "/api/v1/measures",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "GET",
+      "path_template": "/api/v1/measures/<string:measure_id>",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "mfa",
+      "method": "GET",
+      "path_template": "/api/v1/mfa/backup-codes",
+      "source_file": "src/routes/mfa_routes.py"
+    },
+    {
+      "blueprint": "mfa",
+      "method": "GET",
+      "path_template": "/api/v1/mfa/setup/qr",
+      "source_file": "src/routes/mfa_routes.py"
+    },
+    {
+      "blueprint": "mfa",
+      "method": "GET",
+      "path_template": "/api/v1/mfa/status",
+      "source_file": "src/routes/mfa_routes.py"
+    },
+    {
+      "blueprint": "model",
+      "method": "GET",
+      "path_template": "/api/v1/models",
+      "source_file": "src/routes/model_routes.py"
+    },
+    {
+      "blueprint": "model",
+      "method": "GET",
+      "path_template": "/api/v1/models/<model_id>",
+      "source_file": "src/routes/model_routes.py"
+    },
+    {
+      "blueprint": "model",
+      "method": "GET",
+      "path_template": "/api/v1/models/providers",
+      "source_file": "src/routes/model_routes.py"
+    },
+    {
+      "blueprint": "model",
+      "method": "GET",
+      "path_template": "/api/v1/models/types",
+      "source_file": "src/routes/model_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/<path:path>",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/alerts",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/audit-trail",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/failed-logins",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/health",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/metrics",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/overview",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/rate-limits",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/score",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "GET",
+      "path_template": "/api/v1/monitoring/security/suspicious-activity",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "optimization_comparison",
+      "method": "GET",
+      "path_template": "/api/v1/optimization-comparisons/<comparison_id>",
+      "source_file": "src/routes/optimization_comparison_routes.py"
+    },
+    {
+      "blueprint": "optimization_comparison",
+      "method": "GET",
+      "path_template": "/api/v1/optimization-comparisons/<comparison_id>/examples",
+      "source_file": "src/routes/optimization_comparison_routes.py"
+    },
+    {
+      "blueprint": "optimization_comparison",
+      "method": "GET",
+      "path_template": "/api/v1/optimization-comparisons/<comparison_id>/examples/<path:example_id>",
+      "source_file": "src/routes/optimization_comparison_routes.py"
+    },
+    {
+      "blueprint": "optimization_comparison",
+      "method": "GET",
+      "path_template": "/api/v1/optimization-comparisons/<comparison_id>/export",
+      "source_file": "src/routes/optimization_comparison_routes.py"
+    },
+    {
+      "blueprint": "optimization_prior",
+      "method": "GET",
+      "path_template": "/api/v1/optimization/recommendations",
+      "source_file": "src/routes/optimization_prior_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1/planner/drafts",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1/planner/drafts/<draft_id>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1/planner/drafts/<draft_id>/sections/<section>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1/planner/example-drafts",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1/planner/status/<draft_id>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "platform_stats",
+      "method": "GET",
+      "path_template": "/api/v1/platform-stats",
+      "source_file": "src/routes/platform_stats_routes.py"
+    },
+    {
+      "blueprint": "rate_limits_v1_compat",
+      "method": "GET",
+      "path_template": "/api/v1/rate-limits/status",
+      "source_file": "src/routes/rate_limit_compat_routes.py"
+    },
+    {
+      "blueprint": "retrieval_config",
+      "method": "GET",
+      "path_template": "/api/v1/retrieval-configs",
+      "source_file": "src/routes/retrieval_config_routes.py"
+    },
+    {
+      "blueprint": "retrieval_config",
+      "method": "GET",
+      "path_template": "/api/v1/retrieval-configs/<string:config_id>",
+      "source_file": "src/routes/retrieval_config_routes.py"
+    },
+    {
+      "blueprint": "search_api",
+      "method": "GET",
+      "path_template": "/api/v1/search",
+      "source_file": "src/routes/search_routes.py"
+    },
+    {
+      "blueprint": "security",
+      "method": "GET",
+      "path_template": "/api/v1/security/events",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "traigent_session",
+      "method": "GET",
+      "path_template": "/api/v1/sessions",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
+      "blueprint": "traigent_session",
+      "method": "GET",
+      "path_template": "/api/v1/sessions/<session_id>",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
+      "blueprint": "trace",
+      "method": "GET",
+      "path_template": "/api/v1/traces/<trace_id>",
+      "source_file": "src/routes/trace_routes.py"
+    },
+    {
+      "blueprint": "trace",
+      "method": "GET",
+      "path_template": "/api/v1/traces/experiments/<experiment_id>/graphs",
+      "source_file": "src/routes/trace_routes.py"
+    },
+    {
+      "blueprint": "trace",
+      "method": "GET",
+      "path_template": "/api/v1/traces/graphs/<graph_id>",
+      "source_file": "src/routes/trace_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "GET",
+      "path_template": "/api/v1/traigent-sessions",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "GET",
+      "path_template": "/api/v1/traigent-sessions/",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "GET",
+      "path_template": "/api/v1/traigent-sessions/<path:subpath>",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "app",
+      "method": "GET",
+      "path_template": "/health",
+      "source_file": "src/app.py"
+    },
+    {
+      "blueprint": "app",
+      "method": "GET",
+      "path_template": "/metrics",
+      "source_file": "src/app.py"
+    },
+    {
+      "blueprint": "openapi",
+      "method": "GET",
+      "path_template": "/openapi.json",
+      "source_file": "src/routes/openapi_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/prompts",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/prompts/<path:prompt_name>",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/prompts/<path:prompt_name>/analytics",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/prompts/<path:prompt_name>/resolve",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/prompts/<path:prompt_name>/versions/<int:version>",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "HEAD",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>/traces",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "PATCH",
+      "path_template": "/api/v1/admin/access-codes/<code_id>",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "PATCH",
+      "path_template": "/api/v1/billing/enforcement-controls",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "PATCH",
+      "path_template": "/api/v1/billing/spend-policy",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "PATCH",
+      "path_template": "/api/v1/traigent-sessions",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "PATCH",
+      "path_template": "/api/v1/traigent-sessions/",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "PATCH",
+      "path_template": "/api/v1/traigent-sessions/<path:subpath>",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "PATCH",
+      "path_template": "/prompts/<path:prompt_name>/labels",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "faro",
+      "method": "POST",
+      "path_template": "/api/faro/collect",
+      "source_file": "src/routes/faro_proxy_routes.py"
+    },
+    {
+      "blueprint": "otel",
+      "method": "POST",
+      "path_template": "/api/otel/v1/traces",
+      "source_file": "src/routes/otel_proxy_routes.py"
+    },
+    {
+      "blueprint": "rate_limits_compat",
+      "method": "POST",
+      "path_template": "/api/rate-limits/check",
+      "source_file": "src/routes/rate_limit_compat_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "POST",
+      "path_template": "/api/v1/admin/access-codes",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "POST",
+      "path_template": "/api/v1/admin/users/<user_id>/activate",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "POST",
+      "path_template": "/api/v1/admin/users/<user_id>/deactivate",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "POST",
+      "path_template": "/api/v1/admin/users/<user_id>/demote",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "POST",
+      "path_template": "/api/v1/admin/users/<user_id>/promote",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "POST",
+      "path_template": "/api/v1/admin/users/<user_id>/send-password-reset",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1/agents",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1/agents/<path:agent_id>/example-sets",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1/agents/<path:agent_id>/model-parameters",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1/agents/<path:agent_id>/retrieval-configs",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1/agents/import",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "example_scoring",
+      "method": "POST",
+      "path_template": "/api/v1/analytics/example-scoring/<experiment_run_id>/compute",
+      "source_file": "src/routes/example_scoring_routes.py"
+    },
+    {
+      "blueprint": "example_scoring",
+      "method": "POST",
+      "path_template": "/api/v1/analytics/example-scoring/<experiment_run_id>/features",
+      "source_file": "src/routes/example_scoring_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "POST",
+      "path_template": "/api/v1/audit/logs/export",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "POST",
+      "path_template": "/api/v1/audit/security/incidents/<incident_id>/resolve",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "audit",
+      "method": "POST",
+      "path_template": "/api/v1/audit/soc2/security-incidents/<incident_id>/resolve",
+      "source_file": "src/routes/audit_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/device/authorize",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/device/decision",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/device/token",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/forgot-password",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/login",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/logout",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/refresh",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/register",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/resend-verification",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/reset-password",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/verify-email",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "POST",
+      "path_template": "/api/v1/benchmarks",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "POST",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/examples",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "POST",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/files",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "POST",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/generate-examples",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "POST",
+      "path_template": "/api/v1/benchmarks/generate",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "best_configs",
+      "method": "POST",
+      "path_template": "/api/v1/best-configs",
+      "source_file": "src/routes/best_config_routes.py"
+    },
+    {
+      "blueprint": "best_configs",
+      "method": "POST",
+      "path_template": "/api/v1/best-configs/<config_id>/rollback",
+      "source_file": "src/routes/best_config_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/checkout",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/quota-maintenance/cleanup",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/spend-approvals",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/spend-approvals/<approval_id>/approve",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/spend-approvals/<approval_id>/reject",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/subscription/cancel",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "subscription_billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/subscription/spend-alerts",
+      "source_file": "src/routes/subscription_billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/wallet/admin-adjustments",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/wallet/top-ups",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/webhook",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "client_logs",
+      "method": "POST",
+      "path_template": "/api/v1/client-logs/ingest",
+      "source_file": "src/routes/client_log_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "POST",
+      "path_template": "/api/v1/configuration-runs/runs/<experiment_run_id>/configurations",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "contact",
+      "method": "POST",
+      "path_template": "/api/v1/contact",
+      "source_file": "src/routes/contact_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "POST",
+      "path_template": "/api/v1/costs/alerts",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "POST",
+      "path_template": "/api/v1/costs/budget",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "POST",
+      "path_template": "/api/v1/costs/export",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "POST",
+      "path_template": "/api/v1/costs/record",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "POST",
+      "path_template": "/api/v1/datasets",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset_version",
+      "method": "POST",
+      "path_template": "/api/v1/datasets/<dataset_id>/versions",
+      "source_file": "src/routes/dataset_version_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "POST",
+      "path_template": "/api/v1/datasets/<string:dataset_id>/examples",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "POST",
+      "path_template": "/api/v1/datasets/<string:dataset_id>/files",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "POST",
+      "path_template": "/api/v1/datasets/<string:dataset_id>/generate-examples",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "POST",
+      "path_template": "/api/v1/datasets/<string:dataset_id>/upload",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "POST",
+      "path_template": "/api/v1/datasets/generate",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "email_events",
+      "method": "POST",
+      "path_template": "/api/v1/email/sns-webhook",
+      "source_file": "src/routes/email_event_routes.py"
+    },
+    {
+      "blueprint": "example_set",
+      "method": "POST",
+      "path_template": "/api/v1/example-sets",
+      "source_file": "src/routes/example_set_routes.py"
+    },
+    {
+      "blueprint": "example_set",
+      "method": "POST",
+      "path_template": "/api/v1/example-sets/<string:set_id>/examples",
+      "source_file": "src/routes/example_set_routes.py"
+    },
+    {
+      "blueprint": "example_set",
+      "method": "POST",
+      "path_template": "/api/v1/example-sets/<string:set_id>/upload",
+      "source_file": "src/routes/example_set_routes.py"
+    },
+    {
+      "blueprint": "expense",
+      "method": "POST",
+      "path_template": "/api/v1/expenses/budgets",
+      "source_file": "src/routes/expense_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "POST",
+      "path_template": "/api/v1/experiment-runs/<experiment_id>/runs",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "POST",
+      "path_template": "/api/v1/experiment-runs/check-completion",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "POST",
+      "path_template": "/api/v1/experiment-runs/fix-naming",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "POST",
+      "path_template": "/api/v1/experiment-runs/runs/<experiment_run_id>/configurations",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "POST",
+      "path_template": "/api/v1/experiments",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "POST",
+      "path_template": "/api/v1/experiments/bulk-update-status",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "generate_dataset",
+      "method": "POST",
+      "path_template": "/api/v1/generate-dataset",
+      "source_file": "src/routes/generate_dataset_route.py"
+    },
+    {
+      "blueprint": "harness",
+      "method": "POST",
+      "path_template": "/api/v1/harness/sessions/<session_id>/backfill",
+      "source_file": "src/routes/harness_routes.py"
+    },
+    {
+      "blueprint": "harness",
+      "method": "POST",
+      "path_template": "/api/v1/harness/sessions/<session_id>/events",
+      "source_file": "src/routes/harness_routes.py"
+    },
+    {
+      "blueprint": "harness",
+      "method": "POST",
+      "path_template": "/api/v1/harness/telemetry/v1/logs",
+      "source_file": "src/routes/harness_routes.py"
+    },
+    {
+      "blueprint": "harness",
+      "method": "POST",
+      "path_template": "/api/v1/harness/telemetry/v1/metrics",
+      "source_file": "src/routes/harness_routes.py"
+    },
+    {
+      "blueprint": "hybrid",
+      "method": "POST",
+      "path_template": "/api/v1/hybrid/optimizer/<session_id>",
+      "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "hybrid",
+      "method": "POST",
+      "path_template": "/api/v1/hybrid/optimizer/<session_id>/batch",
+      "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "hybrid",
+      "method": "POST",
+      "path_template": "/api/v1/hybrid/sessions",
+      "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "hybrid",
+      "method": "POST",
+      "path_template": "/api/v1/hybrid/sessions/<session_id>/abort",
+      "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "hybrid",
+      "method": "POST",
+      "path_template": "/api/v1/hybrid/sessions/<session_id>/finalize",
+      "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "hybrid",
+      "method": "POST",
+      "path_template": "/api/v1/hybrid/sessions/<session_id>/results",
+      "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "POST",
+      "path_template": "/api/v1/keys",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "POST",
+      "path_template": "/api/v1/keys/<key_id>/reactivate",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "POST",
+      "path_template": "/api/v1/keys/<key_id>/resources",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "POST",
+      "path_template": "/api/v1/keys/<key_id>/rotate",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "POST",
+      "path_template": "/api/v1/keys/<key_id>/suspend",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "POST",
+      "path_template": "/api/v1/keys/admin/bulk",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "POST",
+      "path_template": "/api/v1/keys/validate",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "POST",
+      "path_template": "/api/v1/measures",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "POST",
+      "path_template": "/api/v1/measures/default",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "mfa",
+      "method": "POST",
+      "path_template": "/api/v1/mfa/recovery",
+      "source_file": "src/routes/mfa_routes.py"
+    },
+    {
+      "blueprint": "mfa",
+      "method": "POST",
+      "path_template": "/api/v1/mfa/setup",
+      "source_file": "src/routes/mfa_routes.py"
+    },
+    {
+      "blueprint": "mfa",
+      "method": "POST",
+      "path_template": "/api/v1/mfa/setup/verify",
+      "source_file": "src/routes/mfa_routes.py"
+    },
+    {
+      "blueprint": "mfa",
+      "method": "POST",
+      "path_template": "/api/v1/mfa/verify",
+      "source_file": "src/routes/mfa_routes.py"
+    },
+    {
+      "blueprint": "model_parameters",
+      "method": "POST",
+      "path_template": "/api/v1/model-parameters",
+      "source_file": "src/routes/model_parameters_routes.py"
+    },
+    {
+      "blueprint": "model",
+      "method": "POST",
+      "path_template": "/api/v1/models",
+      "source_file": "src/routes/model_routes.py"
+    },
+    {
+      "blueprint": "model",
+      "method": "POST",
+      "path_template": "/api/v1/models/default",
+      "source_file": "src/routes/model_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "POST",
+      "path_template": "/api/v1/monitoring/security/<path:path>",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "POST",
+      "path_template": "/api/v1/monitoring/security/alerts/configure",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "POST",
+      "path_template": "/api/v1/monitoring/security/reports/export",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "optimization_comparison",
+      "method": "POST",
+      "path_template": "/api/v1/optimization-comparisons",
+      "source_file": "src/routes/optimization_comparison_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "POST",
+      "path_template": "/api/v1/planner/drafts/<draft_id>/cancel",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "POST",
+      "path_template": "/api/v1/planner/drafts/<draft_id>/finalize",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "POST",
+      "path_template": "/api/v1/planner/generate",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "rate_limits_v1_compat",
+      "method": "POST",
+      "path_template": "/api/v1/rate-limits/check",
+      "source_file": "src/routes/rate_limit_compat_routes.py"
+    },
+    {
+      "blueprint": "retrieval_config",
+      "method": "POST",
+      "path_template": "/api/v1/retrieval-configs",
+      "source_file": "src/routes/retrieval_config_routes.py"
+    },
+    {
+      "blueprint": "retrieval_config",
+      "method": "POST",
+      "path_template": "/api/v1/retrieval-configs/<string:config_id>/duplicate",
+      "source_file": "src/routes/retrieval_config_routes.py"
+    },
+    {
+      "blueprint": "retrieval_config",
+      "method": "POST",
+      "path_template": "/api/v1/retrieval-configs/<string:config_id>/test",
+      "source_file": "src/routes/retrieval_config_routes.py"
+    },
+    {
+      "blueprint": "traigent_session",
+      "method": "POST",
+      "path_template": "/api/v1/sessions",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
+      "blueprint": "traigent_session",
+      "method": "POST",
+      "path_template": "/api/v1/sessions/<session_id>/finalize",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
+      "blueprint": "guidance",
+      "method": "POST",
+      "path_template": "/api/v1/sessions/<session_id>/guidance-plan",
+      "source_file": "src/routes/guidance_routes.py"
+    },
+    {
+      "blueprint": "guidance",
+      "method": "POST",
+      "path_template": "/api/v1/sessions/<session_id>/guidance-results",
+      "source_file": "src/routes/guidance_routes.py"
+    },
+    {
+      "blueprint": "traigent_session",
+      "method": "POST",
+      "path_template": "/api/v1/sessions/<session_id>/next-trial",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
+      "blueprint": "traigent_session",
+      "method": "POST",
+      "path_template": "/api/v1/sessions/<session_id>/results",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
+      "blueprint": "traigent_session",
+      "method": "POST",
+      "path_template": "/api/v1/sessions/optimize",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
+      "blueprint": "trace",
+      "method": "POST",
+      "path_template": "/api/v1/traces/ingest",
+      "source_file": "src/routes/trace_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "POST",
+      "path_template": "/api/v1/traigent-sessions",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "POST",
+      "path_template": "/api/v1/traigent-sessions/",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "POST",
+      "path_template": "/api/v1/traigent-sessions/<path:subpath>",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "POST",
+      "path_template": "/prompts",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "POST",
+      "path_template": "/prompts/<path:prompt_name>/playground/run",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "POST",
+      "path_template": "/prompts/<path:prompt_name>/versions",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "admin",
+      "method": "PUT",
+      "path_template": "/api/v1/admin/users/<user_id>",
+      "source_file": "src/routes/admin_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "PUT",
+      "path_template": "/api/v1/agents/<path:agent_id>",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "PUT",
+      "path_template": "/api/v1/agents/<path:agent_id>/model-parameters/<string:param_id>",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "PUT",
+      "path_template": "/api/v1/auth/me",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "PUT",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "PUT",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/examples/<string:example_id>",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1/configuration-runs/<config_run_id>",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1/configuration-runs/<config_run_id>/measures",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1/configuration-runs/<config_run_id>/status",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1/configuration-runs/<config_run_id>/summary-stats",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1/configuration-runs/<config_run_id>/workflow-metadata",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "costs",
+      "method": "PUT",
+      "path_template": "/api/v1/costs/budget/<budget_id>",
+      "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "PUT",
+      "path_template": "/api/v1/datasets/<string:dataset_id>",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "dataset",
+      "method": "PUT",
+      "path_template": "/api/v1/datasets/<string:dataset_id>/examples/<string:example_id>",
+      "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "example_set",
+      "method": "PUT",
+      "path_template": "/api/v1/example-sets/<string:set_id>",
+      "source_file": "src/routes/example_set_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "PUT",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "PUT",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>/status",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "PUT",
+      "path_template": "/api/v1/experiments/<experiment_id>",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "api_keys",
+      "method": "PUT",
+      "path_template": "/api/v1/keys/<key_id>",
+      "source_file": "src/routes/api_key_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "PUT",
+      "path_template": "/api/v1/measures/<string:measure_id>",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "model",
+      "method": "PUT",
+      "path_template": "/api/v1/models/<model_id>",
+      "source_file": "src/routes/model_routes.py"
+    },
+    {
+      "blueprint": "monitoring",
+      "method": "PUT",
+      "path_template": "/api/v1/monitoring/security/<path:path>",
+      "source_file": "src/routes/monitoring_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "PUT",
+      "path_template": "/api/v1/planner/drafts/<draft_id>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "PUT",
+      "path_template": "/api/v1/planner/drafts/<draft_id>/sections/<section>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "retrieval_config",
+      "method": "PUT",
+      "path_template": "/api/v1/retrieval-configs/<string:config_id>",
+      "source_file": "src/routes/retrieval_config_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "PUT",
+      "path_template": "/api/v1/traigent-sessions",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "PUT",
+      "path_template": "/api/v1/traigent-sessions/",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    },
+    {
+      "blueprint": "traigent_compat",
+      "method": "PUT",
+      "path_template": "/api/v1/traigent-sessions/<path:subpath>",
+      "source_file": "src/routes/traigent_compat_routes.py"
+    }
+  ]
+}
