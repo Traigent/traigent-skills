@@ -7,9 +7,10 @@
 # corpus:
 #   ref: "private://<opaque-corpus-id>"
 #
-# scorer_families:
-#   - exit-code
-#   - static
+# scorer_families:   # ids must match the private harness exactly
+#   - exit_code
+#   - dataset_valid
+#   - static_ast
 #   - artifact
 #   - hygiene
 #

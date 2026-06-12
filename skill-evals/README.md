@@ -18,9 +18,18 @@ Each skill has `skills/<name>/provenance.json`:
 
 - `schema`: currently `skill-provenance/v1`.
 - `doc_hash`: first 16 hex characters of the SHA-256 hash of the corresponding `SKILL.md` bytes.
-- `entries`: accepted, rejected, or skipped edit records.
+- `entries`: applied, gate-rejected, or skipped edit records.
 
-The genesis entry records the baseline snapshot at adoption. Future optimizer entries use this field contract: `edit_id`, `op` (`append`, `insert_after`, `replace`, or `delete`), `anchor`, `before_hash`, `after_hash`, `epoch`, `status` (`accepted`, `rejected`, or `skipped`), `selection_score_before`, `selection_score_after`, `source` (`optimizer` or `human`), `run_id`, and `timestamp`.
+The genesis entry records the baseline snapshot at adoption. Future optimizer entries use this field contract, aligned one-to-one with the trainer's edit-apply records (text fields are replaced by hashes — raw anchor or edit text never appears in this public file):
+
+- `edit_id`; `op` (`append`, `insert_after`, `replace`, or `delete`)
+- `target_hash`, `content_hash`: 16-char SHA-256 prefixes of the private anchor/content text
+- `source_type` (`failure`, `success`, `slow_update`, or `human`); `support_count`
+- `status` (`applied`, `rejected_gate`, `skipped_target_not_found`, `skipped_protected_region`, `skipped_invalid`, or `skipped_duplicate`)
+- `epoch`, `step`, `selection_score_before`, `selection_score_after`
+- `run_id`, `timestamp`, and record-level `doc_before_hash` / `doc_after_hash`
+
+Only `applied` entries on an accepted candidate change the deployed document; `rejected_gate` and `skipped_*` entries are negative-evidence records.
 
 Never put task or example content in `provenance.json`. Store only hashes, scores, identifiers, statuses, and timestamps.
 
