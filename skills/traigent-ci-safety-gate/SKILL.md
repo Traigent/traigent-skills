@@ -151,7 +151,7 @@ jobs:
       - run: python -m traigent.tvl tvl/ --strict
       - run: python scripts/run_holdout_eval.py --config configs/baseline.json --output .gate/incumbent.json
       - run: python scripts/run_holdout_eval.py --config configs/candidate.json --output .gate/candidate.json
-      - run: python scripts/traigent_gate.py --incumbent .gate/incumbent.json --candidate .gate/candidate.json --max-cost 5.00 --max-latency-ms 1200
+      - run: python scripts/traigent_gate.py --incumbent .gate/incumbent.json --candidate .gate/candidate.json --max-cost 0.01 --max-latency-ms 1200
 ```
 
 For a full copy-paste workflow and gate script, read `references/gate-workflow.md`.

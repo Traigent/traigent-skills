@@ -40,7 +40,7 @@ Lower values vary slowest (outer loop), higher values vary fastest (inner loop).
 
 - Configuration space has fewer than 50 total combinations
 - You need deterministic, reproducible results
-- You want to guarantee the best config in the space is found
+- You want to exhaustively evaluate every declared configuration (budget permitting) — the strongest in-space coverage, with no claim beyond the evaluation dataset
 - Budget allows testing every combination
 
 ### Behavior
