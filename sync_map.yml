@@ -5,6 +5,10 @@ sdk:
 default_min_sdk_version: "0.12.0"
 skills:
   traigent-quickstart:
+    env_version_floors:
+      # TRAIGENT_LOG_LEVEL ships in traigent>=0.13.0; the reference table row
+      # carries the version note in prose.
+      TRAIGENT_LOG_LEVEL: "0.13.0.dev1"
     docs:
       - docs/getting-started/*
       - pyproject.toml

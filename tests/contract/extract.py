@@ -236,9 +236,12 @@ def _dedupe(facts: list[ContractFact]) -> list[ContractFact]:
     for fact in facts:
         key: object
         if fact.kind == "env":
-            key = (fact.kind, fact.name)
+            # Per-skill, not global: each skill's floor/env_version_floors must
+            # see its own facts (a global dedupe hid a 0.13-only var taught by a
+            # 0.12-floor skill behind another skill's gated fact).
+            key = (fact.kind, fact.skill, fact.name)
         elif fact.kind == "cli":
-            key = (fact.kind, fact.command)
+            key = (fact.kind, fact.skill, fact.command)
         else:
             key = fact
         if key in seen:

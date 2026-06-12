@@ -4,7 +4,7 @@ description: "Install and set up the Traigent SDK for LLM optimization. Use when
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Quickstart
@@ -81,7 +81,7 @@ Traigent supports `.env` files via `python-dotenv` (included in the `integration
 
 ```
 TRAIGENT_OFFLINE_MODE=true
-TRAIGENT_LOG_LEVEL=DEBUG
+TRAIGENT_DEBUG=1
 ```
 
 ### Production Mode
@@ -205,7 +205,7 @@ print(traigent.get_version_info())
 ### Validate an eval dataset
 
 ```bash
-traigent validate --dataset eval_queries.jsonl
+traigent validate eval_queries.jsonl
 ```
 
 ## CLI Quick Reference

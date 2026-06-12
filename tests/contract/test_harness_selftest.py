@@ -89,3 +89,24 @@ def test_dead_teaching_message_contains_location_and_fix_menu() -> None:
     assert "fix one : (a) raise this skill's min_sdk_version in sync_map.yml AND add" in message
     assert "(b) replace the taught API with one available at the declared floor" in message
     assert "(c) mark the block `# contract: skip` ONLY if it is illustrative pseudo-code" in message
+
+
+def test_cli_flag_regex_extracts_long_options() -> None:
+    from .test_env_and_cli import _FLAG_RE
+
+    cmd = "traigent validate --dataset eval.jsonl -v --objectives accuracy --help"
+    assert _FLAG_RE.findall(cmd) == ["--dataset", "--objectives", "--help"]
+
+
+def test_env_and_cli_dedupe_is_per_skill(tmp_path) -> None:
+    from .facts import collect_contract_facts
+
+    for skill in ("skill-a", "skill-b"):
+        d = tmp_path / "skills" / skill
+        d.mkdir(parents=True)
+        (d / "SKILL.md").write_text("Set `TRAIGENT_DEBUG=1`.\n```bash\ntraigent validate x.jsonl\n```\n")
+    facts = collect_contract_facts(str(tmp_path))
+    env_facts = [f for f in facts if f.kind == "env"]
+    cli_facts = [f for f in facts if f.kind == "cli"]
+    assert {f.skill for f in env_facts} == {"skill-a", "skill-b"}
+    assert {f.skill for f in cli_facts} == {"skill-a", "skill-b"}

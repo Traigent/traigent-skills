@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import re
 import shutil
 import subprocess
 import sys
@@ -54,11 +55,13 @@ def test_taught_traigent_cli_commands_exist(cli_fact: ContractFact, repo_root: P
     help_text = subprocess.check_output([str(executable), "--help"], text=True)
     subcmd = command.split()[1]
     if _command_in_help(subcmd, help_text):
+        _assert_taught_flags_exist(cli_fact, executable, command, repo_root, sdk_version_label)
         return
 
     for group in _groups_to_probe(command):
         group_help = subprocess.run([str(executable), group, "--help"], text=True, capture_output=True, check=False)
         if _command_in_help(subcmd, group_help.stdout + group_help.stderr):
+            _assert_taught_flags_exist(cli_fact, executable, command, repo_root, sdk_version_label)
             return
 
     raise AssertionError(
@@ -70,6 +73,39 @@ def test_taught_traigent_cli_commands_exist(cli_fact: ContractFact, repo_root: P
             problem="cli command missing",
         )
     )
+
+
+_FLAG_RE = re.compile(r"(?<!\S)--[a-z][\w-]*")
+
+
+def _assert_taught_flags_exist(
+    cli_fact: ContractFact,
+    executable: Path,
+    command: str,
+    repo_root: Path,
+    sdk_version_label: str,
+) -> None:
+    """A taught option must exist on the real subcommand, not just the command.
+
+    Catches dead teachings like `traigent validate --dataset X` where the real
+    CLI takes a positional DATASET_PATH.
+    """
+    flags = [f for f in _FLAG_RE.findall(command) if f != "--help"]
+    if not flags:
+        return
+    parts = command.split()
+    sub_help = subprocess.run(
+        [str(executable), *parts[1:2], "--help"], text=True, capture_output=True, check=False
+    )
+    help_text = sub_help.stdout + sub_help.stderr
+    for flag in flags:
+        assert flag in help_text, format_dead_teaching(
+            cli_fact,
+            repo_root=repo_root,
+            sdk_version=sdk_version_label,
+            taught=command,
+            problem=f"cli option {flag} not accepted by `traigent {parts[1]}`",
+        )
 
 
 def _command_in_help(subcmd: str, help_text: str) -> bool:
