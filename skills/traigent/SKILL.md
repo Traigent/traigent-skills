@@ -257,17 +257,20 @@ print(f"Duration:     {results.duration:.1f}s")
 print(f"Stop reason:  {results.stop_reason}")
 ```
 
-### 4. Apply and Export
+### 4. Export a candidate, gate, then apply
+
+Do not promote the winner straight into production. Export it as a
+candidate, check it on a held-out slice (see `traigent-ci-safety-gate`
+for the promotion gate and CI checks), and apply only after the gate
+and the user's explicit approval.
 
 ```python
-# Lock in the best config for production
+# Export the winning config as a CANDIDATE artifact for review/gating
+my_function.export_config("candidate_config.json")
+
+# After the holdout/promotion gate passes and the user approves:
 my_function.apply_best_config(results)
-
-# Function now uses the winning config automatically
 answer = my_function("What is Python?")
-
-# Export config to file for deployment
-my_function.export_config("best_config.json")
 ```
 
 ## Quick Reference
