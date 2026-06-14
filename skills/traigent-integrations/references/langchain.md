@@ -131,6 +131,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnablePassthrough
 
 @traigent.optimize(
+    eval_dataset="rag_eval.jsonl",
     configuration_space={
         "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.0, 0.3],
@@ -169,7 +170,7 @@ def rag_answer(question):
     )
     return chain.invoke(question)
 
-results = rag_answer.optimize(dataset="rag_eval.jsonl")
+results = rag_answer.optimize_sync()
 ```
 
 ## Programmatic Framework Override API

@@ -4,7 +4,7 @@ description: "Guide users through Traigent optimization: setup, dry-run validati
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.1.0"
 ---
 
 # Traigent: Dry-Run First, Real When Ready
@@ -13,6 +13,22 @@ metadata:
 ## Your Role
 
 When a user asks you to optimize a function with Traigent, **always start with a dry run**. Real optimization costs real tokens and money. Never run real optimization until the user explicitly asks.
+Present a cost estimate and get the user's explicit approval before any paid run.
+
+## The Lifecycle at a Glance
+
+| Stage | Skill |
+|---|---|
+| Dataset | `traigent-curate-dataset` |
+| Metric | `traigent-choose-metric` |
+| Evaluator | `traigent-build-evaluator` plus `traigent-evaluator-audit` |
+| Optimize | this skill plus `traigent-run-optimization` |
+| Iterate | `traigent-iterate` |
+| Gate | `traigent-ci-safety-gate` |
+
+After completion, use `traigent-iterate` to choose the next single hypothesis and `traigent-ci-safety-gate` before promoting a winning config.
+
+Planned: a playbook artifact may eventually package this lifecycle; today, follow the skill sequence above.
 
 **Workflow:**
 
@@ -167,7 +183,6 @@ Mock scores are random — ignore score values. Focus on whether the pipeline **
 Enable debug logging:
 
 ```bash
-export TRAIGENT_LOG_LEVEL=DEBUG
 export TRAIGENT_DEBUG=1
 ```
 
@@ -248,17 +263,20 @@ print(f"Duration:     {results.duration:.1f}s")
 print(f"Stop reason:  {results.stop_reason}")
 ```
 
-### 4. Apply and Export
+### 4. Export a candidate, gate, then apply
+
+Do not promote the winner straight into production. Export it as a
+candidate, check it on a held-out slice (see `traigent-ci-safety-gate`
+for the promotion gate and CI checks), and apply only after the gate
+and the user's explicit approval.
 
 ```python
-# Lock in the best config for production
+# Export the winning config as a CANDIDATE artifact for review/gating
+my_function.export_config("candidate_config.json")
+
+# After the holdout/promotion gate passes and the user approves:
 my_function.apply_best_config(results)
-
-# Function now uses the winning config automatically
 answer = my_function("What is Python?")
-
-# Export config to file for deployment
-my_function.export_config("best_config.json")
 ```
 
 ## Quick Reference

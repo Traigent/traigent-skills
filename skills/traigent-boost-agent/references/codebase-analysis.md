@@ -57,7 +57,7 @@ Place `@traigent.optimize` on the smallest function that:
 - accepts the user/task input you can evaluate,
 - returns the final answer, patch, route, classification, or structured result,
 - contains or directly calls the LLM/retrieval/tool stages whose behavior will change,
-- can be invoked repeatedly from an eval dataset without external side effects, or can have those side effects mocked.
+- can be invoked repeatedly from an evaluation dataset without external side effects, or can have those side effects mocked.
 
 Good targets:
 
@@ -84,24 +84,14 @@ Do not alter auth, tenant isolation, provider key loading, billing, retry/backof
 
 Keep the current production behavior represented as a baseline value in the config space. Do not delete the old path until optimization evidence shows a better config and the user approves applying it.
 
-## Build the eval dataset honestly
+## Build the evaluation dataset honestly
 
-Prefer existing evidence:
+Use `traigent-curate-dataset/references/dataset-recipes.md` for dataset format, splits, holdout discipline, synthesis, and quality loops.
+This reference only contributes codebase-specific evidence mining: find existing labeled cases before creating new examples.
+After mining, delegate dataset creation and audit to `traigent-curate-dataset`.
 
-- unit/integration fixtures with known expected outputs,
-- golden QA/classification/extraction sets,
-- accepted historical code-agent patches and the tests they passed,
-- production logs only after redaction, permission checks, and removal of secrets/PII,
-- support tickets or task traces with stable outcome labels.
-
-Dataset rules:
-
-- Use JSONL with `input` and `output` when the built-in evaluator can score the task.
-- Preserve a held-out set if enough data exists; do not tune and claim on the same cherry-picked examples.
-- Stratify by known input classes, difficulty, tenants/domains, languages, and failure modes.
-- Include the current baseline behavior and cost as the comparison point.
-- For RAG, score both answer correctness and support/citation quality when possible.
-- For coding agents, score patch acceptance, focused tests, regression tests, lint/type checks, and cost/time.
-- For tool agents, score task success, invalid tool calls, loop exhaustion, latency, and spend.
-
-Report dataset limits explicitly: sample count, source, holdout status, label quality, and anything excluded.
+```bash
+rg -n "golden|fixture|expected|snapshot|approval|regression|eval|benchmark|dataset|testdata|cases" .
+rg -n "support|ticket|trace|conversation|transcript|label|ground.?truth|accepted|rejected" .
+rg -n "assert .*==|pytest.mark.parametrize|unittest|snapshot|fixtures|VCR|cassette" tests evals examples .
+```

@@ -4,7 +4,7 @@ description: "Configure the @traigent.optimize() decorator with evaluation, inje
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Decorator Setup
@@ -53,8 +53,8 @@ from traigent.core.objectives import ObjectiveSchema, ObjectiveDefinition
 
 schema = ObjectiveSchema(
     objectives=[
-        ObjectiveDefinition(name="accuracy", weight=0.7, direction="maximize"),
-        ObjectiveDefinition(name="cost", weight=0.3, direction="minimize"),
+        ObjectiveDefinition(name="accuracy", weight=0.7, orientation="maximize"),
+        ObjectiveDefinition(name="cost", weight=0.3, orientation="minimize"),
     ],
     weights_sum=1.0,
     weights_normalized={"accuracy": 0.7, "cost": 0.3},
@@ -198,8 +198,6 @@ Configure where and how optimization runs execute.
         execution_mode="edge_analytics",  # Local execution, analytics to cloud
         local_storage_path="./results",
         privacy_enabled=True,
-        reps_per_trial=3,              # Repeat each config 3 times
-        reps_aggregation="mean",        # Average across repetitions
     ),
     configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
 )
@@ -271,8 +269,6 @@ def exact_match(prediction: str, expected: str) -> float:
     execution=ExecutionOptions(
         execution_mode="edge_analytics",
         local_storage_path="./optimization_results",
-        reps_per_trial=3,
-        reps_aggregation="mean",
     ),
     objectives=["accuracy", "cost"],
     configuration_space={
@@ -305,6 +301,8 @@ answer = answer_question("What is the capital of France?")
 - `references/evaluation-options.md` - Full EvaluationOptions field reference
 - `references/injection-modes.md` - Detailed injection mode comparison
 - `references/execution-modes.md` - Full ExecutionOptions field reference
+- `traigent-build-evaluator` - Deep evaluator implementation, ExampleResult, custom evaluators, and evaluator templates
+- `traigent-choose-metric` - Metric interview and objective selection before decorator wiring
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

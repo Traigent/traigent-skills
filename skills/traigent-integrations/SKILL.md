@@ -45,6 +45,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 
 @traigent.optimize(
+    eval_dataset="questions.jsonl",
     configuration_space={
         "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.0, 0.3, 0.7, 1.0],
@@ -68,7 +69,7 @@ def answer_question(question):
     response = chain.invoke({"question": question})
     return response.content
 
-results = answer_question.optimize(dataset="questions.jsonl")
+results = answer_question.optimize_sync()
 ```
 
 ### Auto Override Frameworks
@@ -120,6 +121,7 @@ import traigent
 import litellm
 
 @traigent.optimize(
+    eval_dataset="classification_eval.jsonl",
     configuration_space={
         "model": [
             "gpt-4o-mini",          # OpenAI
@@ -145,7 +147,7 @@ def classify_text(text):
     )
     return response.choices[0].message.content
 
-results = classify_text.optimize(dataset="classification_eval.jsonl")
+results = classify_text.optimize_sync()
 
 # Check cost across providers
 for trial in results.successful_trials:
@@ -221,7 +223,7 @@ Log Traigent optimization results to MLflow for experiment tracking:
 ```python
 import mlflow
 
-results = func.optimize(dataset="data.jsonl")
+results = func.optimize_sync()
 
 with mlflow.start_run():
     mlflow.log_param("algorithm", results.algorithm)
@@ -242,7 +244,7 @@ with mlflow.start_run():
 ```python
 import wandb
 
-results = func.optimize(dataset="data.jsonl")
+results = func.optimize_sync()
 
 wandb.init(project="traigent-optimization")
 for trial in results.trials:

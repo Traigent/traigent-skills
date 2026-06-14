@@ -175,6 +175,7 @@ os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
 import traigent
 
 @traigent.optimize(
+    eval_dataset="data.jsonl",
     configuration_space={
         "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.0, 0.5, 1.0],
@@ -187,7 +188,7 @@ def my_func(text):
     return f"Response using {config['model']}"
 
 # Quick validation run
-results = my_func.optimize(dataset="data.jsonl")
+results = my_func.optimize_sync()
 
 print(f"Ran {len(results.trials)} trials")
 print(f"Stop reason: {results.stop_reason}")

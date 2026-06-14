@@ -4,7 +4,7 @@ description: "Analyze Traigent optimization results: best config, trial comparis
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -28,6 +28,7 @@ After running optimization, the `OptimizationResult` object provides immediate a
 import traigent
 
 @traigent.optimize(
+    eval_dataset="eval_data.jsonl",
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"], "temperature": [0.0, 0.5, 1.0]},
     objectives=["accuracy"],
     max_trials=10,
@@ -37,7 +38,7 @@ def classify(text):
     # ... LLM call using config ...
     return result
 
-results = classify.optimize(dataset="eval_data.jsonl")
+results = classify.optimize_sync()
 
 # Top-level results
 print(results.best_config)      # {"model": "gpt-4o", "temperature": 0.0}
@@ -130,6 +131,20 @@ if len(sorted_trials) >= 2:
             print(f"  {key}: best={best.config[key]}, worst={worst.config[key]}")
 ```
 
+### Configuration Insights
+
+Use `get_optimization_insights(results)` for a first structured pass over top configurations, performance summary, parameter insights, and recommendations. Treat it as analysis input; deciding the next experiment belongs in `traigent-iterate`.
+
+```python
+from traigent.utils.insights import get_optimization_insights
+
+insights = get_optimization_insights(results)
+print(insights.get("top_configurations", []))
+print(insights.get("performance_summary", {}))
+print(insights.get("parameter_insights", {}))
+print(insights.get("recommendations", []))
+```
+
 ## Cost and Performance
 
 Track what the optimization run cost in API spend and tokens:
@@ -195,7 +210,7 @@ After optimization, apply the winning configuration so your function uses it in 
 
 ```python
 # Run optimization
-results = classify.optimize(dataset="eval_data.jsonl")
+results = classify.optimize_sync()
 
 # Apply the best configuration
 classify.apply_best_config(results)
@@ -214,7 +229,7 @@ Verify results before applying:
 <!-- /PROTECTED -->
 
 ```python
-results = classify.optimize(dataset="eval_data.jsonl")
+results = classify.optimize_sync()
 
 if results.best_score is not None and results.best_score >= 0.85:
     classify.apply_best_config(results)
@@ -262,6 +277,7 @@ End-to-end workflow: optimize, analyze, decide, apply.
 import traigent
 
 @traigent.optimize(
+    eval_dataset="summarization_eval.jsonl",
     configuration_space={
         "model": ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"],
         "temperature": [0.0, 0.3, 0.7],
@@ -276,7 +292,7 @@ def summarize(text):
     return summary
 
 # 1. Run optimization
-results = summarize.optimize(dataset="summarization_eval.jsonl")
+results = summarize.optimize_sync()
 
 # 2. Quick summary
 print(f"Best config: {results.best_config}")
@@ -323,6 +339,12 @@ else:
 
 - [OptimizationResult and TrialResult API Reference](references/optimization-result-api.md)
 - [Convergence Analysis Patterns](references/convergence-patterns.md)
+
+## See Also
+
+| Skill | Use |
+|---|---|
+| `traigent-iterate` | Decide what to do next when results are flat, noisy, negative, budget-bound, or weak-example heavy. |
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

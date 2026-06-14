@@ -1,0 +1,223 @@
+version: 1
+sdk:
+  dist: traigent
+  github: Traigent/Traigent
+default_min_sdk_version: "0.12.0"
+skills:
+  traigent-quickstart:
+    env_version_floors:
+      # TRAIGENT_LOG_LEVEL ships in traigent>=0.13.0; the reference table row
+      # carries the version note in prose.
+      TRAIGENT_LOG_LEVEL: "0.13.0.dev1"
+    docs:
+      - docs/getting-started/*
+      - pyproject.toml
+      - examples/quickstart/
+
+  traigent:
+    modules:
+      - traigent.api.decorators
+      - traigent.utils.env_config
+      - traigent.core.optimized_function
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/utils/env_config.py
+      - traigent/core/optimized_function.py
+
+  traigent-js:
+    docs:
+      - traigent-js/src/optimization/*
+      - traigent-js/src/core/context.ts
+      - traigent-js/src/seamless/*
+      - traigent-js/src/integrations/*
+      - traigent-js/src/routing/*
+      - traigent-js/README.md
+      - traigent-js/docs/*
+
+  traigent-configuration-space:
+    modules:
+      - traigent.api.parameter_ranges
+      - traigent.api.constraint_builders
+    sdk_paths:
+      - traigent/api/parameter_ranges.py
+      - traigent/api/constraint_builders.py
+    docs:
+      - docs/user-guide/tuned_variables.md
+
+  traigent-decorator-setup:
+    modules:
+      - traigent.api.decorators
+    sdk_paths:
+      - traigent/api/decorators.py
+    docs:
+      - docs/user-guide/injection_modes.md
+    backend_prefixes:
+      - /api/v1/hybrid/optimizer
+
+  traigent-run-optimization:
+    modules:
+      - traigent.core.optimized_function
+      - traigent.core.orchestrator
+      - traigent.config.parallel
+    sdk_paths:
+      - traigent/core/optimized_function.py
+      - traigent/core/orchestrator.py
+      - traigent/config/parallel.py
+
+  traigent-analyze-results:
+    modules:
+      - traigent.api.types
+      - traigent.core.optimized_function
+    sdk_paths:
+      - traigent/api/types.py
+      - traigent/core/optimized_function.py
+
+  traigent-integrations:
+    sdk_paths:
+      - traigent/integrations/*
+    docs:
+      - docs/architecture/integrations-inventory.md
+
+  traigent-debugging:
+    env_version_floors:
+      # TRAIGENT_LOG_LEVEL ships in traigent>=0.13.0 (utils/logging.py); the
+      # skill notes the version requirement in prose next to the variable.
+      TRAIGENT_LOG_LEVEL: "0.13.0.dev1"
+    modules:
+      - traigent.utils.exceptions
+      - traigent.utils.env_config
+    sdk_paths:
+      - traigent/utils/exceptions.py
+      - traigent/utils/env_config.py
+
+  traigent-structural-spine:
+    modules:
+      - traigent.api.decorators
+      - traigent.api.parameter_ranges
+      - traigent.api.constraint_builders
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/api/parameter_ranges.py
+      - traigent/api/constraint_builders.py
+    docs:
+      - docs/user-guide/tuned_variables.md
+
+  traigent-composite-knobs:
+    min_sdk_version: "0.13.0.dev1"
+    modules:
+      - traigent.knobs.patterns
+      - traigent.knobs.runtime
+      - traigent.knobs.telemetry
+    sdk_paths:
+      - traigent/knobs/patterns.py
+      - traigent/knobs/runtime.py
+      - traigent/knobs/telemetry.py
+    docs:
+      - examples/advanced/composite-knobs/*
+      - docs/traceability/concepts/composite-knobs.md
+
+  traigent-boost-agent:
+    min_sdk_version: "0.13.0.dev1"
+    modules:
+      - traigent.config_generator.recommendations
+      - traigent.api.decorators
+      - traigent.core.optimized_function
+      - traigent.knobs.patterns
+      - traigent.knobs.runtime
+      - traigent.knobs.telemetry
+      - traigent.utils.insights
+      - traigent.utils.importance
+      - traigent.analytics
+    sdk_paths:
+      - traigent/config_generator/recommendations.py
+      - traigent/config_generator/catalog/tvar_catalog.v1.json
+      - traigent/api/decorators.py
+      - traigent/core/optimized_function.py
+      - traigent/knobs/patterns.py
+      - traigent/knobs/runtime.py
+      - traigent/knobs/telemetry.py
+      - traigent/utils/insights.py
+      - traigent/utils/importance.py
+      - traigent/analytics/example_insights.py
+      - traigent/testing/*
+
+  show-significant-tuned-variables:
+    modules:
+      - traigent.utils.importance
+      - traigent.utils.insights
+    sdk_paths:
+      - traigent/utils/importance.py
+      - traigent/utils/insights.py
+    docs:
+      - optimization trial artifact schema
+  traigent-curate-dataset:
+    backend_prefixes:
+      - /api/v1/datasets
+      - /api/v1/analytics/example-scoring
+    modules:
+      - traigent.generation
+      - traigent.analytics
+      - traigent.evaluators
+      - traigent.api.decorators
+      - traigent.testing
+    sdk_paths:
+      - traigent/generation/*
+      - traigent/analytics/example_insights.py
+      - traigent/evaluators/base.py
+      - traigent/api/decorators.py
+      - traigent/core/optimized_function.py
+      - traigent/testing/*
+  traigent-choose-metric:
+    modules:
+      - traigent.api.decorators
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/core/optimized_function.py
+  traigent-build-evaluator:
+    modules:
+      - traigent.api.decorators
+      - traigent.api.types
+      - traigent.evaluators
+      - traigent.evaluators.base
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/api/types.py
+      - traigent/evaluators/base.py
+      - traigent/evaluators/local.py
+      - traigent/evaluators/hybrid_api.py
+  traigent-evaluator-audit:
+    modules:
+      - traigent.api.decorators
+      - traigent.api.types
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/api/types.py
+  traigent-iterate:
+    backend_prefixes:
+      - /api/v1/experiment-runs
+      - /api/v1/optimization-comparisons
+      - /api/v1/analytics/example-scoring
+    modules:
+      - traigent.utils.insights
+      - traigent.utils.importance
+      - traigent.analytics
+      - traigent.core.optimized_function
+      - traigent.api.types
+    sdk_paths:
+      - traigent/utils/insights.py
+      - traigent/utils/importance.py
+      - traigent/analytics/example_insights.py
+      - traigent/core/optimized_function.py
+      - traigent/api/types.py
+  traigent-ci-safety-gate:
+    modules:
+      - traigent.api.decorators
+      - traigent.api.safety
+      - traigent.tvl.promotion_gate
+      - traigent.tvl.models
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/api/safety.py
+      - traigent/tvl/promotion_gate.py
+      - traigent/tvl/models.py
+      - traigent/tvl/__main__.py

@@ -17,7 +17,7 @@ Controls the verbosity of Traigent's internal logging.
 
 ```bash
 # Command line
-export TRAIGENT_LOG_LEVEL=DEBUG
+export TRAIGENT_LOG_LEVEL=DEBUG  # requires traigent>=0.13.0
 
 # Or inline
 TRAIGENT_LOG_LEVEL=DEBUG python my_script.py
@@ -109,7 +109,7 @@ Full Python traceback is shown:
 ```
 Traceback (most recent call last):
   File "my_script.py", line 15, in <module>
-    results = func.optimize(dataset="data.jsonl")
+    results = func.optimize_sync()
   File "/path/to/traigent/core/optimized_function.py", line 234, in optimize
     self._validate_config_space(config_space)
   File "/path/to/traigent/core/optimized_function.py", line 178, in _validate_config_space
@@ -132,7 +132,7 @@ This only affects `ConfigurationError` and its subclasses. All other exceptions 
 For maximum diagnostic information:
 
 ```bash
-export TRAIGENT_LOG_LEVEL=DEBUG
+export TRAIGENT_LOG_LEVEL=DEBUG  # requires traigent>=0.13.0
 export TRAIGENT_DEBUG=1
 python my_script.py
 ```

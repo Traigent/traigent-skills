@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Running Traigent Optimization
@@ -277,9 +277,9 @@ print(results.stop_reason)     # "max_trials_reached"
 print(results.total_cost)      # 0.34 (USD, if tracked)
 print(results.optimization_id) # "opt_abc123"
 
-# Trial details
+# Trial details (per-trial scores/costs live in trial.metrics, not on the trial)
 for trial in results.trials:
-    print(f"Config: {trial.config}, Score: {trial.score}")
+    print(f"Config: {trial.config}, Score: {trial.metrics.get('score')}")
 
 # Derived properties
 print(results.success_rate)       # 0.9 (fraction of successful trials)
@@ -329,8 +329,6 @@ def exact_match(prediction: str, expected: str) -> float:
             trial_concurrency=2,
             example_concurrency=4,
         ),
-        reps_per_trial=3,
-        reps_aggregation="mean",
     ),
     objectives=["accuracy"],
     configuration_space={

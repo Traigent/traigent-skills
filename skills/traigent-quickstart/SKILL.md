@@ -1,10 +1,10 @@
 ---
 name: traigent-quickstart
-description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an eval dataset, or get started with @traigent.optimize. Covers pip install, environment variables, mock mode, and running a first optimization."
+description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, environment variables, mock mode, and running a first optimization."
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Quickstart
@@ -85,7 +85,7 @@ Traigent supports `.env` files via `python-dotenv` (included in the `integration
 
 ```
 TRAIGENT_OFFLINE_MODE=true
-TRAIGENT_LOG_LEVEL=DEBUG
+TRAIGENT_DEBUG=1
 ```
 
 ### Production Mode
@@ -107,13 +107,13 @@ Here is a complete working example. This function classifies customer queries us
 ```python
 import asyncio
 import traigent
-from traigent import Range, Choices
+from traigent import Choices
 
 @traigent.optimize(
     eval_dataset="eval_queries.jsonl",
     objectives=["accuracy"],
     model=Choices(["gpt-4o-mini", "gpt-4o"]),
-    temperature=Range(0.0, 1.0),
+    temperature=Choices([0.0, 0.5, 1.0]),
 )
 def classify_query(query: str) -> str:
     config = traigent.get_config()
@@ -188,6 +188,7 @@ You can include additional fields for metadata, but `input` and `output` are req
 - Include at least 10-20 examples for meaningful optimization.
 - Cover edge cases and diverse inputs.
 - Ensure ground-truth `output` values are consistent and well-defined.
+- For evaluation dataset creation beyond this minimal JSONL, use `traigent-curate-dataset`.
 
 ## Verify Installation
 
@@ -206,10 +207,10 @@ import traigent
 print(traigent.get_version_info())
 ```
 
-### Validate an eval dataset
+### Validate an evaluation dataset
 
 ```bash
-traigent validate --dataset eval_queries.jsonl
+traigent validate eval_queries.jsonl
 ```
 
 ## CLI Quick Reference
