@@ -76,7 +76,9 @@ answerQuestion.applyBestConfig(result);
 - Smart strategy names such as `bayesian`, `tpe`, `hyperband`, and `frontier_scout` are backend-routed/hybrid surfaces, not native local search implementations.
 - TVL accepts `pareto_optimal` as a compatibility alias for `frontier_scout`.
 - `evaluation.data` or `evaluation.loadData` is required for high-level native optimization.
+<!-- PROTECTED -->
 - `budget.maxCostUsd` is enforced from numeric `metrics.total_cost` or `metrics.cost`; provider billing remains the user's responsibility.
+<!-- /PROTECTED -->
 - Trial context is available during wrapped execution. Use `getTrialParam`, `getTrialConfig`, `TrialContext.run`, `isInTrial`, and `wrapCallback` rather than module-level globals.
 - JS supports `context`, `parameter`, and `seamless` injection modes. Use `context` unless the host app naturally accepts a config parameter or intentionally opts into seamless framework/rewrite support.
 
@@ -101,3 +103,7 @@ npm run typecheck
 ```
 
 If the project uses examples, prefer a small native optimization smoke with `algorithm: 'grid'`, low `maxTrials`, and a tiny in-memory evaluation dataset before any backend-routed run.
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

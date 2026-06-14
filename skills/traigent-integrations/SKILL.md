@@ -303,3 +303,7 @@ The exception is when using `auto_override_frameworks=True`, which intercepts cl
 - [LangChain Integration Details](references/langchain.md)
 - [LiteLLM Multi-Provider Guide](references/litellm.md)
 - [DSPy Adapter Reference](references/dspy.md)
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

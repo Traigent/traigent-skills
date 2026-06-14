@@ -120,7 +120,9 @@ composite control flow; it does not replace it.
 
 ## Telemetry
 
+<!-- PROTECTED -->
 Composite telemetry is content-free and starts in `run.measures`.
+<!-- /PROTECTED -->
 
 | Kind | Standard names |
 |---|---|
@@ -138,6 +140,12 @@ channel. Do not invent new request/response fields for composites; a future
 composite wire summary is a Schema-first change (TraigentSchema), not an SDK
 patch.
 
+<!-- PROTECTED -->
 ## Claim Scope
 
 Composite end-to-end metrics are OBSERVATIONS from the evaluated trials. Per-variable calibration certificates are the only procedural claims. Winner-level product copy should say `Calibration-backed winner (client-attested)`. Do not use a bare `Certified` winner label, and do not promise future behavior from a composite run.
+<!-- /PROTECTED -->
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

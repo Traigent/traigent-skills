@@ -9,6 +9,7 @@ metadata:
 
 # Traigent: Dry-Run First, Real When Ready
 
+<!-- PROTECTED -->
 ## Your Role
 
 When a user asks you to optimize a function with Traigent, **always start with a dry run**. Real optimization costs real tokens and money. Never run real optimization until the user explicitly asks.
@@ -36,6 +37,7 @@ Planned: a playbook artifact may eventually package this lifecycle; today, follo
 3. Dry-run in mock mode — verify the full pipeline end-to-end at zero cost
 4. Report what the dry run found, estimate real costs
 5. **Wait** for the user to say "run it for real"
+<!-- /PROTECTED -->
 
 ## Step 1: Set Up the Decorator
 
@@ -191,7 +193,9 @@ Common failures:
 - `ModuleNotFoundError` — `pip install traigent[integrations]`
 - All trials failed — Test the function standalone with a hardcoded config first
 
+<!-- PROTECTED -->
 **Do not proceed to real mode until mock passes cleanly.**
+<!-- /PROTECTED -->
 
 ## Step 4: Report and Estimate Costs
 
@@ -213,7 +217,9 @@ Example:
 
 ## Step 5: Run Real Optimization (Only When Asked)
 
+<!-- PROTECTED -->
 When the user explicitly says to proceed:
+<!-- /PROTECTED -->
 
 ### 1. Verify API Keys
 
@@ -294,3 +300,7 @@ answer = my_function("What is Python?")
 - `traigent-run-optimization` — Algorithms, cost limits, parallel execution
 - `traigent-analyze-results` — Interpret results, compare trials, apply best config
 - `traigent-debugging` — Error diagnosis and troubleshooting
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

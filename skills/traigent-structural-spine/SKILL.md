@@ -179,9 +179,15 @@ Use this checklist before running a real demo:
 
 ## After the Run
 
+<!-- PROTECTED -->
 Use `show-significant-tuned-variables` to rank which structural knobs mattered. Report results with
 honest task-local language: "on this fixed Spider slice" or "on this HotpotQA slice," not as a
 universal causal claim.
+<!-- /PROTECTED -->
 
 Use `traigent-run-optimization` for `func.optimize()` parameters, cost handling, stop reasons,
 parallel execution, and result-table display.
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

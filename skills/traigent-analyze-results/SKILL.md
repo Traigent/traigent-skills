@@ -222,9 +222,11 @@ response = classify("What category is this email?")
 
 `apply_best_config()` sets the configuration so that subsequent calls to `traigent.get_config()` inside the decorated function return the best configuration from the optimization run.
 
+<!-- PROTECTED -->
 ### Safety Check Before Applying
 
 Verify results before applying:
+<!-- /PROTECTED -->
 
 ```python
 results = classify.optimize_sync()
@@ -343,3 +345,7 @@ else:
 | Skill | Use |
 |---|---|
 | `traigent-iterate` | Decide what to do next when results are flat, noisy, negative, budget-bound, or weak-example heavy. |
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

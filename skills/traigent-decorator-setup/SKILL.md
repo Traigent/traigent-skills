@@ -303,3 +303,7 @@ answer = answer_question("What is the capital of France?")
 - `references/execution-modes.md` - Full ExecutionOptions field reference
 - `traigent-build-evaluator` - Deep evaluator implementation, ExampleResult, custom evaluators, and evaluator templates
 - `traigent-choose-metric` - Metric interview and objective selection before decorator wiring
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

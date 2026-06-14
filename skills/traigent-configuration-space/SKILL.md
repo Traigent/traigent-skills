@@ -456,3 +456,7 @@ def my_function(query: str) -> str:
     config = traigent.get_config()
     ...
 ```
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->
