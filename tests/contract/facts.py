@@ -17,6 +17,8 @@ class ContractFact:
     kwargs: tuple[str, ...] = field(default_factory=tuple)
     name: str | None = None
     command: str | None = None
+    url: str | None = None
+    method: str | None = None
 
     def rel_path(self, repo_root: Path | None = None) -> str:
         if repo_root is not None:
@@ -38,6 +40,10 @@ class ContractFact:
             return self.name or ""
         if self.kind == "cli":
             return self.command or ""
+        if self.kind == "url":
+            if self.method:
+                return f"{self.method} {self.url}"
+            return self.url or ""
         return self.kind
 
     def identifier(self, repo_root: Path | None = None) -> str:

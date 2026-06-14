@@ -44,6 +44,39 @@ opts = EvaluationOptions(eval_dataset="eval.jsonl")
     )
 
 
+def test_extractor_detects_backend_url_facts(tmp_path: Path) -> None:
+    path = tmp_path / "SKILL.md"
+    path.write_text(
+        """# Demo
+
+Use `POST /api/v1/datasets/generate` to generate a dataset.
+
+```text
+GET /sessions/123/results
+```
+""",
+        encoding="utf-8",
+    )
+
+    facts = collect_file("demo", path)
+    assert ContractFact(
+        kind="url",
+        skill="demo",
+        path=path,
+        line=3,
+        url="/api/v1/datasets/generate",
+        method="POST",
+    ) in facts
+    assert ContractFact(
+        kind="url",
+        skill="demo",
+        path=path,
+        line=6,
+        url="/sessions/123/results",
+        method="GET",
+    ) in facts
+
+
 def test_extractor_honors_contract_skip(tmp_path: Path) -> None:
     path = tmp_path / "SKILL.md"
     path.write_text(

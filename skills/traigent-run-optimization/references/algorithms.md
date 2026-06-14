@@ -17,7 +17,7 @@ results = await func.optimize(max_trials=10, algorithm="grid")
 
 ## Grid Search
 
-Enumerates every combination in the configuration space. Guaranteed to find the global optimum within the space.
+Enumerates every combination in the configuration space, so the best in-space configuration on the evaluation dataset is always found.
 
 ```python
 results = await func.optimize(algorithm="grid")
@@ -40,7 +40,7 @@ Lower values vary slowest (outer loop), higher values vary fastest (inner loop).
 
 - Configuration space has fewer than 50 total combinations
 - You need deterministic, reproducible results
-- You want to guarantee the best config in the space is found
+- You want to exhaustively evaluate every declared configuration (budget permitting) — the strongest in-space coverage, with no claim beyond the evaluation dataset
 - Budget allows testing every combination
 
 ### Behavior

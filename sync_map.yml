@@ -51,6 +51,8 @@ skills:
       - traigent/api/decorators.py
     docs:
       - docs/user-guide/injection_modes.md
+    backend_prefixes:
+      - /api/v1/hybrid/optimizer
 
   traigent-run-optimization:
     modules:
@@ -142,3 +144,74 @@ skills:
       - traigent/utils/insights.py
     docs:
       - optimization trial artifact schema
+  traigent-curate-dataset:
+    backend_prefixes:
+      - /api/v1/datasets
+      - /api/v1/analytics/example-scoring
+    modules:
+      - traigent.generation
+      - traigent.analytics
+      - traigent.evaluators
+      - traigent.api.decorators
+      - traigent.testing
+    sdk_paths:
+      - traigent/generation/*
+      - traigent/analytics/example_insights.py
+      - traigent/evaluators/base.py
+      - traigent/api/decorators.py
+      - traigent/core/optimized_function.py
+      - traigent/testing/*
+  traigent-choose-metric:
+    modules:
+      - traigent.api.decorators
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/core/optimized_function.py
+  traigent-build-evaluator:
+    modules:
+      - traigent.api.decorators
+      - traigent.api.types
+      - traigent.evaluators
+      - traigent.evaluators.base
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/api/types.py
+      - traigent/evaluators/base.py
+      - traigent/evaluators/local.py
+      - traigent/evaluators/hybrid_api.py
+  traigent-evaluator-audit:
+    modules:
+      - traigent.api.decorators
+      - traigent.api.types
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/api/types.py
+  traigent-iterate:
+    backend_prefixes:
+      - /api/v1/experiment-runs
+      - /api/v1/optimization-comparisons
+      - /api/v1/analytics/example-scoring
+    modules:
+      - traigent.utils.insights
+      - traigent.utils.importance
+      - traigent.analytics
+      - traigent.core.optimized_function
+      - traigent.api.types
+    sdk_paths:
+      - traigent/utils/insights.py
+      - traigent/utils/importance.py
+      - traigent/analytics/example_insights.py
+      - traigent/core/optimized_function.py
+      - traigent/api/types.py
+  traigent-ci-safety-gate:
+    modules:
+      - traigent.api.decorators
+      - traigent.api.safety
+      - traigent.tvl.promotion_gate
+      - traigent.tvl.models
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/api/safety.py
+      - traigent/tvl/promotion_gate.py
+      - traigent/tvl/models.py
+      - traigent/tvl/__main__.py

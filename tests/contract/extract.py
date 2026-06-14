@@ -11,6 +11,12 @@ from .facts import ContractFact
 ENV_RE = re.compile(r"\bTRAIGENT_[A-Z0-9_]+\b")
 FENCE_RE = re.compile(r"^```([A-Za-z0-9_-]+)?\s*$")
 IMPORT_LINE_RE = re.compile(r"^\s*(from|import)\s+traigent[\w.]*")
+INLINE_CODE_RE = re.compile(r"`([^`]+)`")
+URL_RE = re.compile(
+    r"(?:(?P<method>GET|POST|PUT|PATCH|DELETE)\s+)?"
+    r"(?P<url>/(?:api/v1/)?(?:datasets|analytics|experiment-runs|optimization-comparisons|sessions|hybrid)"
+    r"[^\s`\"\)]*)"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,14 +56,35 @@ def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
     for line_number, line in enumerate(lines, start=1):
         for match in ENV_RE.finditer(line):
             facts.append(ContractFact(kind="env", skill=skill, path=path, line=line_number, name=match.group(0)))
+        for inline_match in INLINE_CODE_RE.finditer(line):
+            facts.extend(_extract_url_facts(skill, path, line_number, inline_match.group(1)))
 
     for block in _iter_fenced_blocks(lines):
+        for offset, line in enumerate(block.lines):
+            facts.extend(_extract_url_facts(skill, path, block.start_line + offset, line))
         language = block.language.lower()
         if language in {"python", "py"}:
             facts.extend(_extract_python_block(skill, path, block))
         elif language in {"bash", "sh", "shell"}:
             facts.extend(_extract_cli_block(skill, path, block))
     return _dedupe(facts)
+
+
+def _extract_url_facts(skill: str, path: Path, line_number: int, text: str) -> list[ContractFact]:
+    facts: list[ContractFact] = []
+    for match in URL_RE.finditer(text):
+        method = match.group("method")
+        facts.append(
+            ContractFact(
+                kind="url",
+                skill=skill,
+                path=path,
+                line=line_number,
+                url=match.group("url"),
+                method=method.upper() if method else None,
+            )
+        )
+    return facts
 
 
 def _iter_fenced_blocks(lines: list[str]) -> list[CodeBlock]:

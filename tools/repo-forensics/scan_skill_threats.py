@@ -153,7 +153,14 @@ PREREQUISITE_PATTERNS = [
     (re.compile(r"(?i)chmod\s+777"), "World-writable permissions"),
     # Hook injection patterns (informed by AgentShield research)
     (
-        re.compile(r"\$\{\{.*\}\}"),
+        # Flag interpolation of attacker-controlled contexts (event payloads,
+        # head refs, workflow inputs) — the actual injection class per GitHub's
+        # script-injection guidance. Static contexts (github.event_name,
+        # secrets.*, matrix.*, vars.*) are the canonical safe patterns and are
+        # not findings.
+        re.compile(
+            r"\$\{\{[^}]*(?:github\.event\.|github\.head_ref|\binputs\.)[^}]*\}\}"
+        ),
         "Variable interpolation in hook script (command injection risk)",
     ),
     (

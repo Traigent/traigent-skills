@@ -68,6 +68,10 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         selected = [fact for fact in facts if fact.kind == "cli" and _in_bucket(fact.skill, sync_map, metafunc.config)]
         metafunc.parametrize("cli_fact", selected, ids=[fact.identifier(repo_root) for fact in selected])
 
+    if "url_fact" in metafunc.fixturenames:
+        selected = [fact for fact in facts if fact.kind == "url" and _in_bucket(fact.skill, sync_map, metafunc.config)]
+        metafunc.parametrize("url_fact", selected, ids=[fact.identifier(repo_root) for fact in selected])
+
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
@@ -78,7 +82,7 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
 
     fact = None
     if hasattr(item, "funcargs"):
-        for name in ("python_fact", "env_fact", "cli_fact"):
+        for name in ("python_fact", "env_fact", "cli_fact", "url_fact"):
             value = item.funcargs.get(name)
             if isinstance(value, ContractFact):
                 fact = value
