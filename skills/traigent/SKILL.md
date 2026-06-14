@@ -4,7 +4,7 @@ description: "Guide users through Traigent optimization: setup, dry-run validati
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent: Dry-Run First, Real When Ready
@@ -165,7 +165,6 @@ Mock scores are random — ignore score values. Focus on whether the pipeline **
 Enable debug logging:
 
 ```bash
-export TRAIGENT_LOG_LEVEL=DEBUG
 export TRAIGENT_DEBUG=1
 ```
 

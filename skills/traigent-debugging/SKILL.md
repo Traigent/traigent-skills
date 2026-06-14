@@ -4,7 +4,7 @@ description: "Debug and troubleshoot Traigent optimization issues. Use when enco
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -26,7 +26,7 @@ Enable detailed logging to see what Traigent is doing at each step:
 
 ```bash
 # Full debug logging
-export TRAIGENT_LOG_LEVEL=DEBUG
+export TRAIGENT_LOG_LEVEL=DEBUG  # requires traigent>=0.13.0
 
 # Show full tracebacks for ConfigurationError (normally shows clean message only)
 export TRAIGENT_DEBUG=1
