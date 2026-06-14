@@ -134,6 +134,7 @@ import traigent
 import dspy
 
 @traigent.optimize(
+    eval_dataset="qa_eval.jsonl",
     configuration_space={
         "model": ["gpt-4o-mini", "gpt-4o", "claude-3-haiku-20240307"],
         "temperature": [0.0, 0.3, 0.7],
@@ -154,14 +155,14 @@ def optimized_qa(question):
     return result.answer
 
 # Traigent finds the best model + temperature
-results = optimized_qa.optimize(dataset="qa_eval.jsonl")
+results = optimized_qa.optimize_sync()
 ```
 
 For a two-stage approach (Traigent model optimization, then DSPy prompt optimization):
 
 ```python
 # Stage 1: Find the best model with Traigent
-model_results = optimized_qa.optimize(dataset="qa_eval.jsonl")
+model_results = optimized_qa.optimize_sync()
 best_model = model_results.best_config["model"]
 best_temp = model_results.best_config["temperature"]
 

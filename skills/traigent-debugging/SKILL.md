@@ -112,7 +112,7 @@ traigent.utils.exceptions.CostLimitExceeded: Cost limit exceeded: $0.52 >= $0.50
 from traigent.utils.exceptions import CostLimitExceeded
 
 try:
-    results = func.optimize(dataset="data.jsonl")
+    results = func.optimize_sync()
 except CostLimitExceeded as e:
     print(f"Budget exceeded: spent ${e.accumulated:.2f} of ${e.limit:.2f} limit")
     # Check if partial results are available
@@ -139,7 +139,7 @@ def my_func(text):
 my_func("hello")  # OptimizationStateError!
 
 # CORRECT: run optimization first, then apply
-results = my_func.optimize(dataset="data.jsonl")
+results = my_func.optimize_sync()
 my_func.apply_best_config(results)
 my_func("hello")  # Works - get_config() returns applied config
 ```
@@ -190,7 +190,7 @@ Has `config`, `input_data`, and `original_error` attributes. Check the original 
 from traigent.utils.exceptions import InvocationError
 
 try:
-    results = func.optimize(dataset="data.jsonl")
+    results = func.optimize_sync()
 except InvocationError as e:
     print(f"Config that caused failure: {e.config}")
     print(f"Original error: {e.original_error}")
@@ -268,6 +268,7 @@ os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
 import traigent
 
 @traigent.optimize(
+    eval_dataset="test_data.jsonl",
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"], "temperature": [0.0, 0.5]},
     objectives=["accuracy"],
     max_trials=5,
@@ -278,7 +279,7 @@ def my_func(text):
     return "mock response"
 
 # Runs without API keys or backend
-results = my_func.optimize(dataset="test_data.jsonl")
+results = my_func.optimize_sync()
 ```
 
 Mock mode is essential for:
@@ -373,6 +374,7 @@ from traigent.utils.exceptions import TraigentError, CostLimitExceeded
 DEFAULT_CONFIG = {"model": "gpt-4o-mini", "temperature": 0.0}
 
 @traigent.optimize(
+    eval_dataset="eval_data.jsonl",
     configuration_space={
         "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.0, 0.3, 0.7],
@@ -387,7 +389,7 @@ def classify(text):
 
 # Attempt optimization with fallback
 try:
-    results = classify.optimize(dataset="eval_data.jsonl")
+    results = classify.optimize_sync()
 
     if results.best_score is not None and results.best_score >= 0.7:
         classify.apply_best_config(results)
