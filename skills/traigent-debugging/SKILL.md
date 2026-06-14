@@ -164,15 +164,14 @@ export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
-```python
-# Skip validation (if you know keys are valid but validation is failing)
-@traigent.optimize(
-    configuration_space={"model": ["gpt-4o-mini"]},
-    validate_providers=False,
-)
+```bash
+# Skip provider validation (if you know keys are valid but validation is failing)
+export TRAIGENT_SKIP_PROVIDER_VALIDATION=true
 ```
 
-Or set the environment variable: `TRAIGENT_SKIP_PROVIDER_VALIDATION=true`
+Provider validation is controlled by the `TRAIGENT_SKIP_PROVIDER_VALIDATION`
+environment variable, not a decorator argument (there is no `validate_providers`
+keyword on `@traigent.optimize`).
 
 The `failed_providers` attribute contains a list of `(provider, error_type)` tuples.
 

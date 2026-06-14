@@ -105,8 +105,7 @@ Raised before optimization starts when provider API keys are invalid or missing.
 
 **Resolution**:
 1. Set correct API keys in environment variables
-2. Or skip validation: `validate_providers=False` in decorator
-3. Or set `TRAIGENT_SKIP_PROVIDER_VALIDATION=true`
+2. Or skip validation by setting `TRAIGENT_SKIP_PROVIDER_VALIDATION=true` (there is no `validate_providers` decorator argument)
 
 ### CostLimitExceeded
 

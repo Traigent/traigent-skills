@@ -103,13 +103,13 @@ Here is a complete working example. This function classifies customer queries us
 ```python
 import asyncio
 import traigent
-from traigent import Range, Choices
+from traigent import Choices
 
 @traigent.optimize(
     eval_dataset="eval_queries.jsonl",
     objectives=["accuracy"],
     model=Choices(["gpt-4o-mini", "gpt-4o"]),
-    temperature=Range(0.0, 1.0),
+    temperature=Choices([0.0, 0.5, 1.0]),
 )
 def classify_query(query: str) -> str:
     config = traigent.get_config()
