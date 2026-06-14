@@ -66,7 +66,7 @@ Exception
 from traigent.utils.exceptions import TraigentError
 
 try:
-    results = func.optimize(dataset="data.jsonl")
+    results = func.optimize_sync()
 except TraigentError as e:
     print(f"Error: {e.message}")
     print(f"Details: {e.details}")
@@ -105,8 +105,7 @@ Raised before optimization starts when provider API keys are invalid or missing.
 
 **Resolution**:
 1. Set correct API keys in environment variables
-2. Or skip validation: `validate_providers=False` in decorator
-3. Or set `TRAIGENT_SKIP_PROVIDER_VALIDATION=true`
+2. Or skip validation by setting `TRAIGENT_SKIP_PROVIDER_VALIDATION=true` (there is no `validate_providers` decorator argument)
 
 ### CostLimitExceeded
 
@@ -121,7 +120,7 @@ Raised before optimization starts when provider API keys are invalid or missing.
 from traigent.utils.exceptions import CostLimitExceeded
 
 try:
-    results = func.optimize(dataset="data.jsonl")
+    results = func.optimize_sync()
 except CostLimitExceeded as e:
     print(f"Spent ${e.accumulated:.2f} of ${e.limit:.2f} budget")
 ```
@@ -233,7 +232,7 @@ Traigent handles retries automatically for retryable errors. This surfaces when 
 from traigent.utils.exceptions import TraigentError
 
 try:
-    results = func.optimize(dataset="data.jsonl")
+    results = func.optimize_sync()
 except TraigentError as e:
     print(f"Traigent error: {e.message}")
 ```
@@ -249,7 +248,7 @@ from traigent.utils.exceptions import (
 )
 
 try:
-    results = func.optimize(dataset="data.jsonl")
+    results = func.optimize_sync()
 except CostLimitExceeded as e:
     print(f"Over budget: ${e.accumulated:.2f}")
 except ProviderValidationError as e:

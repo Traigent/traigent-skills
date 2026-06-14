@@ -28,6 +28,7 @@ After running optimization, the `OptimizationResult` object provides immediate a
 import traigent
 
 @traigent.optimize(
+    eval_dataset="eval_data.jsonl",
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"], "temperature": [0.0, 0.5, 1.0]},
     objectives=["accuracy"],
     max_trials=10,
@@ -37,7 +38,7 @@ def classify(text):
     # ... LLM call using config ...
     return result
 
-results = classify.optimize(dataset="eval_data.jsonl")
+results = classify.optimize_sync()
 
 # Top-level results
 print(results.best_config)      # {"model": "gpt-4o", "temperature": 0.0}
@@ -209,7 +210,7 @@ After optimization, apply the winning configuration so your function uses it in 
 
 ```python
 # Run optimization
-results = classify.optimize(dataset="eval_data.jsonl")
+results = classify.optimize_sync()
 
 # Apply the best configuration
 classify.apply_best_config(results)
@@ -226,7 +227,7 @@ response = classify("What category is this email?")
 Verify results before applying:
 
 ```python
-results = classify.optimize(dataset="eval_data.jsonl")
+results = classify.optimize_sync()
 
 if results.best_score is not None and results.best_score >= 0.85:
     classify.apply_best_config(results)
@@ -274,6 +275,7 @@ End-to-end workflow: optimize, analyze, decide, apply.
 import traigent
 
 @traigent.optimize(
+    eval_dataset="summarization_eval.jsonl",
     configuration_space={
         "model": ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"],
         "temperature": [0.0, 0.3, 0.7],
@@ -288,7 +290,7 @@ def summarize(text):
     return summary
 
 # 1. Run optimization
-results = summarize.optimize(dataset="summarization_eval.jsonl")
+results = summarize.optimize_sync()
 
 # 2. Quick summary
 print(f"Best config: {results.best_config}")
