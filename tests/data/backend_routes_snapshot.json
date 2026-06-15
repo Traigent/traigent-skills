@@ -1,6 +1,6 @@
 {
   "generated_from": {
-    "commit_sha": "cabbac8fee8461e62ea4322ecdc5c77a2b311a65",
+    "commit_sha": "ffc8ea3fc9451ded86d5b82ef644bc1940d01da0",
     "ref": "origin/develop",
     "repo": "Traigent/TraigentBackend"
   },
@@ -308,6 +308,12 @@
     {
       "blueprint": "example_scoring",
       "method": "GET",
+      "path_template": "/api/v1/analytics/example-scoring/<experiment_run_id>/curation-advice",
+      "source_file": "src/routes/example_scoring_routes.py"
+    },
+    {
+      "blueprint": "example_scoring",
+      "method": "GET",
       "path_template": "/api/v1/analytics/example-scoring/<experiment_run_id>/dataset-quality",
       "source_file": "src/routes/example_scoring_routes.py"
     },
@@ -328,6 +334,12 @@
       "method": "GET",
       "path_template": "/api/v1/analytics/example-scoring/jobs/<job_id>",
       "source_file": "src/routes/example_scoring_routes.py"
+    },
+    {
+      "blueprint": "next_steps",
+      "method": "GET",
+      "path_template": "/api/v1/analytics/experiments/<experiment_run_id>/next-steps",
+      "source_file": "src/routes/next_steps_routes.py"
     },
     {
       "blueprint": "audit",
@@ -537,6 +549,12 @@
       "blueprint": "billing",
       "method": "GET",
       "path_template": "/api/v1/billing/usage",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "GET",
+      "path_template": "/api/v1/billing/usage-summary",
       "source_file": "src/routes/billing_routes.py"
     },
     {
@@ -1322,6 +1340,12 @@
     {
       "blueprint": "agent",
       "method": "POST",
+      "path_template": "/api/v1/agents/<path:agent_id>/archive",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
       "path_template": "/api/v1/agents/<path:agent_id>/example-sets",
       "source_file": "src/routes/agent_routes.py"
     },
@@ -1335,6 +1359,12 @@
       "blueprint": "agent",
       "method": "POST",
       "path_template": "/api/v1/agents/<path:agent_id>/retrieval-configs",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1/agents/<path:agent_id>/unarchive",
       "source_file": "src/routes/agent_routes.py"
     },
     {
@@ -1448,6 +1478,12 @@
     {
       "blueprint": "benchmark",
       "method": "POST",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/archive",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "POST",
       "path_template": "/api/v1/benchmarks/<string:benchmark_id>/examples",
       "source_file": "src/routes/benchmark_routes.py"
     },
@@ -1461,6 +1497,12 @@
       "blueprint": "benchmark",
       "method": "POST",
       "path_template": "/api/v1/benchmarks/<string:benchmark_id>/generate-examples",
+      "source_file": "src/routes/benchmark_routes.py"
+    },
+    {
+      "blueprint": "benchmark",
+      "method": "POST",
+      "path_template": "/api/v1/benchmarks/<string:benchmark_id>/unarchive",
       "source_file": "src/routes/benchmark_routes.py"
     },
     {
@@ -1485,6 +1527,12 @@
       "blueprint": "billing",
       "method": "POST",
       "path_template": "/api/v1/billing/checkout",
+      "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "billing",
+      "method": "POST",
+      "path_template": "/api/v1/billing/preflight",
       "source_file": "src/routes/billing_routes.py"
     },
     {
