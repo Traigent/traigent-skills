@@ -47,7 +47,9 @@ If importance is empty, do not infer that no knob matters. Common reasons are to
 
 ## Example-Side Evidence
 
+<!-- PROTECTED -->
 Use example-side evidence when the aggregate score hides where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent account/backend and returns non-signal scoring metadata only: example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or signal-vector values.
+<!-- /PROTECTED -->
 
 ```python
 from traigent.analytics import ExampleInsightsClient
@@ -130,3 +132,7 @@ Iteration decisions are local to the current evaluation dataset, holdout, object
 - `traigent-configuration-space` - narrow or expand tuned variables.
 - `traigent-composite-knobs` - add structural knobs when scalar knobs are not enough.
 - `traigent-run-optimization` - adjust algorithms, trial budgets, and cost controls.
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->
