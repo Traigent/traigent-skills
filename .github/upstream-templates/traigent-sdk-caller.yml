@@ -1,0 +1,20 @@
+# Drop this into Traigent/.github/workflows/skill-contract.yml (the Python SDK repo).
+# It calls the reusable workflow in traigent-skills so that a PR which changes the SDK's
+# public surface gets an in-PR signal of which skills it would break. Advisory until the
+# SKILLS_REPO_TOKEN secret is provisioned (the reusable workflow skips cleanly without it).
+name: Skill Contract
+
+on:
+  pull_request:
+    paths:
+      - "traigent/**/*.py"
+      - "pyproject.toml"
+
+permissions:
+  contents: read
+
+jobs:
+  skill-contract:
+    uses: Traigent/traigent-skills/.github/workflows/skill-contract-upstream.yml@main
+    secrets:
+      skills_token: ${{ secrets.SKILLS_REPO_TOKEN }}
