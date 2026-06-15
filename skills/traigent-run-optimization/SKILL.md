@@ -314,8 +314,8 @@ from traigent.config.parallel import ParallelConfig
 from traigent.utils.exceptions import CostLimitExceeded
 from traigent.utils.results_table import print_results_table
 
-def exact_match(prediction: str, expected: str) -> float:
-    return 1.0 if prediction.strip() == expected.strip() else 0.0
+def exact_match(output: str, expected: str) -> float:
+    return 1.0 if output.strip() == expected.strip() else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(

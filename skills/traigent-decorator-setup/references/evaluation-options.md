@@ -12,8 +12,8 @@ from traigent.api.decorators import EvaluationOptions
 |---|---|---|---|
 | `eval_dataset` | `str \| list[str] \| Dataset \| None` | `None` | Path to a JSONL evaluation dataset, a list of dataset paths, or a `Dataset` object. Each row should contain input fields and an expected output. |
 | `custom_evaluator` | `Callable \| None` | `None` | A callable with signature `(func, config, example) -> ExampleResult`. Gives full control over how each example is executed and scored. |
-| `scoring_function` | `Callable \| None` | `None` | A lightweight callable with signature `(prediction, expected) -> float`. Returns a numeric score for each example. |
-| `metric_functions` | `dict[str, Callable] \| None` | `None` | Dictionary mapping metric names to callables. Each callable has signature `(prediction, expected, input_data) -> float`. |
+| `scoring_function` | `Callable \| None` | `None` | A lightweight callable with signature `(output, expected) -> float`. Returns a numeric score for each example. |
+| `metric_functions` | `dict[str, Callable] \| None` | `None` | Dictionary mapping metric names to callables. Each callable has signature `(output, expected, input_data) -> float`. |
 
 ## Custom Evaluator
 
@@ -75,7 +75,7 @@ def answer(question: str) -> str:
 
 ### Validation
 
-Traigent validates the `custom_evaluator` signature at decoration time. If your callable has parameters named `prediction`, `expected`, and `input_data`, Traigent will raise a `ValidationError` suggesting you use `metric_functions` instead. This catches a common mistake where a metric evaluator is passed as a custom evaluator.
+Traigent validates the `custom_evaluator` signature at decoration time. If your callable has parameters named `output`, `expected`, and `input_data`, Traigent will raise a `ValidationError` suggesting you use `metric_functions` instead. This catches a common mistake where a metric evaluator is passed as a custom evaluator.
 
 ## Scoring Function
 
@@ -84,15 +84,15 @@ A simpler alternative to `custom_evaluator`. Traigent handles function execution
 ### Signature
 
 ```python
-def scoring_function(prediction: str, expected: str) -> float:
+def scoring_function(output: str, expected: str) -> float:
     ...
 ```
 
 ### Example
 
 ```python
-def fuzzy_match(prediction: str, expected: str) -> float:
-    pred = prediction.strip().lower()
+def fuzzy_match(output: str, expected: str) -> float:
+    pred = output.strip().lower()
     exp = expected.strip().lower()
     if pred == exp:
         return 1.0
@@ -120,24 +120,24 @@ Use `metric_functions` when you want to track multiple named metrics per example
 ### Signature
 
 ```python
-def metric_fn(prediction: Any, expected: Any, input_data: dict) -> float:
+def metric_fn(output: Any, expected: Any, input_data: dict) -> float:
     ...
 ```
 
 ### Example
 
 ```python
-def accuracy(prediction, expected, input_data) -> float:
-    return 1.0 if prediction.strip() == expected.strip() else 0.0
+def accuracy(output, expected, input_data) -> float:
+    return 1.0 if output.strip() == expected.strip() else 0.0
 
-def conciseness(prediction, expected, input_data) -> float:
-    return max(0.0, 1.0 - len(prediction) / 2000)
+def conciseness(output, expected, input_data) -> float:
+    return max(0.0, 1.0 - len(output) / 2000)
 
-def relevance(prediction, expected, input_data) -> float:
+def relevance(output, expected, input_data) -> float:
     keywords = input_data.get("keywords", [])
     if not keywords:
         return 1.0
-    found = sum(1 for kw in keywords if kw.lower() in prediction.lower())
+    found = sum(1 for kw in keywords if kw.lower() in output.lower())
     return found / len(keywords)
 
 @traigent.optimize(

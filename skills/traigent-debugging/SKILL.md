@@ -45,14 +45,18 @@ Then run your optimization. Debug output includes:
 
 **When raised**: Invalid or malformed configuration values, unsupported features, missing required configuration.
 
-```
-traigent.utils.exceptions.ConfigurationError: Invalid configuration_space: 'model' values must be a list
-```
+Note the two cases below raise **different** exception types, neither of which is
+`ConfigurationError` — catch `ValidationError`/`TraigentError`, or a bare `ValueError`
+for the empty-space case:
 
-**Common causes and fixes**:
+```
+# Non-list parameter value:
+traigent.utils.exceptions.ValidationError: Validation failed:
+configuration_space.model: Parameter must be a list of values or a (min, max) tuple
+```
 
 ```python
-# WRONG: configuration_space values must be lists
+# WRONG: configuration_space values must be lists -> raises ValidationError
 @traigent.optimize(
     configuration_space={"model": "gpt-4o-mini"},  # String, not list
 )
@@ -64,7 +68,8 @@ traigent.utils.exceptions.ConfigurationError: Invalid configuration_space: 'mode
 ```
 
 ```python
-# WRONG: empty configuration space
+# WRONG: empty configuration space -> raises a builtin ValueError
+#        ("Configuration space cannot be empty..."), NOT a TraigentError
 @traigent.optimize(
     configuration_space={},
 )
@@ -126,25 +131,29 @@ except CostLimitExceeded as e:
 traigent.utils.exceptions.OptimizationStateError: Cannot access config outside of optimization trial
 ```
 
-**Common causes**:
+**Common causes** — note the two distinct failure modes:
 
 ```python
-# WRONG: calling get_config() with no active trial or applied config
+# Case A: a bare get_config() with no active trial and nothing applied
+traigent.get_config()  # raises OptimizationStateError
+
+# Case B: directly calling a decorated function before optimize()/apply_best_config()
 @traigent.optimize(...)
 def my_func(text):
     config = traigent.get_config()
     return config["model"]
 
-# Calling the function directly without optimize() or apply_best_config()
-my_func("hello")  # OptimizationStateError!
+# The wrapper supplies a (default/empty) config dict, so get_config() itself does NOT
+# raise here — but the missing key does:
+my_func("hello")  # KeyError: 'model'  (NOT OptimizationStateError)
 
 # CORRECT: run optimization first, then apply
 results = my_func.optimize_sync()
 my_func.apply_best_config(results)
-my_func("hello")  # Works - get_config() returns applied config
+my_func("hello")  # Works - get_config() returns the applied config
 ```
 
-Has `current_state` and `expected_states` attributes for diagnostics.
+`OptimizationStateError` has `current_state` and `expected_states` attributes for diagnostics.
 
 ### ProviderValidationError
 
@@ -335,7 +344,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 
 1. Check trial durations: `results.experiment_stats.average_trial_duration`
 2. Reduce dataset size for faster feedback
-3. Set a `timeout` on the decorator
+3. Set a `timeout` on the run call (`func.optimize_sync(timeout=30)` / `await func.optimize(timeout=30)`) — it is not a decorator argument
 4. Use smaller models for initial exploration
 5. Reduce `max_trials` or configuration space size
 

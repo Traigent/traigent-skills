@@ -28,6 +28,10 @@ value rather than a name, or the kwarg is rejected only at runtime):
 5. ``@traigent.optimize(validate_providers=...)`` — not a real kwarg (absorbed by the
    decorator's ``**runtime_overrides`` at the signature level, rejected at runtime); use
    the ``TRAIGENT_SKIP_PROVIDER_VALIDATION`` env var.
+6. ``scoring_function`` / ``metric_functions`` callbacks are bound **by parameter name**;
+   the first parameter must be ``output`` (the model output). Naming it ``prediction`` /
+   ``pred`` means it is never supplied — the callback raises, is swallowed, and the metric
+   silently scores ``0.0`` (pinning the objective to 0). Verified against #8 P1.
 
 All shipped repo-wide (see traigent-skills#8) and survived the signature contract.
 These lints gate those classes directly.
@@ -248,10 +252,44 @@ def _scan_validate_providers(name: str, path: Path, text: str, repo_root: Path) 
     return violations
 
 
+def _scan_scoring_first_param(name: str, path: Path, text: str, repo_root: Path) -> list[str]:
+    """A callback whose 2nd param is `expected` (the scoring/metric signature) must name
+    its 1st param `output` — the SDK binds these by name; `prediction`/`pred` → silent 0.0."""
+    violations: list[str] = []
+    for block in _python_blocks(text):
+        try:
+            tree = ast.parse(block.text)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                continue
+            args = node.args.args
+            if len(args) >= 2 and args[1].arg == "expected" and args[0].arg != "output":
+                lineno = block.start_line + node.lineno - 1
+                rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
+                violations.append(
+                    f"DEAD TEACHING  {rel}:{lineno}\n"
+                    f"  teaches : def {node.name}({args[0].arg}, expected, ...)\n"
+                    f"  problem : scoring_function/metric_functions bind by param NAME; first "
+                    f"param must be `output`. `{args[0].arg}` is never supplied → metric "
+                    f"silently scores 0.0 and pins the objective to 0.\n"
+                    f"  fix     : rename the first parameter to `output`."
+                )
+    return violations
+
+
 def test_no_dataset_kwarg_on_optimize(repo_root: Path) -> None:
     violations: list[str] = []
     for name, path in _skill_markdown_files(repo_root):
         violations.extend(_scan_dataset_kwarg(name, path, path.read_text(encoding="utf-8"), repo_root))
+    assert not violations, "\n\n".join(["", *violations, ""])
+
+
+def test_scoring_callbacks_first_param_is_output(repo_root: Path) -> None:
+    violations: list[str] = []
+    for name, path in _skill_markdown_files(repo_root):
+        violations.extend(_scan_scoring_first_param(name, path, path.read_text(encoding="utf-8"), repo_root))
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
@@ -296,6 +334,8 @@ def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
         "def f(x):\n"
         "    return x\n"
         'results = f.optimize(dataset="d.jsonl")\n'
+        "def score(prediction, expected):\n"
+        "    return 1.0\n"
         "```\n",
         encoding="utf-8",
     )
@@ -303,6 +343,7 @@ def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
     assert _scan_unawaited_optimize("bad", bad, bad.read_text(), tmp_path), "await lint missed a violation"
     assert _scan_reps_per_trial("bad", bad, bad.read_text(), tmp_path), "reps_per_trial lint missed a violation"
     assert _scan_validate_providers("bad", bad, bad.read_text(), tmp_path), "validate_providers lint missed a violation"
+    assert _scan_scoring_first_param("bad", bad, bad.read_text(), tmp_path), "scoring first-param lint missed a violation"
     if _EXECUTION_OPTIONS_FIELDS is not None:
         assert _scan_executionoptions_kwargs("bad", bad, bad.read_text(), tmp_path), "ExecutionOptions lint missed runtime="
 
@@ -317,6 +358,8 @@ def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
         "def f(x):\n"
         "    return x\n"
         "results = f.optimize_sync()\n"
+        "def score(output, expected):\n"
+        "    return 1.0\n"
         "```\n",
         encoding="utf-8",
     )
@@ -325,3 +368,4 @@ def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
     assert not _scan_reps_per_trial("good", good, good.read_text(), tmp_path), "reps_per_trial false-positive"
     assert not _scan_validate_providers("good", good, good.read_text(), tmp_path), "validate_providers false-positive"
     assert not _scan_executionoptions_kwargs("good", good, good.read_text(), tmp_path), "ExecutionOptions false-positive"
+    assert not _scan_scoring_first_param("good", good, good.read_text(), tmp_path), "scoring first-param false-positive"

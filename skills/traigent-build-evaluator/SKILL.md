@@ -25,8 +25,8 @@ Prefer the smallest evaluator surface that measures the chosen objective.
 | Tier | Wire | Exact signature | Enough when |
 |---|---|---|---|
 | 1 | `eval_dataset` only | path/list/`Dataset` | Built-in metrics such as `accuracy`, `success_rate`, `error_rate`, `avg_output_length`, `cost`, or `latency` match the task. |
-| 2 | `scoring_function` | `scoring_function(prediction, expected) -> float` | One numeric score per example is enough. |
-| 3 | `metric_functions` | `{name: (prediction, expected, input_data) -> float}` | Multiple named metrics or input-aware checks are needed. |
+| 2 | `scoring_function` | `scoring_function(output, expected) -> float` | One numeric score per example is enough. |
+| 3 | `metric_functions` | `{name: (output, expected, input_data) -> float}` | Multiple named metrics or input-aware checks are needed. |
 | 4 | `custom_evaluator` | `custom_evaluator(func, config, example) -> ExampleResult` | The evaluator must call the function itself, collect timing/cost, run a judge, repeat samples, or fail closed. |
 | 5 | `BaseEvaluator` subclass | `async evaluate(self, func, config, dataset, *, sample_lease=None, progress_callback=None) -> EvaluationResult` | You need full batch control, custom concurrency, leases, progress callbacks, or a reusable evaluator class. |
 
@@ -36,8 +36,8 @@ Prefer the smallest evaluator surface that measures the chosen objective.
 import traigent
 from traigent.api.decorators import EvaluationOptions
 
-def exact_match_score(prediction, expected) -> float:
-    return 1.0 if str(prediction).strip() == str(expected).strip() else 0.0
+def exact_match_score(output, expected) -> float:
+    return 1.0 if str(output).strip() == str(expected).strip() else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
@@ -60,15 +60,15 @@ import json
 import traigent
 from traigent.api.decorators import EvaluationOptions
 
-def valid_json_metric(prediction, expected, input_data) -> float:
+def valid_json_metric(output, expected, input_data) -> float:
     try:
-        json.loads(prediction)
+        json.loads(output)
     except json.JSONDecodeError:
         return 0.0
     return 1.0
 
-def expected_field_metric(prediction, expected, input_data) -> float:
-    data = json.loads(prediction)
+def expected_field_metric(output, expected, input_data) -> float:
+    data = json.loads(output)
     return 1.0 if data.get("label") == expected.get("label") else 0.0
 
 @traigent.optimize(
@@ -212,7 +212,7 @@ ValidationError custom_evaluator must accept (func, config, example), got 2 requ
 If no evaluator exists, ask:
 
 1. Which metric did `traigent-choose-metric` select?
-2. Can it be checked deterministically from `prediction`, `expected`, and `input_data`?
+2. Can it be checked deterministically from `output`, `expected`, and `input_data`?
 3. Does the evaluator need to call the function itself, repeat calls, inspect tool traces, or count judge cost?
 4. Is judge output parseable into a strict schema?
 5. What should happen on parse failure, tool failure, timeout, or missing labels?

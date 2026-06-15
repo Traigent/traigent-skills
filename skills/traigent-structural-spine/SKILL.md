@@ -171,7 +171,7 @@ metrics through named `metric_functions`, and reads completed trials from `resul
 
 Use this checklist before running a real demo:
 
-1. Use the vendored local-optimizer SDK so `tpe` resolves locally. The root SDK gates it.
+1. `algorithm='tpe'` works out of the box when Optuna is installed (pulled by `traigent[integrations]`); `tpe` is registered by default and resolves on the standard SDK — no vendored/alternate SDK build is needed.
 2. Set `TRAIGENT_COST_APPROVED=true` and a high `TRAIGENT_RUN_COST_LIMIT`; rely on your own real-usage budget guard.
 3. Use a fresh per-run study directory. A persistent study dedups configs and can stop early.
 4. Read trials from `result.to_dataframe()`, not from `custom_evaluator` callbacks.
