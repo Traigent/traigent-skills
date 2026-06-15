@@ -251,3 +251,7 @@ If the optimized function returns `(output, metrics)`, make sure the custom scor
 - `traigent-decorator-setup` - decorator wiring for evaluation options
 - `traigent-analyze-results` - inspect the metrics emitted by evaluator runs
 - `traigent-curate-dataset` - create and improve the evaluation dataset
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

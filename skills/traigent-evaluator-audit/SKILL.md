@@ -77,7 +77,9 @@ These probes are drawn from the same failure modes discussed in the MT-Bench LLM
 
 ## Parse-Failure Policy
 
+<!-- PROTECTED -->
 Use a strict output schema. Count parse failures as first-class failures. FAIL-CLOSED: a parse failure is a score of 0 or an abstain, never a silent pass.
+<!-- /PROTECTED -->
 
 ```python
 import json
@@ -156,3 +158,7 @@ Audit results hold only for the audited evaluation dataset distribution, judge m
 - `traigent-build-evaluator` - build the evaluator before auditing it.
 - `traigent-choose-metric` - choose objectives and weights before threshold calibration.
 - `traigent-curate-dataset` - synthesize harder cases when the gold slice is too easy or ambiguous.
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

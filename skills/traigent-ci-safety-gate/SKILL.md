@@ -19,7 +19,9 @@ Use this skill when the user asks:
 - "cost/latency budget"
 - "GitHub Actions for my agent"
 
+<!-- PROTECTED -->
 The gate should fail closed: missing metrics, NaN metrics, parse failures, rejected promotion decisions, and budget breaches should stop promotion.
+<!-- /PROTECTED -->
 
 ## In-Run Safety Constraints
 
@@ -167,3 +169,7 @@ Gate decisions are statistical decisions on the measured evaluation dataset and 
 - `traigent-run-optimization` - cost limits, algorithms, and stop reasons.
 - `traigent-analyze-results` - result fields, best config, cost, and stop-reason interpretation.
 - `traigent-iterate` - decide what to change after a failed or inconclusive gate.
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

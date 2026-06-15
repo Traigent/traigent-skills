@@ -148,7 +148,9 @@ Prefer client-side synthesis when privacy review is incomplete, no account is co
 
 `ExampleInsightsClient` can ask the backend to compute and return example-scoring metadata for a completed run. This requires a Traigent account/backend.
 
+<!-- PROTECTED -->
 Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response.
+<!-- /PROTECTED -->
 
 ```python
 from traigent.analytics import ExampleInsightsClient
@@ -199,3 +201,7 @@ Planned: automatic curation-advice endpoints are not available in this SDK surfa
 - `traigent-choose-metric` - choosing objectives before labeling examples
 - `traigent-build-evaluator` - implementing scoring functions and custom evaluators
 - `traigent-boost-agent` - end-to-end optimization workflow for an existing agent
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->

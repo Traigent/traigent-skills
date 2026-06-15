@@ -130,3 +130,7 @@ Treat safety properties as constraints or gates when a violation is unacceptable
 - `traigent-build-evaluator` - next step after choosing the metric
 - `traigent-decorator-setup` - wiring objectives and evaluation options into the decorator
 - `traigent-analyze-results` - reading trial metrics and reporting outcomes
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->
