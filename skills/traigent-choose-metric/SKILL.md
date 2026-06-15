@@ -81,9 +81,9 @@ import json
 import traigent
 from traigent.api.decorators import EvaluationOptions
 
-def valid_schema_metric(prediction, expected, input_data) -> float:
+def valid_schema_metric(output, expected, input_data) -> float:
     try:
-        data = json.loads(prediction)
+        data = json.loads(output)
     except json.JSONDecodeError:
         return 0.0
     required = {"invoice_id", "amount_due", "due_date"}

@@ -79,7 +79,7 @@ Configure how Traigent evaluates each trial using `EvaluationOptions`.
 |---|---|---|
 | `eval_dataset` | `str \| list[str] \| Dataset \| None` | Path to JSONL dataset or list of paths |
 | `custom_evaluator` | `Callable \| None` | Full-control evaluator: `(func, config, example) -> ExampleResult` |
-| `scoring_function` | `Callable \| None` | Lightweight scorer: `(prediction, expected) -> float` |
+| `scoring_function` | `Callable \| None` | Lightweight scorer: `(output, expected) -> float` |
 | `metric_functions` | `dict[str, Callable] \| None` | Named metrics: `{"accuracy": fn, "relevance": fn}` |
 
 ### When to Use Each
@@ -87,15 +87,15 @@ Configure how Traigent evaluates each trial using `EvaluationOptions`.
 | Approach | Best For | Signature |
 |---|---|---|
 | `eval_dataset` only | Built-in evaluation with default metrics | N/A (path string) |
-| `scoring_function` | Simple pass/fail or numeric scoring | `(prediction, expected) -> float` |
-| `metric_functions` | Multiple named metrics per example | `{"name": (prediction, expected, input_data) -> float}` |
+| `scoring_function` | Simple pass/fail or numeric scoring | `(output, expected) -> float` |
+| `metric_functions` | Multiple named metrics per example | `{"name": (output, expected, input_data) -> float}` |
 | `custom_evaluator` | Full control over execution and measurement | `(func, config, example) -> ExampleResult` |
 
 ### Example: Scoring Function
 
 ```python
-def exact_match(prediction: str, expected: str) -> float:
-    return 1.0 if prediction.strip() == expected.strip() else 0.0
+def exact_match(output: str, expected: str) -> float:
+    return 1.0 if output.strip() == expected.strip() else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
@@ -113,11 +113,11 @@ def answer(question: str) -> str:
 ### Example: Metric Functions
 
 ```python
-def accuracy_metric(prediction, expected, input_data) -> float:
-    return 1.0 if prediction.strip() == expected.strip() else 0.0
+def accuracy_metric(output, expected, input_data) -> float:
+    return 1.0 if output.strip() == expected.strip() else 0.0
 
-def length_metric(prediction, expected, input_data) -> float:
-    return min(len(prediction) / 500, 1.0)
+def length_metric(output, expected, input_data) -> float:
+    return min(len(output) / 500, 1.0)
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
@@ -258,8 +258,8 @@ Putting together evaluation, injection, and execution options:
 import traigent
 from traigent.api.decorators import EvaluationOptions, ExecutionOptions
 
-def exact_match(prediction: str, expected: str) -> float:
-    return 1.0 if prediction.strip() == expected.strip() else 0.0
+def exact_match(output: str, expected: str) -> float:
+    return 1.0 if output.strip() == expected.strip() else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(

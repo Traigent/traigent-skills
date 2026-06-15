@@ -16,12 +16,12 @@ from traigent.api.decorators import EvaluationOptions
 def normalize_text(value) -> str:
     return re.sub(r"\s+", " ", str(value).strip().lower())
 
-def exact_normalized_metric(prediction, expected, input_data) -> float:
-    return 1.0 if normalize_text(prediction) == normalize_text(expected) else 0.0
+def exact_normalized_metric(output, expected, input_data) -> float:
+    return 1.0 if normalize_text(output) == normalize_text(expected) else 0.0
 
-def valid_schema_metric(prediction, expected, input_data) -> float:
+def valid_schema_metric(output, expected, input_data) -> float:
     try:
-        data = json.loads(prediction)
+        data = json.loads(output)
     except json.JSONDecodeError:
         return 0.0
     required_fields = set(input_data.get("required_fields", []))
@@ -63,7 +63,7 @@ from traigent.api.types import ExampleResult
 JUDGE_MODEL = "judge-model-name"
 JUDGE_COST_PER_CALL_USD = 0.002
 
-def build_judge_prompt(prediction: Any, expected: Any, input_data: dict[str, Any]) -> str:
+def build_judge_prompt(output: Any, expected: Any, input_data: dict[str, Any]) -> str:
     return json.dumps(
         {
             "rubric": (
@@ -73,7 +73,7 @@ def build_judge_prompt(prediction: Any, expected: Any, input_data: dict[str, Any
             ),
             "input": input_data,
             "expected": expected,
-            "prediction": prediction,
+            "output": output,
         },
         ensure_ascii=True,
     )
@@ -221,13 +221,13 @@ def parse_json_object(value: str) -> tuple[dict, str | None]:
         return {}, "not_a_json_object"
     return data, None
 
-def judge_json_quality(data: dict, expected: dict, input_data: dict) -> tuple[float, str, bool]:
+def judge_json_quality(output: dict, expected: dict, input_data: dict) -> tuple[float, str, bool]:
     prompt = json.dumps(
         {
             "rubric": "Return JSON only: {\"score\": number, \"reason\": string}.",
             "input": input_data,
             "expected": expected,
-            "prediction": data,
+            "prediction": output,
         },
         ensure_ascii=True,
     )
