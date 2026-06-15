@@ -44,6 +44,8 @@ class ContractFact:
             if self.method:
                 return f"{self.method} {self.url}"
             return self.url or ""
+        if self.kind == "js_import":
+            return f"import {{ {self.symbol} }} from '{self.module}'"
         return self.kind
 
     def identifier(self, repo_root: Path | None = None) -> str:

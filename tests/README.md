@@ -39,3 +39,16 @@ The snapshot is trusted the same way as other vendored contract fixtures: it is
 deterministic JSON generated from `TraigentBackend` git refs using `git show` and
 `git ls-tree`, never from the backend working tree. Review snapshot diffs when
 routes change, and refresh it only from the intended backend ref.
+
+## JS SDK contract
+
+`test_js.py` validates `import { X } from '@traigent/sdk[/sub]'` in the `traigent-js`
+skill against `tests/data/js_api_snapshot.json`, vendored from traigent-js's committed
+`api-surface.snapshot.json` (the JS repo's own gated export surface). Blocking only for
+skills that declare `js: true` in `sync_map.yml`. Refresh:
+
+```bash
+python tools/contract/refresh_js_api.py --js-repo <traigent-js> --ref origin/main
+```
+
+The weekly `js-api-drift` workflow regenerates and opens an issue when exports change.

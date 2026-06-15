@@ -17,6 +17,12 @@ URL_RE = re.compile(
     r"(?P<url>/(?:api/v1/)?(?:datasets|analytics|experiment-runs|optimization-comparisons|sessions|hybrid)"
     r"[^\s`\"\)]*)"
 )
+# Named imports from the JS SDK: `import { a, b as c } from '@traigent/sdk[/sub]'`.
+JS_IMPORT_RE = re.compile(
+    r"import\s+(?:type\s+)?\{(?P<names>[^}]*)\}\s*from\s*"
+    r"['\"](?P<module>@traigent/sdk(?:/[\w-]+)?)['\"]",
+    re.DOTALL,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -67,6 +73,8 @@ def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
             facts.extend(_extract_python_block(skill, path, block))
         elif language in {"bash", "sh", "shell"}:
             facts.extend(_extract_cli_block(skill, path, block))
+        elif language in {"js", "jsx", "javascript", "ts", "tsx", "typescript"}:
+            facts.extend(_extract_js_block(skill, path, block))
     return _dedupe(facts)
 
 
@@ -229,6 +237,24 @@ def _extract_cli_block(skill: str, path: Path, block: CodeBlock) -> list[Contrac
         elif stripped.startswith("python -m traigent."):
             command = stripped.split("#", 1)[0].strip()
             facts.append(ContractFact(kind="cli", skill=skill, path=path, line=block.start_line + offset, command=command))
+    return facts
+
+
+def _extract_js_block(skill: str, path: Path, block: CodeBlock) -> list[ContractFact]:
+    facts: list[ContractFact] = []
+    text = block.text
+    for match in JS_IMPORT_RE.finditer(text):
+        module = match.group("module")
+        line = block.start_line + text[: match.start()].count("\n")
+        for raw in match.group("names").split(","):
+            name = raw.strip()
+            if " as " in name:
+                name = name.split(" as ", 1)[0].strip()  # validate the imported (real) name
+            name = name.removeprefix("type ").strip()
+            if name and name != "*":
+                facts.append(
+                    ContractFact(kind="js_import", skill=skill, path=path, line=line, module=module, symbol=name)
+                )
     return facts
 
 

@@ -25,6 +25,7 @@ skills:
       - traigent/core/optimized_function.py
 
   traigent-js:
+    js: true
     docs:
       - traigent-js/src/optimization/*
       - traigent-js/src/core/context.ts
