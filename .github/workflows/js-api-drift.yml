@@ -1,0 +1,117 @@
+name: JS API Snapshot Drift
+
+# Weekly (and on-demand) check that the vendored traigent-js API snapshot
+# (tests/data/js_api_snapshot.json) has not drifted from the JS SDK's committed
+# api-surface snapshot. Without this, the traigent-js skill could teach an import
+# the JS SDK has since renamed/removed and false-green against the stale vendor copy.
+# Compares EXPORTS only (the generated_from.commit_sha header is not drift).
+#
+# Requires a repo secret JS_REPO_TOKEN with read access to Traigent/traigent-js.
+# Until that secret is set, the job skips cleanly (no failure, no issue).
+
+on:
+  schedule:
+    - cron: "41 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: js-api-drift
+  cancel-in-progress: true
+
+jobs:
+  js-api-drift:
+    name: js-api-drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout skills
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Guard - require JS repo token
+        id: guard
+        env:
+          JS_REPO_TOKEN: ${{ secrets.JS_REPO_TOKEN }}
+        run: |
+          if [ -z "${JS_REPO_TOKEN:-}" ]; then
+            echo "JS_REPO_TOKEN not set - skipping JS API drift check."
+            echo "armed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "armed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.guard.outputs.armed == 'true'
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Clone traigent-js (main)
+        if: steps.guard.outputs.armed == 'true'
+        env:
+          JS_REPO_TOKEN: ${{ secrets.JS_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch main \
+            "https://x-access-token:${JS_REPO_TOKEN}@github.com/Traigent/traigent-js.git" /tmp/js
+          git -C /tmp/js fetch --depth 1 origin main
+
+      - name: Regenerate snapshot and compare exports
+        if: steps.guard.outputs.armed == 'true'
+        id: drift
+        run: |
+          set -euo pipefail
+          python tools/contract/refresh_js_api.py --js-repo /tmp/js --ref origin/main --out /tmp/new_js_snapshot.json
+          python - <<'PY'
+          import json, os
+          old = json.load(open("tests/data/js_api_snapshot.json"))["exports"]
+          new = json.load(open("/tmp/new_js_snapshot.json"))["exports"]
+          subs = sorted(set(old) | set(new))
+          lines = []
+          drift = False
+          for sub in subs:
+              o, n = set(old.get(sub, [])), set(new.get(sub, []))
+              removed, added = sorted(o - n), sorted(n - o)
+              if removed or added:
+                  drift = True
+                  lines.append(f"{sub}:")
+                  lines += [f"  - {s}" for s in removed] + [f"  + {s}" for s in added]
+          with open("js-drift.txt", "w") as f:
+              f.write("\n".join(lines) or "(no export-level drift)")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as g:
+              g.write(f"drift={'true' if drift else 'false'}\n")
+          print(open("js-drift.txt").read())
+          PY
+
+      - name: Create or update drift issue
+        if: steps.guard.outputs.armed == 'true' && steps.drift.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: JS API snapshot drift vs traigent-js
+        run: |
+          set -euo pipefail
+          {
+            echo "The vendored traigent-js API snapshot has drifted from the JS SDK."
+            echo "Removed exports are the risk: the traigent-js skill teaching one would"
+            echo "false-green against the stale snapshot."
+            echo
+            echo "Refresh with:"
+            echo '```bash'
+            echo "python tools/contract/refresh_js_api.py --js-repo <traigent-js> --ref origin/main"
+            echo '```'
+            echo
+            echo "Workflow: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo '```'
+            cat js-drift.txt
+            echo '```'
+          } > issue-body.md
+          issue="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // ""')"
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --body-file issue-body.md
+          else
+            gh issue create --title "$TITLE" --body-file issue-body.md
+          fi
