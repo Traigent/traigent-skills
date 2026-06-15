@@ -1,0 +1,120 @@
+name: Backend Route Snapshot Drift
+
+# Weekly (and on-demand) check that the vendored TraigentBackend route snapshot
+# (tests/data/backend_routes_snapshot.json) has not drifted from BE develop. The
+# snapshot is a manual fixture; without this, taught endpoints under a skill's
+# blocking backend_prefixes can silently false-green against routes BE has since
+# removed/renamed. Compares ROUTES ONLY (the generated_from.commit_sha header
+# changes every run and is not drift).
+#
+# Requires a repo secret BACKEND_REPO_TOKEN with read access to Traigent/TraigentBackend.
+# Until that secret is set, the job skips cleanly (no failure, no issue).
+
+on:
+  schedule:
+    - cron: "37 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: backend-snapshot-drift
+  cancel-in-progress: true
+
+jobs:
+  snapshot-drift:
+    name: snapshot-drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout skills
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Guard - require backend token
+        id: guard
+        env:
+          BACKEND_REPO_TOKEN: ${{ secrets.BACKEND_REPO_TOKEN }}
+        run: |
+          if [ -z "${BACKEND_REPO_TOKEN:-}" ]; then
+            echo "BACKEND_REPO_TOKEN not set - skipping snapshot drift check."
+            echo "armed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "armed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        if: steps.guard.outputs.armed == 'true'
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Clone TraigentBackend (develop)
+        if: steps.guard.outputs.armed == 'true'
+        env:
+          BACKEND_REPO_TOKEN: ${{ secrets.BACKEND_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch develop \
+            "https://x-access-token:${BACKEND_REPO_TOKEN}@github.com/Traigent/TraigentBackend.git" /tmp/be
+          git -C /tmp/be fetch --depth 1 origin develop
+
+      - name: Regenerate snapshot and compare routes
+        if: steps.guard.outputs.armed == 'true'
+        id: drift
+        run: |
+          set -euo pipefail
+          python tools/contract/refresh_backend_routes.py --repo /tmp/be --ref origin/develop --out /tmp/new_snapshot.json
+          python - <<'PY'
+          import json, os
+          old = json.load(open("tests/data/backend_routes_snapshot.json"))
+          new = json.load(open("/tmp/new_snapshot.json"))
+          def key(r): return tuple(r) if isinstance(r, list) else (r.get("method"), r.get("path"))
+          old_set = {json.dumps(r, sort_keys=True) for r in old["routes"]}
+          new_set = {json.dumps(r, sort_keys=True) for r in new["routes"]}
+          removed = sorted(old_set - new_set)
+          added = sorted(new_set - old_set)
+          drift = bool(removed or added)
+          with open("snapshot-diff.txt", "w") as f:
+              f.write(f"pinned commit : {old['generated_from']['commit_sha']}\n")
+              f.write(f"develop commit: {new['generated_from']['commit_sha']}\n")
+              f.write(f"routes pinned={len(old['routes'])} develop={len(new['routes'])}\n\n")
+              f.write(f"REMOVED on develop ({len(removed)}):\n")
+              for r in removed[:200]: f.write(f"  - {r}\n")
+              f.write(f"\nADDED on develop ({len(added)}):\n")
+              for r in added[:200]: f.write(f"  + {r}\n")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as g:
+              g.write(f"drift={'true' if drift else 'false'}\n")
+          print(open("snapshot-diff.txt").read())
+          PY
+
+      - name: Create or update drift issue
+        if: steps.guard.outputs.armed == 'true' && steps.drift.outputs.drift == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TITLE: Backend route snapshot drift vs TraigentBackend develop
+        run: |
+          set -euo pipefail
+          {
+            echo "The vendored backend route snapshot has drifted from TraigentBackend develop."
+            echo "Removed routes are the risk: a skill teaching one (under a blocking backend_prefixes)"
+            echo "would false-green against the stale snapshot."
+            echo
+            echo "Refresh with:"
+            echo '```bash'
+            echo "python tools/contract/refresh_backend_routes.py  # against a fresh TraigentBackend develop checkout"
+            echo '```'
+            echo
+            echo "Workflow: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo '```'
+            cat snapshot-diff.txt
+            echo '```'
+          } > issue-body.md
+          issue="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // ""')"
+          if [ -n "$issue" ]; then
+            gh issue edit "$issue" --body-file issue-body.md
+          else
+            gh issue create --title "$TITLE" --body-file issue-body.md
+          fi
