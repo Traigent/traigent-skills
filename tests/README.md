@@ -52,3 +52,15 @@ python tools/contract/refresh_js_api.py --js-repo <traigent-js> --ref origin/mai
 ```
 
 The weekly `js-api-drift` workflow regenerates and opens an issue when exports change.
+
+## Coverage ("should-use") ledger
+
+`test_coverage_ledger.py` flags a **new** interface element (JS export / backend route) that no
+skill teaches and no waiver covers — the "should-use" direction. The baseline lives in
+`tests/data/interface_inventory.json` (today's surface is grandfathered). When a snapshot refresh
+adds a new element, decide: teach it in a skill, or add a `no_skill` waiver to `coverage_ledger.yml`,
+then refresh the baseline:
+
+```bash
+python tools/contract/build_interface_inventory.py
+```
