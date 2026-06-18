@@ -1,5 +1,7 @@
 # LangChain Integration Reference
 
+> **Dry-run first.** Before running any real LangChain optimization, activate `enable_mock_mode_for_quickstart()`, run, review the cost estimate, and get explicit approval. See the `traigent` skill for the dry-run-first / cost-approval mandate.
+
 ## Overview
 
 Traigent integrates with LangChain to optimize model selection, temperature, and other parameters across chains, agents, and RAG pipelines. There are two approaches:

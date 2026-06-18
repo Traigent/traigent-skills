@@ -1,5 +1,7 @@
 # LiteLLM Multi-Provider Reference
 
+> **Dry-run before any real multi-provider run.** Especially for multi-provider sweeps (multiple providers × temperatures × max_tokens × trials can mean hundreds or thousands of LLM calls). Always activate `enable_mock_mode_for_quickstart()`, run, review the cost estimate, and get explicit approval before a real run. See the `traigent` skill for the mandatory dry-run-first / cost-approval workflow.
+
 ## Overview
 
 LiteLLM provides a unified `completion()` API that works across 100+ LLM providers. Combined with Traigent, you can optimize model selection across providers in a single optimization run.
