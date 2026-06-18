@@ -185,6 +185,22 @@ class ExactMatchEvaluator(BaseEvaluator):
         )
 ```
 
+## The EvaluationExample input contract
+
+The `example` argument passed to `custom_evaluator(func, config, example)` is an `EvaluationExample` object — not a dict.
+
+| Attribute | Source in JSONL | Type | Notes |
+|---|---|---|---|
+| `example.input_data` | `"input"` key | `dict` | Expand as `func(**example.input_data)` to call the decorated function. |
+| `example.expected_output` | `"output"` key | `Any` | Gold label; string, dict, or list depending on dataset. |
+| `example.metadata` | All other keys | `dict` | Extra JSONL fields land here — `db_id`, `id`, `difficulty`, etc. |
+
+**Common pitfalls:**
+- `example["input"]` → `TypeError: 'EvaluationExample' object is not subscriptable`. Use `.input_data`, not dict access.
+- `example.input` does not exist — the attribute is `.input_data` (name differs from the JSONL key).
+- `example.output` does not exist — use `.expected_output`.
+- Extra JSONL keys (e.g. `db_id`) are in `example.metadata["db_id"]`, not top-level attributes.
+
 ## The ExampleResult contract
 
 For `traigent==0.12.0`, construct `ExampleResult` with these fields:
