@@ -25,12 +25,14 @@ Use this skill when:
 Enable detailed logging to see what Traigent is doing at each step:
 
 ```bash
-# Full debug logging
+# Full SDK verbose logging (SDK infrastructure, sampling, backend comms)
 export TRAIGENT_LOG_LEVEL=DEBUG  # requires traigent>=0.13.0
 
-# Show full tracebacks for ConfigurationError (normally shows clean message only)
+# Full tracebacks for ConfigurationError (shows raw exception, not user-friendly message)
 export TRAIGENT_DEBUG=1
 ```
+
+These are distinct: `TRAIGENT_LOG_LEVEL=DEBUG` is for SDK-level verbose output; `TRAIGENT_DEBUG=1` is specifically for showing raw ConfigurationError tracebacks.
 
 Then run your optimization. Debug output includes:
 - Configuration sampling decisions
