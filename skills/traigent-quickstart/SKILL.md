@@ -215,11 +215,25 @@ traigent validate eval_queries.jsonl
 
 ## CLI Quick Reference
 
-| Command               | Description                                    |
-| --------------------- | ---------------------------------------------- |
-| `traigent info`       | Show SDK version, environment, and integrations |
-| `traigent algorithms` | List available optimization algorithms          |
-| `traigent validate`   | Validate dataset files and configuration        |
+**Start here (keyless, no API key required):**
+
+```bash
+traigent quickstart      # bundled working demo — mock mode, zero config
+traigent onboard         # guided first-run setup wizard
+```
+
+| Command                    | Description                                                         |
+| -------------------------- | ------------------------------------------------------------------- |
+| `traigent quickstart`      | Run the bundled mock-mode demo (keyless, zero-setup, always works)  |
+| `traigent onboard`         | Guided setup for Traigent in this project (API key, project, env)   |
+| `traigent models`          | List and validate model IDs before your first run (model preflight) |
+| `traigent recommend`       | Evidence-backed TVAR recommendations for your agent/task type       |
+| `traigent recommend-eval`  | Metric and evaluator recommendations for your task type             |
+| `traigent generate-config` | Scaffold a full `@traigent.optimize()` config for your function     |
+| `traigent detect-tvars`    | Detect tuned-variable candidates in existing Python files           |
+| `traigent info`            | Show SDK version, environment, and integrations                     |
+| `traigent algorithms`      | List available optimization algorithms                              |
+| `traigent validate`        | Validate dataset files and configuration                            |
 
 ## Next Steps
 
