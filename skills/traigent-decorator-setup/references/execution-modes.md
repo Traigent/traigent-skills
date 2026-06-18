@@ -12,14 +12,14 @@ from traigent.api.decorators import ExecutionOptions
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `execution_mode` | `str` | `"edge_analytics"` | Where to run: `"edge_analytics"`, `"cloud"`, or `"hybrid"`. |
+| `execution_mode` | `str` | `"edge_analytics"` | Supported: `"edge_analytics"` (alias `"local"`), `"hybrid"` (alias `"privacy"`), `"hybrid_api"`. `"cloud"` is reserved but **not yet available** — selecting it raises `CloudRemoteExecutionUnavailableError`. |
 | `local_storage_path` | `str \| None` | `None` | Directory path for local result storage. |
 | `minimal_logging` | `bool` | `True` | Minimize logging output during optimization. |
 | `parallel_config` | `ParallelConfig \| dict \| None` | `None` | Parallel execution settings. See ParallelConfig section. |
 | `privacy_enabled` | `bool \| None` | `None` | Enable privacy-preserving mode (no raw data sent to cloud). |
 | `max_total_examples` | `int \| None` | `None` | Cap total examples evaluated across all trials. |
 | `samples_include_pruned` | `bool` | `True` | Whether pruned trials count toward sample limits. |
-| `cloud_fallback_policy` | `str \| None` | `None` | Behavior on cloud execution failure: `"auto"`, `"warn"`, or `"never"`. |
+| `cloud_fallback_policy` | `str \| None` | `None` | Behavior when backend/portal tracking fails (`hybrid` / `hybrid_api`): `"auto"`, `"warn"`, or `"never"`. |
 
 ### Repetition Fields
 
@@ -48,7 +48,7 @@ from traigent.api.decorators import ExecutionOptions
 
 ### Edge Analytics (Default)
 
-Optimization runs entirely on your local machine. Only anonymized analytics metadata (trial counts, scores, timing) is sent to the Traigent cloud for dashboards and experiment tracking. Raw data, prompts, and model outputs never leave your environment.
+Optimization runs entirely on your local machine. Only anonymized analytics metadata (trial counts, scores, timing) is sent to the Traigent cloud for lightweight analytics dashboards. Raw data, prompts, and model outputs never leave your environment.
 
 ```python
 @traigent.optimize(
@@ -64,35 +64,35 @@ def my_func(query: str) -> str:
     return call_llm(model=cfg["model"], prompt=query)
 ```
 
-**When to use**: Most use cases. Keeps data local, still get cloud dashboards.
+**When to use**: When you want to keep all data local and only need anonymized analytics dashboards. For portal-tracked runs (named experiments with per-run results visible in the portal), use `hybrid`.
 
-### Cloud
+### Cloud — not available yet
 
-Full remote execution. The Traigent cloud orchestrates trials, manages compute, and stores results. Requires authentication and network connectivity.
+`execution_mode="cloud"` is **reserved and not yet implemented**. Selecting it raises
+`CloudRemoteExecutionUnavailableError` ("Cloud remote execution is not available yet; use
+hybrid for portal-tracked optimization"). Do **not** present `cloud` in onboarding or customer
+docs as a working mode.
 
-```python
-@traigent.optimize(
-    execution=ExecutionOptions(execution_mode="cloud"),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
-)
-def my_func(query: str) -> str:
-    cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=query)
-```
-
-**When to use**: When you want centralized orchestration, team collaboration, or need to run optimization on cloud infrastructure.
+**Roadmap (not shipped):** a *cloud-guided* optimizer in which the Traigent cloud proposes each
+configuration and learns across runs, while **your agent and your LLM calls keep running
+locally**. Traigent does **not** run your agent or your model calls on its servers — there is no
+"fully remote" mode where compute moves to the cloud. Until this ships, use `hybrid` for local
+optimization with full portal tracking.
 
 ### Hybrid
 
-Splits execution between local and cloud. Trials run locally, but the cloud coordinates configuration selection, tracks experiments, and provides advanced analytics.
+The **optimizer and your trials both run locally** — the configuration search executes in the
+SDK on your machine. The Traigent cloud's role is to **track the experiment**: portal
+run/result tracking (subject to your privacy settings), plus the portal dashboards and
+analytics. In this mode the cloud does **not** propose
+configurations and does **not** run your agent or LLM calls. With `privacy_enabled=True`, raw
+inputs/outputs/prompts are not transmitted — only metrics and metadata.
 
 ```python
 @traigent.optimize(
     execution=ExecutionOptions(
         execution_mode="hybrid",
-        hybrid_api_endpoint="https://api.traigent.io/v1/hybrid",
-        hybrid_api_batch_size=4,
-        hybrid_api_batch_parallelism=2,
+        privacy_enabled=True,
     ),
     configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
 )
@@ -101,11 +101,14 @@ def my_func(query: str) -> str:
     return call_llm(model=cfg["model"], prompt=query)
 ```
 
-**When to use**: When you need cloud-level coordination but want trial execution to happen locally (e.g., for data privacy or custom infrastructure).
+**When to use**: The default for portal-tracked optimization — you want your runs, results, and
+dashboards in the Traigent portal while keeping trial execution (and your data) on your own
+machine. To optimize an agent exposed behind an external HTTP endpoint, use
+`execution_mode="hybrid_api"` with the `hybrid_api_*` fields above.
 
 ### Cloud Fallback Policy
 
-Controls what happens when cloud or hybrid execution fails:
+Controls what happens when backend-tracked (`hybrid` / `hybrid_api`) execution fails:
 
 | Policy | Behavior |
 |---|---|
