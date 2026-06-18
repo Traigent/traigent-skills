@@ -72,6 +72,7 @@ export TRAIGENT_OFFLINE_MODE=true
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
 - `TRAIGENT_OFFLINE_MODE=true` skips backend communication so you do not need a running Traigent backend.
+- **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
 
 ### Legacy Env-Var Path
 
@@ -117,10 +118,9 @@ from traigent import Choices
 )
 def classify_query(query: str) -> str:
     config = traigent.get_config()
-    # Use config values in your LLM call
-    from openai import OpenAI
-    client = OpenAI()
-    response = client.chat.completions.create(
+    # Use litellm so mock mode intercepts the call (raw openai client is NOT intercepted)
+    import litellm
+    response = litellm.completion(
         model=config["model"],
         temperature=config["temperature"],
         messages=[
