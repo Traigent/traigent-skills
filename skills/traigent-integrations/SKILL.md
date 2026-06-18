@@ -74,20 +74,23 @@ results = answer_question.optimize_sync()
 
 ### Auto Override Frameworks
 
-The `auto_override_frameworks` flag lets Traigent automatically intercept LangChain model instantiation to inject the optimized configuration. This is useful when you want Traigent to manage model selection across your chain without manually threading `get_config()`:
+> **Auto-override requires `framework_targets`.** Setting `auto_override_frameworks=True` alone does nothing — the SDK gate requires **both** `auto_override_frameworks=True` and an explicit `framework_targets` list. Without `framework_targets`, the override is silently skipped.
+>
+> **Single-provider only.** Auto-override swaps the **model string** that gets passed to the constructor — it does not swap the **client class**. If your config space mixes OpenAI and Anthropic models but the function only constructs `ChatOpenAI(...)`, the Anthropic trial passes an Anthropic model name to an OpenAI client and gets an invalid-model error. Scope the config space to one provider per override target, or use manual config injection for cross-provider optimization.
 
 ```python
 @traigent.optimize(
     configuration_space={
-        "model": ["gpt-4o-mini", "gpt-4o", "claude-3-haiku-20240307"],
+        "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.0, 0.5, 1.0],
     },
     objectives=["accuracy"],
-    max_trials=12,
+    max_trials=6,
     auto_override_frameworks=True,
+    framework_targets=["langchain_openai.ChatOpenAI"],  # required
 )
 def summarize_document(text):
-    # LangChain model instantiation is intercepted by Traigent
+    # ChatOpenAI constructor is intercepted; model and temperature are replaced per trial
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
     response = llm.invoke(text)
     return response.content
@@ -161,7 +164,8 @@ LiteLLM handles API key routing automatically based on the model prefix. Set pro
 ```bash
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
-export GEMINI_API_KEY="..."
+export GEMINI_API_KEY="..."      # LiteLLM reads GEMINI_API_KEY for gemini/* models
+# Note: google-genai SDK reads GOOGLE_API_KEY; LiteLLM reads GEMINI_API_KEY — they are different env vars
 ```
 
 See [LiteLLM reference](references/litellm.md) for the full provider list and cost tracking details.

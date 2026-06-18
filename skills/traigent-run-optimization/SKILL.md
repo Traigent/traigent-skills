@@ -31,7 +31,7 @@ import traigent
     eval_dataset="qa_test.jsonl",
     objectives=["accuracy"],
     configuration_space={
-        "model": ["gpt-3.5-turbo", "gpt-4"],
+        "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.1, 0.5, 0.9],
     },
 )
@@ -55,6 +55,7 @@ results = await answer.optimize(max_trials=10, algorithm="grid")
 | `callbacks` | `list[Callable] \| None` | Progress tracking callbacks. |
 | `configuration_space` | `dict \| None` | Override config space for this run. |
 | `objectives` | `list[str] \| ObjectiveSchema \| None` | Override objectives for this run. |
+| `cost_limit` | `float \| None` | Per-run cost cap in USD. Overrides `TRAIGENT_RUN_COST_LIMIT` for this call. Raises `CostLimitExceeded` when hit. |
 | `**algorithm_kwargs` | `Any` | Algorithm-specific parameters (e.g., `parameter_order` for grid). |
 
 ## Sync Execution
@@ -100,17 +101,21 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 **Best for**: Large config spaces, quick exploration, when you have a limited trial budget.
 
-### Bayesian Optimization
+### Bayesian Optimization *(cloud / hybrid only)*
 
-Uses a surrogate model to guide the search toward promising configurations. Backed by Optuna.
+> **Requires a Traigent cloud connection.** `algorithm="bayesian"` runs in the Traigent cloud, not the local SDK. Running it without `TRAIGENT_API_KEY` and a cloud-connected execution mode raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
+
+Uses a surrogate model to guide the search toward promising configurations.
 
 ```python
 results = await func.optimize(max_trials=30, algorithm="bayesian")
 ```
 
-**Best for**: Medium to large config spaces with continuous parameters. Most efficient when trials are expensive.
+**Best for**: Medium to large config spaces with continuous parameters (cloud runs).
 
-### Optuna (Advanced)
+### Optuna *(cloud / hybrid only)*
+
+> **Requires a Traigent cloud connection.** `algorithm="optuna"` runs in the Traigent cloud, not the local SDK. Running it locally raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
 
 Direct access to the Optuna optimization framework with advanced features like pruning and multi-objective optimization.
 
@@ -118,16 +123,16 @@ Direct access to the Optuna optimization framework with advanced features like p
 results = await func.optimize(max_trials=50, algorithm="optuna")
 ```
 
-**Best for**: Advanced users who need Optuna-specific features, very large search spaces, or sophisticated sampling strategies.
+**Best for**: Advanced users on cloud/hybrid execution who need Optuna-specific features or very large search spaces.
 
 ### Quick Comparison
 
-| Algorithm | Strategy | Config Space Size | Trial Budget |
-|---|---|---|---|
-| `"grid"` | Exhaustive | Small (< 50) | Matches space size |
-| `"random"` | Sampling | Any | Limited |
-| `"bayesian"` | Model-guided | Medium-Large | 15-100 |
-| `"optuna"` | Advanced sampling | Large | 30+ |
+| Algorithm | Strategy | Config Space Size | Trial Budget | Local? |
+|---|---|---|---|---|
+| `"grid"` | Exhaustive | Small (< 50) | Matches space size | Yes |
+| `"random"` | Sampling | Any | Limited | Yes |
+| `"bayesian"` | Model-guided | Medium-Large | 15-100 | Cloud only |
+| `"optuna"` | Advanced sampling | Large | 30+ | Cloud only |
 
 <!-- PROTECTED -->
 ## Cost Controls
@@ -221,7 +226,7 @@ from traigent.api.decorators import ExecutionOptions
     ),
     eval_dataset="large_dataset.jsonl",
     objectives=["accuracy"],
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
@@ -267,7 +272,7 @@ The table highlights the best trial with ★ and colors the best metric value pe
 results = await func.optimize(max_trials=10, algorithm="grid")
 
 # Best configuration and score
-print(results.best_config)     # {"model": "gpt-4", "temperature": 0.5}
+print(results.best_config)     # {"model": "gpt-4o", "temperature": 0.5}
 print(results.best_score)      # 0.92
 
 # Run metadata
@@ -300,7 +305,7 @@ answer = func("What is Python?")
 
 # The config is accessible via get_config() inside the function
 # and via func.current_config from outside
-print(func.current_config)  # {"model": "gpt-4", "temperature": 0.5}
+print(func.current_config)  # {"model": "gpt-4o", "temperature": 0.5}
 ```
 
 ## Complete Example
@@ -332,7 +337,7 @@ def exact_match(output: str, expected: str) -> float:
     ),
     objectives=["accuracy"],
     configuration_space={
-        "model": ["gpt-3.5-turbo", "gpt-4"],
+        "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.0, 0.3, 0.7],
     },
 )

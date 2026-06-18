@@ -55,6 +55,7 @@ from traigent import Choices, Range
 )
 def my_function(query: str) -> str:                    # 4. The function
     config = traigent.get_config()
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=config["model"], temperature=config["temperature"], prompt=query)
 ```
 
@@ -155,6 +156,7 @@ enable_mock_mode_for_quickstart()              # Mock LLM responses (dev-only)
 )
 def my_function(query: str) -> str:
     config = traigent.get_config()
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=config["model"], temperature=config["temperature"], prompt=query)
 
 # Mock optimization — zero cost, validates the full pipeline

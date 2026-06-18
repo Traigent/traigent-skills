@@ -39,10 +39,11 @@ Objectives tell Traigent what to optimize for. Pass them as a string list or as 
 ```python
 @traigent.optimize(
     objectives=["accuracy", "cost"],
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=cfg["model"], prompt=query)
 ```
 
@@ -62,10 +63,11 @@ schema = ObjectiveSchema(
 
 @traigent.optimize(
     objectives=schema,
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=cfg["model"], prompt=query)
 ```
 
@@ -107,6 +109,7 @@ def exact_match(output: str, expected: str) -> float:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(temperature=cfg["temperature"], prompt=question)
 ```
 
@@ -128,10 +131,11 @@ def length_metric(output, expected, input_data) -> float:
         },
     ),
     objectives=["accuracy"],
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def summarize(text: str) -> str:
     cfg = traigent.get_config()
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=cfg["model"], prompt=f"Summarize: {text}")
 ```
 
@@ -145,10 +149,11 @@ The recommended mode. Uses Python `contextvars` for thread-safe config access.
 
 ```python
 @traigent.optimize(
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()  # Thread-safe context access
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=cfg["model"], prompt=query)
 ```
 
@@ -162,9 +167,10 @@ Passes config as an explicit function parameter. Set `config_param` to the param
         injection_mode="parameter",
         config_param="config",
     ),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str, config: dict = None) -> str:
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=config["model"], prompt=query)
 ```
 
@@ -176,14 +182,14 @@ Zero code change. Traigent uses AST transformation to inject parameters into LLM
 @traigent.optimize(
     injection=InjectionOptions(injection_mode="seamless"),
     configuration_space={
-        "model": ["gpt-3.5-turbo", "gpt-4"],
+        "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.1, 0.5, 0.9],
     },
 )
 def my_func(query: str) -> str:
     # No get_config() call needed - Traigent transforms AST automatically
     return openai.chat.completions.create(
-        model="gpt-3.5-turbo",  # Will be overridden by Traigent
+        model="gpt-4o-mini",  # Will be overridden by Traigent
         messages=[{"role": "user", "content": query}],
     )
 ```
@@ -199,10 +205,11 @@ Configure where and how optimization runs execute.
         local_storage_path="./results",
         privacy_enabled=True,
     ),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=cfg["model"], prompt=query)
 ```
 
@@ -230,17 +237,18 @@ def my_func(query: str) -> str:
 @traigent.optimize(
     eval_dataset="data.jsonl",
     objectives=["accuracy"],
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()  # Works during trials AND after apply_best_config
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=cfg["model"], prompt=query)
 
 # Run optimization
 results = await my_func.optimize(max_trials=6, algorithm="grid")
 
 # Inspect results
-print(results.best_config)   # {"model": "gpt-4"}
+print(results.best_config)   # {"model": "gpt-4o"}
 print(results.best_score)    # 0.92
 
 # Lock in the best config for production use
@@ -272,13 +280,14 @@ def exact_match(output: str, expected: str) -> float:
     ),
     objectives=["accuracy", "cost"],
     configuration_space={
-        "model": ["gpt-3.5-turbo", "gpt-4"],
+        "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.0, 0.3, 0.7, 1.0],
         "max_tokens": [256, 512, 1024],
     },
 )
 def answer_question(question: str) -> str:
     cfg = traigent.get_config()
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(
         model=cfg["model"],
         temperature=cfg["temperature"],

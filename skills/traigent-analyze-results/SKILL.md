@@ -77,7 +77,7 @@ for trial in results.trials:
 
     # Safe metric access with default
     accuracy = trial.get_metric("accuracy", default=0.0)
-    latency = trial.get_metric("latency_ms", default=None)
+    latency = trial.get_metric("latency", default=None)
 
     # Check for errors
     if trial.error_message:

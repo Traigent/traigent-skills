@@ -25,6 +25,10 @@ Use this skill when:
 ### Basic Install
 
 ```bash
+# Recommended — includes integrations, analytics, and common extras
+pip install "traigent[recommended]"
+
+# Minimal, no extras
 pip install traigent
 ```
 
@@ -238,7 +242,7 @@ traigent onboard         # guided first-run setup wizard
 ## Next Steps
 
 - **Define parameter search spaces** -- See the `traigent-configuration-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
-- **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options (grid, random, bayesian, optuna, etc.).
+- **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options. `"grid"` and `"random"` run locally; `"bayesian"` and `"optuna"` require a Traigent cloud connection.
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.
 - **Use framework integrations** -- Install `traigent[integrations]` for LangChain, OpenAI, and Anthropic adapters.
 

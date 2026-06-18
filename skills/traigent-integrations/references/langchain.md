@@ -18,7 +18,11 @@ pip install langchain-openai langchain-anthropic langchain-google-genai
 
 ## auto_override_frameworks
 
-When `auto_override_frameworks=True`, Traigent automatically discovers and overrides LLM client constructors so that the model and parameters from the current trial's configuration are injected:
+> **Requires `framework_targets`.** `auto_override_frameworks=True` alone is not sufficient — both flags must be set together, otherwise the override is silently skipped.
+>
+> **Swaps the model string, not the client class.** Auto-override intercepts the `__init__` call and replaces `model=` with the trial's config value. It does NOT swap `ChatOpenAI` for `ChatAnthropic` when an Anthropic model is selected — using a mixed-provider config space with a single-provider function causes invalid-model errors for the non-matching provider's trials. Use a single-provider config space per override target, or use manual config injection for cross-provider optimization.
+
+When `auto_override_frameworks=True` and `framework_targets` are set, Traigent intercepts LLM client constructors and injects the current trial's configuration:
 
 ```python
 import traigent
@@ -26,15 +30,16 @@ from langchain_openai import ChatOpenAI
 
 @traigent.optimize(
     configuration_space={
-        "model": ["gpt-4o-mini", "gpt-4o"],
+        "model": ["gpt-4o-mini", "gpt-4o"],  # single provider only
         "temperature": [0.0, 0.5, 1.0],
     },
     objectives=["accuracy"],
     max_trials=6,
     auto_override_frameworks=True,
+    framework_targets=["langchain_openai.ChatOpenAI"],  # required
 )
 def my_chain(text):
-    # These arguments are overridden by Traigent during optimization
+    # ChatOpenAI.__init__ is intercepted; model and temperature are replaced per trial
     llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
     return llm.invoke(text).content
 ```
@@ -43,7 +48,7 @@ During optimization, each trial replaces the `model` and `temperature` arguments
 
 ### How It Works
 
-1. Traigent scans for known framework classes (OpenAI, Anthropic, LangChain wrappers)
+1. Traigent scans the `framework_targets` list for the specified classes
 2. During a trial, `__init__` calls to those classes are intercepted
 3. Configuration parameters (`model`, `temperature`, etc.) are replaced with the trial values
 4. After the trial, the override is removed
