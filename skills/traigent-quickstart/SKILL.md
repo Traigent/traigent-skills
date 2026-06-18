@@ -54,6 +54,34 @@ See `references/installation-extras.md` for the full table of extras and their c
 
 - Python >= 3.11
 
+## Get Your Traigent API Key
+
+Backend-connected features (cloud execution, dataset synthesis, analytics dashboards, the CI gate) all require `TRAIGENT_API_KEY`. There are two ways to obtain it:
+
+### Portal key (experiments-scoped)
+
+1. Sign up at the Traigent portal and create a project.
+2. In your project settings, go to **API Keys** and click **Create key**.
+3. This issues a `user`-type key scoped to `experiments:read experiments:write` — sufficient for SDK optimizations and analytics.
+
+```bash
+export TRAIGENT_API_KEY="sk_..."
+```
+
+### CLI device-authorization key (project-scoped)
+
+The CLI device-flow issues a project-scoped `sk_`-prefixed key with broader permissions (quota, dataset management, full project access). Use this when you need project-level operations beyond experiments.
+
+Run `traigent login` in your terminal — it opens a browser for OAuth device authorization. The key is written to `~/.traigent/credentials`. Then export it:
+
+```bash
+export TRAIGENT_API_KEY="sk_..."
+```
+
+**Which key to use?** The portal experiments-scoped key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
+
+**If `TRAIGENT_API_KEY` is unset** in the default `edge_analytics` execution mode the SDK completes the local optimization run but silently skips cloud analytics — no dashboards, no result history. Set the key before expecting cloud features.
+
 ## Environment Setup
 
 ### Development Mode (Recommended for Getting Started)
@@ -249,6 +277,7 @@ traigent onboard         # guided first-run setup wizard
 
 ## Next Steps
 
+- **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
 - **Define parameter search spaces** -- See the `traigent-configuration-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
 - **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options. `"grid"` and `"random"` run locally; `"bayesian"` and `"optuna"` require a Traigent cloud connection.
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.

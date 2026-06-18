@@ -124,7 +124,7 @@ results = answer.optimize_with_guidance(
 
 ## Synthesize via the Traigent backend
 
-Backend dataset generation requires a Traigent account/backend and configured credentials such as `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL`.
+Backend dataset generation requires a Traigent account/backend and configured credentials such as `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL`. If you have not yet set up `TRAIGENT_API_KEY`, see [Getting your Traigent API key](../traigent-quickstart/SKILL.md#get-your-traigent-api-key).
 
 Use backend synthesis when:
 
