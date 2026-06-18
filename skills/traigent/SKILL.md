@@ -81,13 +81,13 @@ Parameters can be defined inline on the decorator or in `configuration_space=`:
 
 ### Setup Mistakes to Catch
 
-| Mistake | Fix |
-|---|---|
-| Config values as bare strings (`model="gpt-4"`) | Must be list or Range/Choices (`model=Choices(["gpt-4"])`) |
-| `get_config()` called outside the function | Must be inside the decorated function body |
-| Function doesn't return a value | Must return the prediction to score |
-| Empty objectives list | At least one objective required |
-| Dataset file doesn't exist | Create it or fix the path |
+| Mistake | SDK catches? | Fix |
+|---|---|---|
+| Config values as bare strings (`model="gpt-4"`) | Yes — `TypeError` | Must be list or Range/Choices (`model=Choices(["gpt-4"])`) |
+| `get_config()` called outside the function | Yes — `OptimizationStateError` | Must be inside the decorated function body |
+| Dataset file doesn't exist | Yes — `ValidationError` | Create it or fix the path |
+| **Empty objectives list** | **No — silently defaults** | Verify `objectives` has at least one entry before running |
+| **Function doesn't return a value** | **No — `None` scored silently** | Assert your function returns the prediction; `None` produces meaningless scores |
 
 ## Step 2: Validate Before Running
 
