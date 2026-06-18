@@ -79,13 +79,15 @@ When `TRAIGENT_MOCK_LLM=true`:
 
 ### What Gets Mocked
 
-- OpenAI API calls (`openai.chat.completions.create`)
-- Anthropic API calls (`anthropic.messages.create`)
-- LiteLLM completion calls
-- Any provider accessed through Traigent's integration layer
+- **LiteLLM** completion calls (`litellm.completion` / `litellm.acompletion`)
+- **LangChain** LLM wrappers (`ChatOpenAI`, `ChatAnthropic`, etc.) when constructed inside the decorated function
 
 ### What Is NOT Mocked
 
+> **Important:** Raw `openai` and `anthropic` clients are **not** intercepted by mock mode. If your function calls `openai.OpenAI().chat.completions.create(...)` or `anthropic.Anthropic().messages.create(...)` directly, those calls will reach the real API. Use `litellm.completion()` or LangChain wrappers for a fully keyless mock-mode experience.
+
+- Raw `openai.OpenAI` / `openai.AsyncOpenAI` clients
+- Raw `anthropic.Anthropic` / `anthropic.AsyncAnthropic` clients
 - Your own function logic (runs normally)
 - Evaluator functions (run normally)
 - Dataset loading and validation

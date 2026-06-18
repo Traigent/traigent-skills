@@ -140,18 +140,18 @@ import concurrent.futures
     execution=ExecutionOptions(
         parallel_config=ParallelConfig(trial_concurrency=2),
     ),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def batch_process(items: list) -> list:
     cfg = traigent.get_config()
     snapshot = copy_context_to_thread()
 
+    def worker(item):
+        with snapshot.restore():  # restore trial context inside the thread
+            return process_one(item, cfg)
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
-        futures = [
-            executor.submit(snapshot.run, process_one, item, cfg)
-            for item in items
-        ]
-        return [f.result() for f in futures]
+        return list(executor.map(worker, items))
 ```
 
 ## Modes

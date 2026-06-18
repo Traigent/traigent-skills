@@ -29,7 +29,8 @@ These are standard provider API keys consumed by the respective LLM SDKs. Traige
 | `OPENAI_API_KEY`      | OpenAI (GPT models)     |
 | `ANTHROPIC_API_KEY`   | Anthropic (Claude models)|
 | `GROQ_API_KEY`        | Groq (fast inference)   |
-| `GOOGLE_API_KEY`      | Google (Gemini models)  |
+| `GOOGLE_API_KEY`      | Google (Gemini via google-genai SDK) |
+| `GEMINI_API_KEY`      | Google (Gemini via LiteLLM `gemini/*` models) |
 | `WANDB_API_KEY`       | Weights & Biases        |
 | `MLFLOW_TRACKING_URI` | MLflow tracking server  |
 

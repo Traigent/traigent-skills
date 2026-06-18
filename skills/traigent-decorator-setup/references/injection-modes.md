@@ -45,7 +45,7 @@ Context mode uses `contextvars`, which are natively thread-safe in Python 3.7+. 
 from traigent.config.context import copy_context_to_thread
 
 @traigent.optimize(
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def parallel_processing(data_batch: list) -> list:
     cfg = traigent.get_config()
@@ -55,12 +55,10 @@ def parallel_processing(data_batch: list) -> list:
 
     import concurrent.futures
     with concurrent.futures.ThreadPoolExecutor() as executor:
-        futures = []
-        for item in data_batch:
-            # Each worker inherits the trial config
-            future = executor.submit(snapshot.run, process_item, item, cfg)
-            futures.append(future)
-        return [f.result() for f in futures]
+        def worker(item):
+            with snapshot.restore():  # restore context inside the thread
+                return process_item(item, cfg)
+        return list(executor.map(worker, data_batch))
 ```
 
 ## Parameter Mode
