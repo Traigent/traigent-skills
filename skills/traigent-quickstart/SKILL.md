@@ -70,11 +70,11 @@ export TRAIGENT_API_KEY="sk_..."
 
 ### CLI device-authorization key (project-scoped)
 
-The CLI device-flow issues a project-scoped `sk_`-prefixed key with broader permissions (quota, dataset management, full project access). Use this when you need project-level operations beyond experiments:
+The CLI device-flow issues a project-scoped `sk_`-prefixed key with broader permissions (quota, dataset management, full project access). Use this when you need project-level operations beyond experiments.
+
+Run `traigent login` in your terminal — it opens a browser for OAuth device authorization. The key is written to `~/.traigent/credentials`. Then export it:
 
 ```bash
-traigent login   # contract: skip — portal product feature, not a base SDK command
-# Key is written to ~/.traigent/credentials; also set the env var:
 export TRAIGENT_API_KEY="sk_..."
 ```
 
