@@ -33,6 +33,8 @@ pip install traigent litellm
 pip install traigent dspy
 ```
 
+> **Dry-run first.** Before any paid optimization run, activate mock mode (`enable_mock_mode_for_quickstart()`), run with your chosen config, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers.
+
 ## LangChain Integration
 
 Traigent integrates with LangChain by optimizing the model and parameters used inside your chain. The key pattern: get the config from Traigent, then construct your LangChain objects.
@@ -69,7 +71,7 @@ def answer_question(question):
     response = chain.invoke({"question": question})
     return response.content
 
-results = answer_question.optimize_sync()
+results = answer_question.optimize_sync()  # real run — only after dry-run approval
 ```
 
 ### Auto Override Frameworks
@@ -147,7 +149,7 @@ def classify_text(text):
     )
     return response.choices[0].message.content
 
-results = classify_text.optimize_sync()
+results = classify_text.optimize_sync()  # real run — only after dry-run approval
 
 # Check cost across providers
 for trial in results.successful_trials:

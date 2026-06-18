@@ -103,12 +103,21 @@ See `references/environment-variables.md` for all available environment variable
 
 ## Your First Optimization
 
+> **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+
 Here is a complete working example. This function classifies customer queries using an LLM, and Traigent will find the best model and temperature combination.
+
+**Note on mock scope:** `enable_mock_mode_for_quickstart()` intercepts LiteLLM and LangChain calls. Raw `openai.OpenAI()` / `anthropic.Anthropic()` client calls are **not** intercepted — use `litellm.completion()` for a fully keyless dry-run (see `references/installation-extras.md` for `traigent[integrations]`).
 
 ```python
 import asyncio
+import litellm  # pip install traigent[integrations]
 import traigent
 from traigent import Choices
+from traigent.testing import enable_mock_mode_for_quickstart
+
+# Step 1: dry-run in mock mode — no API keys required, no cost
+enable_mock_mode_for_quickstart()
 
 @traigent.optimize(
     eval_dataset="eval_queries.jsonl",
@@ -119,7 +128,6 @@ from traigent import Choices
 def classify_query(query: str) -> str:
     config = traigent.get_config()
     # Use litellm so mock mode intercepts the call (raw openai client is NOT intercepted)
-    import litellm
     response = litellm.completion(
         model=config["model"],
         temperature=config["temperature"],
@@ -132,7 +140,7 @@ def classify_query(query: str) -> str:
 
 
 async def main():
-    # Run optimization (async)
+    # Step 1: dry-run (mock) — confirm the setup works and review estimated cost
     results = await classify_query.optimize(max_trials=6, algorithm="grid")
 
     # Inspect results

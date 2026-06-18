@@ -24,6 +24,16 @@ Use this skill after you have decorated a function with `@traigent.optimize()` a
 
 The primary way to run optimization. Returns an `OptimizationResult`.
 
+> **Dry-run first.** Before a real (paid) run, always validate in mock mode and present a cost estimate to the user. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+>
+> ```python
+> from traigent.testing import enable_mock_mode_for_quickstart
+> enable_mock_mode_for_quickstart()
+> results = await answer.optimize(max_trials=10, algorithm="grid")  # mock, no cost
+> print(results.estimated_cost_usd)  # review estimate before approving
+> ```
+> Only proceed to the real run below after the user explicitly approves the cost.
+
 ```python
 import traigent
 
@@ -39,7 +49,7 @@ def answer(question: str) -> str:
     cfg = traigent.get_config()
     return call_llm(model=cfg["model"], temperature=cfg["temperature"], prompt=question)
 
-# Run optimization
+# Run optimization (real — only after dry-run approval)
 results = await answer.optimize(max_trials=10, algorithm="grid")
 ```
 
@@ -165,7 +175,9 @@ The exception has two attributes:
 
 ### Pre-Approving Costs
 
-Skip the interactive cost approval handshake:
+The `traigent` lifecycle skill mandates: **dry-run in mock mode first, present the cost estimate, then get explicit user approval before the real run.** Only pre-approve costs in automated pipelines where a human has already reviewed and approved the dry-run estimate. Never bypass this gate on a user's first run or when the config space has changed.
+
+To skip the interactive cost approval handshake in an already-approved pipeline:
 
 ```bash
 export TRAIGENT_COST_APPROVED=true
@@ -381,6 +393,9 @@ asyncio.run(main())
 - `references/algorithms.md` - Detailed algorithm comparison
 - `references/parallel-config.md` - Full ParallelConfig reference
 - `references/cost-management.md` - Cost enforcement details
+- `traigent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
+- `traigent-quickstart` - Installation and first optimization with mock mode
+- `traigent-decorator-setup` - Full `@traigent.optimize()` parameter reference
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

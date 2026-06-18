@@ -1,5 +1,7 @@
 # DSPy Adapter Reference
 
+> **Dry-run first.** Before running any real DSPy optimization, activate `enable_mock_mode_for_quickstart()`, run, review the cost estimate, and get explicit approval. See the `traigent` skill for the dry-run-first / cost-approval mandate.
+
 ## Overview
 
 Traigent provides the `DSPyPromptOptimizer` adapter for integrating DSPy's automatic prompt optimization into your workflow. DSPy optimizes prompts through demonstration selection and instruction tuning, while Traigent handles model selection and parameter tuning.
