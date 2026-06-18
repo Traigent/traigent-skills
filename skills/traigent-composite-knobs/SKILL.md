@@ -28,7 +28,7 @@ For exact factory signatures and per-pattern caveats, read `references/pattern-c
 The canonical wiring is:
 
 1. Declare a pattern factory such as `binary_cascade`, `router`, `self_refine`, or `moe`.
-2. Spread the composite's `.members` into the surrounding configuration space when it supplies member `Knob` declarations.
+2. If the factory was called with an explicit `members=` dict, spread those `Knob` declarations into the surrounding configuration space. Most patterns (including `binary_cascade` with no `members=` argument) return an empty `.members` dict — spreading it is a no-op. Threshold CVARs like the cascade gate must be declared explicitly in `configuration_space` as tuned variables (or passed as literals in `calibrated_values`); they are NOT auto-populated from `.members`.
 3. Wire every referenced stage with `StageRunner` for sampling/voting positions or `LoopBodyRunner` for loop bodies.
 4. Inside the decorated function, call `execute_composite` with the pattern's `.structure`, current tuned config, live calibrated CVAR values, and any `signals` or `predicates`.
 5. Build ordinary numeric metrics, call `merge_composite_measures(metrics, run)`, and return exactly `(output, metrics)`.
@@ -62,8 +62,14 @@ def _stage(outputs: list[str]) -> StageRunner:
 @traigent.optimize(
     eval_dataset=...,
     objectives=["accuracy"],
-    configuration_space={"variant": ["cheap", "strong"]},
-    default_config={"variant": "cheap"},
+    configuration_space={
+        "variant": ["cheap", "strong"],
+        # Declare the threshold as a tuned variable so params[GATE] resolves.
+        # The optimizer searches discrete margin values; the winning value
+        # doubles as the live calibrated_value passed to execute_composite.
+        GATE: [0.3, 0.5, 0.7],
+    },
+    default_config={"variant": "cheap", GATE: 0.5},
     execution_mode="hybrid",
 )
 def answer(text: str) -> tuple[str, dict[str, float]]:
@@ -110,7 +116,7 @@ wiring, not a bad agent.
 
 A factory returns a `CompositeKnob` declaration bundle: `.structure` is the IR root, `.members` are ordinary member `Knob` declarations, `.provenance` records the pattern name plus a canonical param hash, and `.telemetry_names` lists standard measure names.
 
-Spread `.members` into the surrounding configuration space. Do not treat the composite as binding values. Member bindings remain `Tuned`, `Calibrated`, or `Fixed`; the composite only references names and declares control flow. CVARs such as thresholds must be calibrated and passed at execution time through `calibrated_values`.
+Spread `.members` into the surrounding configuration space **only when the factory was called with a non-empty `members=` argument**. Factories called without `members=` (or with `members=None`) return `.members = {}` — spreading it is a no-op and will NOT populate threshold keys into `configuration_space`. Threshold CVARs (e.g. `router_margin_threshold` for `binary_cascade`) are not auto-populated by `.members`; they must be declared explicitly in `configuration_space` (to tune them) or supplied as literals in `calibrated_values` (to fix them). Omitting them from both causes `params[GATE]` to raise `KeyError` on every trial. Member bindings that ARE present remain `Tuned`, `Calibrated`, or `Fixed`; the composite only references names and declares control flow.
 
 The vocabulary, in one line: **TVARs are searched, CVARs are calibrated,
 policies govern control flow, KPIs/objectives score outcomes.** For
