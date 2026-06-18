@@ -52,6 +52,10 @@ jobs:
       - name: Check safety and efficiency wiring
         run: python scripts/traigent_gate.py --incumbent .gate/incumbent.json --candidate .gate/candidate.json --max-cost 0.01 --max-latency-ms 1200
 
+  # Set TRAIGENT_API_KEY in your repository's CI secrets.
+  # See: https://github.com/your-org/your-repo/settings/secrets/actions
+  # For how to obtain the key, see the traigent-quickstart skill:
+  #   skills/traigent-quickstart/SKILL.md#get-your-traigent-api-key
   nightly-real-holdout:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
