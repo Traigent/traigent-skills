@@ -152,8 +152,13 @@ Prefer client-side synthesis when privacy review is incomplete, no account is co
 Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response.
 <!-- /PROTECTED -->
 
+> **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead. The `traigent.analytics` shim still works but emits a deprecation warning.
+
 ```python
-from traigent.analytics import ExampleInsightsClient
+# Canonical (traigent-analytics plugin):
+from traigent_analytics import ExampleInsightsClient
+# Legacy (deprecated, emits DeprecationWarning):
+# from traigent.analytics import ExampleInsightsClient
 
 client = ExampleInsightsClient(
     backend_url="https://traigent.example",

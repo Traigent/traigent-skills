@@ -51,8 +51,11 @@ If importance is empty, do not infer that no knob matters. Common reasons are to
 Use example-side evidence when the aggregate score hides where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent account/backend and returns non-signal scoring metadata only: example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or signal-vector values.
 <!-- /PROTECTED -->
 
+> **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead.
+
 ```python
-from traigent.analytics import ExampleInsightsClient
+from traigent_analytics import ExampleInsightsClient  # canonical (traigent-analytics plugin)
+# from traigent.analytics import ExampleInsightsClient  # deprecated shim — still works
 
 async def fetch_example_metadata(run_id: str):
     async with ExampleInsightsClient(

@@ -20,8 +20,9 @@ Full reference of optional dependency groups available via `pip install 'traigen
 | `docs`          | Documentation generation                           | mkdocs, mkdocs-material, mkdocstrings                                        |
 | `ml`            | Machine learning bundle                            | bayesian + analytics + numpy + scipy                                         |
 | `cloud`         | Cloud execution mode                               | security + boto3                                                             |
-| `all`           | All optional features combined                     | analytics, bayesian, integrations, pydanticai, security, visualization, test, tracing, hybrid |
-| `enterprise`    | Enterprise bundle with all production features     | analytics, bayesian, integrations, security, visualization, test, tracing, ml, cloud, hybrid  |
+| `recommended`   | Core user-facing extras (primary install choice)   | integrations, analytics, visualization, hybrid, pydanticai                                    |
+| `all`           | User-facing extras (excludes dev/docs/ml/cloud)    | analytics, integrations, pydanticai, security, visualization, test, tracing, hybrid           |
+| `enterprise`    | Enterprise bundle with all production features     | analytics, integrations, security, visualization, test, tracing, ml, cloud, hybrid            |
 
 ## Install Commands
 
@@ -74,4 +75,6 @@ These packages are installed with the base `pip install traigent`:
 
 - Requires Python >= 3.11.
 - `faiss-cpu` (in `integrations`) is not available on Windows.
-- The `all` and `enterprise` bundles include most extras. The difference is that `enterprise` also includes `ml` and `cloud` bundles.
+- `all` includes user-facing runtime extras only — it does **not** include `dev`, `docs`, `dspy`, `ml`, or `cloud`. Use `enterprise` for ml+cloud, or `recommended` as the primary install.
+- `enterprise` includes `ml` and `cloud` on top of the runtime extras; `dev` and `docs` remain opt-in.
+- The difference between `all` and `enterprise`: `enterprise` adds `ml` and `cloud`; `all` does not include `bayesian` as a top-level extra (it's pulled in transitively by `ml`).
