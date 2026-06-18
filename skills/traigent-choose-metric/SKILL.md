@@ -128,6 +128,7 @@ Treat safety properties as constraints or gates when a violation is unacceptable
 ## See Also
 
 - `traigent-build-evaluator` - next step after choosing the metric
+- `traigent` Step 3.5 - lightweight evaluator sanity gate (known-good/known-bad assertion before first real run)
 - `traigent-decorator-setup` - wiring objectives and evaluation options into the decorator
 - `traigent-analyze-results` - reading trial metrics and reporting outcomes
 
