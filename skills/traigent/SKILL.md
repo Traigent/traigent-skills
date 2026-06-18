@@ -199,6 +199,29 @@ Common failures:
 **Do not proceed to real mode until mock passes cleanly.**
 <!-- /PROTECTED -->
 
+## Step 3.5: Evaluator Sanity Gate
+
+Before the first paid run, verify the metric actually separates a correct output from a wrong one. This costs nothing — no LLM calls — but catches the single most expensive silent failure mode: an evaluation metric that swallows exceptions or silently returns 0.0 for every config (making the agent look broken when the metric is broken).
+
+```python
+# call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
+known_good = call_llm(best_known_prompt, cfg=best_cfg)
+known_bad  = "obviously wrong or empty output"
+
+assert my_metric(known_good, expected_output) >= 0.9, (
+    "metric does not reward a correct output — fix before running real optimization"
+)
+assert my_metric(known_bad, expected_output) <= 0.1, (
+    "metric does not penalize a wrong output — fix before running real optimization"
+)
+```
+
+For a `custom_evaluator` / `BaseEvaluator`, call `.evaluate([good_example])` and `.evaluate([bad_example])` directly and assert the returned `metrics` separate. Use **one known-good + one known-bad example only** — this is a smoke gate, not a full audit.
+
+> **If both assertions pass:** the metric wires correctly — proceed to Step 4.
+>
+> **If either fails:** fix the metric before spending tokens. Common causes: wrong field name in the result, inverted logic (`>` vs `<`), exception swallowed to `0.0`. See [traigent-build-evaluator](../traigent-build-evaluator/SKILL.md) for diagnostic steps. For LLM-judge metrics, see [traigent-evaluator-audit](../traigent-evaluator-audit/SKILL.md) for the full reliability protocol.
+
 ## Step 4: Report and Estimate Costs
 
 After a successful mock run, tell the user:

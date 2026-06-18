@@ -264,6 +264,8 @@ If the optimized function returns `(output, metrics)`, make sure the custom scor
 ## See Also
 
 - `traigent-choose-metric` - choose objectives before building evaluator code
+- `traigent` Step 3.5 - lightweight evaluator sanity gate (run this before the first paid optimization)
+- `traigent-evaluator-audit` - full LLM-judge reliability protocol (human-labeled gold slice, bias probes)
 - `traigent-decorator-setup` - decorator wiring for evaluation options
 - `traigent-analyze-results` - inspect the metrics emitted by evaluator runs
 - `traigent-curate-dataset` - create and improve the evaluation dataset
