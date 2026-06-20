@@ -2,7 +2,7 @@ version: 1
 sdk:
   dist: traigent
   github: Traigent/Traigent
-default_min_sdk_version: "0.12.0"
+default_min_sdk_version: "0.15.0"
 skills:
   traigent-quickstart:
     env_version_floors:
@@ -104,7 +104,7 @@ skills:
       - docs/user-guide/tuned_variables.md
 
   traigent-composite-knobs:
-    min_sdk_version: "0.13.0.dev1"
+    min_sdk_version: "0.15.0"
     modules:
       - traigent.knobs.patterns
       - traigent.knobs.runtime
@@ -118,7 +118,7 @@ skills:
       - docs/traceability/concepts/composite-knobs.md
 
   traigent-boost-agent:
-    min_sdk_version: "0.13.0.dev1"
+    min_sdk_version: "0.15.0"
     modules:
       - traigent.config_generator.recommendations
       - traigent.api.decorators
