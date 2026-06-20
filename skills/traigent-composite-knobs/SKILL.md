@@ -70,7 +70,6 @@ def _stage(outputs: list[str]) -> StageRunner:
         GATE: [0.3, 0.5, 0.7],
     },
     default_config={"variant": "cheap", GATE: 0.5},
-    execution_mode="hybrid",
 )
 def answer(text: str) -> tuple[str, dict[str, float]]:
     cfg = traigent.get_config()

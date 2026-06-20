@@ -354,7 +354,7 @@ def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
         "import traigent\n"
         "from traigent.api.decorators import ExecutionOptions\n"
         '@traigent.optimize(eval_dataset="d.jsonl",\n'
-        '    execution=ExecutionOptions(execution_mode="edge_analytics", reps_per_trial=1))\n'
+        '    execution=ExecutionOptions(reps_per_trial=1))\n'
         "def f(x):\n"
         "    return x\n"
         "results = f.optimize_sync()\n"

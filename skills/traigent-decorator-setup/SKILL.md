@@ -1,6 +1,6 @@
 ---
 name: traigent-decorator-setup
-description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, configuring execution_mode, defining objectives, using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators."
+description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -15,7 +15,7 @@ Use this skill when you need to go beyond the basic `@traigent.optimize()` decor
 
 - Evaluation datasets, custom evaluators, scoring functions, or metric functions
 - Injection modes (how optimized configs reach your function)
-- Execution modes (where and how optimization runs)
+- Execution behavior (`algorithm` and `offline` — where and how optimization runs)
 - Multi-objective optimization with weighted objectives
 - Privacy-preserving or local-only execution
 
@@ -196,15 +196,15 @@ def my_func(query: str) -> str:
 
 ## Execution Options
 
-Configure where and how optimization runs execute.
+Where and how runs execute is controlled by two knobs — `algorithm` and `offline` — not an
+`execution_mode` selector (that was removed). See `references/execution-modes.md` for the full
+reference.
 
 ```python
 @traigent.optimize(
-    execution=ExecutionOptions(
-        execution_mode="edge_analytics",  # Local execution, analytics to cloud
-        local_storage_path="./results",
-        privacy_enabled=True,
-    ),
+    algorithm="auto",   # default: cloud-first, auto-falls-back to local if the backend is unreachable
+    offline=False,      # set True for a fully-local, zero-egress run
+    execution=ExecutionOptions(local_storage_path="./results"),
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
@@ -213,13 +213,20 @@ def my_func(query: str) -> str:
     return call_llm(model=cfg["model"], prompt=query)
 ```
 
-### Execution Modes
+### `algorithm` and `offline`
 
-| Mode | Description |
+| Choice | Behavior |
 |---|---|
-| `"edge_analytics"` | Default. Runs locally, sends analytics metadata to cloud. |
-| `"cloud"` | Full cloud execution with remote orchestration. |
-| `"hybrid"` | Split execution between local trials and cloud coordination. |
+| `algorithm="auto"` (default) | Cloud optimizer proposes trials; your agent/LLM run locally. Degrades to a local search (with a warning) if the backend is unreachable. |
+| `algorithm="grid"` / `"random"` | Runs entirely locally — no backend round-trip. |
+| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/… | Smart optimizers — **cloud-only**; raise if the cloud is unavailable. |
+| `offline=True` | Fully local, **zero backend egress** (also `TRAIGENT_OFFLINE=1`). |
+
+The cloud path sends only configuration IDs and numeric metrics — never your example
+inputs/outputs/prompts. "Privacy-preserving" is the default; for *no network at all* use
+`offline=True`. To optimize an external HTTP/MCP service, pass
+`evaluator=ExternalServiceEvaluator(hybrid_api=HybridAPIOptions(endpoint=...))`. The legacy
+`execution_mode`, `privacy_enabled`, and `cloud_fallback_policy` params are deprecated no-ops.
 
 ## Config Access Lifecycle
 
@@ -275,7 +282,6 @@ def exact_match(output: str, expected: str) -> float:
         scoring_function=exact_match,
     ),
     execution=ExecutionOptions(
-        execution_mode="edge_analytics",
         local_storage_path="./optimization_results",
     ),
     objectives=["accuracy", "cost"],

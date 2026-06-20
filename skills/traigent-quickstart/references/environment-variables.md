@@ -18,7 +18,9 @@ Complete reference of environment variables recognized by the Traigent SDK.
 | `TRAIGENT_STRICT_VALIDATION`      | `true`          | When `true`, DTO schema validation raises exceptions. When `false`, logs warnings only.             |
 | `ENVIRONMENT`                      | `development`   | Execution environment. Set to `production` for production deployments.                              |
 | `JWT_SECRET_KEY`                   | (none)          | Secret key for JWT token validation. Required for production security features.                     |
-| `TRAIGENT_API_KEY`                | (none)          | API key for Traigent Cloud mode. Required when using `execution_mode="cloud"`.                      |
+| `TRAIGENT_API_KEY`                | (none)          | Enables the cloud optimizer (default `algorithm="auto"`) and portal tracking. Without it, runs auto-fall-back to a local search. |
+| `TRAIGENT_OFFLINE`                | `0`             | Set to `1` to force fully-local, zero-egress execution (legacy alias: `TRAIGENT_OFFLINE_MODE`).      |
+| `TRAIGENT_REQUIRE_CLOUD`          | `0`             | Set to `1` to disable the auto-fallback — a cloud-unavailable run errors instead of degrading to local. |
 
 ## LLM Provider API Keys
 

@@ -80,7 +80,7 @@ export TRAIGENT_API_KEY="sk_..."
 
 **Which key to use?** The portal experiments-scoped key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
-**If `TRAIGENT_API_KEY` is unset** in the default `edge_analytics` execution mode the SDK completes the local optimization run but silently skips cloud analytics — no dashboards, no result history. Set the key before expecting cloud features.
+**If `TRAIGENT_API_KEY` is unset**, the default `algorithm="auto"` run auto-falls-back to a local search (with a warning) and skips cloud tracking — no dashboards, no result history. Set the key to use the cloud optimizer and portal features (or pass `offline=True` to run fully local on purpose).
 
 ## Environment Setup
 
