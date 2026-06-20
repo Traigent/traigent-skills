@@ -114,7 +114,6 @@ def _call_answer_model(question: str, cfg: dict) -> str:
     ),
     objectives=["accuracy", "cost"],
     configuration_space=CONFIGURATION_SPACE,
-    execution_mode="hybrid",
 )
 def answer_question(question: str):
     cfg = dict(traigent.get_config())
@@ -184,11 +183,11 @@ Use `TRAIGENT_BACKEND_URL` only when the client has a non-default backend endpoi
   `optimize()` time. Write/generate the JSONL before the module defining the
   decorated function is imported, or import fails with a path
   `ValidationError`.
-- **Hybrid mode enforces dataset path containment**: the dataset file must
+- **Cloud-tracked runs enforce dataset path containment**: the dataset file must
   reside under the SDK working directory of the process running the
-  optimization. Offline/mock runs accept absolute paths anywhere; the hybrid
-  run rejects them. Keep the JSONL in a scratch dir under the project root
-  (e.g. `.boost-scratch/tickets.jsonl`).
+  optimization. Offline runs (`offline=True`) accept absolute paths anywhere; a
+  cloud-tracked run rejects them. Keep the JSONL in a scratch dir under the
+  project root (e.g. `.boost-scratch/tickets.jsonl`).
 
 ## Per-shape variations
 

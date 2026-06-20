@@ -15,7 +15,7 @@ results = await func.optimize(max_trials=10, algorithm="grid")
 | `"bayesian"` | Surrogate model guided | Medium-Large | 15-100 | No | **Cloud only** | Expensive trials, continuous params |
 | `"optuna"` | Advanced TPE sampling | Large | 30+ | No | **Cloud only** | Advanced users, multi-objective |
 
-> **`"bayesian"` and `"optuna"` run in the Traigent cloud.** Using them without `TRAIGENT_API_KEY` and a cloud-connected execution mode raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
+> **`"bayesian"` and `"optuna"` (and the other smart optimizers) run in the Traigent cloud.** Using them without `TRAIGENT_API_KEY` (or with `offline=True`) raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
 
 ## Grid Search
 

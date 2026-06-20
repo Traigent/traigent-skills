@@ -1,120 +1,110 @@
-# Execution Modes Reference
+# Execution Reference: `algorithm`, `offline`, and `ExecutionOptions`
 
-`ExecutionOptions` is a Pydantic model that controls where and how optimization runs execute.
+Where and how an optimization run executes is controlled by two top-level knobs on
+`@traigent.optimize(...)` — `algorithm` and `offline` — plus the advanced `ExecutionOptions`
+bundle. There is **no `execution_mode` selector** anymore.
 
 ```python
+import traigent
 from traigent.api.decorators import ExecutionOptions
 ```
 
-## ExecutionOptions Fields
+## The two execution knobs
 
-### Core Fields
+| Knob | Type | Default | Description |
+|---|---|---|---|
+| `algorithm` | `str` | `"auto"` | `"auto"` uses the Traigent **cloud optimizer** (the backend proposes each next trial) while your trials run locally; on a connectivity failure it auto-degrades to a local search. `"grid"`/`"random"` run **entirely locally** (no backend round-trip). Smart optimizers (`"bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"`, `"optuna_grid"`, `"optuna_cmaes"`, `"optuna_nsga2"`, `"nsga2"`, `"cmaes"`, `"nsgaii"`, `"nsga_ii"`, `"cma_es"`) are **cloud-only** and raise if the cloud is unavailable. Unknown names are rejected. |
+| `offline` | `bool` | `False` | `True` forces a fully local run with **zero backend egress** — no session, no tracking, no uploads. Equivalent env: `TRAIGENT_OFFLINE=1`. |
+
+```python
+@traigent.optimize(
+    algorithm="auto",     # cloud-first; falls back to local if the backend is unreachable
+    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+)
+def my_func(query: str) -> str:
+    cfg = traigent.get_config()
+    return call_llm(model=cfg["model"], prompt=query)
+```
+
+## How each choice behaves
+
+- **`algorithm="auto"` (default) — cloud-first.** The Traigent cloud proposes each configuration and learns across runs; **your agent and your LLM calls always run locally** (Traigent never runs your compute). If there is no API key or the backend is unreachable, the run **auto-degrades to a local `grid`/`random` search** with a one-line warning so it still completes (results sync on the next successful run). Smart algorithms requested explicitly do **not** silently downgrade — they raise.
+- **`algorithm="grid"` / `"random"` — local.** The search runs entirely in the SDK with no backend round-trip. Non-sensitive telemetry still syncs if a key is present and `offline` is not set.
+- **Smart algorithms — cloud-only.** Requesting one without a reachable cloud raises a clear error (`TRAIGENT_REQUIRE_CLOUD=1` also forces this — it disables the auto-fallback).
+- **`offline=True` — no egress.** Nothing leaves your machine. Use this for air-gapped or strict-no-network runs.
+
+> **Privacy, said honestly.** On the cloud path the SDK sends only **configuration IDs and numeric metrics** — never your dataset's example inputs, prompts, or outputs. "Privacy-preserving" is therefore the default. But it is **not** the same as "no network": for zero outbound traffic, use `offline=True`.
+
+## Result provenance
+
+Every result records where it actually ran in its metadata `source`:
+
+| `source` | Meaning |
+|---|---|
+| `cloud_brain` | The cloud optimizer proposed the trials. |
+| `local_fallback` | `auto` degraded to a local search because the backend was unreachable. |
+| `explicit_local` | You chose `grid`/`random` (local by request). |
+| `offline` | `offline=True` (or `TRAIGENT_OFFLINE`) — zero egress. |
+
+## Optimizing an external service (HTTP / MCP)
+
+To optimize an agent exposed behind an external HTTP/MCP endpoint, pass an **external-service
+evaluator** (this replaces the old `execution_mode="hybrid_api"` + flat `hybrid_api_*` params).
+The optimizer stays local; only each trial's *evaluation* is dispatched to your service.
+
+```python
+from traigent.api.decorators import ExternalServiceEvaluator, HybridAPIOptions
+
+@traigent.optimize(
+    evaluator=ExternalServiceEvaluator(
+        hybrid_api=HybridAPIOptions(
+            endpoint="https://my-agent.example.com/evaluate",
+            transport_type="auto",      # "http" | "mcp" | "auto"
+            batch_size=1,
+            timeout=30.0,
+            auth_header="Bearer ...",
+        )
+    ),
+    configuration_space={"temperature": [0.0, 0.3, 0.7]},
+)
+def my_remote_agent(query: str) -> str: ...
+```
+
+## `ExecutionOptions` advanced fields
+
+`ExecutionOptions` carries `algorithm` and `offline` plus the advanced execution settings:
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `execution_mode` | `str` | `"edge_analytics"` | Supported: `"edge_analytics"` (alias `"local"`), `"hybrid"` (alias `"privacy"`), `"hybrid_api"`. `"cloud"` is reserved but **not yet available** — selecting it raises `CloudRemoteExecutionUnavailableError`. |
-| `local_storage_path` | `str \| None` | `None` | Directory path for local result storage. |
+| `algorithm` | `str` | `"auto"` | Same as the top-level knob above. |
+| `offline` | `bool` | `False` | Same as the top-level knob above. |
+| `local_storage_path` | `str \| None` | `None` | Directory for local result storage. |
 | `minimal_logging` | `bool` | `True` | Minimize logging output during optimization. |
-| `parallel_config` | `ParallelConfig \| dict \| None` | `None` | Parallel execution settings. See ParallelConfig section. |
-| `privacy_enabled` | `bool \| None` | `None` | Enable privacy-preserving mode (no raw data sent to cloud). |
+| `parallel_config` | `ParallelConfig \| dict \| None` | `None` | Parallel execution settings (see below). |
 | `max_total_examples` | `int \| None` | `None` | Cap total examples evaluated across all trials. |
 | `samples_include_pruned` | `bool` | `True` | Whether pruned trials count toward sample limits. |
-| `cloud_fallback_policy` | `str \| None` | `None` | Behavior when backend/portal tracking fails (`hybrid` / `hybrid_api`): `"auto"`, `"warn"`, or `"never"`. |
 
-### Repetition Fields
+### Deprecated (do not use in new code)
 
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `reps_per_trial` | `int` | `1` | Number of times to repeat each configuration. **Requires Traigent Enterprise** — on the standard tier any value other than `1` is rejected at `ExecutionOptions` construction (`reps_per_trial != 1`). |
-| `reps_aggregation` | `str` | `"mean"` | How to aggregate metrics across repetitions: `"mean"`, `"median"`, `"min"`, or `"max"` (applies only when `reps_per_trial > 1` on Enterprise). |
+These are **removed from the public surface** and accepted only as deprecated kwargs that emit a
+`DeprecationWarning`:
 
-### Hybrid API Fields
-
-| Field | Type | Default | Description |
-|---|---|---|---|
-| `hybrid_api_endpoint` | `str \| None` | `None` | URL of the hybrid API server. |
-| `tunable_id` | `str \| None` | `None` | Identifier for this tunable in the hybrid API. |
-| `hybrid_api_transport` | `Any \| None` | `None` | Custom transport instance for the hybrid API. |
-| `hybrid_api_transport_type` | `str` | `"auto"` | Transport type: `"auto"`, `"http"`, `"grpc"`, etc. |
-| `hybrid_api_batch_size` | `int` | `1` | Batch size for hybrid API requests. |
-| `hybrid_api_batch_parallelism` | `int` | `1` | Number of parallel batches. |
-| `hybrid_api_keep_alive` | `bool` | `True` | Keep the hybrid API connection alive between trials. |
-| `hybrid_api_heartbeat_interval` | `float` | `30.0` | Heartbeat interval in seconds. |
-| `hybrid_api_timeout` | `float \| None` | `None` | Request timeout for hybrid API calls. |
-| `hybrid_api_auth_header` | `str \| None` | `None` | Authorization header value for hybrid API. |
-| `hybrid_api_auto_discover_tvars` | `bool` | `False` | Automatically discover tunable variables from the hybrid API. |
-
-## Execution Modes Explained
-
-### Edge Analytics (Default)
-
-Optimization runs entirely on your local machine. Only anonymized analytics metadata (trial counts, scores, timing) is sent to the Traigent cloud for lightweight analytics dashboards. Raw data, prompts, and model outputs never leave your environment.
-
-```python
-@traigent.optimize(
-    execution=ExecutionOptions(
-        execution_mode="edge_analytics",
-        local_storage_path="./results",
-        privacy_enabled=True,
-    ),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
-)
-def my_func(query: str) -> str:
-    cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=query)
-```
-
-**When to use**: When you want to keep all data local and only need anonymized analytics dashboards. For portal-tracked runs (named experiments with per-run results visible in the portal), use `hybrid`.
-
-### Cloud — not available yet
-
-`execution_mode="cloud"` is **reserved and not yet implemented**. Selecting it raises
-`CloudRemoteExecutionUnavailableError` ("Cloud remote execution is not available yet; use
-hybrid for portal-tracked optimization"). Do **not** present `cloud` in onboarding or customer
-docs as a working mode.
-
-**Roadmap (not shipped):** a *cloud-guided* optimizer in which the Traigent cloud proposes each
-configuration and learns across runs, while **your agent and your LLM calls keep running
-locally**. Traigent does **not** run your agent or your model calls on its servers — there is no
-"fully remote" mode where compute moves to the cloud. Until this ships, use `hybrid` for local
-optimization with full portal tracking.
-
-### Hybrid
-
-The **optimizer and your trials both run locally** — the configuration search executes in the
-SDK on your machine. The Traigent cloud's role is to **track the experiment**: portal
-run/result tracking (subject to your privacy settings), plus the portal dashboards and
-analytics. In this mode the cloud does **not** propose
-configurations and does **not** run your agent or LLM calls. With `privacy_enabled=True`, raw
-inputs/outputs/prompts are not transmitted — only metrics and metadata.
-
-```python
-@traigent.optimize(
-    execution=ExecutionOptions(
-        execution_mode="hybrid",
-        privacy_enabled=True,
-    ),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
-)
-def my_func(query: str) -> str:
-    cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=query)
-```
-
-**When to use**: The default for portal-tracked optimization — you want your runs, results, and
-dashboards in the Traigent portal while keeping trial execution (and your data) on your own
-machine. To optimize an agent exposed behind an external HTTP endpoint, use
-`execution_mode="hybrid_api"` with the `hybrid_api_*` fields above.
-
-### Cloud Fallback Policy
-
-Controls what happens when backend-tracked (`hybrid` / `hybrid_api`) execution fails:
-
-| Policy | Behavior |
+| Removed | Use instead |
 |---|---|
-| `"auto"` | Silently falls back to local optimization on failure. |
-| `"warn"` | Falls back to local optimization but logs a warning. |
-| `"never"` | Re-raises the exception. No fallback. |
+| `execution_mode="hybrid"` / `"standard"` | the default (`algorithm="auto"`) |
+| `execution_mode="edge_analytics"` / `"local"` | `offline=True` |
+| `execution_mode="hybrid_api"` + `hybrid_api_*` | `evaluator=ExternalServiceEvaluator(hybrid_api=HybridAPIOptions(...))` |
+| `execution_mode="cloud"` | the default (`algorithm="auto"`) — note `cloud` historically ran *locally* |
+| `privacy_enabled` | nothing — the cloud path is content-free by default; use `offline=True` for no egress |
+| `cloud_fallback_policy` | nothing — auto-fallback is built in; `TRAIGENT_REQUIRE_CLOUD=1` disables it |
+
+## Environment variables
+
+| Variable | Effect |
+|---|---|
+| `TRAIGENT_OFFLINE=1` (or legacy `TRAIGENT_OFFLINE_MODE=1`) | Force fully-local, zero-egress execution. |
+| `TRAIGENT_REQUIRE_CLOUD=1` | Disable the auto-fallback — a cloud-unavailable run errors instead of degrading to local. |
+| `TRAIGENT_API_KEY` | Enables cloud optimization (`algorithm="auto"`) and portal tracking. Without it, `auto` degrades to a local search. |
 
 ## ParallelConfig Integration
 
@@ -159,39 +149,6 @@ def my_func(query: str) -> str:
 ## JavaScript / TypeScript Applications
 
 To optimize an LLM application written in JavaScript/TypeScript, use the native
-**`@traigent/sdk`** (see the `traigent-js` skill) rather than the Python SDK. The
-former in-process "JS bridge" `ExecutionOptions` fields (`runtime`, `js_module`,
-`js_function`, `js_timeout`, `js_parallel_workers`) are not part of the `0.12.0`
-Python `ExecutionOptions` — it is `extra="forbid"`, so passing them raises a
-pydantic `ValidationError` at construction.
-
-## Repetitions for Statistical Stability
-
-LLM outputs are non-deterministic. On **Traigent Enterprise**, `reps_per_trial` repeats
-each configuration multiple times and aggregates the results. On the standard tier
-`reps_per_trial` must stay `1` (any other value is rejected at construction), so the
-example below is Enterprise-only:
-
-```python
-# contract: skip
-# Requires Traigent Enterprise (reps_per_trial > 1 is rejected on the standard tier)
-@traigent.optimize(
-    execution=ExecutionOptions(
-        reps_per_trial=5,          # Run each config 5 times
-        reps_aggregation="median", # Use median score (robust to outliers)
-    ),
-    configuration_space={"temperature": [0.0, 0.3, 0.7, 1.0]},
-)
-def my_func(query: str) -> str:
-    cfg = traigent.get_config()
-    return call_llm(temperature=cfg["temperature"], prompt=query)
-```
-
-Aggregation options:
-
-| Method | Use When |
-|---|---|
-| `"mean"` | Default. Good for normally distributed scores. |
-| `"median"` | Robust to outliers. Good for noisy evaluations. |
-| `"min"` | Worst-case analysis. Conservative. |
-| `"max"` | Best-case analysis. Optimistic. |
+**`@traigent/sdk`** (see the `traigent-js` skill) rather than the Python SDK. The former
+in-process "JS bridge" `ExecutionOptions` fields are not part of the Python `ExecutionOptions`
+— it is `extra="forbid"`, so passing them raises a pydantic `ValidationError` at construction.

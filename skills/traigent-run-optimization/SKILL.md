@@ -111,9 +111,9 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 **Best for**: Large config spaces, quick exploration, when you have a limited trial budget.
 
-### Bayesian Optimization *(cloud / hybrid only)*
+### Bayesian Optimization *(cloud only)*
 
-> **Requires a Traigent cloud connection.** `algorithm="bayesian"` runs in the Traigent cloud, not the local SDK. Running it without `TRAIGENT_API_KEY` and a cloud-connected execution mode raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
+> **Requires a Traigent cloud connection.** `algorithm="bayesian"` (and the other smart optimizers) run in the Traigent cloud, not the local SDK. Without `TRAIGENT_API_KEY` (or with `offline=True` / `TRAIGENT_REQUIRE_CLOUD=1` when the cloud is unreachable) it raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
 
 Uses a surrogate model to guide the search toward promising configurations.
 
@@ -123,9 +123,9 @@ results = await func.optimize(max_trials=30, algorithm="bayesian")
 
 **Best for**: Medium to large config spaces with continuous parameters (cloud runs).
 
-### Optuna *(cloud / hybrid only)*
+### Optuna *(cloud only)*
 
-> **Requires a Traigent cloud connection.** `algorithm="optuna"` runs in the Traigent cloud, not the local SDK. Running it locally raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
+> **Requires a Traigent cloud connection.** `algorithm="optuna"` (and the other smart optimizers) run in the Traigent cloud, not the local SDK. Without `TRAIGENT_API_KEY` (or with `offline=True`) it raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
 
 Direct access to the Optuna optimization framework with advanced features like pruning and multi-objective optimization.
 
@@ -133,7 +133,7 @@ Direct access to the Optuna optimization framework with advanced features like p
 results = await func.optimize(max_trials=50, algorithm="optuna")
 ```
 
-**Best for**: Advanced users on cloud/hybrid execution who need Optuna-specific features or very large search spaces.
+**Best for**: Advanced users running in the Traigent cloud who need Optuna-specific features or very large search spaces.
 
 ### Quick Comparison
 
@@ -340,7 +340,6 @@ def exact_match(output: str, expected: str) -> float:
         scoring_function=exact_match,
     ),
     execution=ExecutionOptions(
-        execution_mode="edge_analytics",
         parallel_config=ParallelConfig(
             mode="parallel",
             trial_concurrency=2,
