@@ -86,7 +86,7 @@ export TRAIGENT_API_KEY="sk_..."
 
 ### Development Mode (Recommended for Getting Started)
 
-Mock mode is the keyless dev path — LLM calls are intercepted and return canned responses. Activate it in code:
+Mock mode is the keyless dev path — it intercepts **LLM calls** and returns canned responses so you can validate your pipeline without provider keys or spend. Activate it in code:
 
 ```python
 from traigent.testing import enable_mock_mode_for_quickstart
@@ -94,16 +94,13 @@ from traigent.testing import enable_mock_mode_for_quickstart
 enable_mock_mode_for_quickstart()
 ```
 
-…and skip Traigent backend chatter via env:
-
-```bash
-export TRAIGENT_OFFLINE_MODE=true
-```
+That's all you need — mock mode only touches the LLM call; it does **not** change where results go.
 
 <!-- PROTECTED -->
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
-- `TRAIGENT_OFFLINE_MODE=true` skips backend communication so you do not need a running Traigent backend.
+- **Results still sync.** With `TRAIGENT_API_KEY` set, a mock run is tracked in the portal exactly like a real run — only the model output is canned. You do **not** need to take the backend offline to use mock mode. (No key? It runs fully local and skips tracking.)
+- **Mock scores are not model quality.** Canned responses scored by a demo scorer only confirm the pipeline is wired correctly; they say nothing about which model is actually better.
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
 
 ### Legacy Env-Var Path
@@ -117,7 +114,7 @@ The previous quickstart docs taught `export TRAIGENT_MOCK_LLM=true`. That env va
 Traigent supports `.env` files via `python-dotenv` (included in the `integrations` extra). Create a `.env` file in your project root:
 
 ```
-TRAIGENT_OFFLINE_MODE=true
+TRAIGENT_API_KEY=sk-...
 TRAIGENT_DEBUG=1
 ```
 
