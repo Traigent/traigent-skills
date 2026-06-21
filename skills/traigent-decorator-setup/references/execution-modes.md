@@ -1,8 +1,8 @@
-# Execution Reference: `algorithm`, `offline`, and `ExecutionOptions`
+# Optimization Execution Reference: `algorithm`, `offline`, and `ExecutionOptions`
 
 Where and how an optimization run executes is controlled by two top-level knobs on
 `@traigent.optimize(...)` — `algorithm` and `offline` — plus the advanced `ExecutionOptions`
-bundle. There is **no `execution_mode` selector** anymore.
+bundle.
 
 ```python
 import traigent
@@ -13,12 +13,12 @@ from traigent.api.decorators import ExecutionOptions
 
 | Knob | Type | Default | Description |
 |---|---|---|---|
-| `algorithm` | `str` | `"auto"` | `"auto"` uses the Traigent **cloud optimizer** (the backend proposes each next trial) while your trials run locally; on a connectivity failure it auto-degrades to a local search. `"grid"`/`"random"` run **entirely locally** (no backend round-trip). Smart optimizers (`"bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"`, `"optuna_grid"`, `"optuna_cmaes"`, `"optuna_nsga2"`, `"nsga2"`, `"cmaes"`, `"nsgaii"`, `"nsga_ii"`, `"cma_es"`) are **cloud-only** and raise if the cloud is unavailable. Unknown names are rejected. |
-| `offline` | `bool` | `False` | `True` forces a fully local run with **zero backend egress** — no session, no tracking, no uploads. Equivalent env: `TRAIGENT_OFFLINE=1`. |
+| `algorithm` | `str` | `"auto"` | `"auto"` uses the Traigent **cloud smart optimizer** while your trials run in your environment. `"grid"`/`"random"` run local search in the SDK. Smart optimizers (`"bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"`, `"optuna_grid"`, `"optuna_cmaes"`, `"optuna_nsga2"`, `"nsga2"`, `"cmaes"`, `"nsgaii"`, `"nsga_ii"`, `"cma_es"`) are **cloud-only**. Unknown names are rejected. |
+| `offline` | `bool` | `False` | `True` forces a fully local run with **zero backend egress** and no portal sync. |
 
 ```python
 @traigent.optimize(
-    algorithm="auto",     # cloud-first; falls back to local if the backend is unreachable
+    algorithm="auto",     # default cloud smart optimizer
     configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
 )
 def my_func(query: str) -> str:
@@ -28,43 +28,34 @@ def my_func(query: str) -> str:
 
 ## How each choice behaves
 
-- **`algorithm="auto"` (default) — cloud-first.** The Traigent cloud proposes each configuration and learns across runs; **your agent and your LLM calls always run locally** (Traigent never runs your compute). If there is no API key or the backend is unreachable, the run **auto-degrades to a local `grid`/`random` search** with a one-line warning so it still completes (results sync on the next successful run). Smart algorithms requested explicitly do **not** silently downgrade — they raise.
-- **`algorithm="grid"` / `"random"` — local.** The search runs entirely in the SDK with no backend round-trip. Non-sensitive telemetry still syncs if a key is present and `offline` is not set.
-- **Smart algorithms — cloud-only.** Requesting one without a reachable cloud raises a clear error (`TRAIGENT_REQUIRE_CLOUD=1` also forces this — it disables the auto-fallback).
-- **`offline=True` — no egress.** Nothing leaves your machine. Use this for air-gapped or strict-no-network runs.
+- **`algorithm="auto"` (default).** The Traigent cloud smart optimizer proposes each configuration and learns across runs; **your agent and your LLM calls run in your environment**. Results sync to the portal.
+- **`algorithm="grid"` / `"random"` — local search.** The search runs in the SDK. Results still sync to the portal unless `offline=True`.
+- **Smart algorithms — cloud-only.** `"bayesian"`, `"optuna"`, and related smart optimizers require a Traigent cloud connection. Do not present them as local options.
+- **`offline=True` — zero egress.** Nothing leaves your machine and results do not sync to the portal. Use this for air-gapped or strict-no-network runs.
 
-> **Privacy, said honestly.** On the cloud path the SDK sends only **configuration IDs and numeric metrics** — never your dataset's example inputs, prompts, or outputs. "Privacy-preserving" is therefore the default. But it is **not** the same as "no network": for zero outbound traffic, use `offline=True`.
+> **Data flow.** Portal-synced runs send configuration IDs and numeric metrics, not dataset example inputs, prompts, or outputs. For zero outbound traffic, use `offline=True`.
 
-## Result provenance
+## Result sync
 
-Every result records where it actually ran in its metadata `source`:
-
-| `source` | Meaning |
-|---|---|
-| `cloud_brain` | The cloud optimizer proposed the trials. |
-| `local_fallback` | `auto` degraded to a local search because the backend was unreachable. |
-| `explicit_local` | You chose `grid`/`random` (local by request). |
-| `offline` | `offline=True` (or `TRAIGENT_OFFLINE`) — zero egress. |
+Results sync to the Traigent portal in every non-offline run, including local `grid` and
+`random` search. `offline=True` disables backend egress and portal sync.
 
 ## Optimizing an external service (HTTP / MCP)
 
-To optimize an agent exposed behind an external HTTP/MCP endpoint, pass an **external-service
-evaluator** (this replaces the old `execution_mode="hybrid_api"` + flat `hybrid_api_*` params).
-The optimizer stays local; only each trial's *evaluation* is dispatched to your service.
+To optimize an agent exposed behind an external HTTP/MCP endpoint, put the service call in
+your decorated function or in an `EvaluationOptions(custom_evaluator=...)` implementation.
+Keep the search strategy configured with `algorithm` and `offline`.
 
 ```python
-from traigent.api.decorators import ExternalServiceEvaluator, HybridAPIOptions
+from traigent.api.decorators import EvaluationOptions
+
+def score_remote_response(func, config, example):
+    # Call your HTTP/MCP service here and return the evaluator result your app expects.
+    return call_remote_evaluator(func, config, example)
 
 @traigent.optimize(
-    evaluator=ExternalServiceEvaluator(
-        hybrid_api=HybridAPIOptions(
-            endpoint="https://my-agent.example.com/evaluate",
-            transport_type="auto",      # "http" | "mcp" | "auto"
-            batch_size=1,
-            timeout=30.0,
-            auth_header="Bearer ...",
-        )
-    ),
+    evaluation=EvaluationOptions(custom_evaluator=score_remote_response),
+    algorithm="auto",
     configuration_space={"temperature": [0.0, 0.3, 0.7]},
 )
 def my_remote_agent(query: str) -> str: ...
@@ -83,28 +74,6 @@ def my_remote_agent(query: str) -> str: ...
 | `parallel_config` | `ParallelConfig \| dict \| None` | `None` | Parallel execution settings (see below). |
 | `max_total_examples` | `int \| None` | `None` | Cap total examples evaluated across all trials. |
 | `samples_include_pruned` | `bool` | `True` | Whether pruned trials count toward sample limits. |
-
-### Deprecated (do not use in new code)
-
-These are **removed from the public surface** and accepted only as deprecated kwargs that emit a
-`DeprecationWarning`:
-
-| Removed | Use instead |
-|---|---|
-| `execution_mode="hybrid"` / `"standard"` | the default (`algorithm="auto"`) |
-| `execution_mode="edge_analytics"` / `"local"` | `offline=True` |
-| `execution_mode="hybrid_api"` + `hybrid_api_*` | `evaluator=ExternalServiceEvaluator(hybrid_api=HybridAPIOptions(...))` |
-| `execution_mode="cloud"` | the default (`algorithm="auto"`) — note `cloud` historically ran *locally* |
-| `privacy_enabled` | nothing — the cloud path is content-free by default; use `offline=True` for no egress |
-| `cloud_fallback_policy` | nothing — auto-fallback is built in; `TRAIGENT_REQUIRE_CLOUD=1` disables it |
-
-## Environment variables
-
-| Variable | Effect |
-|---|---|
-| `TRAIGENT_OFFLINE=1` (or legacy `TRAIGENT_OFFLINE_MODE=1`) | Force fully-local, zero-egress execution. |
-| `TRAIGENT_REQUIRE_CLOUD=1` | Disable the auto-fallback — a cloud-unavailable run errors instead of degrading to local. |
-| `TRAIGENT_API_KEY` | Enables cloud optimization (`algorithm="auto"`) and portal tracking. Without it, `auto` degrades to a local search. |
 
 ## ParallelConfig Integration
 

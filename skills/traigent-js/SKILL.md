@@ -1,6 +1,6 @@
 ---
 name: traigent-js
-description: "Set up and run native JavaScript/TypeScript optimization with @traigent/sdk. Use when a user asks to optimize a JS/TS agent function, use optimize(spec)(agentFn), configure param.* search spaces, define evaluation.data/loadData metrics, use getTrialParam/getTrialConfig, or author hybrid config-space specs for Traigent-compatible services."
+description: "Set up and run native JavaScript/TypeScript optimization with @traigent/sdk. Use when a user asks to optimize a JS/TS agent function, use optimize(spec)(agentFn), configure param.* search spaces, define evaluation.data/loadData metrics, use getTrialParam/getTrialConfig, or author backend-routed config-space specs for Traigent-compatible services."
 license: Apache-2.0
 metadata:
   author: Traigent
@@ -73,7 +73,7 @@ answerQuestion.applyBestConfig(result);
 ## Runtime Rules
 
 - Native/local algorithms are `grid` and `random`.
-- Smart strategy names such as `bayesian`, `tpe`, `hyperband`, and `frontier_scout` are backend-routed/hybrid surfaces, not native local search implementations.
+- Smart strategy names such as `bayesian`, `tpe`, `hyperband`, and `frontier_scout` are backend-routed surfaces, not native local search implementations.
 - TVL accepts `pareto_optimal` as a compatibility alias for `frontier_scout`.
 - `evaluation.data` or `evaluation.loadData` is required for high-level native optimization.
 <!-- PROTECTED -->
@@ -89,7 +89,7 @@ answerQuestion.applyBestConfig(result);
 | Python decorator suggested in JS | Use `optimize(spec)(agentFn)` from `@traigent/sdk`. |
 | No evaluation data | Add `evaluation.data` or `evaluation.loadData`. |
 | Context missing in delayed callbacks | Use `wrapCallback` or run host-managed execution inside `TrialContext.run(...)`. |
-| Smart strategy expected to run locally | Use native `grid`/`random`, or route through a Traigent-compatible backend/hybrid surface. |
+| Smart strategy expected to run locally | Use native `grid`/`random`, or route through a Traigent-compatible backend service. |
 | Cost budget not enforced | Return numeric `metrics.total_cost` or `metrics.cost` for every trial. |
 | Metric cannot be aggregated | Return numeric or boolean metrics with stable names. |
 

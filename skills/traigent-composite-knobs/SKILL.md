@@ -33,7 +33,7 @@ The canonical wiring is:
 4. Inside the decorated function, call `execute_composite` with the pattern's `.structure`, current tuned config, live calibrated CVAR values, and any `signals` or `predicates`.
 5. Build ordinary numeric metrics, call `merge_composite_measures(metrics, run)`, and return exactly `(output, metrics)`.
 
-Use this hybrid/cloud return shape from `composite_telemetry.py`:
+Use this portal-compatible return shape from `composite_telemetry.py`:
 
 ```python
 import traigent

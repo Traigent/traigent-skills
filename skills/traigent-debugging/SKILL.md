@@ -39,7 +39,7 @@ Then run your optimization. Debug output includes:
 - Trial execution start/stop/status
 - Metric extraction and scoring
 - Cost tracking per trial
-- Backend communication (if using cloud mode)
+- Backend communication for cloud smart optimization and portal result sync
 
 ## Common Errors
 
@@ -253,9 +253,6 @@ Test your optimization setup without making real API calls or connecting to the 
 **Recommended (in-code):**
 
 ```python
-import os
-os.environ["TRAIGENT_OFFLINE_MODE"] = "true"  # skip backend; not auto-blocked in prod
-
 import traigent
 from traigent.testing import enable_mock_mode_for_quickstart
 
@@ -267,15 +264,11 @@ enable_mock_mode_for_quickstart()  # raises in production
 ```bash
 # Mock LLM responses (no API keys needed) — hard-blocked in production
 export TRAIGENT_MOCK_LLM=true
-
-# Skip backend connection (no cloud service needed)
-export TRAIGENT_OFFLINE_MODE=true
 ```
 
 ```python
 import os
 os.environ["TRAIGENT_MOCK_LLM"] = "true"
-os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
 
 import traigent
 
@@ -284,13 +277,14 @@ import traigent
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"], "temperature": [0.0, 0.5]},
     objectives=["accuracy"],
     max_trials=5,
+    offline=True,
 )
 def my_func(text):
     config = traigent.get_config()
     # LLM calls return mock responses
     return "mock response"
 
-# Runs without API keys or backend
+# Runs without API keys, provider calls, or backend egress
 results = my_func.optimize_sync()
 ```
 
@@ -368,10 +362,9 @@ From Python:
 import traigent
 print(traigent.__version__)
 
-# Check if mock mode is active
+# Check common diagnostic environment settings
 import os
 print(f"Mock LLM: {os.getenv('TRAIGENT_MOCK_LLM', 'false')}")
-print(f"Offline mode: {os.getenv('TRAIGENT_OFFLINE_MODE', 'false')}")
 print(f"Log level: {os.getenv('TRAIGENT_LOG_LEVEL', 'INFO')}")
 ```
 

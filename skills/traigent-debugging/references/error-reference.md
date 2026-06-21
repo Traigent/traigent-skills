@@ -87,7 +87,7 @@ Raised when configuration values are invalid, features are unsupported, or requi
 - Non-list values in `configuration_space`
 - Empty configuration space
 - Invalid parameter names
-- Unsupported execution mode
+- Unsupported `algorithm` value or invalid `offline` setting
 
 **Resolution**: Check the error message and fix the configuration. Use `TRAIGENT_DEBUG=1` for the full traceback.
 
