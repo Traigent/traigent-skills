@@ -246,6 +246,38 @@ traigent.utils.exceptions.EvaluationError: Evaluator raised exception for config
 
 Check your evaluator function handles edge cases (empty output, None, unexpected formats).
 
+### Session-create fails with `400 VALIDATION_ERROR` / `429 quota_exceeded`
+
+**When raised**: A cloud/hybrid run is rejected at session-create because a **plan quota** —
+most often `optimization_samples` — has no headroom. Optimization is metered per billing
+period along two dimensions: `optimization_samples` (examples evaluated; the usual binding
+one) and `optimization_trials` (one session = one trial). A run is admitted only if
+`current_usage + (max_trials × dataset_size)` stays under the `optimization_samples` limit;
+on the free/hobby tier that limit is small (500), so a few runs can exhaust it and then
+**every new run is blocked (0 trials)** until the monthly reset.
+
+The backend's canonical signal is HTTP **429** with `error_code: "quota_exceeded"`, carrying
+`resource_type`, `current_usage`, `limit`, and `reset_at`.
+
+**Fixes**:
+
+- Check your remaining quota and the reset date on the portal billing/usage page (or your
+  plan's usage summary) before retrying.
+- Size the next run to fit: lower `max_trials`, use a smaller eval dataset, or wait for the
+  monthly reset. See the `traigent-run-optimization` skill ("Quota & Run Sizing").
+- Upgrade the plan if you consistently need more `optimization_samples` headroom.
+
+**Current SDK behavior (as of SDK 0.16.0 — may change):**
+
+- A quota block can **surface as a generic `400 VALIDATION_ERROR`** on session-create rather
+  than a clean 429, so a run that "looks like bad input" may actually be a quota block. If
+  session-create fails right at the start of a cloud run, check quota before assuming the
+  config or dataset is malformed.
+- **Offline / mock dry-runs currently consume `optimization_samples` quota too** — a small
+  (~12-example) dry-run was observed to burn ~32 samples. So a dry-run is not "free" against
+  quota: either check your remaining headroom first, or budget for the dry-run itself when
+  you are near the ceiling. (This is a current implementation detail, not a guarantee.)
+
 ### FeatureNotAvailableError
 
 **When raised**: A feature requires an uninstalled plugin or optional dependency.

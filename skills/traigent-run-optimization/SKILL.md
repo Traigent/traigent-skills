@@ -197,6 +197,34 @@ To skip the interactive cost approval handshake in an already-approved pipeline:
 export TRAIGENT_COST_APPROVED=true
 ```
 
+### Quota & Run Sizing
+
+Cost is not the only budget. Cloud/hybrid optimization is also **metered by plan quota**,
+independent of dollars spent. Two dimensions are tracked per billing period (they reset
+monthly):
+
+- **`optimization_samples`** — examples evaluated across all sessions. This is the dimension
+  that usually binds first. A run reserves roughly `max_trials × dataset_size` samples.
+- **`optimization_trials`** — one optimization session counts as one trial.
+
+A run is **admitted only when both dimensions have headroom**: it is rejected at
+session-create if `current_usage + (max_trials × dataset_size)` would exceed the
+`optimization_samples` limit (or if you are out of `optimization_trials`). On the free/hobby
+tier the sample ceiling is small (500), so a few medium runs can exhaust it, after which new
+runs are blocked (0 trials) until the monthly reset.
+
+Before a large run:
+
+1. **Check your current usage** on the portal billing/usage page (or your plan's usage
+   summary) so you know how much of the `optimization_samples` budget remains.
+2. **Size the run to fit**: pick `max_trials × dataset_size` so it lands under the remaining
+   headroom. Shrink `max_trials`, use a smaller eval dataset, or split the run across periods
+   if it would not fit. A blocked session-create can look like an input error — see the
+   `traigent-debugging` skill ("session-create fails with quota") to recognize it.
+
+> Quota is separate from the per-run dollar `cost_limit` above: staying under `cost_limit`
+> does not guarantee you are under `optimization_samples`, and vice versa.
+
 ### Strict Cost Accounting
 
 Fail fast if cost tracking cannot extract costs from LLM responses:
