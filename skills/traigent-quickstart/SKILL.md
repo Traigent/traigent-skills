@@ -125,6 +125,12 @@ export OPENAI_API_KEY=sk-...
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
 
+> **Before your first real run, verify your model IDs are live.** Provider catalogs change — a
+> delisted or renamed ID causes a 404 or a degraded/unpriced trial. Preflight with
+> `traigent models --provider <p> --check <model_id>` (see the CLI Quick Reference below), or
+> query the provider's live catalog directly (e.g. `curl -s https://openrouter.ai/api/v1/models`
+> for OpenRouter). The `traigent-integrations` skill covers multi-provider model verification.
+
 See `references/environment-variables.md` for all available environment variables.
 
 ## Your First Optimization
@@ -260,7 +266,7 @@ traigent onboard         # guided first-run setup wizard
 | -------------------------- | ------------------------------------------------------------------- |
 | `traigent quickstart`      | Run the bundled mock-mode demo (keyless, zero-setup, always works)  |
 | `traigent onboard`         | Guided setup for Traigent in this project (API key, project, env)   |
-| `traigent models`          | List and validate model IDs before your first run (model preflight) |
+| `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-3-haiku-20240307` (model preflight; catalogs change) |
 | `traigent recommend`       | Evidence-backed TVAR recommendations for your agent/task type       |
 | `traigent recommend-eval`  | Metric and evaluator recommendations for your task type             |
 | `traigent generate-config` | Scaffold a full `@traigent.optimize()` config for your function     |
@@ -276,6 +282,7 @@ traigent onboard         # guided first-run setup wizard
 - **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options. `"grid"` and `"random"` run locally; `"bayesian"` and `"optuna"` require a Traigent cloud connection.
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.
 - **Use framework integrations** -- Install `traigent[integrations]` for LangChain, OpenAI, and Anthropic adapters.
+- **Verify model IDs before a real run** -- Catalogs change; run `traigent models --provider <p> --check <id>` (or query the provider's live catalog) so a delisted/renamed ID doesn't cause a 404 or a degraded, unpriced trial. See `traigent-integrations`.
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
