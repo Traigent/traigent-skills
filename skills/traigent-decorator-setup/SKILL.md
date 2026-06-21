@@ -17,7 +17,7 @@ Use this skill when you need to go beyond the basic `@traigent.optimize()` decor
 - Injection modes (how optimized configs reach your function)
 - Execution behavior (`algorithm` and `offline` — where and how optimization runs)
 - Multi-objective optimization with weighted objectives
-- Privacy-preserving or local-only execution
+- Portal-synced or zero-egress local execution
 
 ## Imports
 
@@ -196,13 +196,12 @@ def my_func(query: str) -> str:
 
 ## Execution Options
 
-Where and how runs execute is controlled by two knobs — `algorithm` and `offline` — not an
-`execution_mode` selector (that was removed). See `references/execution-modes.md` for the full
-reference.
+Where and how runs execute is controlled by two public knobs: `algorithm` and `offline`.
+See `references/execution-modes.md` for the full reference.
 
 ```python
 @traigent.optimize(
-    algorithm="auto",   # default: cloud-first, auto-falls-back to local if the backend is unreachable
+    algorithm="auto",   # default: Traigent cloud smart optimizer
     offline=False,      # set True for a fully-local, zero-egress run
     execution=ExecutionOptions(local_storage_path="./results"),
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
@@ -217,16 +216,15 @@ def my_func(query: str) -> str:
 
 | Choice | Behavior |
 |---|---|
-| `algorithm="auto"` (default) | Cloud optimizer proposes trials; your agent/LLM run locally. Degrades to a local search (with a warning) if the backend is unreachable. |
-| `algorithm="grid"` / `"random"` | Runs entirely locally — no backend round-trip. |
-| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/… | Smart optimizers — **cloud-only**; raise if the cloud is unavailable. |
-| `offline=True` | Fully local, **zero backend egress** (also `TRAIGENT_OFFLINE=1`). |
+| `algorithm="auto"` (default) | Traigent cloud smart optimizer proposes trials; your agent/LLM calls run in your environment. Results sync to the portal. |
+| `algorithm="grid"` / `"random"` | Local search in the SDK. Results still sync to the portal unless `offline=True`. |
+| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/… | Smart optimizers are **cloud-only**; use them only with a Traigent cloud connection. |
+| `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
 
-The cloud path sends only configuration IDs and numeric metrics — never your example
-inputs/outputs/prompts. "Privacy-preserving" is the default; for *no network at all* use
-`offline=True`. To optimize an external HTTP/MCP service, pass
-`evaluator=ExternalServiceEvaluator(hybrid_api=HybridAPIOptions(endpoint=...))`. The legacy
-`execution_mode`, `privacy_enabled`, and `cloud_fallback_policy` params are deprecated no-ops.
+The synced path sends configuration IDs and numeric metrics for portal result history, not
+example inputs/outputs/prompts. Use `offline=True` only when zero outbound traffic is required.
+To optimize an external HTTP/MCP service, put the service call in your decorated function or
+custom evaluator; keep optimization strategy on the same `algorithm`/`offline` knobs.
 
 ## Config Access Lifecycle
 
@@ -318,7 +316,7 @@ answer = answer_question("What is the capital of France?")
 - `references/execution-modes.md` - Full ExecutionOptions field reference
 - `traigent-build-evaluator` - Deep evaluator implementation, ExampleResult, custom evaluators, and evaluator templates
 - `traigent-choose-metric` - Metric interview and objective selection before decorator wiring
-- `traigent-quickstart` - Installation, API-key setup, and first optimization (prerequisite reading for cloud mode)
+- `traigent-quickstart` - Installation, API-key setup, and first cloud-smart optimization
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

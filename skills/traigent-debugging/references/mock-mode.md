@@ -18,22 +18,17 @@ Traigent supports two ways to activate mock mode:
 | `traigent.testing.enable_mock_mode_for_quickstart()` (in code) | Recommended. Production-blocked. |
 | `TRAIGENT_MOCK_LLM=true` (env var) | Legacy fallback. Honored only outside production. |
 
-And one always-needed env var:
-
-| Variable | Purpose |
-|---|---|
-| `TRAIGENT_OFFLINE_MODE=true` | Skip backend/cloud connection. No Traigent service needed. |
-
-These are typically used together for testing, CI/CD, and development.
+For zero-egress testing, pass `offline=True` on the decorator or optimization call. Mock
+mode controls provider-call interception; `offline=True` controls Traigent backend egress and
+portal result sync.
 
 ## Enabling Mock Mode
 
 ### Environment Variables
 
 ```bash
-# Both together (most common)
+# Legacy fallback for mock LLM responses
 export TRAIGENT_MOCK_LLM=true
-export TRAIGENT_OFFLINE_MODE=true
 
 # Then run your code
 python my_optimization.py
@@ -42,12 +37,9 @@ python my_optimization.py
 ### In Python
 
 ```python
-import os
-os.environ["TRAIGENT_MOCK_LLM"] = "true"
-os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
+from traigent.testing import enable_mock_mode_for_quickstart
 
-# Must be set BEFORE importing traigent
-import traigent
+enable_mock_mode_for_quickstart()
 ```
 
 ### In pytest
@@ -58,13 +50,12 @@ import pytest
 @pytest.fixture(autouse=True)
 def mock_traigent_env(monkeypatch):
     monkeypatch.setenv("TRAIGENT_MOCK_LLM", "true")
-    monkeypatch.setenv("TRAIGENT_OFFLINE_MODE", "true")
 ```
 
 Or via pytest CLI:
 
 ```bash
-TRAIGENT_MOCK_LLM=true TRAIGENT_OFFLINE_MODE=true pytest tests/
+TRAIGENT_MOCK_LLM=true pytest tests/
 ```
 
 ## What TRAIGENT_MOCK_LLM Does
@@ -101,13 +92,13 @@ This means mock mode is useful for testing:
 - End-to-end optimization flow
 - CI/CD pipeline integration
 
-## What TRAIGENT_OFFLINE_MODE Does
+## What `offline=True` Does
 
-When `TRAIGENT_OFFLINE_MODE=true`:
+When `offline=True`:
 
 - No connection to the Traigent cloud backend
 - Results are stored locally only
-- No experiment syncing or cloud dashboard updates
+- No experiment syncing or portal dashboard updates
 - No authentication required
 
 Use this when:
@@ -116,12 +107,27 @@ Use this when:
 - Developing locally without a backend service
 - Testing the SDK in isolation
 
-## Using Both Together
+## Using Mock Mode with `offline=True`
 
-The most common pattern is to enable both:
+The most common zero-egress validation pattern is to enable mock mode and pass `offline=True`:
 
-```bash
-TRAIGENT_MOCK_LLM=true TRAIGENT_OFFLINE_MODE=true python my_script.py
+```python
+import traigent
+from traigent.testing import enable_mock_mode_for_quickstart
+
+enable_mock_mode_for_quickstart()
+
+@traigent.optimize(
+    eval_dataset="data.jsonl",
+    configuration_space={"model": ["gpt-4o-mini"], "temperature": [0.0, 0.5]},
+    objectives=["accuracy"],
+    offline=True,
+)
+def my_func(text):
+    config = traigent.get_config()
+    return f"Response using {config['model']}"
+
+results = my_func.optimize_sync(max_trials=3)
 ```
 
 This gives you a fully self-contained environment:
@@ -151,14 +157,13 @@ Mock mode has important limitations to be aware of:
 name: Test Optimization Setup
 on: [push]
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    env:
-      TRAIGENT_MOCK_LLM: "true"
-      TRAIGENT_OFFLINE_MODE: "true"
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+	  test:
+	    runs-on: ubuntu-latest
+	    env:
+	      TRAIGENT_MOCK_LLM: "true"
+	    steps:
+	      - uses: actions/checkout@v4
+	      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: pip install traigent[dev]
@@ -170,11 +175,10 @@ jobs:
 Validate your optimization setup before spending API budget:
 
 ```python
-import os
-os.environ["TRAIGENT_MOCK_LLM"] = "true"
-os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
-
 import traigent
+from traigent.testing import enable_mock_mode_for_quickstart
+
+enable_mock_mode_for_quickstart()
 
 @traigent.optimize(
     eval_dataset="data.jsonl",
@@ -184,6 +188,7 @@ import traigent
     },
     objectives=["accuracy"],
     max_trials=3,
+    offline=True,
 )
 def my_func(text):
     config = traigent.get_config()
@@ -200,11 +205,10 @@ print("Setup is valid - ready for real optimization")
 
 ## Disabling Mock Mode
 
-Remove or unset the environment variables:
+For the legacy env-var path, remove or unset the variable:
 
 ```bash
 unset TRAIGENT_MOCK_LLM
-unset TRAIGENT_OFFLINE_MODE
 ```
 
 Or set to any value other than `true`:

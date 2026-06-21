@@ -15,7 +15,7 @@ Use this skill when you need to build, grow, or audit the examples that Traigent
 
 - Start from existing fixtures, golden sets, support tickets, logs, traces, or manually labeled examples.
 - Keep tuning and holdout slices separate. Never tune and claim on the same slice.
-- Mock or offline-check first with `TRAIGENT_OFFLINE_MODE`, `enable_mock_mode_for_quickstart()`, and a small local sample.
+- Mock or zero-egress check first with `enable_mock_mode_for_quickstart()`, `offline=True`, and a small local sample.
 - Before paid provider or backend runs, estimate cost, ask for user approval, and set `TRAIGENT_RUN_COST_LIMIT`.
 - For task-shape recipes, read `references/dataset-recipes.md`.
 
@@ -56,9 +56,9 @@ Holdout rules:
 - Rebuild the tuning slice freely; touch the holdout only to add newly sourced, independently reviewed examples.
 - Report tune-slice movement and holdout movement separately.
 
-## Synthesize examples client-side, privacy-preserving
+## Synthesize examples client-side with no backend egress
 
-Use client-side synthesis when data is sensitive, labels need local review, or the user has not approved a backend run. `DatasetGrowthOptions(privacy_mode=True)` keeps synthesis on the user's LLM path. Tag synthetic rows in metadata and keep the seed ids.
+Use client-side synthesis when data is sensitive, labels need local review, or the user has not approved a backend run. Passing your own `llm` keeps synthesis on the user's LLM path. Tag synthetic rows in metadata and keep the seed ids.
 
 ```python
 from traigent.evaluators import Dataset
@@ -69,7 +69,6 @@ seed_dataset = Dataset.from_jsonl("eval/tune.jsonl")
 growth_options = DatasetGrowthOptions(
     examples_per_round=6,
     max_total_examples_added=30,
-    privacy_mode=True,
 )
 synthesizer = ExampleSynthesizer(
     llm=call_private_llm,
@@ -110,7 +109,6 @@ def answer(question: str) -> str:
 growth_options = DatasetGrowthOptions(
     examples_per_round=4,
     max_total_examples_added=12,
-    privacy_mode=True,
 )
 
 results = answer.optimize_with_guidance(
@@ -142,7 +140,7 @@ Relevant backend endpoints:
 | `GET /api/v1/datasets/{id}/examples` | Read examples for review or export. |
 | `POST /api/v1/datasets/{id}/examples` | Add reviewed examples. |
 
-Prefer client-side synthesis when privacy review is incomplete, no account is configured, or the user has not approved paid work.
+Prefer client-side synthesis when data-handling review is incomplete, no account is configured, or the user has not approved paid work.
 
 ## Score examples after a run
 

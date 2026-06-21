@@ -1,6 +1,6 @@
 ---
 name: traigent-quickstart
-description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, environment variables, mock mode, and running a first optimization."
+description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, API-key setup, mock mode, and running a first optimization."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -18,7 +18,7 @@ Use this skill when:
 - Creating a first `@traigent.optimize` decorated function
 - Building an evaluation dataset in JSONL format
 - Verifying that the installation works correctly
-- Running optimization in mock/offline mode for development
+- Running optimization in mock mode for development
 
 ## Installation
 
@@ -56,7 +56,7 @@ See `references/installation-extras.md` for the full table of extras and their c
 
 ## Get Your Traigent API Key
 
-Backend-connected features (cloud execution, dataset synthesis, analytics dashboards, the CI gate) all require `TRAIGENT_API_KEY`. There are two ways to obtain it:
+Backend-connected features (the default cloud smart optimizer, dataset synthesis, analytics dashboards, the CI gate, and portal result history) all require `TRAIGENT_API_KEY`. There are two ways to obtain it:
 
 ### Portal key (experiments-scoped)
 
@@ -80,13 +80,13 @@ export TRAIGENT_API_KEY="sk_..."
 
 **Which key to use?** The portal experiments-scoped key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
-**If `TRAIGENT_API_KEY` is unset**, the default `algorithm="auto"` run auto-falls-back to a local search (with a warning) and skips cloud tracking — no dashboards, no result history. Set the key to use the cloud optimizer and portal features (or pass `offline=True` to run fully local on purpose).
+For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero egress is required.
 
 ## Environment Setup
 
 ### Development Mode (Recommended for Getting Started)
 
-Mock mode is the keyless dev path — LLM calls are intercepted and return canned responses. Activate it in code:
+Mock mode is the keyless dev path for provider calls — LLM calls are intercepted and return canned responses. Activate it in code:
 
 ```python
 from traigent.testing import enable_mock_mode_for_quickstart
@@ -94,16 +94,9 @@ from traigent.testing import enable_mock_mode_for_quickstart
 enable_mock_mode_for_quickstart()
 ```
 
-…and skip Traigent backend chatter via env:
-
-```bash
-export TRAIGENT_OFFLINE_MODE=true
-```
-
 <!-- PROTECTED -->
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
-- `TRAIGENT_OFFLINE_MODE=true` skips backend communication so you do not need a running Traigent backend.
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
 
 ### Legacy Env-Var Path
@@ -117,7 +110,8 @@ The previous quickstart docs taught `export TRAIGENT_MOCK_LLM=true`. That env va
 Traigent supports `.env` files via `python-dotenv` (included in the `integrations` extra). Create a `.env` file in your project root:
 
 ```
-TRAIGENT_OFFLINE_MODE=true
+TRAIGENT_API_KEY=sk_...
+OPENAI_API_KEY=sk-...
 TRAIGENT_DEBUG=1
 ```
 
@@ -173,7 +167,7 @@ def classify_query(query: str) -> str:
 
 async def main():
     # Step 1: dry-run (mock) — confirm the setup works and review estimated cost
-    results = await classify_query.optimize(max_trials=6, algorithm="grid")
+    results = await classify_query.optimize(max_trials=6)  # default algorithm="auto"
 
     # Inspect results
     print(f"Best config: {results.best_config}")
@@ -196,7 +190,7 @@ asyncio.run(main())
 If you prefer synchronous execution:
 
 ```python
-results = classify_query.optimize_sync(max_trials=6, algorithm="grid")
+results = classify_query.optimize_sync(max_trials=6)  # default algorithm="auto"
 ```
 
 ### Key Concepts
@@ -238,7 +232,7 @@ You can include additional fields for metadata, but `input` and `output` are req
 traigent info
 ```
 
-This prints the installed version, Python version, available integrations, and execution mode.
+This prints the installed version, Python version, available integrations, and optimization defaults.
 
 ### Verify from Python
 
