@@ -1,6 +1,6 @@
 ---
 name: traigent-decorator-setup
-description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators."
+description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming/labeling a run with experiment_name (there is no tags/metadata argument), using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -17,6 +17,7 @@ Use this skill when you need to go beyond the basic `@traigent.optimize()` decor
 - Injection modes (how optimized configs reach your function)
 - Execution behavior (`algorithm` and `offline` — where and how optimization runs)
 - Multi-objective optimization with weighted objectives
+- Naming/labeling a run with `experiment_name` (there is no `tags`/`metadata` argument)
 - Portal-synced or zero-egress local execution
 
 ## Imports
@@ -70,6 +71,32 @@ def my_func(query: str) -> str:
     # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
     return call_llm(model=cfg["model"], prompt=query)
 ```
+
+## Naming and Labeling Runs
+
+Use `experiment_name` to label a run so you can identify it in the Traigent portal and in local
+storage. It is the **only** labeling mechanism on the decorator — the current SDK has **no
+`tags` or `metadata` argument** on `@traigent.optimize()` or on the runtime `.optimize()` /
+`.optimize_sync()` methods. Do not try to attach tags; encode whatever you need (agent name,
+variant, dataset version) into a descriptive `experiment_name` instead.
+
+```python
+@traigent.optimize(
+    experiment_name="txt2sql v3 (claude, ACL>=0.8)",  # shown in the portal; the only label knob
+    objectives=["accuracy"],
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
+)
+def my_func(query: str) -> str:
+    cfg = traigent.get_config()
+    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
+    return call_llm(model=cfg["model"], prompt=query)
+```
+
+- `experiment_name` accepts spaces and punctuation (it is not a Python identifier).
+- When omitted, the decorated function's `__name__` is used; the `TRAIGENT_EXPERIMENT_NAME`
+  environment variable is used as a fallback if no explicit value is passed.
+- The label is set on the **decorator**, not on the run call — there is no `experiment_name`
+  (or `tags`) parameter on `.optimize()` / `.optimize_sync()`.
 
 ## Evaluation Setup
 

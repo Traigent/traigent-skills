@@ -186,6 +186,36 @@ keyword on `@traigent.optimize`).
 
 The `failed_providers` attribute contains a list of `(provider, error_type)` tuples.
 
+### Model 404 / Retired Provider Endpoint
+
+**Symptom**: A trial fails with a `404` / "model not found" / "no such model" error from the
+provider, or a run *degrades* — one or more trials silently fail or report `$0.00` cost (the ID
+isn't in the pricing table) while others succeed. The function and config are fine; the **model
+ID is stale**. Provider catalogs change: IDs get delisted, renamed, or quietly re-routed to a
+retired backend. Two IDs we have seen go dead: `openrouter/google/gemini-flash-1.5-8b`
+(delisted → 404) and `openrouter/anthropic/claude-3.5-haiku` (routes to a retired Bedrock
+endpoint → degraded run).
+
+**Fix**: verify the ID against the provider's *live* catalog, then swap any dead ID for a
+verified live one:
+
+```bash
+# SDK-native preflight (no spend): valid -> true/false against the provider's known models
+traigent models --provider openai
+traigent models --provider anthropic --check claude-3-haiku-20240307
+```
+
+```bash
+# Or query the provider's live catalog directly (e.g. OpenRouter, not covered by `traigent models`)
+curl -s https://openrouter.ai/api/v1/models | grep -o '"id":"[^"]*"' | sort
+```
+
+Prefer a specific versioned ID (e.g. `claude-3-haiku-20240307`) over a moving `-latest` alias —
+versioned IDs price reliably; an alias can resolve to a model whose pricing isn't recognized yet,
+leaving cost untracked. The `traigent-integrations` skill's
+[Verifying model availability](../traigent-integrations/references/litellm.md#verifying-model-availability)
+section has the full per-provider check list.
+
 ### InvocationError
 
 **When raised**: The decorated function raised an exception during a trial.
@@ -315,6 +345,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
    ```
 3. Test your function standalone (outside optimization) with a sample config
 4. Check provider status pages for outages
+5. Check for a stale/dead model ID (404 or `$0.00` unpriced trials) — verify with `traigent models --provider <p> --check <id>` and swap any delisted/renamed ID (see "Model 404 / Retired Provider Endpoint" above)
 
 ### Wrong results (low scores)
 

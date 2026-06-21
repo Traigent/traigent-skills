@@ -52,6 +52,11 @@ print(results.objectives)       # ["accuracy"]
 print(results.timestamp)        # datetime when optimization completed
 ```
 
+> **Identifying a run in the portal.** Runs are labeled by the `experiment_name` set on the
+> decorator (`@traigent.optimize(experiment_name=...)`), not by tags — the current SDK has no
+> `tags`/`metadata` argument. To make runs easy to find later, give each one a descriptive
+> `experiment_name` before you run it. See `traigent-decorator-setup` → "Naming and Labeling Runs".
+
 `best_score` is `None` when no trial produced a valid score (e.g., all trials failed). Always check before comparing:
 
 ```python

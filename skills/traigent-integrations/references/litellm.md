@@ -2,6 +2,8 @@
 
 > **Dry-run before any real multi-provider run.** Especially for multi-provider sweeps (multiple providers × temperatures × max_tokens × trials can mean hundreds or thousands of LLM calls). Always activate `enable_mock_mode_for_quickstart()`, run, review the cost estimate, and get explicit approval before a real run. See the `traigent` skill for the mandatory dry-run-first / cost-approval workflow.
 
+> **Verify every model ID is LIVE before a real run.** Provider catalogs change constantly — models get delisted, renamed, or quietly re-routed to a retired backend. A dead ID is not a harmless typo: it surfaces as a 404, or (worse) a *degraded run* where one trial silently fails or its cost stays unpriced ($0.00) because the ID isn't in the pricing table. Every model ID in this reference was valid when written and **must be re-checked against each provider's live catalog before you use it** — treat them as illustrative, not evergreen. See [Verifying model availability](#verifying-model-availability) below.
+
 ## Overview
 
 LiteLLM provides a unified `completion()` API that works across 100+ LLM providers. Combined with Traigent, you can optimize model selection across providers in a single optimization run.
@@ -37,8 +39,48 @@ LiteLLM uses model name prefixes to route to the correct provider. Common provid
 | Azure OpenAI | `azure/` | `azure/my-deployment` |
 | Together AI | `together_ai/` | `together_ai/meta-llama/Llama-3-70b-chat-hf` |
 | Groq | `groq/` | `groq/llama3-70b-8192` |
+| OpenRouter | `openrouter/` | `openrouter/openai/gpt-4o-mini`, `openrouter/anthropic/claude-3-haiku`, `openrouter/google/gemini-2.5-flash-lite` |
 
-See LiteLLM documentation for the full provider list.
+The example IDs above were live when written; **re-verify them** before use (see the next
+section). Prefer a specific versioned ID (e.g. `claude-3-haiku-20240307`) over a moving
+`-latest` alias — pinned versions price reliably, whereas an alias can resolve to a model
+whose pricing isn't in the table yet (unpriced `$0.00` cost). See the LiteLLM documentation
+for the full provider list.
+
+## Verifying model availability
+
+Catalogs drift. Before any real run, confirm each model ID is both **routable** (the
+provider still serves it) and **price-recognized** (so cost tracking and `cost_limit`
+actually work). Two real-world failures we have hit:
+
+- `openrouter/google/gemini-flash-1.5-8b` — **delisted**; returns a 404 from the live
+  OpenRouter catalog.
+- `openrouter/anthropic/claude-3.5-haiku` — routes to a **retired** Amazon Bedrock
+  endpoint; the trial degrades instead of erroring cleanly.
+
+**SDK-native preflight (recommended).** The CLI validates an ID against a provider's known
+model list without spending anything:
+
+```bash
+# List a provider's known model IDs, or validate a specific one (valid: true/false)
+traigent models --provider openai
+traigent models --provider anthropic --check claude-3-haiku-20240307
+traigent models --provider gemini --check gemini-1.5-flash --json
+```
+
+**Query the provider catalog directly.** When a provider isn't covered by `traigent models`
+(e.g. OpenRouter), hit its live catalog endpoint and grep for the exact ID:
+
+```bash
+# OpenRouter: the slug after "openrouter/" must appear in the live catalog
+curl -s https://openrouter.ai/api/v1/models | grep -o '"id":"[^"]*"' | sort
+# OpenAI:    curl -s https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"
+# Together:  curl -s https://api.together.xyz/v1/models -H "Authorization: Bearer $TOGETHER_API_KEY"
+# Anthropic: curl -s https://api.anthropic.com/v1/models -H "x-api-key: $ANTHROPIC_API_KEY" -H "anthropic-version: 2023-06-01"
+```
+
+If an ID is missing from the live list, swap it for one that is — do not assume an ID that
+worked last month still resolves today.
 
 ## Basic Multi-Provider Example
 
@@ -49,6 +91,8 @@ import litellm
 @traigent.optimize(
     eval_dataset="qa_eval.jsonl",
     configuration_space={
+        # Re-verify these IDs are live + priced before running (see "Verifying
+        # model availability"); catalogs change and dead IDs cause 404s / $0.00 cost.
         "model": [
             "gpt-4o-mini",
             "gpt-4o",
@@ -134,6 +178,7 @@ import litellm
 @traigent.optimize(
     eval_dataset="eval_prompts.jsonl",
     configuration_space={
+        # Re-verify these IDs are live + priced before running (catalogs change).
         "model": [
             "gpt-4o-mini",
             "gpt-4o",

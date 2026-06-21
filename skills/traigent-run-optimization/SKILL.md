@@ -33,6 +33,11 @@ The primary way to run optimization. Returns an `OptimizationResult`.
 > print(results.estimated_cost_usd)  # review estimate before approving
 > ```
 > Only proceed to the real run below after the user explicitly approves the cost.
+>
+> **Verify model IDs are live first.** Catalogs change — a delisted/renamed ID causes a 404 or a
+> degraded, unpriced trial that wastes the run. Preflight with
+> `traigent models --provider <p> --check <id>` (or the provider's live catalog endpoint). See
+> the `traigent-integrations` skill for multi-provider verification.
 
 ```python
 import traigent
@@ -41,6 +46,7 @@ import traigent
     eval_dataset="qa_test.jsonl",
     objectives=["accuracy"],
     configuration_space={
+        # Verify these IDs are live + priced before a real run (catalogs change).
         "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.1, 0.5, 0.9],
     },
