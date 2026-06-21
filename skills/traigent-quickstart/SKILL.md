@@ -278,6 +278,7 @@ traigent onboard         # guided first-run setup wizard
 ## Next Steps
 
 - **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
+- **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-run-optimization` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-configuration-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
 - **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options. `"grid"` and `"random"` run locally; `"bayesian"` and `"optuna"` require a Traigent cloud connection.
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.
