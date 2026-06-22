@@ -14,23 +14,32 @@ from **66.7% -> 90.0%** execution-match accuracy on a 30-question SPIDER slice
 **while staying on the cheapest model** (~$0.00009/query). The gains came from
 **prompt-structure knobs on a cheap model**, not from a premium model.
 
-## Run 1 = a fast scout (lowest-latency options, but a REAL space)
-Make run 1 land in **minutes** AND still let the optimizer actually search. Speed comes
-from **few trials + cheap low-latency models**, NOT from a tiny space — keep it at
-**~several hundred perms** (don't hand the optimizer a handful of configs). A good scout:
-- **Models:** 2 cheap, low-latency (e.g. `gpt-4o-mini`, `deepseek-chat`).
-- **Knobs in play:** temperature{0.0, 0.2} · fewshot_k{0, 2} · fewshot_selector{fixed, similar}
-  · schema_context{ddl_fk, ddl_fk_rows} · output_mode{sql_only, allow_prose}; `direct`
-  generation, `repair` off (state that you fixed it for latency).
-- That's `2·2·2·2·2·2 = 64`–ish; nudge toward a few hundred by adding a 3rd model or a
-  schema option. **Search:** bayesian, **~12–15 trials**, plateau on → minutes, not a grid.
+## The two-run lesson arc (the demo that lands)
+**Always state the permutation count** — when you present the plan, when you launch,
+and when you report results. Repeat it every time; it's how the user sees the space
+the optimizer is searching.
 
-That run shows which knobs move accuracy vs cost. **Run 2 then nails it:** add the
-ceiling levers (`schema_context = m_schema, compact`) and a 3rd cheap model, keep the
-knobs IN PLAY (don't collapse to run-1 winners on thin evidence), weight accuracy-first.
-Don't combine `plan_then_sql`/`cot` with `output_mode=sql_only` — they conflict (the
-model wants to write reasoning the sql-only instruction forbids); keep output_mode
-unpinned so the optimizer pairs them correctly.
+**Run 1 — the raw model/cost picture (~100 perms, 3 model tiers, MINOR knobs only).**
+- **Models: span 3 tiers** — high/premium (e.g. `gpt-4o`), mid (e.g. `claude-3-haiku`),
+  low/cheap (e.g. `gpt-4o-mini`).
+- **Vary only MINOR knobs:** temperature{0,0.2,0.4} · fewshot_k{0,2,4} · repair{off,on} ·
+  output_mode{sql_only, allow_prose}. **Hold the high-impact STRUCTURAL levers at basic
+  defaults** — `generation_path=direct`, `schema_context=ddl_fk`, `fewshot_selector=fixed`.
+- `3 · 3 · 3 · 2 · 2 = 108` perms; bayesian ~18 trials, plateau on.
+- **What it teaches:** with nothing structural optimized, the result is basically *"you
+  get what you pay for"* — the model tier dominates and the cheap model hasn't shone yet.
+
+**Run 2 — make the low-cost model SHINE (add the structural levers).**
+- Keep the cheap model (+ maybe one mid), and **add the high-impact knobs that were held
+  back:** `schema_context = {ddl_fk_rows, m_schema, compact}`, `fewshot_selector = similar`,
+  `generation_path = {direct, plan_then_sql}`, keep `output_mode` unpinned.
+- Keep the space at **~several hundred perms** and state the count; weight accuracy-first.
+- **What it teaches:** the **low-cost model leaps up to match or beat the premium at a
+  fraction of the cost.** *That jump — structural optimization on a cheap model — is the
+  Traigent value.*
+- Caveat: don't pair `plan_then_sql`/`cot` with `output_mode=sql_only` (they conflict —
+  sql-only forbids the reasoning the plan path wants); keep output_mode unpinned so the
+  optimizer pairs them correctly.
 
 > **Injection:** you write `run_agent` ONCE; Traigent injects each trial's knob values
 > (model, temperature, fewshot_k, …) and your agent reads them via

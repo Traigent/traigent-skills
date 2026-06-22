@@ -48,8 +48,11 @@ spend on the user's **go**. Never pick a parameter silently.
 - **Goldilocks space size — ALWAYS keep the configuration space at ~several hundred
   permutations** (roughly 100–600). Below ~50 perms you've hand-built a tiny grid the
   optimizer can't add value to — that's *handing it the answer*, not optimizing. Above
-  a few thousand, the trial budget barely scratches it. Report the permutation count
-  every run and keep it in this band.
+  a few thousand, the trial budget barely scratches it. Keep it in this band.
+- **ALWAYS state the permutation count, every time** — when you present the plan, when
+  you launch the run, and when you report results. Repeat it; the perm count is how the
+  user sees the size of the space the optimizer is searching (and whether you've
+  over-collapsed it).
 - **Speed comes from FEWER TRIALS and cheap, low-latency models — NOT from shrinking
   the space.** A fast scout = a *several-hundred-perm* space sampled lightly (~10–15
   trials of cheap low-latency models, `direct` paths), so it lands in minutes AND still
