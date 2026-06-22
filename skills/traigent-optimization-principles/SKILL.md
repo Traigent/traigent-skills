@@ -108,4 +108,4 @@ score is one choice among several efficient ones.
 > practices that make those count — drop or adjust any before this ships in the docs.
 
 ## See also
-- `traigent-text2sql-optimize` · `traigent-next-run` · `traigent-next-run` · `traigent-run-recommendations`
+- `traigent-text2sql-optimize` · `traigent-next-run` · `traigent-run-recommendations`
