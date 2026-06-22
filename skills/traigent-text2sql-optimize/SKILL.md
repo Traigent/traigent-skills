@@ -20,7 +20,7 @@ from **66.7% -> 90.0%** execution-match accuracy on a 30-question SPIDER slice
 3. **Mock dry-run** (free) to validate the pipeline.
 4. **Real run** (bayesian, cost-capped, portal-tracked).
 5. **Iterate** — drop knobs that didn't move accuracy, swap in better ones
-   (see `traigent-knob-iteration`), then re-run.
+   (see `traigent-next-run`), then re-run.
 
 ## 1. Objective scoring (non-negotiable for SQL)
 Score by **execution match**, not string match: run the predicted SQL and the
@@ -90,6 +90,6 @@ plan-then-SQL beat both the mid model and (separately) a premium Sonnet config
 
 ## See also
 - `traigent-optimization-principles` — the key recommendations to apply on every run.
-- `traigent-knob-iteration` — measure which knobs mattered; swap in better ones.
-- `traigent-results-consolidation` — collect all runs into one analysis workbook.
+- `traigent-next-run` — measure which knobs mattered; swap in better ones.
+- `traigent-next-run` — collect all runs into one analysis workbook.
 - `traigent-run-recommendations` — robust setup so runs go smoothly and track to the portal.

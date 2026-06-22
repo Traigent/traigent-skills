@@ -40,7 +40,7 @@ are reproducible and so a later run can promote it to a tuned knob.
 After a run, rank each knob's impact on the objective. **Drop knobs with ~zero
 impact** (especially if they add cost — e.g. self-consistency that doesn't raise
 accuracy) and **swap in better structural knobs**. This run-over-run swap is where
-the ceiling moves (it took us 83.3% -> 90%). (See `traigent-knob-iteration`.)
+the ceiling moves (it took us 83.3% -> 90%). (See `traigent-next-run`.)
 
 ### P5 — Vary the objective weights across runs
 Run **multiple weight profiles**, don't fix one. Start **accuracy-first**
@@ -101,4 +101,4 @@ score is one choice among several efficient ones.
 > practices that make those count — drop or adjust any before this ships in the docs.
 
 ## See also
-- `traigent-text2sql-optimize` · `traigent-knob-iteration` · `traigent-results-consolidation` · `traigent-run-recommendations`
+- `traigent-text2sql-optimize` · `traigent-next-run` · `traigent-next-run` · `traigent-run-recommendations`

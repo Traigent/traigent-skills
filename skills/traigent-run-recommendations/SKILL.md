@@ -71,4 +71,4 @@ run.
 7. Name the run with its permutation count + weights + date.
 
 ## See also
-- `traigent-run-plan` (MANDATORY: ask ALL run options before every run) · `traigent-optimization-principles` · `traigent-text2sql-optimize` · `traigent-knob-iteration` · `traigent-results-consolidation`
+- `traigent-run-plan` (MANDATORY: ask ALL run options before every run) · `traigent-optimization-principles` · `traigent-text2sql-optimize` · `traigent-next-run` · `traigent-next-run`
