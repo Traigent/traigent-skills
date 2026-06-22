@@ -1,6 +1,6 @@
 ---
 name: traigent-run-optimization
-description: "Run Traigent optimization: async/sync execution, algorithm selection, cost limits, stop conditions, and parallel trials. Use when calling func.optimize() or optimize_sync(), choosing algorithms (grid/random/bayesian/optuna), setting max_trials or cost_limit, configuring parallel execution, or handling CostLimitExceeded."
+description: "Run Traigent optimization: async/sync execution, algorithm selection, cost limits, stop conditions, and parallel trials. Use when calling func.optimize() or optimize_sync(), choosing algorithms (auto/grid/random/bayesian/optuna), setting max_trials or cost_limit, configuring parallel execution, or handling CostLimitExceeded."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -14,7 +14,7 @@ metadata:
 Use this skill after you have decorated a function with `@traigent.optimize()` and need to:
 
 - Run optimization (async or sync)
-- Choose an algorithm (grid, random, bayesian, optuna)
+- Choose an algorithm (auto, grid, random, bayesian, optuna)
 - Set trial limits, timeouts, or cost budgets
 - Configure parallel trial execution
 - Handle cost limit exceptions
@@ -33,6 +33,11 @@ The primary way to run optimization. Returns an `OptimizationResult`.
 > print(results.estimated_cost_usd)  # review estimate before approving
 > ```
 > Only proceed to the real run below after the user explicitly approves the cost.
+>
+> **Verify model IDs are live first.** Catalogs change — a delisted/renamed ID causes a 404 or a
+> degraded, unpriced trial that wastes the run. Preflight with
+> `traigent models --provider <p> --check <id>` (or the provider's live catalog endpoint). See
+> the `traigent-integrations` skill for multi-provider verification.
 
 ```python
 import traigent
@@ -41,6 +46,7 @@ import traigent
     eval_dataset="qa_test.jsonl",
     objectives=["accuracy"],
     configuration_space={
+        # Verify these IDs are live + priced before a real run (catalogs change).
         "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.1, 0.5, 0.9],
     },
@@ -50,14 +56,14 @@ def answer(question: str) -> str:
     return call_llm(model=cfg["model"], temperature=cfg["temperature"], prompt=question)
 
 # Run optimization (real — only after dry-run approval)
-results = await answer.optimize(max_trials=10, algorithm="grid")
+results = await answer.optimize(max_trials=10)  # default algorithm="auto"
 ```
 
 ### optimize() Parameters
 
 | Parameter | Type | Description |
 |---|---|---|
-| `algorithm` | `str \| None` | Algorithm: `"grid"`, `"random"`, `"bayesian"`, `"optuna"`. Falls back to decorator setting. |
+| `algorithm` | `str \| None` | Algorithm: `"auto"` (default cloud smart optimizer), `"grid"`/`"random"` (local search), or cloud-only smart algorithms such as `"bayesian"`/`"optuna"`. Falls back to decorator setting. |
 | `max_trials` | `int \| None` | Maximum number of trials to run. |
 | `timeout` | `float \| None` | Maximum wall-clock time in seconds. |
 | `save_to` | `str \| None` | Path to save results to disk. |
@@ -113,7 +119,7 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 ### Bayesian Optimization *(cloud only)*
 
-> **Requires a Traigent cloud connection.** `algorithm="bayesian"` (and the other smart optimizers) run in the Traigent cloud, not the local SDK. Without `TRAIGENT_API_KEY` (or with `offline=True` / `TRAIGENT_REQUIRE_CLOUD=1` when the cloud is unreachable) it raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
+> **Requires a Traigent cloud connection.** `algorithm="bayesian"` (and the other smart optimizers) run in the Traigent cloud, not the local SDK. With `offline=True` or no Traigent cloud connection, it raises `OptimizationError`. Use `"grid"` or `"random"` for local search.
 
 Uses a surrogate model to guide the search toward promising configurations.
 
@@ -125,9 +131,9 @@ results = await func.optimize(max_trials=30, algorithm="bayesian")
 
 ### Optuna *(cloud only)*
 
-> **Requires a Traigent cloud connection.** `algorithm="optuna"` (and the other smart optimizers) run in the Traigent cloud, not the local SDK. Without `TRAIGENT_API_KEY` (or with `offline=True`) it raises `OptimizationError`. Use `"grid"` or `"random"` for fully local runs.
+> **Requires a Traigent cloud connection.** `algorithm="optuna"` (and the other smart optimizers) run in the Traigent cloud, not the local SDK. With `offline=True` or no Traigent cloud connection, it raises `OptimizationError`. Use `"grid"` or `"random"` for local search.
 
-Direct access to the Optuna optimization framework with advanced features like pruning and multi-objective optimization.
+Cloud-only access to advanced Optuna-style optimization with features like pruning and multi-objective optimization.
 
 ```python
 results = await func.optimize(max_trials=50, algorithm="optuna")
@@ -137,12 +143,15 @@ results = await func.optimize(max_trials=50, algorithm="optuna")
 
 ### Quick Comparison
 
-| Algorithm | Strategy | Config Space Size | Trial Budget | Local? |
+| Algorithm | Strategy | Config Space Size | Trial Budget | Where search runs |
 |---|---|---|---|---|
-| `"grid"` | Exhaustive | Small (< 50) | Matches space size | Yes |
-| `"random"` | Sampling | Any | Limited | Yes |
+| `"auto"` | Cloud smart default | Any | Any | Traigent cloud |
+| `"grid"` | Exhaustive | Small (< 50) | Matches space size | Local SDK search |
+| `"random"` | Sampling | Any | Limited | Local SDK search |
 | `"bayesian"` | Model-guided | Medium-Large | 15-100 | Cloud only |
 | `"optuna"` | Advanced sampling | Large | 30+ | Cloud only |
+
+Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero-egress path and does not sync results.
 
 <!-- PROTECTED -->
 ## Cost Controls
@@ -187,6 +196,34 @@ To skip the interactive cost approval handshake in an already-approved pipeline:
 ```bash
 export TRAIGENT_COST_APPROVED=true
 ```
+
+### Quota & Run Sizing
+
+Cost is not the only budget. Cloud/hybrid optimization is also **metered by plan quota**,
+independent of dollars spent. Two dimensions are tracked per billing period (they reset
+monthly):
+
+- **`optimization_samples`** — examples evaluated across all sessions. This is the dimension
+  that usually binds first. A run reserves roughly `max_trials × dataset_size` samples.
+- **`optimization_trials`** — one optimization session counts as one trial.
+
+A run is **admitted only when both dimensions have headroom**: it is rejected at
+session-create if `current_usage + (max_trials × dataset_size)` would exceed the
+`optimization_samples` limit (or if you are out of `optimization_trials`). On the free/hobby
+tier the sample ceiling is small (500), so a few medium runs can exhaust it, after which new
+runs are blocked (0 trials) until the monthly reset.
+
+Before a large run:
+
+1. **Check your current usage** on the portal billing/usage page (or your plan's usage
+   summary) so you know how much of the `optimization_samples` budget remains.
+2. **Size the run to fit**: pick `max_trials × dataset_size` so it lands under the remaining
+   headroom. Shrink `max_trials`, use a smaller eval dataset, or split the run across periods
+   if it would not fit. A blocked session-create can look like an input error — see the
+   `traigent-debugging` skill ("session-create fails with quota") to recognize it.
+
+> Quota is separate from the per-run dollar `cost_limit` above: staying under `cost_limit`
+> does not guarantee you are under `optimization_samples`, and vice versa.
 
 ### Strict Cost Accounting
 

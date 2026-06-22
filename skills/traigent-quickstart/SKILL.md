@@ -1,6 +1,6 @@
 ---
 name: traigent-quickstart
-description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, environment variables, mock mode, and running a first optimization."
+description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, API-key setup, mock mode, and running a first optimization."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -18,7 +18,7 @@ Use this skill when:
 - Creating a first `@traigent.optimize` decorated function
 - Building an evaluation dataset in JSONL format
 - Verifying that the installation works correctly
-- Running optimization in mock/offline mode for development
+- Running optimization in mock mode for development
 
 ## Installation
 
@@ -56,7 +56,7 @@ See `references/installation-extras.md` for the full table of extras and their c
 
 ## Get Your Traigent API Key
 
-Backend-connected features (cloud execution, dataset synthesis, analytics dashboards, the CI gate) all require `TRAIGENT_API_KEY`. There are two ways to obtain it:
+Backend-connected features (the default cloud smart optimizer, dataset synthesis, analytics dashboards, the CI gate, and portal result history) all require `TRAIGENT_API_KEY`. There are two ways to obtain it:
 
 ### Portal key (experiments-scoped)
 
@@ -80,7 +80,7 @@ export TRAIGENT_API_KEY="sk_..."
 
 **Which key to use?** The portal experiments-scoped key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
-**If `TRAIGENT_API_KEY` is unset**, the default `algorithm="auto"` run auto-falls-back to a local search (with a warning) and skips cloud tracking — no dashboards, no result history. Set the key to use the cloud optimizer and portal features (or pass `offline=True` to run fully local on purpose).
+For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero egress is required.
 
 ## Environment Setup
 
@@ -114,7 +114,8 @@ The previous quickstart docs taught `export TRAIGENT_MOCK_LLM=true`. That env va
 Traigent supports `.env` files via `python-dotenv` (included in the `integrations` extra). Create a `.env` file in your project root:
 
 ```
-TRAIGENT_API_KEY=sk-...
+TRAIGENT_API_KEY=sk_...
+OPENAI_API_KEY=sk-...
 TRAIGENT_DEBUG=1
 ```
 
@@ -127,6 +128,12 @@ export OPENAI_API_KEY=sk-...
 # or
 export ANTHROPIC_API_KEY=sk-ant-...
 ```
+
+> **Before your first real run, verify your model IDs are live.** Provider catalogs change — a
+> delisted or renamed ID causes a 404 or a degraded/unpriced trial. Preflight with
+> `traigent models --provider <p> --check <model_id>` (see the CLI Quick Reference below), or
+> query the provider's live catalog directly (e.g. `curl -s https://openrouter.ai/api/v1/models`
+> for OpenRouter). The `traigent-integrations` skill covers multi-provider model verification.
 
 See `references/environment-variables.md` for all available environment variables.
 
@@ -170,7 +177,7 @@ def classify_query(query: str) -> str:
 
 async def main():
     # Step 1: dry-run (mock) — confirm the setup works and review estimated cost
-    results = await classify_query.optimize(max_trials=6, algorithm="grid")
+    results = await classify_query.optimize(max_trials=6)  # default algorithm="auto"
 
     # Inspect results
     print(f"Best config: {results.best_config}")
@@ -193,7 +200,7 @@ asyncio.run(main())
 If you prefer synchronous execution:
 
 ```python
-results = classify_query.optimize_sync(max_trials=6, algorithm="grid")
+results = classify_query.optimize_sync(max_trials=6)  # default algorithm="auto"
 ```
 
 ### Key Concepts
@@ -235,7 +242,7 @@ You can include additional fields for metadata, but `input` and `output` are req
 traigent info
 ```
 
-This prints the installed version, Python version, available integrations, and execution mode.
+This prints the installed version, Python version, available integrations, and optimization defaults.
 
 ### Verify from Python
 
@@ -263,7 +270,7 @@ traigent onboard         # guided first-run setup wizard
 | -------------------------- | ------------------------------------------------------------------- |
 | `traigent quickstart`      | Run the bundled mock-mode demo (keyless, zero-setup, always works)  |
 | `traigent onboard`         | Guided setup for Traigent in this project (API key, project, env)   |
-| `traigent models`          | List and validate model IDs before your first run (model preflight) |
+| `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-3-haiku-20240307` (model preflight; catalogs change) |
 | `traigent recommend`       | Evidence-backed TVAR recommendations for your agent/task type       |
 | `traigent recommend-eval`  | Metric and evaluator recommendations for your task type             |
 | `traigent generate-config` | Scaffold a full `@traigent.optimize()` config for your function     |
@@ -275,10 +282,12 @@ traigent onboard         # guided first-run setup wizard
 ## Next Steps
 
 - **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
+- **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-run-optimization` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-configuration-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
 - **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options. `"grid"` and `"random"` run locally; `"bayesian"` and `"optuna"` require a Traigent cloud connection.
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.
 - **Use framework integrations** -- Install `traigent[integrations]` for LangChain, OpenAI, and Anthropic adapters.
+- **Verify model IDs before a real run** -- Catalogs change; run `traigent models --provider <p> --check <id>` (or query the provider's live catalog) so a delisted/renamed ID doesn't cause a 404 or a degraded, unpriced trial. See `traigent-integrations`.
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

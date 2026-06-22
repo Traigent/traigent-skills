@@ -39,7 +39,7 @@ Then run your optimization. Debug output includes:
 - Trial execution start/stop/status
 - Metric extraction and scoring
 - Cost tracking per trial
-- Backend communication (if using cloud mode)
+- Backend communication for cloud smart optimization and portal result sync
 
 ## Common Errors
 
@@ -186,6 +186,36 @@ keyword on `@traigent.optimize`).
 
 The `failed_providers` attribute contains a list of `(provider, error_type)` tuples.
 
+### Model 404 / Retired Provider Endpoint
+
+**Symptom**: A trial fails with a `404` / "model not found" / "no such model" error from the
+provider, or a run *degrades* — one or more trials silently fail or report `$0.00` cost (the ID
+isn't in the pricing table) while others succeed. The function and config are fine; the **model
+ID is stale**. Provider catalogs change: IDs get delisted, renamed, or quietly re-routed to a
+retired backend. Two IDs we have seen go dead: `openrouter/google/gemini-flash-1.5-8b`
+(delisted → 404) and `openrouter/anthropic/claude-3.5-haiku` (routes to a retired Bedrock
+endpoint → degraded run).
+
+**Fix**: verify the ID against the provider's *live* catalog, then swap any dead ID for a
+verified live one:
+
+```bash
+# SDK-native preflight (no spend): valid -> true/false against the provider's known models
+traigent models --provider openai
+traigent models --provider anthropic --check claude-3-haiku-20240307
+```
+
+```bash
+# Or query the provider's live catalog directly (e.g. OpenRouter, not covered by `traigent models`)
+curl -s https://openrouter.ai/api/v1/models | grep -o '"id":"[^"]*"' | sort
+```
+
+Prefer a specific versioned ID (e.g. `claude-3-haiku-20240307`) over a moving `-latest` alias —
+versioned IDs price reliably; an alias can resolve to a model whose pricing isn't recognized yet,
+leaving cost untracked. The `traigent-integrations` skill's
+[Verifying model availability](../traigent-integrations/references/litellm.md#verifying-model-availability)
+section has the full per-provider check list.
+
 ### InvocationError
 
 **When raised**: The decorated function raised an exception during a trial.
@@ -215,6 +245,38 @@ traigent.utils.exceptions.EvaluationError: Evaluator raised exception for config
 ```
 
 Check your evaluator function handles edge cases (empty output, None, unexpected formats).
+
+### Session-create fails with `400 VALIDATION_ERROR` / `429 quota_exceeded`
+
+**When raised**: A cloud/hybrid run is rejected at session-create because a **plan quota** —
+most often `optimization_samples` — has no headroom. Optimization is metered per billing
+period along two dimensions: `optimization_samples` (examples evaluated; the usual binding
+one) and `optimization_trials` (one session = one trial). A run is admitted only if
+`current_usage + (max_trials × dataset_size)` stays under the `optimization_samples` limit;
+on the free/hobby tier that limit is small (500), so a few runs can exhaust it and then
+**every new run is blocked (0 trials)** until the monthly reset.
+
+The backend's canonical signal is HTTP **429** with `error_code: "quota_exceeded"`, carrying
+`resource_type`, `current_usage`, `limit`, and `reset_at`.
+
+**Fixes**:
+
+- Check your remaining quota and the reset date on the portal billing/usage page (or your
+  plan's usage summary) before retrying.
+- Size the next run to fit: lower `max_trials`, use a smaller eval dataset, or wait for the
+  monthly reset. See the `traigent-run-optimization` skill ("Quota & Run Sizing").
+- Upgrade the plan if you consistently need more `optimization_samples` headroom.
+
+**Current SDK behavior (as of SDK 0.16.0 — may change):**
+
+- A quota block can **surface as a generic `400 VALIDATION_ERROR`** on session-create rather
+  than a clean 429, so a run that "looks like bad input" may actually be a quota block. If
+  session-create fails right at the start of a cloud run, check quota before assuming the
+  config or dataset is malformed.
+- **Offline / mock dry-runs currently consume `optimization_samples` quota too** — a small
+  (~12-example) dry-run was observed to burn ~32 samples. So a dry-run is not "free" against
+  quota: either check your remaining headroom first, or budget for the dry-run itself when
+  you are near the ceiling. (This is a current implementation detail, not a guarantee.)
 
 ### FeatureNotAvailableError
 
@@ -253,9 +315,6 @@ Test your optimization setup without making real API calls or connecting to the 
 **Recommended (in-code):**
 
 ```python
-import os
-os.environ["TRAIGENT_OFFLINE_MODE"] = "true"  # skip backend; not auto-blocked in prod
-
 import traigent
 from traigent.testing import enable_mock_mode_for_quickstart
 
@@ -267,15 +326,11 @@ enable_mock_mode_for_quickstart()  # raises in production
 ```bash
 # Mock LLM responses (no API keys needed) — hard-blocked in production
 export TRAIGENT_MOCK_LLM=true
-
-# Skip backend connection (no cloud service needed)
-export TRAIGENT_OFFLINE_MODE=true
 ```
 
 ```python
 import os
 os.environ["TRAIGENT_MOCK_LLM"] = "true"
-os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
 
 import traigent
 
@@ -284,13 +339,14 @@ import traigent
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"], "temperature": [0.0, 0.5]},
     objectives=["accuracy"],
     max_trials=5,
+    offline=True,
 )
 def my_func(text):
     config = traigent.get_config()
     # LLM calls return mock responses
     return "mock response"
 
-# Runs without API keys or backend
+# Runs without API keys, provider calls, or backend egress
 results = my_func.optimize_sync()
 ```
 
@@ -321,6 +377,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
    ```
 3. Test your function standalone (outside optimization) with a sample config
 4. Check provider status pages for outages
+5. Check for a stale/dead model ID (404 or `$0.00` unpriced trials) — verify with `traigent models --provider <p> --check <id>` and swap any delisted/renamed ID (see "Model 404 / Retired Provider Endpoint" above)
 
 ### Wrong results (low scores)
 
@@ -368,10 +425,9 @@ From Python:
 import traigent
 print(traigent.__version__)
 
-# Check if mock mode is active
+# Check common diagnostic environment settings
 import os
 print(f"Mock LLM: {os.getenv('TRAIGENT_MOCK_LLM', 'false')}")
-print(f"Offline mode: {os.getenv('TRAIGENT_OFFLINE_MODE', 'false')}")
 print(f"Log level: {os.getenv('TRAIGENT_LOG_LEVEL', 'INFO')}")
 ```
 

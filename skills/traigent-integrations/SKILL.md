@@ -119,7 +119,14 @@ See [LangChain reference](references/langchain.md) for RAG chain optimization an
 
 ## LiteLLM Multi-Provider
 
-LiteLLM provides a unified `completion()` interface across 100+ LLM providers. This makes it natural to optimize across providers with Traigent:
+LiteLLM provides a unified `completion()` interface across 100+ LLM providers (OpenAI, Anthropic, Google, OpenRouter, and more). This makes it natural to optimize across providers with Traigent:
+
+> **Verify model IDs are live + priced before a real run.** Provider catalogs change — IDs get
+> delisted, renamed, or re-routed to a retired backend. A dead ID causes a 404 or a *degraded*
+> trial whose cost stays unpriced ($0.00). The IDs below were valid when written; re-check them
+> first with `traigent models --provider <p> --check <id>` (or the provider's live catalog
+> endpoint — e.g. `curl -s https://openrouter.ai/api/v1/models` for OpenRouter). Prefer specific
+> versioned IDs over `-latest` aliases. See [LiteLLM reference](references/litellm.md#verifying-model-availability) and the `traigent-debugging` skill's "Model 404 / retired endpoint" entry.
 
 ```python
 import traigent
@@ -128,10 +135,11 @@ import litellm
 @traigent.optimize(
     eval_dataset="classification_eval.jsonl",
     configuration_space={
+        # Re-verify each ID is live + priced first (see note above); examples are illustrative.
         "model": [
             "gpt-4o-mini",          # OpenAI
             "gpt-4o",               # OpenAI
-            "claude-3-haiku-20240307",  # Anthropic
+            "claude-3-haiku-20240307",  # Anthropic (versioned, not a -latest alias)
             "claude-3-5-sonnet-20241022",  # Anthropic
             "gemini/gemini-1.5-flash",    # Google
         ],
@@ -167,6 +175,7 @@ LiteLLM handles API key routing automatically based on the model prefix. Set pro
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
 export GEMINI_API_KEY="..."      # LiteLLM reads GEMINI_API_KEY for gemini/* models
+export OPENROUTER_API_KEY="sk-or-..."  # LiteLLM reads OPENROUTER_API_KEY for openrouter/* models
 # Note: google-genai SDK reads GOOGLE_API_KEY; LiteLLM reads GEMINI_API_KEY — they are different env vars
 ```
 
