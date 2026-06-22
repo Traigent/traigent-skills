@@ -1,6 +1,6 @@
 ---
 name: traigent-next-run
-description: "After EVERY Traigent run, give the user the portal experiment link and recommend the next run — which models to keep/drop, which knobs moved the metric vs are dead (drop/add), the best config so far, and how to shift the objective weights. Then fold the user's decisions into the next run-plan. Results live in the Traigent PORTAL — do not build a local aggregate spreadsheet."
+description: "After EVERY Traigent run, give the user the portal experiment link and recommend the next run — which models to keep/drop, which knobs moved the metric vs are dead (drop/add), the best config so far, and how to shift the objective weights. Then fold the user's decisions into the next run-plan. Results live in the Traigent portal — share the experiment link after each run."
 license: Apache-2.0
 metadata:
   author: Traigent
@@ -23,10 +23,10 @@ config × one test example). "Best config", not "best eval"; "N samples", not "N
   under Experiments). That is their shareable, durable record:
   **Best Performers · the Pareto-optimal frontier · parameter importance · the
   Decision tab.**
-- **Do NOT build or maintain a local aggregate spreadsheet / cross-run workbook.**
-  Good data belongs in the Traigent portal — point the user there. (Confirm each run
-  registered with its trials; if a run doesn't appear, it's likely a temporary
-  connectivity issue — retry and confirm the `View` link populates.)
+- The portal is the durable home for results across runs — **always point the user
+  to the `View` link.** (Confirm each run registered with its trials; if a run
+  doesn't appear, it's likely a temporary connectivity issue — retry and confirm the
+  link populates.)
 
 ## 2. Recommend the next run (present these to the user)
 From the run's results (the trial table + the portal), tell the user:
