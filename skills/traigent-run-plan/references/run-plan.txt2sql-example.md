@@ -1,47 +1,46 @@
-# Traigent — Run Plan · txt2SQL SPIDER example  (READY TO RUN)
-#
-# Pre-filled so you get instant gratification on a known space — run it as-is to
-# see the whole loop. The ONLY thing you may want to change is MODELS (marked
-# below): keep the default recommendation, or swap in models you have keys for.
+# Traigent Run Plan Thin Client: text2SQL Example
 
-```
-# --- Run identity -----------------------------------------------------------
-RUN_NAME      = {your_name}_ACL_80_15_05_txt2sql_{YYYYMMDD-HHMM}   # <- just set {your_name}
-PROBLEM_SPACE = txt2sql
-AGENT         = SPIDER text2SQL example agent (set up by the example / icebreaker skill)
+Use this reference when the user wants a first run with the bundled text2SQL
+example. The point is to exercise the same service-backed loop the user's own
+agent will use.
 
-# --- What to optimize (KPIs) ------------------------------------------------
-OBJECTIVES    = accuracy, cost, latency
-ACL_WEIGHTS   = 0.80, 0.15, 0.05        # accuracy-first; a cheaper near-equal config can still win
+## Context To Gather
 
-# --- What to try ------------------------------------------------------------
-DATASET       = SPIDER, 30 questions — bundled with the example (objective execution-match scoring)
+- Task: bundled text2SQL example.
+- Dataset size and holdout: read from the example setup or ask the user to
+  confirm the installed fixture.
+- Objectives: ask the user which objectives matter for the demo.
+- Budget: ask for the maximum spend before any real run.
+- Egress: confirm whether the user permits sending a short summary to Traigent.
 
-MODELS        = openrouter/openai/gpt-4o-mini, openrouter/qwen/qwen3-coder:free
-#  ^^^ DEFAULT RECOMMENDATION: one low-cost (gpt-4o-mini) + one open-source (qwen, free tier).
-#  <-- CHANGE ONLY THIS LINE if you want different models (use ids you have keys for in .env;
-#      e.g. add a mid/premium tier). Everything else can stay as-is.
+## Fetch The Plan
 
-KNOBS         = # Traigent's recommended txt2SQL structural knobs — INJECTED into the example agent:
-                temperature      = 0.0, 0.2, 0.4
-                fewshot_k        = 0, 2, 4
-                candidate_count  = 1, 3
-                schema_context   = ddl_fk, ddl_fk_rows
-                repair           = off, on
-MAX_CONFIGS   = 20
-BUDGET_USD    = 1.0
-ALGORITHM     = bayesian
-SDK_PARAMS    = plateau stopping on
-OFFLINE       = false                   # DEFAULT: online, portal-tracked. true ONLY if explicitly chosen.
-EXECUTION_OPTIONS = ExecutionOptions(offline=OFFLINE)
-INJECTION_MODE = context
+Call the Traigent service with that context using `traigent plan` or the MCP tool
+`get_optimization_plan`. The service returns the objectives, models, knobs,
+algorithm, trial budget, cost cap, offline setting, and executable steps.
 
-# --- Carry-forward ----------------------------------------------------------
-#   First run — nothing yet. After it converges, note what won / lost here; you'll
-#   reuse this same run-plan pattern on your OWN agent (Part D onward).
-```
+Do not use this reference to choose example models, knobs, or counts. If the
+returned plan is missing a needed field, re-query Traigent or stop for user input.
 
-## Run it
-1. Set `{your_name}` in `RUN_NAME` (and change `MODELS` only if you want models other than the default).
-2. Paste the txt2SQL example prompt from the Setup Guide ("break the ice with the txt2SQL example first"). It uses this file.
-3. Watch it converge in your portal — then point Traigent at your own agent.
+## Present And Confirm
+
+Show each returned option group to the user:
+
+- objectives,
+- models,
+- knobs,
+- algorithm,
+- max trials,
+- cost limit,
+- offline setting,
+- returned steps,
+- `phase`, `evidence_level`, `caveat`, and `advisory`.
+
+Record confirmations in `run-plan.template.md`.
+
+## Execute
+
+Run the returned mock dry-run step first and stop. Launch the real run only after
+the user explicitly says to go and the service plan's cost cap is set.
+
+After completion, pass the run id and portal link to `traigent-next-run`.
