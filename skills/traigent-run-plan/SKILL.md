@@ -53,6 +53,12 @@ spend on the user's **go**. Never pick a parameter silently.
   you launch the run, and when you report results. Repeat it; the perm count is how the
   user sees the size of the space the optimizer is searching (and whether you've
   over-collapsed it).
+- **Always pair perms with trials, and frame the gap as the VALUE.** Smart algorithms
+  (bayesian/tpe/optuna) do NOT run every permutation — they sample a *fraction* and learn
+  from each trial to home in on the best (e.g. "**~18 trials explore a 108-perm space**" —
+  about 1 in 6 — and plateau may stop sooner). Say **"explores an N-perm space in T
+  trials,"** NEVER "runs/exhausts N permutations." Not brute-forcing the grid is the whole
+  point — that's smart search vs. grid search.
 - **Speed comes from FEWER TRIALS and cheap, low-latency models — NOT from shrinking
   the space.** A fast scout = a *several-hundred-perm* space sampled lightly (~10–15
   trials of cheap low-latency models, `direct` paths), so it lands in minutes AND still
