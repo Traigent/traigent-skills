@@ -222,3 +222,72 @@ skills:
       - traigent/tvl/promotion_gate.py
       - traigent/tvl/models.py
       - traigent/tvl/__main__.py
+
+  traigent-run-plan:
+    min_sdk_version: "0.16.0"
+    modules:
+      - traigent.api.decorators
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/core/optimized_function.py
+
+  traigent-next-run:
+    min_sdk_version: "0.16.0"
+    modules:
+      - traigent.core.optimized_function
+      - traigent.api.types
+    sdk_paths:
+      - traigent/core/optimized_function.py
+      - traigent/api/types.py
+
+  traigent-reflect-hard-examples:
+    min_sdk_version: "0.16.0"
+    backend_prefixes:
+      - /api/v1/analytics/example-scoring
+      - /api/v1/analytics/experiments
+    modules:
+      - traigent.generation
+      - traigent.analytics
+      - traigent.evaluators
+      - traigent.core.optimized_function
+      - traigent.testing
+    sdk_paths:
+      - traigent/generation/*
+      - traigent/analytics/example_insights.py
+      - traigent/evaluators/base.py
+      - traigent/core/optimized_function.py
+      - traigent/testing/*
+
+  traigent-optimization-principles:
+    min_sdk_version: "0.16.0"
+    modules:
+      - traigent.api.decorators
+      - traigent.core.optimized_function
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/core/optimized_function.py
+
+  traigent-run-recommendations:
+    min_sdk_version: "0.16.0"
+    modules:
+      - traigent.api.decorators
+      - traigent.utils.env_config
+    sdk_paths:
+      - traigent/api/decorators.py
+      - traigent/utils/env_config.py
+
+  traigent-text2sql-optimize:
+    min_sdk_version: "0.16.0"
+    modules:
+      - traigent
+      - traigent.api.decorators
+      - traigent.core.objectives
+      - traigent.evaluators.base
+      - traigent.testing
+    sdk_paths:
+      - traigent/__init__.py
+      - traigent/api/decorators.py
+      - traigent/core/objectives.py
+      - traigent/evaluators/base.py
+      - traigent/testing/*
+      - traigent/core/optimized_function.py

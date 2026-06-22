@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from packaging.version import Version
@@ -38,6 +39,28 @@ def test_skills_above_default_state_required_sdk_in_when_to_use(repo_root: Path,
         when_to_use = _section(skill_text, "## When to Use")
         required = f"Requires `traigent>={floor}`"
         assert required in when_to_use, f"{skill} floor {floor} requires literal {required!r} in When to Use"
+
+
+REMOVED_EXECUTION_VOCABULARY = {
+    "execution_mode": re.compile(r"\bexecution_mode\b", re.IGNORECASE),
+    "privacy_enabled": re.compile(r"\bprivacy_enabled\b", re.IGNORECASE),
+    "edge_analytics": re.compile(r"\bedge_analytics\b", re.IGNORECASE),
+    "hybrid_api": re.compile(r"\bhybrid_api\b", re.IGNORECASE),
+    "attribute injection": re.compile(r"\battribute[-_\s]+injection\b", re.IGNORECASE),
+    "JS bridge": re.compile(r"\bjs[-_\s]+bridge\b", re.IGNORECASE),
+}
+
+
+def test_skills_do_not_reintroduce_removed_execution_vocabulary(repo_root: Path) -> None:
+    violations: list[str] = []
+    for path in sorted((repo_root / "skills").glob("**/*.md")):
+        text = path.read_text(encoding="utf-8")
+        rel = path.relative_to(repo_root).as_posix()
+        for label, pattern in REMOVED_EXECUTION_VOCABULARY.items():
+            for match in pattern.finditer(text):
+                line = text.count("\n", 0, match.start()) + 1
+                violations.append(f"{rel}:{line}: removed execution vocabulary {label!r}")
+    assert not violations, "\n".join(violations)
 
 
 def _section(text: str, heading: str) -> str:

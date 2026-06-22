@@ -119,5 +119,5 @@ def my_func(query: str) -> str:
 
 To optimize an LLM application written in JavaScript/TypeScript, use the native
 **`@traigent/sdk`** (see the `traigent-js` skill) rather than the Python SDK. The former
-in-process "JS bridge" `ExecutionOptions` fields are not part of the Python `ExecutionOptions`
+in-process JavaScript runtime `ExecutionOptions` fields are not part of the Python `ExecutionOptions`
 — it is `extra="forbid"`, so passing them raises a pydantic `ValidationError` at construction.
