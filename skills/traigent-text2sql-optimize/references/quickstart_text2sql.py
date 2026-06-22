@@ -258,8 +258,9 @@ def main() -> int:
 
     print(f"mode={'MOCK' if args.mock else 'REAL'}  offline={offline}  algorithm={algorithm}  "
           f"trials={args.trials}  testbed={len(TESTBED)}")
-    import asyncio
-    result = asyncio.run(decorated.optimize(max_trials=args.trials, algorithm=algorithm))
+    # optimize_sync() = the convenience wrapper (manages the event loop); the async
+    # form is `await decorated.optimize(...)`.
+    result = decorated.optimize_sync(max_trials=args.trials, algorithm=algorithm)
     print("best_config:", getattr(result, "best_config", None) or getattr(result, "best_configuration", None))
     print("successful_trials:", getattr(result, "successful_trials", None),
           "/", getattr(result, "trials", None))

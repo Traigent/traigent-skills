@@ -72,7 +72,7 @@ with REAL values so the weighted objective uses real cost/latency.
 
 ## 5. Run it (SDK 0.16 API)
 ```python
-import asyncio, os, traigent
+import traigent
 from traigent.api.decorators import EvaluationOptions, ExecutionOptions
 # the selector is offline + algorithm — there is NO execution_mode/privacy_enabled in 0.16
 decorated = traigent.optimize(
@@ -80,7 +80,7 @@ decorated = traigent.optimize(
     evaluation=EvaluationOptions(eval_dataset=DS, custom_evaluator=exec_eval),
     execution=ExecutionOptions(offline=False),   # offline=False -> online/cloud (the "hybrid" default); True -> local zero-egress
 )(run_agent)
-results = asyncio.run(decorated.optimize(max_trials=25, algorithm="bayesian"))  # .optimize is async
+results = decorated.optimize_sync(max_trials=25, algorithm="bayesian")  # or: await decorated.optimize(...)
 ```
 - **0.16 selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg — **no** `execution_mode`/`privacy_enabled` (removed). Smart algorithms (`bayesian`/`tpe`/`optuna`) run in the Traigent cloud when `offline=False` + authenticated; `offline=True` keeps everything local.
 - **Mock first (free):** `os.environ["TRAIGENT_MOCK_LLM"]="true"` + `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (smart algorithms are cloud-only).
