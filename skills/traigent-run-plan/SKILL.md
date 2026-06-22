@@ -45,11 +45,21 @@ spend on the user's **go**. Never pick a parameter silently.
 - **Order each option's choices lowest-latency / cheapest / smallest FIRST, and mark
   that first one "(Recommended)".** A first-time user should be able to accept the
   recommended defaults with quick clicks and not wait long for a result.
-- **The FIRST run is a fast scout:** recommend the leanest space — one cheap,
-  low-latency model, the model knob + 1–2 cheap structural knobs, `direct` generation,
-  ~8–12 trials, plateau on — so results land in **minutes** and reveal the
-  accuracy↔cost picture. The SECOND run uses that insight to target high accuracy at
-  low cost. Do NOT make run 1 exhaustive.
+- **Goldilocks space size — ALWAYS keep the configuration space at ~several hundred
+  permutations** (roughly 100–600). Below ~50 perms you've hand-built a tiny grid the
+  optimizer can't add value to — that's *handing it the answer*, not optimizing. Above
+  a few thousand, the trial budget barely scratches it. Report the permutation count
+  every run and keep it in this band.
+- **Speed comes from FEWER TRIALS and cheap, low-latency models — NOT from shrinking
+  the space.** A fast scout = a *several-hundred-perm* space sampled lightly (~10–15
+  trials of cheap low-latency models, `direct` paths), so it lands in minutes AND still
+  lets the optimizer search. NEVER make run 1 fast by collapsing the space to a handful
+  of configs.
+- **Don't over-prune between runs.** Keep the high-value knobs IN PLAY so the optimizer
+  *discovers* the optimum; fix a knob to a prior winner ONLY on strong, repeated
+  evidence (not a run that plateaued after a handful of trials), and when you do fix
+  one, **say so and say why** (e.g. "repair fixed off — adds a 2nd call/latency"). Run 2
+  adds the ceiling levers and keeps searching; it does not shrink to the run-1 winners.
 - **Explain "injection" once, up front:** the user writes their agent ONCE; Traigent
   **injects** each trial's chosen knob values into it at runtime (read via
   `traigent.get_config()`), so a single function runs hundreds of configs — they never

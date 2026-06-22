@@ -14,21 +14,23 @@ from **66.7% -> 90.0%** execution-match accuracy on a 30-question SPIDER slice
 **while staying on the cheapest model** (~$0.00009/query). The gains came from
 **prompt-structure knobs on a cheap model**, not from a premium model.
 
-## Run 1 = a fast scout (recommend these — lowest latency, cheapest)
-For a first-timer, make run 1 land in **minutes** and still reveal the accuracy↔cost
-picture. Recommend the leanest space and present the lowest-latency options first:
-- **Model:** one cheap, low-latency model only (e.g. `gpt-4o-mini`).
-- **generation_path:** `direct` only (no extra reasoning tokens/latency).
-- **schema_context:** `ddl_fk, ddl_fk_rows` (cheap; shows if sample rows help).
-- **fewshot_k:** `0, 2` (shows if a couple of exemplars buy accuracy at a token cost).
-- **temperature:** `0.0`; **repair:** `off`; **output_mode:** `sql_only` (fewer tokens).
-- **Search:** bayesian, **~8–12 trials**, plateau on. ~8 perms → fast.
+## Run 1 = a fast scout (lowest-latency options, but a REAL space)
+Make run 1 land in **minutes** AND still let the optimizer actually search. Speed comes
+from **few trials + cheap low-latency models**, NOT from a tiny space — keep it at
+**~several hundred perms** (don't hand the optimizer a handful of configs). A good scout:
+- **Models:** 2 cheap, low-latency (e.g. `gpt-4o-mini`, `deepseek-chat`).
+- **Knobs in play:** temperature{0.0, 0.2} · fewshot_k{0, 2} · fewshot_selector{fixed, similar}
+  · schema_context{ddl_fk, ddl_fk_rows} · output_mode{sql_only, allow_prose}; `direct`
+  generation, `repair` off (state that you fixed it for latency).
+- That's `2·2·2·2·2·2 = 64`–ish; nudge toward a few hundred by adding a 3rd model or a
+  schema option. **Search:** bayesian, **~12–15 trials**, plateau on → minutes, not a grid.
 
 That run shows which knobs move accuracy vs cost. **Run 2 then nails it:** add the
-ceiling levers (`schema_context = m_schema, compact`), give a 2nd cheap model + the
-winning few-shot a shot, and weight accuracy-first. Don't combine `plan_then_sql`/`cot`
-with `output_mode=sql_only` — they conflict (the model wants to write reasoning the
-sql-only instruction forbids).
+ceiling levers (`schema_context = m_schema, compact`) and a 3rd cheap model, keep the
+knobs IN PLAY (don't collapse to run-1 winners on thin evidence), weight accuracy-first.
+Don't combine `plan_then_sql`/`cot` with `output_mode=sql_only` — they conflict (the
+model wants to write reasoning the sql-only instruction forbids); keep output_mode
+unpinned so the optimizer pairs them correctly.
 
 > **Injection:** you write `run_agent` ONCE; Traigent injects each trial's knob values
 > (model, temperature, fewshot_k, …) and your agent reads them via
