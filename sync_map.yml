@@ -240,6 +240,24 @@ skills:
       - traigent/core/optimized_function.py
       - traigent/api/types.py
 
+  traigent-reflect-hard-examples:
+    min_sdk_version: "0.16.0"
+    backend_prefixes:
+      - /api/v1/analytics/example-scoring
+      - /api/v1/analytics/experiments
+    modules:
+      - traigent.generation
+      - traigent.analytics
+      - traigent.evaluators
+      - traigent.core.optimized_function
+      - traigent.testing
+    sdk_paths:
+      - traigent/generation/*
+      - traigent/analytics/example_insights.py
+      - traigent/evaluators/base.py
+      - traigent/core/optimized_function.py
+      - traigent/testing/*
+
   traigent-optimization-principles:
     min_sdk_version: "0.16.0"
     modules:
