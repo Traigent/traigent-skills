@@ -70,17 +70,32 @@ Accuracy-dominant (0.80) lets a much cheaper, nearly-as-accurate config win. Whe
 using a custom_evaluator, emit `metrics={"accuracy":.., "cost":.., "latency":..}`
 with REAL values so the weighted objective uses real cost/latency.
 
-## 5. Run it
+## 5. Run it (SDK 0.16 API)
 ```python
-@traigent.optimize(evaluation=EvaluationOptions(eval_dataset=DS, custom_evaluator=exec_eval),
-                   execution=ExecutionOptions(execution_mode="hybrid", privacy_enabled=True),  # hybrid = DEFAULT
-                   objectives=OBJECTIVES, configuration_space=CONFIG_SPACE, default_config=BASELINE)
-def agent(question, db_id=None): ...
-results = agent.optimize_sync(max_trials=25, algorithm="bayesian")  # mock first!
+import asyncio, os, traigent
+from traigent.api.decorators import EvaluationOptions, ExecutionOptions
+# the selector is offline + algorithm — there is NO execution_mode/privacy_enabled in 0.16
+decorated = traigent.optimize(
+    configuration_space=CONFIG_SPACE, objectives=OBJECTIVES, default_config=BASELINE,
+    evaluation=EvaluationOptions(eval_dataset=DS, custom_evaluator=exec_eval),
+    execution=ExecutionOptions(offline=False),   # offline=False -> online/cloud (the "hybrid" default); True -> local zero-egress
+)(run_agent)
+results = asyncio.run(decorated.optimize(max_trials=25, algorithm="bayesian"))  # .optimize is async
 ```
-- **Mock first:** set `TRAIGENT_OFFLINE_MODE=true` + `enable_mock_mode_for_quickstart()` -> 0 cost.
-- **Real:** `TRAIGENT_RUN_COST_LIMIT` cap, `TRAIGENT_COST_APPROVED=true`, `algorithm="bayesian"`.
-- For bayesian, install `scikit-learn`+`scipy` (or use `tpe`/`optuna`).
+- **0.16 selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg — **no** `execution_mode`/`privacy_enabled` (removed). Smart algorithms (`bayesian`/`tpe`/`optuna`) run in the Traigent cloud when `offline=False` + authenticated; `offline=True` keeps everything local.
+- **Mock first (free):** `os.environ["TRAIGENT_MOCK_LLM"]="true"` + `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (smart algorithms are cloud-only).
+- **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, `algorithm="bayesian"`. For bayesian install `scikit-learn`+`scipy` (or use `tpe`/`optuna`).
+- **Dataset path:** 0.16 requires `eval_dataset` to live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.
+
+## Runnable example (copy-paste, self-contained)
+`references/quickstart_text2sql.py` is a **complete, runnable** version of everything
+above — it builds its own tiny SQLite DB (no external data), so it runs end-to-end
+in minutes and is the ice-breaker for the QuickStart:
+```
+python references/quickstart_text2sql.py --mock     # free; validates the pipeline
+python references/quickstart_text2sql.py --real      # cost-capped, portal-tracked
+```
+Swap the embedded DB + questions for the real SPIDER dev set to scale up — the wiring is identical.
 
 ## The proven winner (this slice)
 `gpt-4o-mini · temp 0.2 · fewshot_k 2 · fewshot_selector=similar · generation_path=plan_then_sql · repair off`
@@ -90,6 +105,6 @@ plan-then-SQL beat both the mid model and (separately) a premium Sonnet config
 
 ## See also
 - `traigent-optimization-principles` — the key recommendations to apply on every run.
-- `traigent-next-run` — measure which knobs mattered; swap in better ones.
-- `traigent-next-run` — collect all runs into one analysis workbook.
+- `traigent-run-plan` — build the run-plan WITH the user before every run.
+- `traigent-next-run` — after each run: the portal link, which knobs to keep/drop, and the next-run recommendation.
 - `traigent-run-recommendations` — robust setup so runs go smoothly and track to the portal.

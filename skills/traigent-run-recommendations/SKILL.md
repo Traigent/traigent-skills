@@ -34,15 +34,16 @@ For `algorithm="bayesian"`, ensure `scikit-learn` and `scipy` are installed (or
 use `tpe` / `optuna`). Use a clean Python 3.11/3.12 environment.
 
 ## Execution mode & portal tracking
-**Default `execution_mode="hybrid"`** with `privacy_enabled=True`: trials run
-locally with backend-supplied smart suggestions (the only mode that routes
-bayesian/tpe/optuna) + portal tracking; agent and data stay local. Drop to
-local-only `edge_analytics` (grid/random, no smart search) ONLY when explicitly
-chosen — never switch the mode silently. After a run, **confirm the
-experiment appears in the portal with its trials**. If a run does not show up, it
-seems there may be a temporary connectivity issue — **we recommend retrying the
-run** and confirming the printed `View` link populates. Keep a hard cost cap
-(`TRAIGENT_RUN_COST_LIMIT`) on every real run.
+**SDK 0.16:** the selector is `ExecutionOptions(offline=...)` + the `algorithm`
+arg — there is **no** `execution_mode`/`privacy_enabled` (removed). Default to
+**`offline=False`** (online): smart algorithms (`bayesian`/`tpe`/`optuna`) run in
+the Traigent cloud with portal tracking while the agent and data stay local (only
+configs + numeric scores leave the machine). Use **`offline=True`** for a local,
+zero-egress run (grid/random only — no smart search) ONLY when explicitly chosen;
+never switch silently. After a run, **confirm the experiment appears in the portal
+with its trials**. If it doesn't show up, it's likely a temporary connectivity
+issue — **retry the run** and confirm the printed `View` link populates. Keep a
+hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real run.
 
 ## Run naming (include the permutation count)
 The portal experiment name comes from the decorated function's name — make it
@@ -65,10 +66,10 @@ run.
 1. Python 3.11/3.12 venv; `pip install traigent litellm scikit-learn scipy`.
 2. String-encode discrete knobs; `int()` at the call site.
 3. Custom pricing for gateway models; emit real accuracy/cost/latency metrics.
-4. `execution_mode="hybrid"` (DEFAULT; local-only `edge_analytics` only if chosen), `privacy_enabled=True`, cost cap set.
+4. `ExecutionOptions(offline=False)` (DEFAULT = online/cloud; `offline=True` local-only if chosen) + `algorithm` arg; cost cap set.
 5. Mock dry-run (free) → confirm trials run + metrics non-zero → real run.
 6. After the real run, confirm the experiment shows its trials; if not, retry.
 7. Name the run with its permutation count + weights + date.
 
 ## See also
-- `traigent-run-plan` (MANDATORY: ask ALL run options before every run) · `traigent-optimization-principles` · `traigent-text2sql-optimize` · `traigent-next-run` · `traigent-next-run`
+- `traigent-run-plan` (MANDATORY: ask ALL run options before every run) · `traigent-optimization-principles` · `traigent-text2sql-optimize` · `traigent-next-run`
