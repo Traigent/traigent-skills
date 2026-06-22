@@ -78,5 +78,26 @@ portal link with accuracy + cost per config); pointing Traigent at their own age
 afterward is the exact same motions. The `traigent-text2sql-optimize` skill ships a
 self-contained, runnable example (no data setup).
 
+## The EXAMPLE vs. the customer's REAL agent — optimize differently
+The text2SQL **example** uses a gentle teaching pace — a minimal run 1 (minor knobs),
+then add structural knobs so a cheap model visibly leaps (see `traigent-text2sql-optimize`).
+**That minimal-first pacing is for the example only** — it exists to build intuition.
+
+A customer's **real agent is usually a given** (they already have a model and an
+approach), so optimize for VALUE from the very first run — actively **nag** the user to:
+- **Add model variety — span high / mid / low tiers AND ≥2 vendors.** Never optimize a
+  single model in isolation. The biggest cost wins come from discovering that a cheaper
+  model/vendor matches the one they started on. If they name one model, push back and
+  propose a tiered, multi-vendor slate.
+- **Include SIGNIFICANT (high-impact) knobs from run 1 — not just minor ones.** Don't burn
+  the first run on temperature/format alone; bring the structural levers that actually move
+  the metric (few-shot **selection**, schema/context representation, generation structure,
+  output mode). **Keep them low-latency** — defer multi-call knobs (repair, candidate-voting,
+  exec-guided self-correct) to a later run; they add latency for often-marginal early gains.
+- Keep the space ~several hundred perms (Goldilocks) and **state the perm count**.
+
+Net: the example *teaches* by starting small; a real engagement *delivers* by going broad
+(models + vendors) and deep (significant, low-latency knobs) immediately.
+
 ## See also
 `traigent-next-run` · `traigent-run-optimization` · `traigent-configuration-space` · `traigent-choose-metric`

@@ -15,6 +15,11 @@ from **66.7% -> 90.0%** execution-match accuracy on a 30-question SPIDER slice
 **prompt-structure knobs on a cheap model**, not from a premium model.
 
 ## The two-run lesson arc (the demo that lands)
+> **Scope: this minimal-first teaching arc is for the text2SQL EXAMPLE only.** It starts
+> small on purpose so the *lesson* lands. For a customer's **real agent** (usually a given),
+> do the opposite — push for model variety (hi/med/low + ≥2 vendors) and SIGNIFICANT,
+> low-latency knobs from run 1. See `traigent-run-plan` → "The EXAMPLE vs. the REAL agent."
+
 **Always state the permutation count** — when you present the plan, when you launch,
 and when you report results. Repeat it every time; it's how the user sees the space
 the optimizer is searching.
