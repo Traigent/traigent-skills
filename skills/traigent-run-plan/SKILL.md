@@ -64,6 +64,12 @@ spend on the user's **go**. Never pick a parameter silently.
   trials of cheap low-latency models, `direct` paths), so it lands in minutes AND still
   lets the optimizer search. NEVER make run 1 fast by collapsing the space to a handful
   of configs.
+- **Keep the plateau window TIGHT (~3–5), never wide.** Plateau stops only after WINDOW
+  consecutive *non-improving* trials — so the window is the number of trials you are
+  GUARANTEED to spend **past the peak**. A wide window (10+) means ~10 wasted trials after
+  the best is already found (expensive if any pricey model is in the mix). 3–5 lets
+  bayesian confirm the peak, then quits. If the best landed at trial 2 and the run kept
+  going to 11, the window was too wide — that's a config mistake, not "convergence."
 - **Don't over-prune between runs.** Keep the high-value knobs IN PLAY so the optimizer
   *discovers* the optimum; fix a knob to a prior winner ONLY on strong, repeated
   evidence (not a run that plateaued after a handful of trials), and when you do fix
