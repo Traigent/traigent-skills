@@ -3,11 +3,18 @@ name: traigent-text2sql-optimize
 description: "End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 66.7% -> 90% on the cheap model."
 license: Apache-2.0
 metadata:
-  author: Amir
+  author: Traigent
   version: "1.0"
 ---
 
 # Traigent text2SQL optimization — the working recipe
+
+## When to Use
+
+Requires `traigent>=0.16.0`.
+
+Use this when wiring a SPIDER-style text2SQL agent with objective execution-match
+scoring and a Traigent optimization loop.
 
 A field-tested, end-to-end recipe that took a plain `gpt-4o-mini` NL->SQL agent
 from **66.7% -> 90.0%** execution-match accuracy on a 30-question SPIDER slice
@@ -106,30 +113,30 @@ Accuracy-dominant (0.80) lets a much cheaper, nearly-as-accurate config win. Whe
 using a custom_evaluator, emit `metrics={"accuracy":.., "cost":.., "latency":..}`
 with REAL values so the weighted objective uses real cost/latency.
 
-## 5. Run it (SDK 0.16 API)
+## 5. Run it (SDK v0.17-compatible API)
 ```python
 import traigent
 from traigent.api.decorators import EvaluationOptions, ExecutionOptions
-# the selector is offline + algorithm — there is NO execution_mode/privacy_enabled in 0.16
+# the selector is offline + algorithm
 decorated = traigent.optimize(
     configuration_space=CONFIG_SPACE, objectives=OBJECTIVES, default_config=BASELINE,
     evaluation=EvaluationOptions(eval_dataset=DS, custom_evaluator=exec_eval),
-    execution=ExecutionOptions(offline=False),   # offline=False -> online/cloud (the "hybrid" default); True -> local zero-egress
+    execution=ExecutionOptions(offline=False),   # False -> online/cloud; True -> local zero-egress
 )(run_agent)
 results = decorated.optimize_sync(max_trials=25, algorithm="bayesian")  # or: await decorated.optimize(...)
 ```
-- **0.16 selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg — **no** `execution_mode`/`privacy_enabled` (removed). Smart algorithms (`bayesian`/`tpe`/`optuna`) run in the Traigent cloud when `offline=False` + authenticated; `offline=True` keeps everything local.
-- **Mock first (free):** `os.environ["TRAIGENT_MOCK_LLM"]="true"` + `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (smart algorithms are cloud-only).
+- **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. Smart algorithms (`bayesian`/`tpe`/`optuna`) run in the Traigent cloud when `offline=False` + authenticated; `offline=True` keeps everything local.
+- **Mock first (free):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (smart algorithms are cloud-only).
 - **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, `algorithm="bayesian"`. For bayesian install `scikit-learn`+`scipy` (or use `tpe`/`optuna`).
-- **Dataset path:** 0.16 requires `eval_dataset` to live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.
+- **Dataset path:** `eval_dataset` must live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.
 
 ## Runnable example (copy-paste, self-contained)
-`references/quickstart_text2sql.py` is a **complete, runnable** version of everything
-above — it builds its own tiny SQLite DB (no external data), so it runs end-to-end
-in minutes and is the ice-breaker for the QuickStart:
+`references/quickstart_text2sql.md` contains a **complete, runnable** recipe as a
+fenced Python block — it builds its own tiny SQLite DB (no external data), so it
+runs end-to-end in minutes and is the ice-breaker for the QuickStart:
 ```
-python references/quickstart_text2sql.py --mock     # free; validates the pipeline
-python references/quickstart_text2sql.py --real      # cost-capped, portal-tracked
+python quickstart_text2sql.py --mock     # free; validates the pipeline
+python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 ```
 Swap the embedded DB + questions for the real SPIDER dev set to scale up — the wiring is identical.
 

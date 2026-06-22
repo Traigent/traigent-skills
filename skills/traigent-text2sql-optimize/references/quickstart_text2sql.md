@@ -1,8 +1,15 @@
+# Quickstart Text2SQL Recipe
+
+This reference preserves the complete runnable recipe as markdown-only skill
+content. Materialize the fenced block as `quickstart_text2sql.py` outside the
+scanned `skills/` payload when you want to run it.
+
+```python
 """Turnkey text2SQL optimization example — SELF-CONTAINED, no external data.
 
 Creates its own tiny SQLite database in a temp dir, defines a handful of
 NL->SQL questions with gold SQL, instruments a minimal agent with Traigent
-(SDK 0.16), scores by EXECUTION MATCH, and runs a mock dry-run then a real
+(SDK v0.17-compatible API), scores by EXECUTION MATCH, and runs a mock dry-run then a real
 cloud-tracked optimization. This is the ice-breaker example for the QuickStart:
 it runs end-to-end with only a Traigent key + an LLM key, in minutes.
 
@@ -39,7 +46,7 @@ WORK = Path(tempfile.gettempdir()) / "traigent_text2sql_quickstart"
 WORK.mkdir(exist_ok=True)
 DB_PATH = WORK / "store.sqlite"
 DATA_PATH = WORK / "testbed.jsonl"
-# SDK 0.16 sandboxes dataset paths: the eval_dataset must reside under the CWD or
+# The SDK sandboxes dataset paths: the eval_dataset must reside under the CWD or
 # under TRAIGENT_DATASET_ROOT. Point that root at our temp work dir.
 os.environ.setdefault("TRAIGENT_DATASET_ROOT", str(WORK))
 
@@ -200,7 +207,7 @@ def exec_eval(func, config, example) -> ExampleResult:
 
 
 # --------------------------------------------------------------------------- #
-# 5. Configure + run (SDK 0.16: ExecutionOptions(offline=...) + algorithm arg)
+# 5. Configure + run: ExecutionOptions(offline=...) + algorithm arg
 # --------------------------------------------------------------------------- #
 CONFIG_SPACE = {
     "model": ["openrouter/openai/gpt-4o-mini", "openrouter/deepseek/deepseek-chat"],
@@ -235,7 +242,7 @@ def main() -> int:
     write_dataset()
 
     if args.mock:
-        os.environ["TRAIGENT_MOCK_LLM"] = "true"
+        os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
         from traigent.testing import enable_mock_mode_for_quickstart
         enable_mock_mode_for_quickstart()
         offline, algorithm = True, "grid"          # smart algorithms are cloud-only
@@ -245,6 +252,7 @@ def main() -> int:
             return 2
         os.environ["TRAIGENT_RUN_COST_LIMIT"] = str(args.budget)
         os.environ["TRAIGENT_COST_APPROVED"] = "true"
+        os.environ["TRAIGENT_OFFLINE_MODE"] = "false"
         offline, algorithm = False, "bayesian"     # offline=False -> online/cloud
 
     decorated = traigent.optimize(
@@ -271,3 +279,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+```
