@@ -27,6 +27,12 @@ MCP tool `get_optimization_plan`. The returned payload is advisory and currently
 static guidance: expect `phase` such as `P1_STATIC`, plus `evidence_level`,
 `caveat`, and `advisory`.
 
+This requires an SDK build that ships the optimization-plan tool (the `traigent
+plan` CLI / `get_optimization_plan` MCP tool). If your installed SDK does not
+expose it yet, tell the user the plan service is not available in this build and
+fall back to `traigent recommend` for knob recommendations (see
+`traigent-configuration-space`) — never fabricate a plan locally.
+
 Do not embed local planning intelligence in this skill:
 
 - Do not choose or rank models, knobs, algorithms, budgets, or option order in markdown.
@@ -55,7 +61,10 @@ Do not embed local planning intelligence in this skill:
    - a short confirmation prompt: keep it, adjust it, or ask Traigent for a refreshed plan.
 5. Record the user's confirmations and adjustments as a run-plan record. Use
    `references/run-plan.template.md` only as a capture format for the service
-   payload and user decisions, not as a source of recommended settings.
+   payload and user decisions, not as a source of recommended settings. See
+   `references/run-plan.txt2sql-example.md` for a filled text2SQL example of this
+   capture format (the recommended values shown there came from the service, not
+   from this skill).
 6. Mock dry-run first. The mock must be free/no-spend and should verify that the
    agent, dataset loader, scorer, and returned steps are wired.
 7. Stop after the mock with a short readout: what executed, what did not execute,
