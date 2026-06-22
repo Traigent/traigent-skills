@@ -13,7 +13,7 @@ may change; `<FILL: ...>` you MUST set.
 # ── A. Run identity ──────────────────────────────────────────────────────────
 RUN_NAME        = <FILL: name_ACL_<a>_<c>_<l>_<space>_<perms>perms_YYYYMMDD>
 PROBLEM_SPACE   = <FILL: txt2sql | RAG-QA | summarization | classification | …>
-AGENT           = <FILL: the agent entry function OR the Hybrid REST service>
+AGENT           = <FILL: the agent entry function OR service endpoint>
 EXPERIMENT_NAME = <FILL: portal experiment name; usually = RUN_NAME>
 
 # ── B. Objectives (KPIs) ─────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ KNOBS_EXTRA     = none           # add/drop structural knobs
 # permutation count = product of value-counts across MODELS + all knobs
 
 # ── F. Search strategy ───────────────────────────────────────────────────────
-ALGORITHM       = <FILL: bayesian|tpe|optuna (smart, need hybrid) | grid|random (local)>
+ALGORITHM       = <FILL: auto|bayesian|tpe|optuna (online smart) | grid|random (local)>
 MAX_CONFIGS     = <FILL: trials to sample>
 TIMEOUT         = none           # wall-clock seconds cap, or none
 PLATEAU_WINDOW  = <FILL: e.g. 8, or 0 = off>
@@ -54,18 +54,19 @@ PARALLELISM        = auto        # auto | <int> concurrent trials
 BUDGET_USD      = <FILL: hard cost cap>
 COST_APPROVED   = true
 
-# ── I. Execution & privacy ───────────────────────────────────────────────────
-EXECUTION       = hybrid         # DEFAULT. hybrid | local-only(edge_analytics) | hybrid_api
-PRIVACY_ENABLED = true
+# ── I. Execution selector (ExecutionOptions) ─────────────────────────────────
+OFFLINE          = false          # DEFAULT. false = online, portal-tracked | true = local zero-egress
+EXECUTION_OPTIONS = ExecutionOptions(offline=OFFLINE)
 CLOUD_FALLBACK_POLICY = auto      # auto | never
 LOCAL_STORAGE_PATH = default
 SAVE_TO         = none
 MINIMAL_LOGGING = true
 PROGRESS_BAR    = true
 
-# ── J. Config injection (P9) ─────────────────────────────────────────────────
-INJECTION_MODE  = context        # context | parameter
+# ── J. Config injection (InjectionOptions, P9) ───────────────────────────────
+INJECTION_MODE  = context        # context | parameter | seamless
 CONFIG_PARAM    = none
+INJECTION_OPTIONS = InjectionOptions(injection_mode=INJECTION_MODE, config_param=CONFIG_PARAM)
 AUTO_OVERRIDE_FRAMEWORKS = false
 
 # ── K. Best-config reuse ─────────────────────────────────────────────────────
@@ -87,11 +88,11 @@ SKILL_TRAIN    = none
 AGENTS         = none
 TVL            = none
 
-# ── N. Hybrid-API (Lane 2 only) ──────────────────────────────────────────────
-HYBRID_API_ENDPOINT    = none
-HYBRID_API_BATCH_SIZE  = 1
-HYBRID_API_PARALLELISM = 1
-HYBRID_API_KEEP_ALIVE  = true
+# ── N. External service adapter (optional) ───────────────────────────────────
+SERVICE_ENDPOINT    = none
+SERVICE_BATCH_SIZE  = 1
+SERVICE_PARALLELISM = 1
+SERVICE_KEEP_ALIVE  = true
 
 # ── O. Mock dry-run ──────────────────────────────────────────────────────────
 MOCK_BASE_ACCURACY = 0.75

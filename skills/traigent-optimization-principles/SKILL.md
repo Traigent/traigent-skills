@@ -3,11 +3,17 @@ name: traigent-optimization-principles
 description: "The key principles / recommendations for running a trustworthy, high-yield Traigent optimization program over an agent. Use before designing any run or run-plan. Covers model-tier breadth, structural knobs, recording every (even implicit) model knob, dropping dead knobs, varying objective weights, and per-run recording/naming — plus the reproducibility and honesty practices that make results count."
 license: Apache-2.0
 metadata:
-  author: Amir
+  author: Traigent
   version: "1.0"
 ---
 
 # Traigent optimization — key principles (recommendations)
+
+## When to Use
+
+Requires `traigent>=0.16.0`.
+
+Use this before designing a Traigent optimization program or run-plan.
 
 Apply these on every optimization program. The first six are the core
 must-dos; the rest are the practices that keep results trustworthy and
@@ -53,8 +59,9 @@ cheapest config at acceptable quality. The winner genuinely shifts with weights
 ### P6 — Record and name every run (a run-plan), including its permutation count
 Every run gets a recorded **run-plan** capturing ALL its parameters — dataset,
 models, knobs+values, objectives+weights, algorithm, trial budget, cost cap,
-execution mode, and the **config-space permutation count** (product of value-counts
-across all tuned knobs). Give it a **self-describing, unique name** encoding
+execution selector (`algorithm` + `ExecutionOptions(offline=...)`), and the
+**config-space permutation count** (product of value-counts across all tuned
+knobs). Give it a **self-describing, unique name** encoding
 who/weights/problem-space/**permutations**/date
 (e.g. `Amir_ACL_80_15_05_txt2sql_216perms_20260620`). Record the permutation count
 both in the name and as its own field, keep the filled plan with the run, and add

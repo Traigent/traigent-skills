@@ -32,7 +32,9 @@ MAX_CONFIGS   = 20
 BUDGET_USD    = 1.0
 ALGORITHM     = bayesian
 SDK_PARAMS    = plateau stopping on
-EXECUTION     = hybrid                  # DEFAULT (privacy_enabled). Local-only ONLY if explicitly chosen.
+OFFLINE       = false                   # DEFAULT: online, portal-tracked. true ONLY if explicitly chosen.
+EXECUTION_OPTIONS = ExecutionOptions(offline=OFFLINE)
+INJECTION_MODE = context
 
 # --- Carry-forward ----------------------------------------------------------
 #   First run — nothing yet. After it converges, note what won / lost here; you'll

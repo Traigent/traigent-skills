@@ -1,13 +1,19 @@
 ---
 name: traigent-run-recommendations
-description: "Recommended setup so Traigent optimization runs go smoothly and results are accurate and portal-tracked. Use when wiring or launching a run. Covers robust knob encoding, objective cost/latency metering, algorithm prerequisites, execution mode, run naming with permutation count, and light troubleshooting framed as recommended next steps."
+description: "Recommended setup so Traigent optimization runs go smoothly and results are accurate and portal-tracked. Use when wiring or launching a run. Covers robust knob encoding, objective cost/latency metering, algorithm prerequisites, the offline execution selector, run naming with permutation count, and light troubleshooting framed as recommended next steps."
 license: Apache-2.0
 metadata:
-  author: Amir
+  author: Traigent
   version: "1.1"
 ---
 
 # Traigent run recommendations — robust setup & smooth runs
+
+## When to Use
+
+Requires `traigent>=0.16.0`.
+
+Use this when wiring or launching a Traigent optimization run.
 
 Practical recommendations that make a run reliable, accurate, and portal-tracked.
 
@@ -33,9 +39,9 @@ alongside the composite score.
 For `algorithm="bayesian"`, ensure `scikit-learn` and `scipy` are installed (or
 use `tpe` / `optuna`). Use a clean Python 3.11/3.12 environment.
 
-## Execution mode & portal tracking
-**SDK 0.16:** the selector is `ExecutionOptions(offline=...)` + the `algorithm`
-arg — there is **no** `execution_mode`/`privacy_enabled` (removed). Default to
+## Execution selector & portal tracking
+**SDK v0.17 contract:** the selector is `ExecutionOptions(offline=...)` + the
+`algorithm` arg. Legacy selector names are gone. Default to
 **`offline=False`** (online): smart algorithms (`bayesian`/`tpe`/`optuna`) run in
 the Traigent cloud with portal tracking while the agent and data stay local (only
 configs + numeric scores leave the machine). Use **`offline=True`** for a local,

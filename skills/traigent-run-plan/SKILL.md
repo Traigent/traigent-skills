@@ -1,6 +1,6 @@
 ---
 name: traigent-run-plan
-description: "Build a Traigent run-plan WITH the user before EVERY optimization run by asking them, option by option, which to choose — objectives & weights, models, structural knobs + values, algorithm, trial budget, cost cap, execution mode. Never set any option silently. Render the plan, mock dry-run, then run only on the user's explicit go. Use before designing/launching any run."
+description: "Build a Traigent run-plan WITH the user before EVERY optimization run by asking them, option by option, which to choose — objectives & weights, models, structural knobs + values, algorithm, offline selector, trial budget, and cost cap. Never set any option silently. Render the plan, mock dry-run, then run only on the user's explicit go. Use before designing/launching any run."
 license: Apache-2.0
 metadata:
   author: Traigent
@@ -8,6 +8,12 @@ metadata:
 ---
 
 # Traigent run-plan — build it WITH the user, before every run
+
+## When to Use
+
+Requires `traigent>=0.16.0`.
+
+Use this before designing or launching any Traigent optimization run.
 
 The experience the user should have: **you ask, they choose.** Before every run you
 walk the user through the run-plan **option by option**, get an explicit choice (or
@@ -27,12 +33,15 @@ spend on the user's **go**. Never pick a parameter silently.
      ladder; route via OpenRouter/LiteLLM so cost is metered.
    - **Knobs** — the model knob + **≥3 structural knobs** (each value-set), every one
      injected at the real call site and verified (a declared-but-unwired knob is a no-op).
-   - **Search** — algorithm (bayesian/tpe/optuna smart; grid/random local), trial
-     budget (MAX_CONFIGS), plateau stopping, reps.
+   - **Search** — `algorithm` (`auto`/`bayesian`/`tpe`/`optuna` smart;
+     `grid`/`random` local), trial budget (MAX_CONFIGS), plateau stopping, reps.
    - **Cost** — hard `BUDGET_USD` cap.
-   - **Execution** — hybrid (online → cloud smart optimizer + portal) is the default;
-     local-only only if explicitly chosen.
-   - Plus the remaining SDK options (dataset, injection, privacy, fallback, …).
+   - **Execution selector** — `ExecutionOptions(offline=False)` is the default
+     (online, portal-tracked); `offline=True` is local zero-egress and only if
+     explicitly chosen.
+   - Plus the remaining typed SDK bundles: `EvaluationOptions`,
+     `InjectionOptions(injection_mode="context"|"parameter"|"seamless")`,
+     and any fallback/storage choices the run needs.
 3. **Record** their answers in the plan, including the config-space **permutation
    count** (product of value-counts), and name the run self-descriptively
    (who · weights · problem-space · permutations · date).

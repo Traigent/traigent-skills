@@ -9,6 +9,12 @@ metadata:
 
 # Traigent next-run — share the portal link, recommend what's next
 
+## When to Use
+
+Requires `traigent>=0.16.0`.
+
+Use this after every Traigent optimization run before planning the next one.
+
 After every run, do two things: (1) hand the user the **portal experiment link** so
 their results live in Traigent, and (2) recommend the next run. Then loop back to
 `traigent-run-plan` to build that next run WITH the user.
