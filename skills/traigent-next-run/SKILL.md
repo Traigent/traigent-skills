@@ -32,6 +32,12 @@ config × one test example). "Best config", not "best eval"; "N samples", not "N
 From the run's results (the trial table + the portal), tell the user:
 - **Models** — which to KEEP (highest accuracy / best accuracy-per-$), which to DROP
   (dominated: lower accuracy and not cheaper), which tier to try next.
+- **If the premium/high tier is DOMINATED** (a cheaper model matched or beat it),
+  recommend **dropping premium and going WIDE on mid/low models across several VENDORS**
+  (OpenAI, DeepSeek, Anthropic, Alibaba/Qwen, Meta/Llama, Google, Mistral, Cohere, …).
+  When premium adds nothing, the real price/quality wins hide in *which cheap vendor* is
+  best per dollar — and you only find that by putting them head-to-head. Verify each
+  model id resolves on the gateway before a real run (ids 404 easily).
 - **Knobs** — which **moved** the metric (keep / widen) and which are **dead** (drop,
   especially if they add cost); propose **new structural knobs** the evidence supports.
 - **Best config so far** — and its accuracy / cost / latency.
