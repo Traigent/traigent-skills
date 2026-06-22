@@ -25,3 +25,8 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 | `traigent-evaluator-audit` | `traigent/api/decorators.py`, `traigent/api/types.py` |
 | `traigent-iterate` | `traigent/utils/insights.py`, `traigent/utils/importance.py`, `traigent/analytics/example_insights.py`, `traigent/core/optimized_function.py`, `traigent/api/types.py` |
 | `traigent-ci-safety-gate` | `traigent/api/decorators.py`, `traigent/api/safety.py`, `traigent/tvl/promotion_gate.py`, `traigent/tvl/models.py`, `traigent/tvl/__main__.py` |
+| `traigent-run-plan` | `traigent/api/decorators.py`, `traigent/core/optimized_function.py` |
+| `traigent-next-run` | `traigent/core/optimized_function.py`, `traigent/api/types.py` |
+| `traigent-optimization-principles` | `traigent/api/decorators.py`, `traigent/core/optimized_function.py` |
+| `traigent-run-recommendations` | `traigent/api/decorators.py`, `traigent/utils/env_config.py` |
+| `traigent-text2sql-optimize` | `traigent/__init__.py`, `traigent/api/decorators.py`, `traigent/core/objectives.py`, `traigent/evaluators/base.py`, `traigent/testing/*`, `traigent/core/optimized_function.py` |
