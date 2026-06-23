@@ -4,7 +4,7 @@ description: "Analyze Traigent optimization results from the terminal — withou
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -13,8 +13,8 @@ This skill makes optimization-result analysis **terminal-first**. Instead of nav
 portal's many tabs, ask in plain language ("how did my latest run in project X do?") and the
 skill calls the `traigent-analytics` MCP server, then narrates the answer: a headline, a
 confidence label, a few evidence bullets, the single recommended next action, and a portal
-deep-link as a fallback. It pulls a deeper view (Pareto, leaderboard, correlation,
-parameter/example insights) only when a signal triggers it or you ask.
+deep-link as a fallback. It surfaces a deeper view (Pareto, leaderboard, correlation,
+parameter/example insights) only when the brief's evidence/action calls for it or you ask.
 
 There are two surfaces, and this skill covers both:
 
@@ -30,8 +30,8 @@ Use this skill when you want to understand a finished run. This covers:
 
 - "Analyze my latest run in project X" / "how did my run do?" / "what should I do next?"
 - Getting the one-line verdict, confidence, and the single recommended action for a run
-- Pulling a focused drilldown — leaderboard, Pareto trade-off, correlation, parameter or
-  example insights — but only when the run's signal calls for it
+- Pulling a focused drilldown when a registered tool supports it, or falling back to the
+  portal deep-link for Wave-2 drilldowns that are not yet registered
 - Reading the best configuration and score
 - Comparing individual trial results
 - Understanding why optimization stopped (stop reasons)
@@ -44,9 +44,8 @@ Use this skill when you want to understand a finished run. This covers:
 When the run lives in the Traigent cloud/portal, drive the analysis through the
 `traigent-analytics` MCP server. **This skill orchestrates and narrates; it does not compute
 analytics and does not do any auth or tenant logic** — the MCP server resolves the caller's
-tenant from the authenticated session, ranks trials, fits the Pareto frontier, and renders
-charts. Treat every tool response as authoritative and never invent fields, numbers, or
-charts.
+tenant from the authenticated session and returns backend-produced analytics payloads. Treat
+every tool response as authoritative and never invent fields, numbers, rankings, or charts.
 
 ### 1. Collect explicit project + run context
 
@@ -68,64 +67,87 @@ its headline and single recommended action — do **not** open a drilldown yet.
 analytics_get_run_decision_brief(
     project_id = "<the project the user named>",
     run_id     = "<the run the user named>",
-    intent     = "deploy" | "diagnose" | "compare" | "reduce_cost" | "explore",
+    intent     = "iterate" | "deploy" | "debug" | "report",
 )
 ```
 
-Pick `intent` from what the user asked ("can I ship this?" → `deploy`; "why is it stuck?" →
-`diagnose`; "is A better than B?" → `compare`; "make it cheaper" → `reduce_cost`; an
-open-ended "how did it do?" → `explore`).
+Use `deploy` for "can I ship this?", `debug` for "why is it stuck?", `report` for a
+summary/report request, and `iterate` for open-ended "what next?" analysis.
 
-Narrate the brief in this order:
+The tool returns an `ok` flag and a `decision_brief` object. Narrate the brief in this order:
 
 1. **Headline** — the one-sentence verdict, in plain language.
-2. **Confidence** — the brief's `confidence` and `confidence_reason`, verbatim in spirit.
-   Never upgrade a `low`/`medium` confidence into a stronger claim.
-3. **Evidence** — the 2-4 bullets the brief returns.
-4. **Recommended action** — the single next step, plus the companion skill it names.
-5. **Fallback** — the `portal_deeplink`, so the user can open the run in the portal.
+2. **Confidence** — the brief's `confidence`. Never upgrade a `low`/`medium` confidence
+   into a stronger claim.
+3. **Evidence** — the `summary` strings from the brief's `evidence` list.
+4. **Recommended action** — `recommended_action.kind`, optional `config_id`, and `why`.
+5. **Fallback** — build a navigation-only portal link:
+   `https://portal.traigent.ai/p/<project_id>/runs/<run_id>`.
 
-### 3. Pull one drilldown only when a signal triggers it
+### 3. Pull one drilldown only when the brief or user asks
 
-The brief's `signal` field tells you which deeper view (if any) is worth surfacing. Pull at
-most **one** drilldown per turn, and only when the signal fires or the user asks for it.
-When the answer is a trade-off or a correlation structure, call `analytics_render_chart` and
-show the image **inline** — geometry is easier to see than to list.
+The brief may include `drilldowns`, but the Wave-2 single-run drilldown fetchers are not
+registered yet. Treat `drilldowns[].tool` as an advisory label unless it is one of the
+registered tool names below. Pull at most **one** extra registered tool per turn, and only
+when the user asks or the brief clearly calls for it. Use the portal deep-link for
+drilldowns that are not yet registered.
 
-| `signal` | First surface (only if triggered / asked) | Recommended next action |
+The only registered analytics tools this skill may call are:
+
+- `analytics_get_run_decision_brief(project_id, run_id, intent="iterate")`
+- `analytics_get_run_report(project_id, run_id)`
+- `analytics_get_project_overview(project_id)`
+- `analytics_compare_runs(project_id, run_ids)`
+- `analytics_render_chart(payload, kind, output_path)` with `kind` in
+  `{run_pareto, run_correlations}`
+
+Do not call any other analytics tool name. The render tool does not fetch or compute a
+drilldown; it renders an already-fetched backend payload. Call it only when you already have a
+backend-produced `run_pareto` or `run_correlations` object from a registered tool response.
+If the payload is absent, use the portal deep-link instead.
+
+| Symptom / requested view | First surface (only if triggered / asked) | Recommended next action |
 |---|---|---|
-| `clean_winner` | (none — headline is enough) | Deploy the winner; gate with `traigent-ci-safety-gate` |
-| `expensive_winner` (>~1.5× cost, small gain) | `analytics_render_chart(chart="pareto")` + `analytics_get_single_run_pareto` | Pick the Pareto **knee**, not the raw max |
-| `dominated_winner` | `analytics_get_run_leaderboard` | Reject it; promote the dominating config |
-| `low_trials` (< ~10) | (none — state low confidence) | Run more trials before deciding (`traigent-run-optimization`) |
-| `one_knob_dominates` | `analytics_get_parameter_insights` (+ `parameter_importance` chart) | Narrow that knob; add structural knobs (`traigent-configuration-space`) |
-| `flat` | `analytics_get_parameter_insights` | Change the space or harden the data (`traigent-curate-dataset`) |
-| `noisy_examples` | `analytics_get_example_insights` | Fix the dataset / audit the evaluator (`traigent-evaluator-audit`) |
-| `cost_blowup` | `analytics_render_chart(chart="pareto")` | Add a budget/guardrail (`traigent-run-optimization`, `traigent-ci-safety-gate`) |
+| Clean winner | (none — headline is enough) | Deploy the winner; gate with `traigent-ci-safety-gate` |
+| Expensive winner / Pareto trade-off | Portal Pareto view. Optional: `analytics_render_chart(payload=<run_pareto>, kind="run_pareto", output_path="<file>")` only if that payload is already present in a registered tool response. | Pick the Pareto **knee**, not the raw max |
+| Dominated winner / leaderboard | Portal leaderboard view; Wave-2 leaderboard tool is not registered. | Reject it; promote the dominating config |
+| Low trials | (none — state low confidence) | Run more trials before deciding (`traigent-run-optimization`) |
+| One knob dominates | Portal parameter-insights view; Wave-2 parameter-insights tool is not registered. | Narrow that knob; add structural knobs (`traigent-configuration-space`) |
+| Flat scores | Portal parameter-insights view; Wave-2 parameter-insights tool is not registered. | Change the space or harden the data (`traigent-curate-dataset`) |
+| Noisy examples | Portal example-insights view; Wave-2 example-insights tool is not registered. | Fix the dataset / audit the evaluator (`traigent-evaluator-audit`) |
+| Cost blowup | Portal Pareto view. Optional render only with an existing `run_pareto` payload and `kind="run_pareto"`. | Add a budget/guardrail (`traigent-run-optimization`, `traigent-ci-safety-gate`) |
 
 For the full tool contract (every tool's arguments and response shape, the geometry-vs-words
-rule, and what each drilldown deepens), see
+rule, and which drilldowns are not yet registered), see
 [references/mcp-analytics-tools.md](references/mcp-analytics-tools.md). For deciding the
-*next experiment* once the signal is named, hand off to `traigent-iterate`.
+*next experiment* once the brief names the problem, hand off to `traigent-iterate`.
 
 <!-- PROTECTED -->
 ### Privacy: narrate signals, not raw example values
 
-Example-side tools (`analytics_get_example_insights`) return **non-signal scoring metadata
-only** — example ids, counts, algorithm version, and scored flags. They never expose
-proprietary difficulty, informativeness, ambiguity, or signal-vector values. Do not request,
-infer, or print such values, and do not paste raw per-example payloads into the conversation;
-narrate the signal ("these 4 examples fail across good configs") and act on it.
+The Wave-2 example-insights drilldown is **not yet registered**. Until it ships, use the
+portal deep-link instead of calling a tool. When an example-side tool does ship, it must return
+non-signal scoring metadata only — example ids, counts, algorithm version, and scored flags.
+It must never expose proprietary difficulty, informativeness, ambiguity, or signal-vector
+values. Do not request, infer, or print such values, and do not paste raw per-example payloads
+into the conversation.
 <!-- /PROTECTED -->
 
 ### Tool availability
 
-The keystone `analytics_get_run_decision_brief` and `analytics_render_chart` ship first; the
-single-run drilldown tools (`analytics_get_single_run_pareto`, `analytics_get_run_leaderboard`,
-`analytics_get_correlation_matrix`, `analytics_get_parameter_insights`,
-`analytics_get_example_insights`) land in a follow-up wave. If a tool is not yet registered on
-the connected MCP server, do not fabricate its output — show the brief's `portal_deeplink`,
-name the drilldown the brief recommends, and say the inline view is coming.
+Registered now: `analytics_get_run_decision_brief`, `analytics_get_run_report`,
+`analytics_get_project_overview`, `analytics_compare_runs`, and `analytics_render_chart`.
+
+NOT YET REGISTERED — do not call until the Wave-2 MCP tools ship:
+
+- Pareto fetch drilldown
+- Correlations fetch drilldown
+- Leaderboard drilldown
+- Parameter-insights drilldown
+- Example-insights drilldown
+
+Fallback for those views: show the portal deep-link and name the unavailable drilldown. Do not
+fabricate its output, chart, ranking, or field behavior.
 
 ## Working with the local OptimizationResult
 
@@ -464,7 +486,7 @@ else:
 
 | Skill | Use |
 |---|---|
-| `traigent-iterate` | Decide the next experiment once the brief has named the signal — flat, noisy, dominated, budget-bound, or weak-example heavy. |
+| `traigent-iterate` | Decide the next experiment once the brief has named the problem — flat, noisy, dominated, budget-bound, or weak-example heavy. |
 | `show-significant-tuned-variables` | A deeper, local tuned-variable importance card when `one_knob_dominates` and you want the bootstrap-CI breakdown. |
 | `traigent-ci-safety-gate` | Gate a `clean_winner` (or a cost guardrail for `cost_blowup`) before promoting it to production. |
 
