@@ -4,7 +4,7 @@ description: "Decide what to do after a Traigent optimization run. Use when resu
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.2.1"
 ---
 
 # Iterate After a Run
@@ -24,6 +24,16 @@ The goal is to choose the next single hypothesis, not to change every part of th
 ## Read the Evidence First
 
 Start with the run object and existing analysis skills. `traigent-analyze-results` covers result fields in depth, and `show-significant-tuned-variables` covers richer importance reporting. Use this skill to decide the next action after those facts are known.
+
+For a cloud/portal run, the fastest way to get the evidence is the terminal-first decision
+brief in `traigent-analyze-results` (the `traigent-analytics` MCP `analytics_get_run_decision_brief`
+tool). Read the brief first and base the next iteration on its real fields:
+
+- `confidence` - keep low/medium confidence visible; do not upgrade it based on intuition.
+- `evidence[].summary` - use these summaries to identify whether the issue is flat scores,
+  noisy examples, high cost, thin samples, a dominated winner, or a narrow knob.
+- `recommended_action.kind` - use the backend's action as the starting point, then use the
+  symptom rows below to turn it into one concrete next hypothesis.
 
 ```python
 from traigent.utils.insights import get_optimization_insights
@@ -48,7 +58,7 @@ If importance is empty, do not infer that no knob matters. Common reasons are to
 ## Example-Side Evidence
 
 <!-- PROTECTED -->
-Use example-side evidence when the aggregate score hides where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent account/backend and returns non-signal scoring metadata only: example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or signal-vector values.
+Use example-side evidence when the aggregate score hides where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent account/backend and returns scoring metadata only: example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or latent feature-vector values.
 <!-- /PROTECTED -->
 
 > **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead.
@@ -73,7 +83,7 @@ Backend-only report surfaces, each requiring a Traigent account/backend:
 
 - `GET /api/v1/experiment-runs/runs/{run_id}/report-payload`: winner, trade-off, and stability insights.
 - `/api/v1/optimization-comparisons`: cross-run comparison across candidate runs.
-- Example-scoring compute, scores, and dataset-quality endpoints: scoring status and non-signal metadata.
+- Example-scoring compute, scores, and dataset-quality endpoints: scoring status and scoring metadata.
 
 Planned: future curation-advice endpoints may package weak-example recommendations; until then, use the manual evidence loop below.
 
