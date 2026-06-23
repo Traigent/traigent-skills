@@ -4,7 +4,7 @@ description: "Analyze Traigent optimization results from the terminal — withou
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -123,12 +123,12 @@ rule, and which drilldowns are not yet registered), see
 *next experiment* once the brief names the problem, hand off to `traigent-iterate`.
 
 <!-- PROTECTED -->
-### Privacy: narrate signals, not raw example values
+### Privacy: narrate findings, not raw example values
 
 The Wave-2 example-insights drilldown is **not yet registered**. Until it ships, use the
 portal deep-link instead of calling a tool. When an example-side tool does ship, it must return
-non-signal scoring metadata only — example ids, counts, algorithm version, and scored flags.
-It must never expose proprietary difficulty, informativeness, ambiguity, or signal-vector
+scoring metadata only — example ids, counts, algorithm version, and scored flags.
+It must never expose proprietary difficulty, informativeness, ambiguity, or latent feature-vector
 values. Do not request, infer, or print such values, and do not paste raw per-example payloads
 into the conversation.
 <!-- /PROTECTED -->

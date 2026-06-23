@@ -58,10 +58,8 @@ The MCP tool returns:
 }
 ```
 
-Narrate only fields that are present. The decision payload does not currently define
-`signal`, `confidence_reason`, `metrics_summary`, `portal_deeplink`, `drilldown_tool`, or
-companion-skill fields; do not reference those fields unless a future registered tool returns
-them.
+Narrate only the fields present in the decision-payload schema above. If a field is absent,
+omit it; do not reference or invent fields that are not in the schema.
 
 ## Run Report, Overview, and Comparison
 
