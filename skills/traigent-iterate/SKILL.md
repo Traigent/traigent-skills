@@ -4,7 +4,7 @@ description: "Decide what to do after a Traigent optimization run. Use when resu
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Iterate After a Run
@@ -27,10 +27,14 @@ Start with the run object and existing analysis skills. `traigent-analyze-result
 
 For a cloud/portal run, the fastest way to get the evidence is the terminal-first decision
 brief in `traigent-analyze-results` (the `traigent-analytics` MCP `analytics_get_run_decision_brief`
-tool). It returns the run's `signal` — `clean_winner`, `expensive_winner`, `dominated_winner`,
-`low_trials`, `one_knob_dominates`, `flat`, `noisy_examples`, or `cost_blowup` — which maps
-straight onto the symptom rows below. Read the brief first, then use the table here to pick
-the next single hypothesis.
+tool). It does not define a `signal` field. Read the brief first and base the next
+iteration on its real fields:
+
+- `confidence` - keep low/medium confidence visible; do not upgrade it based on intuition.
+- `evidence[].summary` - use these summaries to identify whether the issue is flat scores,
+  noisy examples, high cost, thin samples, a dominated winner, or a narrow knob.
+- `recommended_action.kind` - use the backend's action as the starting point, then use the
+  symptom rows below to turn it into one concrete next hypothesis.
 
 ```python
 from traigent.utils.insights import get_optimization_insights
