@@ -111,15 +111,16 @@ The success response is:
 
 These single-run drilldowns are **registered** (SDK >= 0.18.0.dev0). Call them directly for a
 focused view; pull at most one extra drilldown per turn, and only when the user asks or the
-brief's `recommended_action` / `warnings` clearly call for it.
+brief's `recommended_action` / `warnings` clearly call for it. Full signatures (all optional
+params and defaults) are in the **Registered Tools** table above.
 
 | Drilldown | Tool | Notes |
 |---|---|---|
-| Pareto frontier | `analytics_get_single_run_pareto(project_id, run_id, x_measure="cost", y_measure="quality")` | Returns a `run_pareto` payload; pass it to `analytics_render_chart(kind="run_pareto")` to draw it. |
-| Correlations | `analytics_get_correlation_matrix(project_id, run_id, method="pearson")` | Returns a `run_correlations` payload; render with `kind="run_correlations"`. |
-| Leaderboard | `analytics_get_run_leaderboard(project_id, run_id, objective="weighted")` | Ranked configs by weighted objective. |
-| Parameter insights | `analytics_get_parameter_insights(project_id, run_id, target_measure="quality")` | Parameter importance for one run. |
-| Example insights | `analytics_get_example_insights(project_id, run_id)` | Safe projection only — coarse counts, cohorts, redacted refs, templated recommendations. Never surface raw per-example signals. |
+| Pareto frontier | `analytics_get_single_run_pareto` | Returns a `run_pareto` payload; pass it to `analytics_render_chart(kind="run_pareto")` to draw it. |
+| Correlations | `analytics_get_correlation_matrix` | Returns a `run_correlations` payload; render with `kind="run_correlations"`. |
+| Leaderboard | `analytics_get_run_leaderboard` | Ranked configs by weighted objective. |
+| Parameter insights | `analytics_get_parameter_insights` | Parameter importance for one run. |
+| Example insights | `analytics_get_example_insights` | Safe projection only — coarse counts, cohorts, redacted refs, templated recommendations. Never surface raw per-example signals. |
 
 The portal deep-link remains a **fallback for interactive exploration** (hover / zoom / filter)
 or for any view that has no registered tool — not because these tools are missing:

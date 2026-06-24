@@ -99,10 +99,10 @@ The registered analytics tools this skill may call are:
 - `analytics_get_run_report(project_id, run_id)`
 - `analytics_get_project_overview(project_id)`
 - `analytics_compare_runs(project_id, run_ids)`
-- `analytics_get_single_run_pareto(project_id, run_id, x_measure="cost", y_measure="quality")`
-- `analytics_get_correlation_matrix(project_id, run_id, method="pearson")`
-- `analytics_get_run_leaderboard(project_id, run_id, objective="weighted")`
-- `analytics_get_parameter_insights(project_id, run_id, target_measure="quality")`
+- `analytics_get_single_run_pareto(project_id, run_id, x_measure="cost", y_measure="quality", request_count=1)`
+- `analytics_get_correlation_matrix(project_id, run_id, method="pearson", min_sample=3)`
+- `analytics_get_run_leaderboard(project_id, run_id, objective="weighted", weights=None, constraints=None, request_count=1, limit=50)`
+- `analytics_get_parameter_insights(project_id, run_id, target_measure="quality", min_trials=10, top_k=10)`
 - `analytics_get_example_insights(project_id, run_id)`
 - `analytics_render_chart(payload, kind, output_path)` with `kind` in
   `{run_pareto, run_correlations}`
