@@ -104,7 +104,7 @@ The registered analytics tools this skill may call are:
 - `analytics_get_run_leaderboard(project_id, run_id, objective="weighted", weights=None, constraints=None, request_count=1, limit=50)`
 - `analytics_get_parameter_insights(project_id, run_id, target_measure="quality", min_trials=10, top_k=10)`
 - `analytics_get_example_insights(project_id, run_id)`
-- `analytics_render_chart(payload, kind, output_path)` with `kind` in
+- `analytics_render_chart(payload, kind, output_path=None)` with `kind` in
   `{run_pareto, run_correlations}`
 
 Do not call any other analytics tool name. The render tool does not fetch or compute a
@@ -115,7 +115,7 @@ If the payload is absent, use the portal deep-link instead.
 | Symptom / requested view | First surface (only if triggered / asked) | Recommended next action |
 |---|---|---|
 | Clean winner | (none — headline is enough) | Deploy the winner; gate with `traigent-ci-safety-gate` |
-| Expensive winner / Pareto trade-off | `analytics_get_single_run_pareto`, then `analytics_render_chart(kind="run_pareto")` to draw it | Pick the Pareto **knee**, not the raw max |
+| Expensive winner / Pareto trade-off | `analytics_get_single_run_pareto`, then `analytics_render_chart` with `kind="run_pareto"` to draw it | Pick the Pareto **knee**, not the raw max |
 | Dominated winner / leaderboard | `analytics_get_run_leaderboard` | Reject it; promote the dominating config |
 | Low trials | (none — state low confidence) | Run more trials before deciding (`traigent-run-optimization`) |
 | One knob dominates | `analytics_get_parameter_insights` | Narrow that knob; add structural knobs (`traigent-configuration-space`) |

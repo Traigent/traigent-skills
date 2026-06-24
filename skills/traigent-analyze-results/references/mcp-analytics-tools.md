@@ -19,7 +19,7 @@ Use only these analytics tool names:
 | `analytics_get_run_leaderboard` | `(project_id, run_id, objective="weighted", weights=None, constraints=None, request_count=1, limit=50)` | Rank a run's configs by a weighted objective. |
 | `analytics_get_parameter_insights` | `(project_id, run_id, target_measure="quality", min_trials=10, top_k=10)` | Parameter-importance insights for one run. |
 | `analytics_get_example_insights` | `(project_id, run_id)` | Privacy-bounded example / dataset-quality insights (safe projection only — coarse counts, cohorts, redacted refs; never raw signals). |
-| `analytics_render_chart` | `(payload, kind, output_path)` | Render an already-fetched payload. `kind` must be `run_pareto` or `run_correlations`. |
+| `analytics_render_chart` | `(payload, kind, output_path=None)` | Render an already-fetched payload. `kind` must be `run_pareto` or `run_correlations`. |
 
 Do not call unlisted analytics tool names. If a tool response has `ok: false`, report the
 failure at a high level and do not invent missing data.
@@ -116,7 +116,7 @@ params and defaults) are in the **Registered Tools** table above.
 
 | Drilldown | Tool | Notes |
 |---|---|---|
-| Pareto frontier | `analytics_get_single_run_pareto` | Returns a `run_pareto` payload; pass it to `analytics_render_chart(kind="run_pareto")` to draw it. |
+| Pareto frontier | `analytics_get_single_run_pareto` | Returns a `run_pareto` payload; pass it to `analytics_render_chart` with `kind="run_pareto"` to draw it. |
 | Correlations | `analytics_get_correlation_matrix` | Returns a `run_correlations` payload; render with `kind="run_correlations"`. |
 | Leaderboard | `analytics_get_run_leaderboard` | Ranked configs by weighted objective. |
 | Parameter insights | `analytics_get_parameter_insights` | Parameter importance for one run. |
