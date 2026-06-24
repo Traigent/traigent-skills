@@ -14,7 +14,12 @@ Use only these analytics tool names:
 | `analytics_get_run_report` | `(project_id, run_id)` | Fetch the backend analytics report payload for one run. |
 | `analytics_get_project_overview` | `(project_id)` | Fetch the project-level optimization overview. |
 | `analytics_compare_runs` | `(project_id, run_ids)` | Compare two or more runs. |
-| `analytics_render_chart` | `(payload, kind, output_path)` | Render an already-fetched payload. `kind` must be `run_pareto` or `run_correlations`. |
+| `analytics_get_single_run_pareto` | `(project_id, run_id, x_measure="cost", y_measure="quality", request_count=1)` | Fetch one run's Pareto frontier (cost/quality trade-off). |
+| `analytics_get_correlation_matrix` | `(project_id, run_id, method="pearson", min_sample=3)` | Fetch one run's measure/parameter correlations. |
+| `analytics_get_run_leaderboard` | `(project_id, run_id, objective="weighted", weights=None, constraints=None, request_count=1, limit=50)` | Rank a run's configs by a weighted objective. |
+| `analytics_get_parameter_insights` | `(project_id, run_id, target_measure="quality", min_trials=10, top_k=10)` | Parameter-importance insights for one run. |
+| `analytics_get_example_insights` | `(project_id, run_id)` | Privacy-bounded example / dataset-quality insights (safe projection only — coarse counts, cohorts, redacted refs; never raw signals). |
+| `analytics_render_chart` | `(payload, kind, output_path=None)` | Render an already-fetched payload. `kind` must be `run_pareto` or `run_correlations`. |
 
 Do not call unlisted analytics tool names. If a tool response has `ok: false`, report the
 failure at a high level and do not invent missing data.
@@ -88,8 +93,9 @@ analytics_render_chart(
 ```
 
 It does not fetch Pareto/correlation data and does not recompute analytics. Call it only when
-you already have a backend-produced payload matching the selected `kind`. If the run report
-or a future registered tool does not include that payload, use the portal deep-link fallback.
+you already have a backend-produced payload matching the selected `kind` — typically the
+`run_pareto` payload from `analytics_get_single_run_pareto` or the `run_correlations` payload
+from `analytics_get_correlation_matrix` (or one already present in a run-report response).
 
 The success response is:
 
@@ -101,24 +107,27 @@ The success response is:
 }
 ```
 
-## Wave-2 Drilldowns
+## Single-Run Drilldowns
 
-These single-run drilldowns are **NOT YET REGISTERED — do not call until the Wave-2 MCP tools
-ship**:
+These single-run drilldowns are **registered** (SDK >= 0.18.0.dev0). Call them directly for a
+focused view; pull at most one extra drilldown per turn, and only when the user asks or the
+brief's `recommended_action` / `warnings` clearly call for it. Full signatures (all optional
+params and defaults) are in the **Registered Tools** table above.
 
-| Drilldown | Do not call | Fallback |
+| Drilldown | Tool | Notes |
 |---|---|---|
-| Pareto fetch | `analytics_get_single_run_pareto`, `run_pareto`, or similar | Open the portal Pareto view/deep-link. |
-| Correlations fetch | `analytics_get_correlation_matrix`, `analytics_get_run_correlations`, or similar | Open the portal correlations view/deep-link. |
-| Leaderboard | `analytics_get_run_leaderboard` or similar | Open the portal leaderboard view/deep-link. |
-| Parameter insights | `analytics_get_parameter_insights` or similar | Open the portal parameter-insights view/deep-link. |
-| Example insights | `analytics_get_example_insights` or similar | Open the portal example-insights view/deep-link. |
+| Pareto frontier | `analytics_get_single_run_pareto` | Returns a `run_pareto` payload; pass it to `analytics_render_chart` with `kind="run_pareto"` to draw it. |
+| Correlations | `analytics_get_correlation_matrix` | Returns a `run_correlations` payload; render with `kind="run_correlations"`. |
+| Leaderboard | `analytics_get_run_leaderboard` | Ranked configs by weighted objective. |
+| Parameter insights | `analytics_get_parameter_insights` | Parameter importance for one run. |
+| Example insights | `analytics_get_example_insights` | Safe projection only — coarse counts, cohorts, redacted refs, templated recommendations. Never surface raw per-example signals. |
 
-The fallback deep-link is navigation only, for example:
+The portal deep-link remains a **fallback for interactive exploration** (hover / zoom / filter)
+or for any view that has no registered tool — not because these tools are missing:
 
 ```text
 https://portal.traigent.ai/p/<project_id>/runs/<run_id>
 ```
 
-Never print invented rankings, example ids, chart captions, or field shapes for an
-unregistered drilldown.
+Treat every tool response as authoritative. If a tool returns `ok: false`, report the failure
+at a high level. Never print invented rankings, example ids, chart captions, or field shapes.
