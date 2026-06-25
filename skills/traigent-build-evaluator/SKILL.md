@@ -49,7 +49,10 @@ def exact_match_score(output, expected) -> float:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(question, temperature=cfg["temperature"])
+    import litellm  # pip install traigent[integrations]
+    resp = litellm.completion(model=cfg.get("model", "gpt-4o-mini"), temperature=cfg["temperature"],
+                              messages=[{"role": "user", "content": question}])
+    return resp.choices[0].message.content
 ```
 
 ### Tier 3: metric functions
@@ -84,8 +87,44 @@ def expected_field_metric(output, expected, input_data) -> float:
 )
 def extract(text: str) -> str:
     cfg = traigent.get_config()
-    return call_extractor(text, temperature=cfg["temperature"])
+    import litellm  # pip install traigent[integrations]
+    resp = litellm.completion(model=cfg.get("model", "gpt-4o-mini"), temperature=cfg["temperature"],
+                              messages=[{"role": "user", "content": text}])
+    return resp.choices[0].message.content
 ```
+
+#### Binding a per-example side field (e.g. `db_path`) — name a `metadata` parameter
+
+`metric_functions` binds its arguments **by parameter name**, not by position (SDK
+`evaluators/local.py` `_build_metric_keyword_arguments`). The names available are:
+`output`/`expected` (the row's prediction + gold), `input_data` (the **nested `input` dict only**),
+`metadata` (the row's top-level extras), `config`, `example`, and `example_index`.
+
+The documented `(output, expected, input_data)` signature **cannot** see a top-level side field like
+`db_path` — `input_data` is only the `input` dict. To reach it, **name a `metadata` parameter** and
+read the key the dataset contract routed there (see `traigent-curate-dataset` for the row mapping):
+
+```python
+from text2sql.execaccuracy import execution_accuracy  # opens metadata["db_path"], runs pred vs gold
+
+def exec_acc(output, expected, metadata) -> float:   # NAME the param `metadata`
+    return execution_accuracy(output, expected["sql"], metadata["db_path"])
+
+@traigent.optimize(
+    evaluation=EvaluationOptions(
+        eval_dataset="eval/salesco_30.jsonl",        # rows: {"input": {...}, "output": {"sql": "<gold>"}, "db_path": "..."}
+        metric_functions={"exec_acc": exec_acc},     # Tier 3 — no climb to Tier 4/5 needed
+    ),
+    objectives=["exec_acc"],
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
+)
+def to_sql(question: str, schema: str = "", db_id: str = "") -> str:
+    ...
+```
+
+A param named `input_data` would receive the nested `input` dict, **not** `db_path` — that is the
+silent trap. (Tier-4/5 alternative: read `example.metadata["db_path"]` directly inside a
+`custom_evaluator` / `BaseEvaluator`.)
 
 ### Tier 4: custom evaluator
 
@@ -131,7 +170,10 @@ def evaluate_answer(func, config, example) -> ExampleResult:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(question, temperature=cfg["temperature"])
+    import litellm  # pip install traigent[integrations]
+    resp = litellm.completion(model=cfg.get("model", "gpt-4o-mini"), temperature=cfg["temperature"],
+                              messages=[{"role": "user", "content": question}])
+    return resp.choices[0].message.content
 ```
 
 ### Tier 5: BaseEvaluator subclass
