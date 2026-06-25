@@ -4,7 +4,7 @@ description: "Install and set up the Traigent SDK for LLM optimization. Use when
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Traigent Quickstart
@@ -277,6 +277,7 @@ traigent onboard         # guided first-run setup wizard
 
 ## Next Steps
 
+- **Configure your decorator for a real optimization** -- The example above is the *minimal* decorator. To make it optimization-ready -- custom evaluators / `metric_functions`, injection mode, execution (`algorithm`/`offline`), and weighted objectives -- use the `traigent-decorator-setup` skill, then launch with `traigent-run-optimization`. This `decorator-setup` → `run-optimization` pair is the standard two-step cycle for going from "first run" to a real optimization.
 - **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
 - **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-run-optimization` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-configuration-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
