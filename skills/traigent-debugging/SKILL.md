@@ -45,7 +45,12 @@ Then run your optimization. Debug output includes:
 
 ### Invalid API key format (cloud auth)
 
-**When raised**: a cloud run (`algorithm="auto"`/smart optimizers, or any backend sync) fails with `auth: Invalid API key format` / `Cloud brain session creation failed without an allowed connectivity fallback`. The key *is* being read — it just doesn't match the expected shape. This is almost always a **paste artifact** (a stray space or trailing characters), not a wrong key.
+**When raised**: a cloud run (`algorithm="auto"`/smart optimizers, or any backend sync) fails with `auth: Invalid API key format` / `Cloud brain session creation failed without an allowed connectivity fallback`. The key *is* being read — it just doesn't match the expected **shape** (prefix + length + character set), so this fires *before* any "is this key valid?" backend check. Two common causes:
+
+1. **A paste artifact** on an otherwise-correct Traigent key — a stray leading/trailing space, a newline, or surrounding quotes.
+2. **The wrong credential entirely** — most often a **provider key pasted into `TRAIGENT_API_KEY`** (e.g. an OpenAI `sk-proj-…` / `sk-…` key: the `sk-` prefix uses a hyphen, not the `sk_` the validator expects, and the length won't match either), or any non-Traigent token. A provider key belongs in `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / etc., **not** `TRAIGENT_API_KEY`.
+
+(A *correctly-shaped* Traigent key that is revoked or for the wrong tenant fails later with an auth/authorization error, not this format error.)
 
 **Check the key's shape** without revealing it:
 
@@ -62,7 +67,7 @@ Valid `TRAIGENT_API_KEY` formats — prefix → exact total length, then only `A
 | `tg_` | 64 | standard API key |
 | `uk_` / `sk_` / `ak_` / `tk_` | 46 | user / service / admin / temporary key |
 
-Any space, wrong length, surrounding quotes, or other character → rejected. Re-copy the key cleanly (nothing before/after it), or trim at the first whitespace.
+Any space, wrong length, surrounding quotes, or other character → rejected. Confirm the value is a **Traigent** key (one of the prefixes above), not a provider key; then re-copy it cleanly (nothing before/after it), or trim at the first whitespace.
 
 ### ConfigurationError
 
