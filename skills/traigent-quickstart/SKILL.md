@@ -4,7 +4,7 @@ description: "Install and set up the Traigent SDK for LLM optimization. Use when
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Traigent Quickstart
@@ -141,6 +141,8 @@ Here is a complete working example. This function classifies customer queries us
 
 **Note on mock scope:** `enable_mock_mode_for_quickstart()` intercepts LiteLLM and LangChain calls. Raw `openai.OpenAI()` / `anthropic.Anthropic()` client calls are **not** intercepted — use `litellm.completion()` for a fully keyless dry-run (see `references/installation-extras.md` for `traigent[integrations]`).
 
+**Why the example includes a `mock_demo_accuracy` scorer:** in mock mode every LLM call returns the *same* canned string, so a **real** accuracy metric scores every trial 0.0 — a discouraging all-zeros table that looks broken. The demo scorer below ignores the (canned) output and ranks trials by their config, so the keyless dry-run produces a meaningful table — the same approach the bundled `traigent quickstart` command uses. It is **mock-only: delete it for a real run**, where Traigent scores actual model output against your dataset labels. (Prefer not to keep a placeholder scorer in your own code? Just run `traigent quickstart` for the same ranked demo without writing one.)
+
 ```python
 import asyncio
 import litellm  # pip install traigent[integrations]
@@ -151,11 +153,28 @@ from traigent.testing import enable_mock_mode_for_quickstart
 # Step 1: dry-run in mock mode — no API keys required, no cost
 enable_mock_mode_for_quickstart()
 
+
+def mock_demo_accuracy(output, expected, config=None, **_):
+    """Mock-only demo scorer — DELETE this for a real (paid) run.
+
+    In mock mode every ``litellm.completion`` call returns the same canned
+    string, so a real accuracy metric would score every trial 0.0 (a
+    misleading all-zeros table). This placeholder ignores ``output`` and ranks
+    trials by their config so the keyless dry-run produces a meaningful table —
+    the same trick the bundled ``traigent quickstart`` demo uses. On a real run,
+    remove it and let Traigent score actual model output against your labels.
+    """
+    cfg = config or traigent.get_config() or {}
+    base = 0.85 if cfg.get("model") == "gpt-4o" else 0.65
+    return max(0.0, base - 0.05 * float(cfg.get("temperature", 0.5)))
+
+
 @traigent.optimize(
     eval_dataset="eval_queries.jsonl",
     objectives=["accuracy"],
     model=Choices(["gpt-4o-mini", "gpt-4o"]),
     temperature=Choices([0.0, 0.5, 1.0]),
+    metric_functions={"accuracy": mock_demo_accuracy},  # mock-only; delete for a real run
 )
 def classify_query(query: str) -> str:
     config = traigent.get_config()
