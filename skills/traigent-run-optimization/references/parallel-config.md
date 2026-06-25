@@ -91,7 +91,7 @@ from traigent.api.decorators import ExecutionOptions
             example_concurrency=8,
         ),
     ),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
