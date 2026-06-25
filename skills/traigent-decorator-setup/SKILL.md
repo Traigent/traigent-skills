@@ -1,6 +1,6 @@
 ---
 name: traigent-decorator-setup
-description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming/labeling a run with experiment_name (there is no tags/metadata argument), using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators."
+description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming/labeling a run with experiment_name (there is no tags/metadata argument), using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s)."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -29,6 +29,8 @@ To wire and run an optimization, three inputs are needed — supply them up fron
 3. **Objective(s)** — what to optimize: a string list (e.g. `["accuracy"]`) or a weighted `ObjectiveSchema` (see [Objectives](#objectives) below).
 
 A typical **quick cycle is two steps**: configure the decorator with this skill, then launch with the **`traigent-run-optimization`** skill. The decorator config below is identical whether you pass these inputs at invocation or provide them interactively — if any is missing, ask for it before wiring the decorator.
+
+**Multiple candidate agents?** If the skill is invoked without an agent and the project has more than one function that could be optimized (e.g. several that call an LLM), do **not** guess — list the candidates and ask the user which one to wire. Optimize one decorated function per run.
 
 ## Imports
 
