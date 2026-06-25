@@ -32,21 +32,24 @@ pip install "traigent[recommended]"
 pip install traigent
 ```
 
-### Use a virtual environment (recommended)
+### Use a virtual environment (do this first)
 
-On modern Debian/Ubuntu — and any interpreter marked *externally managed* (PEP 668) — a bare
-`pip install` into the system Python is refused with `error: externally-managed-environment`.
-Create a virtualenv first:
+Install into a project virtualenv — it's standard Python practice and it's the friction-free
+path here. A **fresh** venv is enough; you do **not** need `--system-site-packages`.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install "traigent[recommended]"
 ```
 
-`litellm` is a **core dependency** of the SDK, so `pip install traigent` always installs it —
-the keyless mock path (which intercepts `litellm.completion(...)`) works out of the box with no
-extra install. Only the LangChain / OpenAI / Anthropic *adapter* clients live in the
+`pip install traigent` resolves from PyPI and pulls `litellm` (a **core dependency**) along with
+it, so the keyless mock path — which intercepts `litellm.completion(...)` — works immediately,
+with no extra install. Only the LangChain / OpenAI / Anthropic *adapter* clients live in the
 `integrations` extra (below).
+
+> **Why a venv instead of system Python?** On modern Debian/Ubuntu/Fedora the system interpreter
+> is marked *externally managed* (PEP 668), so a bare `pip install` into it is refused with
+> `error: externally-managed-environment`. The venv above avoids that entirely.
 
 ### With Optional Extras
 
