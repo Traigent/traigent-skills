@@ -169,33 +169,33 @@ export TRAIGENT_RUN_COST_LIMIT=5.00  # $5 max per optimization run
 
 The default limit is $2.00 per run.
 
-### Handling CostLimitExceeded
+### Handling a Cost Limit
 
-When the cost limit is reached, Traigent raises `CostLimitExceeded`:
-
-```python
-from traigent.utils.exceptions import CostLimitExceeded
-
-try:
-    results = await func.optimize(max_trials=100, algorithm="bayesian")
-except CostLimitExceeded as e:
-    print(f"Cost limit hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
-    # Optimization stopped but partial results may be available
-```
-
-The exception has two attributes:
-- `e.accumulated` (float) - Total cost accumulated before the limit was hit.
-- `e.limit` (float) - The configured cost limit.
-
-**A cost limit can surface three different ways — don't rely on `CostLimitExceeded` alone:**
+**A cost limit does *not* surface through one exception — handle all of the paths below.** A common mistake is to catch only `CostLimitExceeded`; in the current SDK that handler never fires (see the note after the table).
 
 | Surface | When it happens | How to handle |
 |---|---|---|
-| `CostLimitExceeded` (raised) | accumulated cost passes the limit **mid-run** | `except CostLimitExceeded` (above) |
-| `results.stop_reason == "cost_limit"` | the run stops on budget and **returns** partial results | check `stop_reason` after a normal return |
-| `OptimizationError: Cost approval declined` (**pre-run**) | the *estimated* cost already exceeds the limit and the run wasn't pre-approved | `except OptimizationError` — raise the limit, shrink the run, or set `TRAIGENT_COST_APPROVED=true` |
+| `OptimizationError` (**raised, pre-run**) | the *estimated* cost already exceeds the limit and the run wasn't pre-approved — raised **before any trial runs** | `except OptimizationError` — raise the limit, shrink the run, or set `TRAIGENT_COST_APPROVED=true` |
+| `results.stop_reason == "cost_limit"` (**returned**) | the run hits the budget **mid-run**, stops, and **returns** partial results (no exception) | check `stop_reason` after a normal return |
+| `CostLimitExceeded` (**not currently raised**) | exported & documented as the budget handler, but the current SDK never raises it (the mid-run stop returns `stop_reason="cost_limit"` instead) | keep in your `except` for forward-compatibility; do **not** rely on it as your only guard |
 
-In practice a very low `cost_limit` (e.g. sub-cent) without pre-approval raises the **pre-run** `OptimizationError` (estimate > limit) before any trial runs, and a budget-stopped run may **return** with `stop_reason="cost_limit"` instead of raising. Robust handling catches `CostLimitExceeded` **and** `OptimizationError`, **and** checks `results.stop_reason`.
+```python
+from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
+
+try:
+    results = await func.optimize(max_trials=100, algorithm="bayesian")
+except CostLimitExceeded as e:          # kept for forward-compat; not raised today
+    print(f"Cost limit hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
+except OptimizationError as e:           # the pre-run "estimate > limit" decline
+    print(f"Run declined before starting: {e}")
+else:
+    if getattr(results, "stop_reason", None) == "cost_limit":
+        print("Budget reached mid-run; partial results returned.")
+```
+
+Notes:
+- The pre-run decline's underlying exception is `OptimizationAborted`, which the SDK wraps into `OptimizationError` at the `optimize()` boundary — so `except OptimizationError` catches it there. Inside framework integrations (LangChain/LiteLLM) it may instead propagate **raw** as `OptimizationAborted`.
+- The exact exception/return contract is being standardized upstream — see **Traigent/Traigent#1490**. Catching `OptimizationError` **and** `CostLimitExceeded`, **and** checking `results.stop_reason`, is robust across whichever way it resolves.
 
 ### Pre-Approving Costs
 
