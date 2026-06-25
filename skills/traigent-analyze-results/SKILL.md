@@ -323,14 +323,16 @@ tells the whole story — you want the **trade-off set** (the Pareto frontier): 
 where you cannot improve one objective without sacrificing another.
 
 Get one aggregated row per configuration with `to_aggregated_dataframe()` (groups repeated samples
-of the same config and computes `<metric>_mean`), then filter to the non-dominated set:
+of the same config and averages each metric), then filter to the non-dominated set:
 
 ```python
 df = results.to_aggregated_dataframe(primary_objective="accuracy")
-# Columns: config params + samples_count + <metric>_mean (e.g. accuracy_mean, cost_mean) + duration_mean
+# One row per unique config. Columns: config params + samples_count + each metric as its
+# mean under its BARE name (e.g. "accuracy", "cost") + "duration" (mean seconds).
+print(df.columns.tolist())  # confirm the exact metric column names for your run
 
 # Non-dominated (Pareto) frontier: maximize accuracy, minimize cost.
-def pareto_front(df, maximize="accuracy_mean", minimize="cost_mean"):
+def pareto_front(df, maximize="accuracy", minimize="cost"):
     keep = []
     for i, row in df.iterrows():
         dominated = (
@@ -342,7 +344,7 @@ def pareto_front(df, maximize="accuracy_mean", minimize="cost_mean"):
     return df.loc[keep].sort_values(minimize)
 
 frontier = pareto_front(df)
-print(frontier[["accuracy_mean", "cost_mean", "duration_mean"]])
+print(frontier[["accuracy", "cost", "duration"]])  # use your run's actual metric names
 ```
 
 Each frontier row is a defensible operating point: pick the cheapest config that clears your
@@ -351,8 +353,10 @@ per-trial rows if you want to plot the full cloud behind the frontier.)
 
 ## Find Your Run on the Portal
 
-Any non-offline run (`grid`/`random`/`auto`/smart, i.e. **not** `offline=True`) syncs to the
-Traigent portal, where the same trade-off is rendered visually. To locate it:
+A run that actually reaches the backend syncs to the Traigent portal, where the same trade-off is
+rendered visually. That requires **both** `offline=False` (the default) **and** valid credentials
+(`TRAIGENT_API_KEY`): a run with no key can fall back to local-only execution and then is **not**
+portal-tracked. To locate a synced run:
 
 ```python
 print(f"Optimization ID: {results.optimization_id}")  # the run's portal identifier
@@ -360,7 +364,8 @@ print(f"Optimization ID: {results.optimization_id}")  # the run's portal identif
 # experiment_name you set on the decorator), and read the rendered results / trade-off view.
 ```
 
-A purely local run (`offline=True`) is **not** on the portal — use the dataframe read above instead.
+An `offline=True` run, or a non-offline run that fell back to local (no key), is **not** on the
+portal — use the dataframe read above instead.
 
 ## Stop Reasons
 
