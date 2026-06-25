@@ -4,7 +4,7 @@ description: "Install and set up the Traigent SDK for LLM optimization. Use when
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.3"
 ---
 
 # Traigent Quickstart
@@ -114,6 +114,36 @@ TRAIGENT_API_KEY=sk_...
 OPENAI_API_KEY=sk-...
 TRAIGENT_DEBUG=1
 ```
+
+#### Recommended: have the user paste keys into `.env`, never into the chat
+
+When a user says *"I have my key"*, do **not** ask them to type the secret into the
+conversation — it would be captured in the agent transcript, logs, and context. Open the
+`.env` file for them to paste into directly. This is both **more secure** (the raw key
+never touches the chat) and **better UX** (they see exactly where it goes). Procedure:
+
+1. **Create the file** from the project template if one exists (`cp .env.example .env`),
+   otherwise create a minimal `.env` with key *names* pre-filled and values blank, so the
+   user only pastes after each `=`:
+   ```
+   TRAIGENT_API_KEY=
+   # provider key — fill the one(s) this project uses:
+   OPENAI_API_KEY=
+   # ANTHROPIC_API_KEY=
+   # Bedrock: AWS_ACCESS_KEY_ID= / AWS_SECRET_ACCESS_KEY= / AWS_REGION_NAME=
+   ```
+2. **Pop `.env` open in the user's editor**, so they paste at the right line. Try, in order,
+   until one succeeds: `code .env`, `xdg-open .env` (Linux), `open .env` (macOS),
+   `start .env` (Windows), `"$EDITOR" .env`.
+3. **Pick the provider key by detecting the vendor from the project** (its
+   `openai` / `anthropic` / `litellm` / Bedrock imports or config). If the vendor is
+   ambiguous, undetectable, or the project uses **multiple** providers (e.g. OpenAI *and*
+   Bedrock), **ask the user which provider(s)** and label the matching key(s) in `.env`.
+4. **Wait** for the user to paste and save. Confirm `.env` is in `.gitignore`.
+5. **Fallback only if no editor/GUI opens** (every command in step 2 fails): fall back to a
+   terminal `export VAR=...`, noting it is less private than the file.
+
+> Never echo, log, or read back the key value. `.env` must be git-ignored — never commit real keys.
 
 ### Production Mode
 
