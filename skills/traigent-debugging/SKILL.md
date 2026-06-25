@@ -4,7 +4,7 @@ description: "Debug and troubleshoot Traigent optimization issues. Use when enco
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -42,6 +42,27 @@ Then run your optimization. Debug output includes:
 - Backend communication for cloud smart optimization and portal result sync
 
 ## Common Errors
+
+### Invalid API key format (cloud auth)
+
+**When raised**: a cloud run (`algorithm="auto"`/smart optimizers, or any backend sync) fails with `auth: Invalid API key format` / `Cloud brain session creation failed without an allowed connectivity fallback`. The key *is* being read — it just doesn't match the expected shape. This is almost always a **paste artifact** (a stray space or trailing characters), not a wrong key.
+
+**Check the key's shape** without revealing it:
+
+```python
+import os
+k = os.environ["TRAIGENT_API_KEY"]
+print(len(k), repr(k[:4]), "HAS-SPACE" if " " in k else "no-space")
+```
+
+Valid `TRAIGENT_API_KEY` formats — prefix → exact total length, then only `A–Z a–z 0–9 _ -`:
+
+| Prefix | Length | Kind |
+|---|---|---|
+| `tg_` | 64 | standard API key |
+| `uk_` / `sk_` / `ak_` / `tk_` | 46 | user / service / admin / temporary key |
+
+Any space, wrong length, surrounding quotes, or other character → rejected. Re-copy the key cleanly (nothing before/after it), or trim at the first whitespace.
 
 ### ConfigurationError
 
