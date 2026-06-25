@@ -130,7 +130,6 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    # provider key — fill the one(s) this project uses:
    OPENAI_API_KEY=
    # ANTHROPIC_API_KEY=
-   # OPENROUTER_API_KEY=   # OpenRouter — then a model id like openrouter/openai/gpt-4o-mini
    # Bedrock: AWS_ACCESS_KEY_ID= / AWS_SECRET_ACCESS_KEY= / AWS_REGION_NAME=
    ```
 2. **Always show the user the absolute path** (e.g. `/home/me/proj/.env`). This is the
@@ -154,10 +153,6 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    `openai` / `anthropic` / `litellm` / Bedrock imports or config). If the vendor is
    ambiguous, undetectable, or the project uses **multiple** providers (e.g. OpenAI *and*
    Bedrock), **ask the user which provider(s)** and label the matching key(s) in `.env`.
-   Each provider has its **own** key variable and (via litellm) model prefix —
-   `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `OPENROUTER_API_KEY` (model `openrouter/…`),
-   Bedrock AWS creds, etc. **Never paste one provider's key into another's variable** (an
-   OpenRouter key in `OPENAI_API_KEY` fails with an auth error).
 5. **Wait** for the user to paste and save. Confirm `.env` is in `.gitignore`.
 6. **Fallback:** if no standalone editor opens (or the user says no window appeared), have
    them open the printed path manually; only as a last resort use a terminal `export VAR=...`
