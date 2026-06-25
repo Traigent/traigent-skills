@@ -4,7 +4,7 @@ description: "Author structural configuration spines for Traigent optimization. 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Structural Spine
@@ -171,7 +171,7 @@ metrics through named `metric_functions`, and reads completed trials from `resul
 
 Use this checklist before running a real demo:
 
-1. `algorithm='tpe'` works out of the box when Optuna is installed (pulled by `traigent[integrations]`); `tpe` is registered by default and resolves on the standard SDK — no vendored/alternate SDK build is needed.
+1. Confirm execution mode before a paid run: `grid` and `random` run **fully locally** in the SDK; smarter algorithms like `tpe` (the Optuna/Bayesian family) are **cloud/smart optimizers** that route through the Traigent backend in hybrid mode and require `traigent auth` or `TRAIGENT_API_KEY`. Installing Optuna (`traigent[integrations]`) does **not** make `tpe` resolve on the local SDK — the only locally-registered algorithms are `grid` and `random` (`_LOCAL_ALGORITHMS = {grid, random}`), so a `tpe` run with no backend auth does not start.
 2. Set `TRAIGENT_COST_APPROVED=true` and a high `TRAIGENT_RUN_COST_LIMIT`; rely on your own real-usage budget guard.
 3. Use a fresh per-run study directory. A persistent study dedups configs and can stop early.
 4. Read trials from `result.to_dataframe()`, not from `custom_evaluator` callbacks.
