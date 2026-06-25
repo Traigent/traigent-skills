@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Running Traigent Optimization
@@ -186,6 +186,16 @@ except CostLimitExceeded as e:
 The exception has two attributes:
 - `e.accumulated` (float) - Total cost accumulated before the limit was hit.
 - `e.limit` (float) - The configured cost limit.
+
+**A cost limit can surface three different ways — don't rely on `CostLimitExceeded` alone:**
+
+| Surface | When it happens | How to handle |
+|---|---|---|
+| `CostLimitExceeded` (raised) | accumulated cost passes the limit **mid-run** | `except CostLimitExceeded` (above) |
+| `results.stop_reason == "cost_limit"` | the run stops on budget and **returns** partial results | check `stop_reason` after a normal return |
+| `OptimizationError: Cost approval declined` (**pre-run**) | the *estimated* cost already exceeds the limit and the run wasn't pre-approved | `except OptimizationError` — raise the limit, shrink the run, or set `TRAIGENT_COST_APPROVED=true` |
+
+In practice a very low `cost_limit` (e.g. sub-cent) without pre-approval raises the **pre-run** `OptimizationError` (estimate > limit) before any trial runs, and a budget-stopped run may **return** with `stop_reason="cost_limit"` instead of raising. Robust handling catches `CostLimitExceeded` **and** `OptimizationError`, **and** checks `results.stop_reason`.
 
 ### Pre-Approving Costs
 
