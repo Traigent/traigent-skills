@@ -4,7 +4,7 @@ description: "Analyze Traigent optimization results from the terminal — withou
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.3"
+  version: "1.1.4"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -315,6 +315,52 @@ print(f"Trial counts: {stats.trial_counts}")
 print(f"Best metrics: {results.best_metrics}")
 # {"accuracy": 0.92, "latency": 0.8}
 ```
+
+## The Quality / Cost / Latency Trade-off (multi-objective)
+
+After a multi-objective run (`objectives=["accuracy", "cost"]`), the single `best_score` no longer
+tells the whole story — you want the **trade-off set** (the Pareto frontier): the configurations
+where you cannot improve one objective without sacrificing another.
+
+Get one aggregated row per configuration with `to_aggregated_dataframe()` (groups repeated samples
+of the same config and computes `<metric>_mean`), then filter to the non-dominated set:
+
+```python
+df = results.to_aggregated_dataframe(primary_objective="accuracy")
+# Columns: config params + samples_count + <metric>_mean (e.g. accuracy_mean, cost_mean) + duration_mean
+
+# Non-dominated (Pareto) frontier: maximize accuracy, minimize cost.
+def pareto_front(df, maximize="accuracy_mean", minimize="cost_mean"):
+    keep = []
+    for i, row in df.iterrows():
+        dominated = (
+            (df[maximize] >= row[maximize]) & (df[minimize] <= row[minimize])
+            & ((df[maximize] > row[maximize]) | (df[minimize] < row[minimize]))
+        ).any()
+        if not dominated:
+            keep.append(i)
+    return df.loc[keep].sort_values(minimize)
+
+frontier = pareto_front(df)
+print(frontier[["accuracy_mean", "cost_mean", "duration_mean"]])
+```
+
+Each frontier row is a defensible operating point: pick the cheapest config that clears your
+accuracy bar, or the most accurate within your cost budget. (`results.to_dataframe()` gives the raw
+per-trial rows if you want to plot the full cloud behind the frontier.)
+
+## Find Your Run on the Portal
+
+Any non-offline run (`grid`/`random`/`auto`/smart, i.e. **not** `offline=True`) syncs to the
+Traigent portal, where the same trade-off is rendered visually. To locate it:
+
+```python
+print(f"Optimization ID: {results.optimization_id}")  # the run's portal identifier
+# Open https://portal.traigent.ai -> Experiments, find this run by its id (or the
+# experiment_name you set on the decorator), and read the rendered results / trade-off view.
+```
+
+A purely local run (`offline=True`) is **not** on the portal — use the dataframe read above instead.
 
 ## Stop Reasons
 

@@ -4,7 +4,7 @@ description: "Define tuned variables and configuration spaces for Traigent optim
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Configuration Space
@@ -456,6 +456,19 @@ def my_function(query: str) -> str:
     config = traigent.get_config()
     ...
 ```
+
+## Next Steps
+
+You have defined the search space. Now run it:
+
+- **`traigent-run-optimization`** — launch the optimization: algorithm choice (`auto`/`grid`/`random`/cloud-only smart), `max_trials`, cost limits, and the mandatory dry-run-first gate. This is the next lifecycle step (configuration-space → **run-optimization** → analyze-results).
+- **`traigent-decorator-setup`** — if you still need to wire evaluation/objectives/injection onto `@traigent.optimize()` before running.
+
+## See Also
+
+- `traigent` — lifecycle driver (dry-run-first / cost-approval mandate)
+- `traigent-run-optimization` — run the space you just defined
+- `traigent-analyze-results` — read `best_config`/`best_score` and the trade-off after the run
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
