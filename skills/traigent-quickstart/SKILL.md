@@ -4,7 +4,7 @@ description: "Install and set up the Traigent SDK for LLM optimization. Use when
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Traigent Quickstart
@@ -98,6 +98,7 @@ enable_mock_mode_for_quickstart()
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
+- **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` (or run with no key). `enable_mock_mode_for_quickstart()` alone does **not** make a run local.
 
 ### Legacy Env-Var Path
 
