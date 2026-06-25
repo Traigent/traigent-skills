@@ -30,7 +30,12 @@ The primary way to run optimization. Returns an `OptimizationResult`.
 > from traigent.testing import enable_mock_mode_for_quickstart
 > enable_mock_mode_for_quickstart()
 > results = await answer.optimize(max_trials=10, algorithm="grid")  # mock, no cost
-> print(results.estimated_cost_usd)  # review estimate before approving
+> print(f"Mock pipeline OK: {len(results.trials)} trials, {len(results.failed_trials)} failed")
+> # Estimate the REAL run's cost before approving. There is no `results.estimated_cost_usd`
+> # accessor — the upper bound is (max_trials x dataset_size) LLM calls; price that against
+> # your model's $/token, or set TRAIGENT_RUN_COST_LIMIT and let the run abort if it exceeds.
+> max_trials, dataset_size = 10, 15        # your run's values
+> print(f"Real run: up to {max_trials * dataset_size} LLM calls")
 > ```
 > Only proceed to the real run below after the user explicitly approves the cost.
 >
@@ -41,6 +46,7 @@ The primary way to run optimization. Returns an `OptimizationResult`.
 
 ```python
 import traigent
+import litellm  # pip install traigent[integrations] — the canonical runnable LLM call
 
 @traigent.optimize(
     eval_dataset="qa_test.jsonl",
@@ -53,7 +59,12 @@ import traigent
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], temperature=cfg["temperature"], prompt=question)
+    resp = litellm.completion(
+        model=cfg["model"],
+        temperature=cfg["temperature"],
+        messages=[{"role": "user", "content": question}],
+    )
+    return resp.choices[0].message.content
 
 # Run optimization (real — only after dry-run approval)
 results = await answer.optimize(max_trials=10)  # default algorithm="auto"
@@ -288,8 +299,10 @@ from traigent.api.decorators import ExecutionOptions
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
+    import litellm  # pip install traigent[integrations]
     cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=query)
+    resp = litellm.completion(model=cfg["model"], messages=[{"role": "user", "content": query}])
+    return resp.choices[0].message.content
 
 results = await my_func.optimize(max_trials=10, algorithm="random")
 ```
@@ -400,12 +413,14 @@ def exact_match(output: str, expected: str) -> float:
     },
 )
 def answer_question(question: str) -> str:
+    import litellm  # pip install traigent[integrations]
     cfg = traigent.get_config()
-    return call_llm(
+    resp = litellm.completion(
         model=cfg["model"],
         temperature=cfg["temperature"],
-        prompt=question,
+        messages=[{"role": "user", "content": question}],
     )
+    return resp.choices[0].message.content
 
 async def main():
     try:

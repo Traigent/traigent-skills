@@ -4,7 +4,7 @@ description: "Guide users through Traigent optimization: setup, dry-run validati
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Traigent: Dry-Run First, Real When Ready
@@ -45,6 +45,7 @@ The user's function needs four things:
 
 ```python
 import traigent
+import litellm  # pip install traigent[integrations] — the canonical runnable LLM call
 from traigent import Choices, Range
 
 @traigent.optimize(
@@ -55,9 +56,15 @@ from traigent import Choices, Range
 )
 def my_function(query: str) -> str:                    # 4. The function
     config = traigent.get_config()
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=config["model"], temperature=config["temperature"], prompt=query)
+    resp = litellm.completion(
+        model=config["model"],
+        temperature=config["temperature"],
+        messages=[{"role": "user", "content": query}],
+    )
+    return resp.choices[0].message.content
 ```
+
+> **One runnable body, reused everywhere.** The `litellm.completion(...)` → `resp.choices[0].message.content` body above is the canonical, copy-paste-runnable function used across these skills (and in `traigent-quickstart`). Reuse it verbatim wherever an example shows `my_function`/agent body — it runs keyless under mock mode (LiteLLM is intercepted) and unchanged for a real run. **Optimize accuracy *and* cost?** `cost` and `latency` are built-in objectives auto-derived from token accounting, so use `objectives=["accuracy", "cost"]` — no extra evaluator needed.
 
 ### Config Space: Inline vs Dict
 
@@ -143,6 +150,7 @@ import os
 os.environ["TRAIGENT_OFFLINE_MODE"] = "true"   # Skip Traigent backend calls
 
 import traigent
+import litellm  # pip install traigent[integrations]
 from traigent import Choices, Range
 from traigent.testing import enable_mock_mode_for_quickstart
 
@@ -156,8 +164,12 @@ enable_mock_mode_for_quickstart()              # Mock LLM responses (dev-only)
 )
 def my_function(query: str) -> str:
     config = traigent.get_config()
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=config["model"], temperature=config["temperature"], prompt=query)
+    resp = litellm.completion(                  # canonical runnable body (intercepted in mock)
+        model=config["model"],
+        temperature=config["temperature"],
+        messages=[{"role": "user", "content": query}],
+    )
+    return resp.choices[0].message.content
 
 # Mock optimization — zero cost, validates the full pipeline
 results = my_function.optimize_sync(max_trials=4, algorithm="random")
@@ -235,9 +247,11 @@ Common failures:
 Before the first paid run, verify the metric actually separates a correct output from a wrong one. This costs nothing — no LLM calls — but catches the single most expensive silent failure mode: an evaluation metric that swallows exceptions or silently returns 0.0 for every config (making the agent look broken when the metric is broken).
 
 ```python
-# call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-known_good = call_llm(best_known_prompt, cfg=best_cfg)
-known_bad  = "obviously wrong or empty output"
+# `my_metric` is the scoring_function / metric you pass to @traigent.optimize.
+# Use literal good/bad examples for YOUR task — no LLM call needed (that's the point).
+expected_output = "the expected answer for one example"   # your gold label
+known_good      = "a known-correct output for that example"  # e.g. the gold answer itself
+known_bad       = "obviously wrong or empty output"
 
 assert my_metric(known_good, expected_output) >= 0.9, (
     "metric does not reward a correct output — fix before running real optimization"
@@ -303,14 +317,26 @@ os.environ["TRAIGENT_RUN_COST_LIMIT"] = "2.00"
 
 ### 3. Run Real Optimization
 
+> **Smart algorithms are cloud-only.** `bayesian` (and the rest of the Optuna/Bayesian family,
+> incl. `tpe`) run on the Traigent backend and require `TRAIGENT_API_KEY` (`traigent auth`) — the
+> provider keys exported above are **not** enough. Without it the run raises `OptimizationError`.
+> For a fully local real run, use `algorithm="grid"` or `algorithm="random"`.
+
 ```python
-from traigent.utils.exceptions import CostLimitExceeded
+from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
+    # `bayesian` is cloud-only (needs TRAIGENT_API_KEY); use "grid"/"random" to stay local.
     results = my_function.optimize_sync(max_trials=10, algorithm="bayesian")
 except CostLimitExceeded as e:
     print(f"Budget hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
     print("Increase TRAIGENT_RUN_COST_LIMIT to allow more spending.")
+    raise
+except OptimizationError as e:
+    # e.g. a cloud-only algorithm with no TRAIGENT_API_KEY set.
+    print(f"Optimization could not run: {e}")
+    print("Set TRAIGENT_API_KEY for smart algorithms, or use algorithm='grid'/'random'.")
+    raise
 
 print(f"Best config:  {results.best_config}")
 print(f"Best score:   {results.best_score}")
