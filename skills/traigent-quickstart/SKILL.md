@@ -132,16 +132,31 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    # ANTHROPIC_API_KEY=
    # Bedrock: AWS_ACCESS_KEY_ID= / AWS_SECRET_ACCESS_KEY= / AWS_REGION_NAME=
    ```
-2. **Pop `.env` open in the user's editor**, so they paste at the right line. Try, in order,
-   until one succeeds: `code .env`, `xdg-open .env` (Linux), `open .env` (macOS),
-   `start .env` (Windows), `"$EDITOR" .env`.
-3. **Pick the provider key by detecting the vendor from the project** (its
+2. **Always show the user the absolute path** (e.g. `/home/me/proj/.env`). This is the
+   guaranteed fallback — they can open it in their own editor no matter what happens next.
+3. **Best-effort: pop the file open in a _standalone_ editor window, launched _detached_.**
+   Pick the launcher by OS; never wrap it in `timeout`:
+   - **Linux:** `setsid -f gnome-text-editor "$ENV"` — or the first of
+     `kate` / `gedit` / `xed` / `mousepad` that exists; last resort `xdg-open "$ENV"`.
+   - **macOS:** `open -t "$ENV"` (opens the default text editor in its own window).
+   - **Windows:** `start "" notepad "%ENV%"` (Notepad is always present), or
+     `Start-Process notepad "$env:ENV"` in PowerShell.
+
+   **Pitfalls that look like success but aren't** (verified the hard way):
+   - **Don't** open via the user's IDE (`code <file>` / `cursor <file>`): it can spawn a
+     nested instance that *crashes*, and it hijacks whichever IDE window is focused — so
+     `.env` can pop up inside an unrelated project.
+   - **Don't** trust the launcher's exit code as "opened" — a crashed window can still exit 0.
+     Verify the editor process is actually alive (e.g. `pgrep`) **and ask the user to confirm
+     the window appeared.**
+4. **Pick the provider key by detecting the vendor from the project** (its
    `openai` / `anthropic` / `litellm` / Bedrock imports or config). If the vendor is
    ambiguous, undetectable, or the project uses **multiple** providers (e.g. OpenAI *and*
    Bedrock), **ask the user which provider(s)** and label the matching key(s) in `.env`.
-4. **Wait** for the user to paste and save. Confirm `.env` is in `.gitignore`.
-5. **Fallback only if no editor/GUI opens** (every command in step 2 fails): fall back to a
-   terminal `export VAR=...`, noting it is less private than the file.
+5. **Wait** for the user to paste and save. Confirm `.env` is in `.gitignore`.
+6. **Fallback:** if no standalone editor opens (or the user says no window appeared), have
+   them open the printed path manually; only as a last resort use a terminal `export VAR=...`
+   (less private than the file).
 
 > Never echo, log, or read back the key value. `.env` must be git-ignored — never commit real keys.
 
