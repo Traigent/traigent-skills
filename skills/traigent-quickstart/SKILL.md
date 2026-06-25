@@ -4,7 +4,7 @@ description: "Install and set up the Traigent SDK for LLM optimization. Use when
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Traigent Quickstart
@@ -21,6 +21,10 @@ Use this skill when:
 - Running optimization in mock mode for development
 
 ## Installation
+
+> **This is the Python SDK skill.** Building in **JavaScript/TypeScript** instead? Use the
+> **`traigent-js`** skill — it covers the native JS/TS optimizer (the `@traigent/sdk` package)
+> with a different install and API. The rest of this page assumes Python.
 
 ### Basic Install
 
