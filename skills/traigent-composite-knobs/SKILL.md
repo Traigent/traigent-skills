@@ -4,14 +4,14 @@ description: "Declare and run Traigent composite knobs: cascades, routers, ensem
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Traigent Composite Knobs
 
 ## When to Use
 
-Requires `traigent>=0.13.0.dev1`.
+Requires `traigent>=0.13.0` (the knobs API is present on all current SDK releases).
 
 Use this skill when:
 
