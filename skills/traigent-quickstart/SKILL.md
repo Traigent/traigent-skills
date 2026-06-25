@@ -4,7 +4,7 @@ description: "Install and set up the Traigent SDK for LLM optimization. Use when
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Traigent Quickstart
@@ -31,6 +31,22 @@ pip install "traigent[recommended]"
 # Minimal, no extras
 pip install traigent
 ```
+
+### Use a virtual environment (recommended)
+
+On modern Debian/Ubuntu — and any interpreter marked *externally managed* (PEP 668) — a bare
+`pip install` into the system Python is refused with `error: externally-managed-environment`.
+Create a virtualenv first:
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install "traigent[recommended]"
+```
+
+`litellm` is a **core dependency** of the SDK, so `pip install traigent` always installs it —
+the keyless mock path (which intercepts `litellm.completion(...)`) works out of the box with no
+extra install. Only the LangChain / OpenAI / Anthropic *adapter* clients live in the
+`integrations` extra (below).
 
 ### With Optional Extras
 
@@ -98,6 +114,7 @@ enable_mock_mode_for_quickstart()
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
+- **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install traigent` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install 'traigent[integrations]'`.)
 
 ### Legacy Env-Var Path
 
