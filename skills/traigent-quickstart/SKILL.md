@@ -249,6 +249,8 @@ results = classify_query.optimize_sync(max_trials=6)  # default algorithm="auto"
 3. **`func.optimize(max_trials=N)`** -- Run the optimization loop asynchronously. Returns an `OptimizationResult`.
 4. **`func.apply_best_config(results)`** -- Lock in the best configuration found so that subsequent calls use it.
 
+> **You've run your first optimization — now make it robust.** The decorator above is intentionally *minimal* (just `model` + `temperature`). For a real optimization, graduate to the more robust **`traigent-decorator-setup`** skill — custom evaluators / `metric_functions`, injection & execution control (`algorithm`/`offline`), and weighted objectives — then launch with **`traigent-run-optimization`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`bayesian`/`optuna` for large search spaces), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
+
 ## Dataset Format
 
 Traigent uses JSONL (JSON Lines) files for evaluation datasets. Each line must have an `input` field and an `output` field.
@@ -320,6 +322,7 @@ traigent onboard         # guided first-run setup wizard
 
 ## Next Steps
 
+- **Configure your decorator for a real optimization** -- The example above is the *minimal* decorator. To make it optimization-ready -- custom evaluators / `metric_functions`, injection mode, execution (`algorithm`/`offline`), and weighted objectives -- use the `traigent-decorator-setup` skill, then launch with `traigent-run-optimization`. This `decorator-setup` → `run-optimization` pair is the standard two-step cycle for going from "first run" to a real optimization.
 - **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
 - **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-run-optimization` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-configuration-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
