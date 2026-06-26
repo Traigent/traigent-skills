@@ -130,7 +130,7 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    # provider key — fill the one(s) this project uses:
    OPENAI_API_KEY=
    # ANTHROPIC_API_KEY=
-   # Bedrock: AWS_ACCESS_KEY_ID= / AWS_SECRET_ACCESS_KEY= / AWS_REGION_NAME=
+   # Bedrock: AWS_ACCESS_KEY_ID= / AWS_SECRET_ACCESS_KEY= / AWS_REGION=
    ```
 2. **Always show the user the absolute path** (e.g. `/home/me/proj/.env`). This is the
    guaranteed fallback — they can open it in their own editor no matter what happens next.
