@@ -66,6 +66,32 @@ def my_function(query: str) -> str:                    # 4. The function
 
 > **One runnable body, reused everywhere.** The `litellm.completion(...)` → `resp.choices[0].message.content` body above is the canonical, copy-paste-runnable function used across these skills (and in `traigent-quickstart`). Reuse it verbatim wherever an example shows `my_function`/agent body — it runs keyless under mock mode (LiteLLM is intercepted) and unchanged for a real run. **Optimize accuracy *and* cost?** `cost` and `latency` are built-in objectives auto-derived from token accounting, so use `objectives=["accuracy", "cost"]` — no extra evaluator needed.
 
+### Accuracy + Cost Setup
+
+For the common request "optimize my LLM agent's accuracy vs cost", keep the same
+canonical function body and make the objective list explicit:
+
+```python
+@traigent.optimize(
+    eval_dataset="eval_data.jsonl",
+    objectives=["accuracy", "cost"],
+    model=Choices(["gpt-4o-mini", "gpt-4o"]),
+    temperature=Range(0.0, 1.0),
+)
+def my_function(query: str) -> str:
+    config = traigent.get_config()
+    resp = litellm.completion(
+        model=config["model"],
+        temperature=config["temperature"],
+        messages=[{"role": "user", "content": query}],
+    )
+    return resp.choices[0].message.content
+```
+
+`accuracy` is scored from the dataset/evaluator. `cost` is built in and is
+derived from token accounting, so do not add a separate cost evaluator unless
+the project has a custom cost definition.
+
 ### Config Space: Inline vs Dict
 
 Parameters can be defined inline on the decorator or in `configuration_space=`:
@@ -376,7 +402,7 @@ answer = my_function("What is Python?")
 
 ## See Also
 
-- `traigent-quickstart` — Installation and first-time setup
+- `traigent-quickstart` — Installation, mock mode, and the full copy-paste runnable first example
 - `traigent-configuration-space` — Range, Choices, IntRange, LogRange, constraints
 - `traigent-decorator-setup` — EvaluationOptions, InjectionOptions, ExecutionOptions
 - `traigent-run-optimization` — Algorithms, cost limits, parallel execution

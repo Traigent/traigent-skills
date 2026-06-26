@@ -81,7 +81,15 @@ traigent.configure(
 Applies to a specific decorated function:
 
 ```python
+import litellm
 from traigent.api.decorators import ExecutionOptions
+
+def prompt_model(prompt: str, *, model: str) -> str:
+    response = litellm.completion(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 @traigent.optimize(
     execution=ExecutionOptions(
@@ -95,7 +103,7 @@ from traigent.api.decorators import ExecutionOptions
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 ```
 
 ### 3. Runtime (at optimize() call)

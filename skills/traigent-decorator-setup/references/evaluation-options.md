@@ -43,7 +43,16 @@ Must return an `ExampleResult` containing the example inputs, expected output, a
 ### Example
 
 ```python
+import litellm
 from traigent.evaluators.base import ExampleResult
+
+def prompt_model(prompt: str, *, model: str = "gpt-4o-mini", temperature: float = 0.0) -> str:
+    response = litellm.completion(
+        model=model,
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 def my_evaluator(func, config, example):
     import time
@@ -70,7 +79,7 @@ def my_evaluator(func, config, example):
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=question)
+    return prompt_model(question, model=cfg["model"])
 ```
 
 ### Validation
@@ -110,7 +119,7 @@ def fuzzy_match(output: str, expected: str) -> float:
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(temperature=cfg["temperature"], prompt=query)
+    return prompt_model(query, temperature=cfg["temperature"])
 ```
 
 ## Metric Functions
@@ -154,7 +163,7 @@ def relevance(output, expected, input_data) -> float:
 )
 def summarize(text: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=f"Summarize: {text}")
+    return prompt_model(f"Summarize: {text}", model=cfg["model"])
 ```
 
 ## Choosing Between Evaluation Approaches

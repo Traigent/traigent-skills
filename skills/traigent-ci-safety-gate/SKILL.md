@@ -28,6 +28,7 @@ The gate should fail closed: missing metrics, NaN metrics, parse failures, rejec
 Use `safety_constraints=[...]` on `@traigent.optimize` to filter unsafe trial results during optimization. `SafetyConstraint` and `CompoundSafetyConstraint` are callable as `constraint(config, metrics) -> bool`; a failed threshold returns `False`. NaN scores fail closed, and missing metric keys should use a failing default.
 
 ```python
+import litellm
 import traigent
 from traigent.api.safety import (
     CallableMetric,
@@ -36,6 +37,13 @@ from traigent.api.safety import (
     SafetyConstraint,
     SafetyThreshold,
 )
+
+def prompt_model(prompt: str, *, model: str) -> str:
+    response = litellm.completion(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 quality_gate = SafetyConstraint(
     metric=MetricKeyMetric(
@@ -78,7 +86,7 @@ hard_gate = CompoundSafetyConstraint(
 )
 def answer(question: str) -> str:
     config = traigent.get_config()
-    return call_model(model=config["model"], question=question)
+    return prompt_model(question, model=config["model"])
 ```
 
 Keep safety metrics simple, explicit, and reviewable. Complex semantic safety should still have a deterministic shell: schema validity, refusal policy, citation checks, cost caps, and latency caps.

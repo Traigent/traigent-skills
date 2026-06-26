@@ -29,12 +29,17 @@ os.environ["TRAIGENT_RUN_COST_LIMIT"] = "5.00"
 
 The default limit is $2.00 per optimization run. This applies per call to `optimize()` or `optimize_sync()`.
 
-## CostLimitExceeded Exception
+## Cost-Limit Handling
 
-When accumulated costs reach or exceed the limit, Traigent raises `CostLimitExceeded`.
+Do not rely on one exception for every budget outcome. In the current SDK, a
+pre-run estimate above the limit is surfaced at the `optimize()` boundary as
+`OptimizationError`, while a mid-run budget stop can return partial results with
+`results.stop_reason == "cost_limit"`. `CostLimitExceeded` is exported and may
+appear in integration or future SDK paths, so keep it in handlers for
+forward-compatibility, but do not make it your only guard.
 
 ```python
-from traigent.utils.exceptions import CostLimitExceeded
+from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 ```
 
 ### Attributes
@@ -47,24 +52,17 @@ from traigent.utils.exceptions import CostLimitExceeded
 ### Handling
 
 ```python
-from traigent.utils.exceptions import CostLimitExceeded
+from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
     results = await func.optimize(max_trials=100, algorithm="bayesian")
-except CostLimitExceeded as e:
+except CostLimitExceeded as e:          # forward-compatible budget exception
     print(f"Cost limit exceeded: ${e.accumulated:.2f} of ${e.limit:.2f} budget")
-    # The optimization stopped gracefully.
-    # Partial results may be available via the orchestrator.
-```
-
-### Stop Reason
-
-When optimization stops due to cost (without raising an exception), the result will have:
-
-```python
-results = await func.optimize(max_trials=50, algorithm="random")
-if results.stop_reason == "cost_limit":
-    print(f"Stopped at cost limit. Total cost: ${results.total_cost:.2f}")
+except OptimizationError as e:           # pre-run estimate above limit, cloud/auth issue, etc.
+    print(f"Optimization could not run: {e}")
+else:
+    if getattr(results, "stop_reason", None) == "cost_limit":
+        print(f"Stopped at cost limit. Total cost: ${results.total_cost:.2f}")
 ```
 
 ## Cost Tracking via LiteLLM
@@ -88,6 +86,23 @@ The cost enforcer uses adaptive estimation based on observed trial costs:
 - **Divergence warnings** are logged when actual costs differ significantly from estimates (controlled by `TRAIGENT_COST_DIVERGENCE_THRESHOLD`).
 
 This means the enforcer gets better at predicting costs as the optimization progresses, and can pre-emptively stop before exceeding the budget.
+
+## Unknown or Unpriced Models
+
+An unknown model ID does not necessarily hard-block immediately. Depending on
+the SDK/provider path, a run may continue with conservative estimates or record
+`$0.00` cost while warning that pricing could not be resolved. That is useful
+for exploration, but it is not acceptable for production accounting.
+
+Before a real run:
+
+1. Verify model IDs with `traigent models --provider <provider> --check <model_id>`
+   or the provider's live catalog.
+2. Keep `TRAIGENT_STRICT_COST_ACCOUNTING=true` for production runs that must fail
+   when cost cannot be extracted.
+3. If a genuinely custom/unpriced model is intentional, use an explicit approval
+   path: set `TRAIGENT_COST_APPROVED=true`, raise `TRAIGENT_RUN_COST_LIMIT` as
+   needed, or provide custom pricing via the SDK's custom-pricing configuration.
 
 ## Pre-Approving Costs
 

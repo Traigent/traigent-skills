@@ -5,8 +5,16 @@ Where and how an optimization run executes is controlled by two top-level knobs 
 bundle.
 
 ```python
+import litellm
 import traigent
 from traigent.api.decorators import ExecutionOptions
+
+def prompt_model(prompt: str, *, model: str) -> str:
+    response = litellm.completion(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 ```
 
 ## The two execution knobs
@@ -23,7 +31,7 @@ from traigent.api.decorators import ExecutionOptions
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 ```
 
 ## How each choice behaves
@@ -94,7 +102,7 @@ from traigent.config.parallel import ParallelConfig
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 ```
 
 You can also pass it as a dictionary:
@@ -112,7 +120,7 @@ You can also pass it as a dictionary:
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 ```
 
 ## Legacy mode selector (deprecated)

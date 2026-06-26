@@ -32,7 +32,7 @@ LiteLLM uses model name prefixes to route to the correct provider. Common provid
 |---|---|---|
 | OpenAI | (none) | `gpt-4o-mini`, `gpt-4o` |
 | Anthropic | `anthropic/` or none | `claude-3-haiku-20240307`, `claude-3-5-sonnet-20241022` |
-| Google Gemini | `gemini/` | `gemini/gemini-1.5-flash`, `gemini/gemini-1.5-pro` |
+| Google Gemini | `gemini/` | `gemini/gemini-3-flash`, `gemini/gemini-3.1-pro` |
 | Mistral | `mistral/` | `mistral/mistral-small-latest` |
 | Cohere | `command-r` | `command-r`, `command-r-plus` |
 | AWS Bedrock | `bedrock/` | `bedrock/anthropic.claude-3-sonnet-20240229-v1:0` |
@@ -65,7 +65,7 @@ model list without spending anything:
 # List a provider's known model IDs, or validate a specific one (valid: true/false)
 traigent models --provider openai
 traigent models --provider anthropic --check claude-3-haiku-20240307
-traigent models --provider gemini --check gemini-1.5-flash --json
+traigent models --provider gemini --check gemini-3-flash --json
 ```
 
 **Query the provider catalog directly.** When a provider isn't covered by `traigent models`
@@ -98,7 +98,7 @@ import litellm
             "gpt-4o",
             "claude-3-haiku-20240307",
             "claude-3-5-sonnet-20241022",
-            "gemini/gemini-1.5-flash",
+            "gemini/gemini-3-flash",
         ],
         "temperature": [0.0, 0.3, 0.7],
         "max_tokens": [256, 512],
@@ -184,8 +184,8 @@ import litellm
             "gpt-4o",
             "claude-3-haiku-20240307",
             "claude-3-5-sonnet-20241022",
-            "gemini/gemini-1.5-flash",
-            "gemini/gemini-1.5-pro",
+            "gemini/gemini-3-flash",
+            "gemini/gemini-3.1-pro",
         ],
         "temperature": [0.0, 0.3, 0.5, 0.7],
         "max_tokens": [256, 512, 1024],

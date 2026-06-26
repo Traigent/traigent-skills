@@ -3,7 +3,16 @@
 Injection mode controls how Traigent delivers the optimized configuration to your function during trials and production use.
 
 ```python
+import litellm
 from traigent.api.decorators import InjectionOptions
+
+def prompt_model(prompt: str, *, model: str, temperature: float) -> str:
+    response = litellm.completion(
+        model=model,
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 ```
 
 ## Mode Comparison
@@ -28,11 +37,7 @@ Uses Python's `contextvars` to store the trial configuration. Access it with `tr
 )
 def answer_question(question: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(
-        model=cfg["model"],
-        temperature=cfg["temperature"],
-        prompt=question,
-    )
+    return prompt_model(question, model=cfg["model"], temperature=cfg["temperature"])
 ```
 
 ### Thread Safety
@@ -77,11 +82,7 @@ Passes the trial configuration directly as a function parameter. You must specif
     },
 )
 def answer_question(question: str, config: dict = None) -> str:
-    return call_llm(
-        model=config["model"],
-        temperature=config["temperature"],
-        prompt=question,
-    )
+    return prompt_model(question, model=config["model"], temperature=config["temperature"])
 ```
 
 ### When to Use Parameter Mode

@@ -147,13 +147,22 @@ results = await func.optimize(max_trials=50, algorithm="optuna")
 You can set the algorithm at decoration time and override it at runtime:
 
 ```python
+import litellm
+
+def prompt_model(prompt: str, *, model: str) -> str:
+    response = litellm.completion(
+        model=model,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
+
 @traigent.optimize(
     algorithm="grid",  # Default algorithm
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 
 # Override at runtime; smart algorithms require Traigent cloud
 results = await my_func.optimize(algorithm="bayesian", max_trials=20)
