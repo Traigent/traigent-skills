@@ -22,7 +22,7 @@ Uses Python's `contextvars` to store the trial configuration. Access it with `tr
 @traigent.optimize(
     # injection_mode defaults to "context", no InjectionOptions needed
     configuration_space={
-        "model": ["gpt-3.5-turbo", "gpt-4"],
+        "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.1, 0.5, 0.9],
     },
 )
@@ -72,7 +72,7 @@ Passes the trial configuration directly as a function parameter. You must specif
         config_param="config",
     ),
     configuration_space={
-        "model": ["gpt-3.5-turbo", "gpt-4"],
+        "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.1, 0.5, 0.9],
     },
 )
@@ -104,14 +104,14 @@ Zero code change required. Traigent uses AST (Abstract Syntax Tree) transformati
 @traigent.optimize(
     injection=InjectionOptions(injection_mode="seamless"),
     configuration_space={
-        "model": ["gpt-3.5-turbo", "gpt-4"],
+        "model": ["gpt-4o-mini", "gpt-4o"],
         "temperature": [0.1, 0.5, 0.9],
     },
 )
 def answer_question(question: str) -> str:
     # Traigent will override 'model' and 'temperature' in this call
     response = openai.chat.completions.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4o-mini",
         temperature=0.7,
         messages=[{"role": "user", "content": question}],
     )
@@ -161,11 +161,11 @@ When using `auto_override_frameworks=True`, Traigent intercepts calls to support
         auto_override_frameworks=True,
         framework_targets=["langchain"],
     ),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_chain(query: str) -> str:
     # LangChain calls are automatically intercepted
-    llm = ChatOpenAI(model="gpt-3.5-turbo")  # Will be overridden
+    llm = ChatOpenAI(model="gpt-4o-mini")  # Will be overridden
     chain = prompt | llm | output_parser
     return chain.invoke({"query": query})
 ```

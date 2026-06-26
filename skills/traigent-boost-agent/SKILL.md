@@ -4,14 +4,14 @@ description: "End-to-end 12-step lifecycle playbook for adding Traigent to an ex
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.0"
+  version: "2.0.1"
 ---
 
 # Traigent Boost Agent
 
 ## When to Use
 
-Requires `traigent>=0.13.0.dev1`.
+Requires `traigent>=0.13.0` (the knobs API is present on all current SDK releases).
 
 Use this skill when the user asks you to:
 

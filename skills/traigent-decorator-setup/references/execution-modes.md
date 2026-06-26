@@ -19,7 +19,7 @@ from traigent.api.decorators import ExecutionOptions
 ```python
 @traigent.optimize(
     algorithm="auto",     # default cloud smart optimizer
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
@@ -90,7 +90,7 @@ from traigent.config.parallel import ParallelConfig
             example_concurrency=4,
         ),
     ),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
@@ -108,7 +108,7 @@ You can also pass it as a dictionary:
             "example_concurrency": 4,
         },
     ),
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()

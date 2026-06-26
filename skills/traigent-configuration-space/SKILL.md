@@ -4,7 +4,7 @@ description: "Define tuned variables and configuration spaces for Traigent optim
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Configuration Space
@@ -49,8 +49,18 @@ configuration_space={
     "model": ["gpt-4o-mini", "gpt-4o"],       # Categorical: pick one
     "temperature": (0.0, 1.0),                  # Continuous float range
     "max_tokens": (100, 4096),                  # Continuous int range (both ints)
+    "use_cache": [True, False],                 # Boolean knob: native Python bools
 }
 ```
+
+> **Boolean knobs: use native `[True, False]`, never `["true", "false"]`.** A native bool list
+> works directly in the dict shorthand (above) and as `Choices([True, False])`; your function reads
+> it back as a real `bool` (`if config["use_cache"]: ...`). **Do not** string-encode a bool as
+> `["true", "false"]`: in Python the string `"false"` is **truthy** (`bool("false") is True`), so a
+> consumer that does `if config["x"]:` is **silently always True** and the `False` arm of your
+> search is never exercised — the optimizer reports both points as identical behaviour and you never
+> learn one was a no-op. If a string encoding is unavoidable (legacy specs), the consumer **must**
+> decode explicitly: `enabled = config["x"] == "true"`.
 
 ## SE-Friendly Typed Parameters
 
@@ -193,9 +203,9 @@ batch = IntRange.batch_size()                     # [1, 64], default 16
 from traigent import Choices
 
 # Model selection
-model = Choices.model()                                   # Balanced: gpt-4o-mini, gpt-4o, claude-3-5-sonnet
+model = Choices.model()                                   # Balanced: gpt-4o-mini, gpt-4o, claude-sonnet-4-6
 model = Choices.model(provider="openai", tier="fast")     # Fast OpenAI: gpt-4o-mini
-model = Choices.model(provider="anthropic", tier="quality")  # Quality Anthropic: claude-3-opus
+model = Choices.model(provider="anthropic", tier="quality")  # Quality Anthropic: claude-opus-4-8
 
 # Prompting and RAG
 strategy = Choices.prompting_strategy()           # direct, chain_of_thought, react, self_consistency
