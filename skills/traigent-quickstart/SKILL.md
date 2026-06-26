@@ -4,7 +4,7 @@ description: "Install and set up the Traigent SDK for LLM optimization. Use when
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Traigent Quickstart
@@ -31,6 +31,25 @@ pip install "traigent[recommended]"
 # Minimal, no extras
 pip install traigent
 ```
+
+### Use a virtual environment (do this first)
+
+Install into a project virtualenv — it's standard Python practice and it's the friction-free
+path here. A **fresh** venv is enough; you do **not** need `--system-site-packages`.
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install "traigent[recommended]"
+```
+
+`pip install traigent` resolves from PyPI and pulls `litellm` (a **core dependency**) along with
+it, so the keyless mock path — which intercepts `litellm.completion(...)` — works immediately,
+with no extra install. Only the LangChain / OpenAI / Anthropic *adapter* clients live in the
+`integrations` extra (below).
+
+> **Why a venv instead of system Python?** On modern Debian/Ubuntu/Fedora the system interpreter
+> is marked *externally managed* (PEP 668), so a bare `pip install` into it is refused with
+> `error: externally-managed-environment`. The venv above avoids that entirely.
 
 ### With Optional Extras
 
@@ -98,6 +117,7 @@ enable_mock_mode_for_quickstart()
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
+- **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install traigent` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install 'traigent[integrations]'`.)
 
 ### Legacy Env-Var Path
 
