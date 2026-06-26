@@ -359,9 +359,12 @@ rendered visually. That requires **both** `offline=False` (the default) **and** 
 portal-tracked. To locate a synced run:
 
 ```python
-print(f"Optimization ID: {results.optimization_id}")  # the run's portal identifier
-# Open https://portal.traigent.ai -> Experiments, find this run by its id (or the
-# experiment_name you set on the decorator), and read the rendered results / trade-off view.
+# The portal/backend identifiers (None when offline or local-fallback):
+print(f"Portal experiment: {results.experiment_id}")  # backend experiment identifier
+print(f"Portal link:       {results.cloud_url}")      # direct URL to the experiment on the portal
+# (results.optimization_id is the SDK's local run id, not the portal identifier.)
+# Open results.cloud_url, or go to https://portal.traigent.ai -> Experiments and find this run by
+# its experiment_id (or the experiment_name you set on the decorator) to read the rendered view.
 ```
 
 An `offline=True` run, or a non-offline run that fell back to local (no key), is **not** on the
