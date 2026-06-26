@@ -382,6 +382,17 @@ Mock mode is essential for:
 - Validating configuration space setup
 - Testing evaluator logic
 
+> **Uniform 0.0 scores under mock are expected, not a bug.** The mock LLM returns a single fixed
+> string (`"This is a mock response for testing."`), so a deterministic / execution-style scorer
+> (exact-match, JSON-schema, SQL execution-accuracy) scores **0.0 on every example × every config**.
+> That all-zero board means **mock plumbing is working and your real output is being replaced** —
+> it is *not* a broken evaluator, dataset, or config space, and you should **not** debug it as
+> "wrong results / low scores" below. Confirm only that the pipeline runs (trials > 0, no failed
+> trials), then switch to a real run to see real scores. To get a *non-degenerate* mock board
+> without paying for a run, either point the dry-run at an exact-match/identity eval, or have your
+> function consult a small mock answer table (the pattern the SDK's own text-to-sql example uses)
+> so the dry-run returns plausible-but-fake outputs.
+
 See [Mock Mode reference](references/mock-mode.md) for details.
 
 ## Troubleshooting Decision Tree
@@ -407,6 +418,9 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 
 ### Wrong results (low scores)
 
+0. **Are you in mock mode?** If scores are **uniformly 0.0 / identical** and `TRAIGENT_MOCK_LLM`
+   or `enable_mock_mode_for_quickstart()` is active, stop — that is the constant mock string, not
+   a real result (see the Mock Mode note above). Re-run without mock before debugging the items below.
 1. Check your evaluator: does it correctly score good vs bad outputs?
 2. Check your dataset: are expected outputs correct?
 3. Check configuration space: does it include good model/parameter combinations?
