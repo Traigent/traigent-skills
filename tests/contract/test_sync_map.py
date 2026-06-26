@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 from .conftest import skill_floor
 
@@ -16,9 +17,24 @@ def test_sync_map_has_bidirectional_skill_completeness(repo_root: Path, sync_map
     assert skill_dirs == mapped
 
 
-def test_sync_map_modules_import_in_current_bucket(sync_map: dict, pytestconfig: pytest.Config) -> None:
-    from packaging.version import Version
+def test_sync_map_declares_current_released_sdk(sync_map: dict) -> None:
+    current_release = sync_map.get("current_released_sdk_version")
+    assert isinstance(current_release, str) and current_release
+    assert Version(current_release) >= Version(str(sync_map["default_min_sdk_version"]))
 
+
+def test_released_bucket_list_includes_current_release(repo_root: Path, sync_map: dict) -> None:
+    output = subprocess.check_output(
+        [sys.executable, str(repo_root / "tools/contract/list_buckets.py")],
+        cwd=repo_root,
+        text=True,
+    )
+    buckets = [line for line in output.splitlines() if line]
+    assert str(sync_map["current_released_sdk_version"]) in buckets
+    assert buckets == sorted(set(buckets), key=Version)
+
+
+def test_sync_map_modules_import_in_current_bucket(sync_map: dict, pytestconfig: pytest.Config) -> None:
     sdk_version = pytestconfig.getoption("--sdk-version") or "0"
     for skill, entry in (sync_map.get("skills") or {}).items():
         if sdk_version != "develop" and Version(skill_floor(sync_map, skill)) > Version(str(sdk_version)):
@@ -28,7 +44,6 @@ def test_sync_map_modules_import_in_current_bucket(sync_map: dict, pytestconfig:
 
 
 def test_sync_map_sdk_paths_exist_in_installed_dist(sync_map: dict, pytestconfig: pytest.Config) -> None:
-    from packaging.version import Version
     import traigent
 
     sdk_version = pytestconfig.getoption("--sdk-version") or "0"
