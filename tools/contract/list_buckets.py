@@ -16,6 +16,9 @@ def main() -> int:
     data: dict[str, Any] = yaml.safe_load((repo_root() / "sync_map.yml").read_text(encoding="utf-8"))
     default_floor = str(data["default_min_sdk_version"])
     floors = {default_floor}
+    current_release = data.get("current_released_sdk_version")
+    if current_release:
+        floors.add(str(current_release))
     for entry in (data.get("skills") or {}).values():
         if isinstance(entry, dict) and entry.get("min_sdk_version"):
             floors.add(str(entry["min_sdk_version"]))

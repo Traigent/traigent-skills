@@ -21,12 +21,18 @@ skill, and the skill text must state that requirement. `backend_prefixes` makes
 URL endpoint checks blocking only for backend path families a skill explicitly
 owns; otherwise URL facts are advisory skips.
 
-Run both local buckets:
+Run the released SDK buckets emitted by `sync_map.yml`:
 
 ```bash
-/tmp/venv-skills/bin/python -m pytest tests/contract --sdk-version=0.12.0 -q
-/tmp/venv-skills-dev/bin/python -m pytest tests/contract --sdk-version=0.13.0.dev1 -q
+python tools/contract/list_buckets.py
+python -m pytest tests/contract --sdk-version=0.15.0 -q
+python -m pytest tests/contract --sdk-version=0.16.0 -q
+python -m pytest tests/contract --sdk-version=0.17.0 -q
 ```
+
+`current_released_sdk_version` is intentionally pinned in `sync_map.yml` so PR
+CI is hermetic. Update that field in the same PR that should start testing a
+new public PyPI release.
 
 Refresh the vendored backend route snapshot from the local TraigentBackend git
 ref:
