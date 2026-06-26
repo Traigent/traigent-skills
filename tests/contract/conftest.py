@@ -9,6 +9,7 @@ import pytest
 import yaml
 from packaging.version import InvalidVersion, Version
 
+from .extract import RunnableSnippet, collect_runnable_snippets
 from .facts import ContractFact, collect_contract_facts
 
 
@@ -77,6 +78,18 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         selected = [fact for fact in facts if fact.kind == "js_import"]
         metafunc.parametrize("js_fact", selected, ids=[fact.identifier(repo_root) for fact in selected])
 
+    if "runnable_snippet" in metafunc.fixturenames:
+        snippets = [
+            snippet
+            for snippet in collect_runnable_snippets(repo_root)
+            if _in_bucket(snippet.skill, sync_map, metafunc.config)
+        ]
+        metafunc.parametrize(
+            "runnable_snippet",
+            snippets,
+            ids=[snippet.identifier(repo_root) for snippet in snippets],
+        )
+
 
 @pytest.hookimpl(hookwrapper=True)
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
@@ -93,12 +106,17 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
                 fact = value
                 break
 
-    if fact is None:
-        path = item.location[0]
-        line = item.location[1] + 1
-    else:
+    snippet = item.funcargs.get("runnable_snippet") if hasattr(item, "funcargs") else None
+
+    if fact is not None:
         path = fact.rel_path(Path(__file__).resolve().parents[2])
         line = fact.line
+    elif isinstance(snippet, RunnableSnippet):
+        path = snippet.rel_path(Path(__file__).resolve().parents[2])
+        line = snippet.start_line
+    else:
+        path = item.location[0]
+        line = item.location[1] + 1
 
     message = _escape_github_annotation(str(report.longrepr))
     print(f"::error file={path},line={line}::{message}")

@@ -14,6 +14,29 @@ It extracts these facts from skills and references:
   `/datasets`, `/analytics`, `/experiment-runs`, `/optimization-comparisons`,
   `/sessions`, and `/hybrid`.
 
+Runnable examples are opt-in. Mark only complete, keyless Python examples with
+````text
+```python runnable
+...
+```
+````
+The contract suite executes those snippets in a temporary directory with
+`TRAIGENT_OFFLINE_MODE=true`, no provider API keys, and unexpected deprecation
+warnings treated as failures. The subprocess also clears CI marker env vars so
+the snippet is tested as a new-user local dry run, not as an approved CI
+optimization. The runner currently allows known SDK-internal `TraigentConfig`
+transition warnings so the gate still catches skill-taught deprecated APIs such
+as `traigent.analytics`.
+
+Public installability is checked in two ways:
+
+- Python buckets install `traigent==<version>` from PyPI before running the
+  contract suite, then `test_public_installability.py` verifies the installed
+  distribution matches the selected bucket.
+- `@traigent/sdk` is not on public npm yet, so public docs must not teach
+  `npm install @traigent/sdk` as an install path while Traigent/traigent-js#165
+  remains open.
+
 `sync_map.yml` assigns each skill to an SDK-version bucket. The default floor is
 `default_min_sdk_version`; a skill can override it with `min_sdk_version`.
 `env_version_floors` lets one env var require a newer SDK than the rest of the

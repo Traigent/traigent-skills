@@ -9,7 +9,7 @@ from .facts import ContractFact
 
 
 ENV_RE = re.compile(r"\bTRAIGENT_[A-Z0-9_]+\b")
-FENCE_RE = re.compile(r"^```([A-Za-z0-9_-]+)?\s*$")
+FENCE_RE = re.compile(r"^```(?P<info>[A-Za-z0-9_.+# -]*)\s*$")
 IMPORT_LINE_RE = re.compile(r"^\s*(from|import)\s+traigent[\w.]*")
 INLINE_CODE_RE = re.compile(r"`([^`]+)`")
 URL_RE = re.compile(
@@ -28,12 +28,37 @@ JS_IMPORT_RE = re.compile(
 @dataclass(frozen=True, slots=True)
 class CodeBlock:
     language: str
+    attrs: frozenset[str]
     start_line: int
     lines: tuple[str, ...]
 
     @property
     def text(self) -> str:
         return "\n".join(self.lines)
+
+
+@dataclass(frozen=True, slots=True)
+class RunnableSnippet:
+    skill: str
+    path: Path
+    language: str
+    start_line: int
+    lines: tuple[str, ...]
+
+    @property
+    def text(self) -> str:
+        return "\n".join(self.lines)
+
+    def rel_path(self, repo_root: Path | None = None) -> str:
+        if repo_root is not None:
+            try:
+                return self.path.resolve().relative_to(repo_root.resolve()).as_posix()
+            except ValueError:
+                pass
+        return self.path.as_posix()
+
+    def identifier(self, repo_root: Path | None = None) -> str:
+        return f"{self.rel_path(repo_root)}:{self.start_line}::runnable {self.language}"
 
 
 def collect_from_repo(repo_root: Path) -> list[ContractFact]:
@@ -52,8 +77,48 @@ def collect_from_repo(repo_root: Path) -> list[ContractFact]:
     return _dedupe(facts)
 
 
+def collect_runnable_snippets(repo_root: Path) -> list[RunnableSnippet]:
+    snippets: list[RunnableSnippet] = []
+    skills_root = repo_root / "skills"
+    for skill_dir in sorted(path for path in skills_root.iterdir() if path.is_dir()):
+        skill_file = skill_dir / "SKILL.md"
+        if not skill_file.is_file():
+            continue
+        files = [skill_file]
+        references = skill_dir / "references"
+        if references.is_dir():
+            files.extend(sorted(references.glob("*.md")))
+        for path in files:
+            snippets.extend(collect_runnable_file(skill_dir.name, path))
+    return snippets
+
+
 def collect_file(skill: str, path: Path) -> list[ContractFact]:
     return collect_markdown(skill, path, path.read_text(encoding="utf-8"))
+
+
+def collect_runnable_file(skill: str, path: Path) -> list[RunnableSnippet]:
+    return collect_runnable_markdown(skill, path, path.read_text(encoding="utf-8"))
+
+
+def collect_runnable_markdown(skill: str, path: Path, text: str) -> list[RunnableSnippet]:
+    snippets: list[RunnableSnippet] = []
+    for block in _iter_fenced_blocks(text.splitlines()):
+        language = block.language.lower()
+        if "runnable" not in block.attrs or language not in {"python", "py"}:
+            continue
+        if block.lines and block.lines[0].strip() == "# contract: skip":
+            continue
+        snippets.append(
+            RunnableSnippet(
+                skill=skill,
+                path=path,
+                language=language,
+                start_line=block.start_line,
+                lines=block.lines,
+            )
+        )
+    return snippets
 
 
 def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
@@ -99,6 +164,7 @@ def _iter_fenced_blocks(lines: list[str]) -> list[CodeBlock]:
     blocks: list[CodeBlock] = []
     in_block = False
     language = ""
+    attrs: frozenset[str] = frozenset()
     start_line = 0
     collected: list[str] = []
 
@@ -106,14 +172,18 @@ def _iter_fenced_blocks(lines: list[str]) -> list[CodeBlock]:
         match = FENCE_RE.match(line)
         if match and not in_block:
             in_block = True
-            language = match.group(1) or ""
+            info = (match.group("info") or "").strip()
+            tokens = info.split()
+            language = tokens[0] if tokens else ""
+            attrs = frozenset(tokens[1:])
             start_line = idx + 1
             collected = []
             continue
         if match and in_block:
-            blocks.append(CodeBlock(language=language, start_line=start_line, lines=tuple(collected)))
+            blocks.append(CodeBlock(language=language, attrs=attrs, start_line=start_line, lines=tuple(collected)))
             in_block = False
             language = ""
+            attrs = frozenset()
             start_line = 0
             collected = []
             continue
