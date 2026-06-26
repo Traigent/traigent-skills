@@ -462,6 +462,7 @@ asyncio.run(main())
 - `traigent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
 - `traigent-quickstart` - Installation and first optimization with mock mode
 - `traigent-decorator-setup` - Full `@traigent.optimize()` parameter reference
+- `traigent-analyze-results` - **Next step:** read `best_config`/`best_score`, compare trials, extract the quality/cost/latency trade-off, and apply the best config after `optimize()` returns
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

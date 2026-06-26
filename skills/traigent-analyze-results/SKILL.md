@@ -4,7 +4,7 @@ description: "Analyze Traigent optimization results from the terminal — withou
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.3"
+  version: "1.1.4"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -315,6 +315,60 @@ print(f"Trial counts: {stats.trial_counts}")
 print(f"Best metrics: {results.best_metrics}")
 # {"accuracy": 0.92, "latency": 0.8}
 ```
+
+## The Quality / Cost / Latency Trade-off (multi-objective)
+
+After a multi-objective run (`objectives=["accuracy", "cost"]`), the single `best_score` no longer
+tells the whole story — you want the **trade-off set** (the Pareto frontier): the configurations
+where you cannot improve one objective without sacrificing another.
+
+Get one aggregated row per configuration with `to_aggregated_dataframe()` (groups repeated samples
+of the same config and averages each metric), then filter to the non-dominated set:
+
+```python
+df = results.to_aggregated_dataframe(primary_objective="accuracy")
+# One row per unique config. Columns: config params + samples_count + each metric as its
+# mean under its BARE name (e.g. "accuracy", "cost") + "duration" (mean seconds).
+print(df.columns.tolist())  # confirm the exact metric column names for your run
+
+# Non-dominated (Pareto) frontier: maximize accuracy, minimize cost.
+def pareto_front(df, maximize="accuracy", minimize="cost"):
+    keep = []
+    for i, row in df.iterrows():
+        dominated = (
+            (df[maximize] >= row[maximize]) & (df[minimize] <= row[minimize])
+            & ((df[maximize] > row[maximize]) | (df[minimize] < row[minimize]))
+        ).any()
+        if not dominated:
+            keep.append(i)
+    return df.loc[keep].sort_values(minimize)
+
+frontier = pareto_front(df)
+print(frontier[["accuracy", "cost", "duration"]])  # use your run's actual metric names
+```
+
+Each frontier row is a defensible operating point: pick the cheapest config that clears your
+accuracy bar, or the most accurate within your cost budget. (`results.to_dataframe()` gives the raw
+per-trial rows if you want to plot the full cloud behind the frontier.)
+
+## Find Your Run on the Portal
+
+A run that actually reaches the backend syncs to the Traigent portal, where the same trade-off is
+rendered visually. That requires **both** `offline=False` (the default) **and** valid credentials
+(`TRAIGENT_API_KEY`): a run with no key can fall back to local-only execution and then is **not**
+portal-tracked. To locate a synced run:
+
+```python
+# The portal/backend identifiers (None when offline or local-fallback):
+print(f"Portal experiment: {results.experiment_id}")  # backend experiment identifier
+print(f"Portal link:       {results.cloud_url}")      # direct URL to the experiment on the portal
+# (results.optimization_id is the SDK's local run id, not the portal identifier.)
+# Open results.cloud_url, or go to https://portal.traigent.ai -> Experiments and find this run by
+# its experiment_id (or the experiment_name you set on the decorator) to read the rendered view.
+```
+
+An `offline=True` run, or a non-offline run that fell back to local (no key), is **not** on the
+portal — use the dataframe read above instead.
 
 ## Stop Reasons
 
