@@ -22,6 +22,10 @@ Use this skill when:
 
 ## Installation
 
+> **This is the Python SDK skill.** Building in **JavaScript/TypeScript** instead? Use the
+> **`traigent-js`** skill — it covers the native JS/TS optimizer (the `@traigent/sdk` package)
+> with a different install and API. The rest of this page assumes Python.
+
 ### Basic Install
 
 ```bash
@@ -31,6 +35,25 @@ pip install "traigent[recommended]"
 # Minimal, no extras
 pip install traigent
 ```
+
+### Use a virtual environment (do this first)
+
+Install into a project virtualenv — it's standard Python practice and it's the friction-free
+path here. A **fresh** venv is enough; you do **not** need `--system-site-packages`.
+
+```bash
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install "traigent[recommended]"
+```
+
+`pip install traigent` resolves from PyPI and pulls `litellm` (a **core dependency**) along with
+it, so the keyless mock path — which intercepts `litellm.completion(...)` — works immediately,
+with no extra install. Only the LangChain / OpenAI / Anthropic *adapter* clients live in the
+`integrations` extra (below).
+
+> **Why a venv instead of system Python?** On modern Debian/Ubuntu/Fedora the system interpreter
+> is marked *externally managed* (PEP 668), so a bare `pip install` into it is refused with
+> `error: externally-managed-environment`. The venv above avoids that entirely.
 
 ### With Optional Extras
 
@@ -98,6 +121,7 @@ enable_mock_mode_for_quickstart()
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
+- **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install traigent` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install 'traigent[integrations]'`.)
 
 ### Legacy Env-Var Path
 
@@ -186,6 +210,8 @@ Here is a complete working example. This function classifies customer queries us
 
 **Note on mock scope:** `enable_mock_mode_for_quickstart()` intercepts LiteLLM and LangChain calls. Raw `openai.OpenAI()` / `anthropic.Anthropic()` client calls are **not** intercepted — use `litellm.completion()` for a fully keyless dry-run (see `references/installation-extras.md` for `traigent[integrations]`).
 
+**Why the example includes a `mock_demo_accuracy` scorer:** in mock mode every LLM call returns the *same* canned string, so a **real** accuracy metric scores every trial 0.0 — a discouraging all-zeros table that looks broken. The demo scorer below ignores the (canned) output and ranks trials by their config, so the keyless dry-run produces a meaningful table — the same approach the bundled `traigent quickstart` command uses. It is **mock-only: delete it for a real run**, where Traigent scores actual model output against your dataset labels. (Prefer not to keep a placeholder scorer in your own code? Just run `traigent quickstart` for the same ranked demo without writing one.)
+
 ```python
 import asyncio
 import litellm  # pip install traigent[integrations]
@@ -196,11 +222,28 @@ from traigent.testing import enable_mock_mode_for_quickstart
 # Step 1: dry-run in mock mode — no API keys required, no cost
 enable_mock_mode_for_quickstart()
 
+
+def mock_demo_accuracy(output, expected, config=None, **_):
+    """Mock-only demo scorer — DELETE this for a real (paid) run.
+
+    In mock mode every ``litellm.completion`` call returns the same canned
+    string, so a real accuracy metric would score every trial 0.0 (a
+    misleading all-zeros table). This placeholder ignores ``output`` and ranks
+    trials by their config so the keyless dry-run produces a meaningful table —
+    the same trick the bundled ``traigent quickstart`` demo uses. On a real run,
+    remove it and let Traigent score actual model output against your labels.
+    """
+    cfg = config or traigent.get_config() or {}
+    base = 0.85 if cfg.get("model") == "gpt-4o" else 0.65
+    return max(0.0, base - 0.05 * float(cfg.get("temperature", 0.5)))
+
+
 @traigent.optimize(
     eval_dataset="eval_queries.jsonl",
     objectives=["accuracy"],
     model=Choices(["gpt-4o-mini", "gpt-4o"]),
     temperature=Choices([0.0, 0.5, 1.0]),
+    metric_functions={"accuracy": mock_demo_accuracy},  # mock-only; delete for a real run
 )
 def classify_query(query: str) -> str:
     config = traigent.get_config()
@@ -250,6 +293,8 @@ results = classify_query.optimize_sync(max_trials=6)  # default algorithm="auto"
 2. **`traigent.get_config()`** -- Call inside your function to retrieve the current trial's configuration. Works during optimization trials and after `apply_best_config()`.
 3. **`func.optimize(max_trials=N)`** -- Run the optimization loop asynchronously. Returns an `OptimizationResult`.
 4. **`func.apply_best_config(results)`** -- Lock in the best configuration found so that subsequent calls use it.
+
+> **You've run your first optimization — now make it robust.** The decorator above is intentionally *minimal* (just `model` + `temperature`). For a real optimization, graduate to the more robust **`traigent-decorator-setup`** skill — custom evaluators / `metric_functions`, injection & execution control (`algorithm`/`offline`), and weighted objectives — then launch with **`traigent-run-optimization`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`bayesian`/`optuna` for large search spaces), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
 
 ## Dataset Format
 
@@ -322,6 +367,7 @@ traigent onboard         # guided first-run setup wizard
 
 ## Next Steps
 
+- **Configure your decorator for a real optimization** -- The example above is the *minimal* decorator. To make it optimization-ready -- custom evaluators / `metric_functions`, injection mode, execution (`algorithm`/`offline`), and weighted objectives -- use the `traigent-decorator-setup` skill, then launch with `traigent-run-optimization`. This `decorator-setup` → `run-optimization` pair is the standard two-step cycle for going from "first run" to a real optimization.
 - **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
 - **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-run-optimization` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-configuration-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.

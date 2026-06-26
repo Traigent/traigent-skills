@@ -4,12 +4,25 @@ description: "Set up and run native JavaScript/TypeScript optimization with @tra
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent JS/TS SDK
 
 Use this skill for `@traigent/sdk`, the native JavaScript/TypeScript SDK. Do not apply the Python `@traigent.optimize` decorator workflow to JS projects.
+
+## Installation
+
+`@traigent/sdk` is **not published to the public npm registry yet** — `npm install @traigent/sdk` returns a **404**. Until npm publishing is enabled, build it from source (per the [repo README](https://github.com/Traigent/traigent-js)):
+
+```bash
+git clone https://github.com/Traigent/traigent-js.git
+cd traigent-js
+npm install
+npm run build
+```
+
+Then consume the local build from your project — run `npm link` in the cloned repo and `npm link @traigent/sdk` in your project, or add it as a path/`file:` dependency. Supported Node: 18, 20, 22. (Public npm publishing is tracked in Traigent/traigent-js#165.)
 
 ## Core Pattern
 
@@ -62,7 +75,7 @@ answerQuestion.applyBestConfig(result);
 
 ## Workflow
 
-1. Install `@traigent/sdk`.
+1. Install `@traigent/sdk` — build from source, see **Installation** above (not on public npm yet).
 2. Define `configurationSpace` with `param.enum`, `param.float`, `param.int`, or another exported parameter helper.
 3. Add `evaluation.data` or `evaluation.loadData`, plus metrics that score outputs.
 4. Set `budget.maxCostUsd`, `timeoutMs`, and trial/example limits before running.

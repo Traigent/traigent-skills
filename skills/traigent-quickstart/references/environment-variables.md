@@ -12,7 +12,7 @@ Common environment variables for Traigent quickstart workflows.
 | `TRAIGENT_SKIP_PROVIDER_VALIDATION`| `false`        | When `true`, skips API key validation at decoration time. Useful in CI environments.                |
 | `TRAIGENT_VALIDATION_TIMEOUT`     | `5.0`           | Timeout in seconds for provider API key validation checks.                                          |
 | `TRAIGENT_STRICT_COST_ACCOUNTING` | `false`         | When `true`, enables strict cost tracking. Cost overruns raise errors instead of warnings.          |
-| `TRAIGENT_LOG_LEVEL`              | `INFO`          | Logging verbosity. Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                    (requires traigent>=0.13.0) |
+| `TRAIGENT_LOG_LEVEL`              | `INFO`          | Logging verbosity. Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`.                                    (read on all current SDK versions) |
 | `TRAIGENT_DEBUG`                  | (unset)         | When set to `1`, shows full tracebacks for `ConfigurationError` instead of user-friendly messages.  |
 | `TRAIGENT_STRICT_VALIDATION`      | `true`          | When `true`, DTO schema validation raises exceptions. When `false`, logs warnings only.             |
 | `ENVIRONMENT`                      | `development`   | Execution environment. Set to `production` for production deployments.                              |
@@ -47,7 +47,7 @@ enable_mock_mode_for_quickstart()
 ```
 
 ```bash
-export TRAIGENT_LOG_LEVEL=DEBUG (requires traigent>=0.13.0)
+export TRAIGENT_LOG_LEVEL=DEBUG (read on all current SDK versions)
 python my_optimization.py
 ```
 
@@ -68,14 +68,14 @@ export OPENAI_API_KEY=sk-...
 export TRAIGENT_RUN_COST_LIMIT=5.0
 export TRAIGENT_STRICT_COST_ACCOUNTING=true
 export TRAIGENT_COST_APPROVED=true
-export TRAIGENT_LOG_LEVEL=WARNING (requires traigent>=0.13.0)
+export TRAIGENT_LOG_LEVEL=WARNING (read on all current SDK versions)
 python optimize_production.py
 ```
 
 ### Debug Mode
 
 ```bash
-export TRAIGENT_LOG_LEVEL=DEBUG (requires traigent>=0.13.0)
+export TRAIGENT_LOG_LEVEL=DEBUG (read on all current SDK versions)
 export TRAIGENT_DEBUG=1
 python my_optimization.py
 ```
@@ -89,5 +89,5 @@ Example `.env` file:
 ```
 TRAIGENT_API_KEY=sk_...
 OPENAI_API_KEY=sk-...
-TRAIGENT_LOG_LEVEL=DEBUG (requires traigent>=0.13.0)
+TRAIGENT_LOG_LEVEL=DEBUG (read on all current SDK versions)
 ```

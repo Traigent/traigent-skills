@@ -33,7 +33,7 @@ def custom_evaluator(
 ### Parameters
 
 - `func` - The original decorated function (not wrapped).
-- `config` - The configuration being tested in this trial (e.g., `{"model": "gpt-4", "temperature": 0.5}`).
+- `config` - The configuration being tested in this trial (e.g., `{"model": "gpt-4o", "temperature": 0.5}`).
 - `example` - An `EvaluationExample` with `input_data`, `expected_output`, and optional `metadata`.
 
 ### Return Value
@@ -66,7 +66,7 @@ def my_evaluator(func, config, example):
 @traigent.optimize(
     evaluation=EvaluationOptions(custom_evaluator=my_evaluator),
     objectives=["accuracy"],
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
@@ -150,7 +150,7 @@ def relevance(output, expected, input_data) -> float:
         },
     ),
     objectives=["accuracy"],
-    configuration_space={"model": ["gpt-3.5-turbo", "gpt-4"]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def summarize(text: str) -> str:
     cfg = traigent.get_config()
