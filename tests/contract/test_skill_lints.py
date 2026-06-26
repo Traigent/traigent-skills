@@ -52,6 +52,28 @@ DATASET_ON_OPTIMIZE_RE = re.compile(r"\.optimize(?:_sync)?\s*\(\s*dataset\s*=")
 # reps_per_trial=<int> with a literal value other than 1
 REPS_PER_TRIAL_RE = re.compile(r"\breps_per_trial\s*=\s*(\d+)")
 VALIDATE_PROVIDERS_RE = re.compile(r"\bvalidate_providers\s*=")
+NEXT_RUN_IP_BANNED_SUBSTRINGS = (
+    "difficulty",
+    "informativeness",
+    "irt",
+    "fisher",
+    "threshold",
+    "formula",
+    "seed_signal",
+)
+NEXT_RUN_LOCAL_DECISION_PATTERNS = {
+    "symptom_action_table": re.compile(
+        r"(?is)\|\s*symptom\s*\|.*\|\s*(?:action|operation|recommendation|next)\s*\|"
+    ),
+    "when_do_rule": re.compile(
+        r"(?im)^\s*(?:[-*]\s*)?when\s+[^.\n]{1,120}\s+"
+        r"(?:do|run|choose|recommend|promote|gate|curate|audit|reflect|score)\b"
+    ),
+    "if_then_rule": re.compile(
+        r"(?im)^\s*(?:[-*]\s*)?if\s+[^.\n]{1,120}\s+then\s+"
+        r"(?:do|run|choose|recommend|promote|gate|curate|audit|reflect|score)\b"
+    ),
+}
 
 # Fields of the INSTALLED ExecutionOptions (extra="forbid" → any other kwarg is invalid).
 # None if the symbol can't be imported, in which case rule 3 no-ops for this run.
@@ -319,6 +341,32 @@ def test_optimize_method_calls_are_awaited_or_sync(repo_root: Path) -> None:
     for name, path in _skill_markdown_files(repo_root):
         violations.extend(_scan_unawaited_optimize(name, path, path.read_text(encoding="utf-8"), repo_root))
     assert not violations, "\n\n".join(["", *violations, ""])
+
+
+def test_next_run_skill_stays_service_decided_thin_client(repo_root: Path) -> None:
+    path = repo_root / "skills" / "traigent-next-run" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    lowered = text.lower()
+    rel = path.relative_to(repo_root).as_posix()
+
+    violations: list[str] = []
+    for banned in NEXT_RUN_IP_BANNED_SUBSTRINGS:
+        if banned in lowered:
+            violations.append(f"{rel}: banned local-decision term {banned!r}")
+    for label, pattern in NEXT_RUN_LOCAL_DECISION_PATTERNS.items():
+        match = pattern.search(text)
+        if not match:
+            continue
+        line = text.count("\n", 0, match.start()) + 1
+        violations.append(f"{rel}:{line}: banned local-decision pattern {label!r}")
+
+    assert not violations, "\n".join(violations)
+    assert re.search(r"\bfetch(?:es)?\b[\s\S]{0,160}\bTraigent service\b", text, re.IGNORECASE), (
+        "traigent-next-run must stay service-backed, not standalone"
+    )
+    assert re.search(r"\bdecision comes from the Traigent service\b", text, re.IGNORECASE), (
+        "traigent-next-run must state that the next-step decision comes from the service"
+    )
 
 
 def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
