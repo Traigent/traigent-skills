@@ -314,6 +314,14 @@ Traigent uses JSONL (JSON Lines) files for evaluation datasets. Each line must h
 
 You can include additional fields for metadata, but `input` and `output` are required.
 
+> **One canonical contract.** This flat form is the simplest case of the single Traigent dataset
+> contract: `input` (or `input_data`) → your function's args, the **gold key** → the expected value,
+> and **every other top-level key** → `example.metadata[...]` (how a per-example side field like a
+> `db_path` reaches a scorer). Values may be **nested dicts**, and the gold key has accepted aliases
+> (`output`, `expected`, `expected_output`, `answer`, `target`, `label`). See `traigent-curate-dataset`
+> for the full contract and `traigent-build-evaluator` for an execution-scored recipe that reads a
+> `metadata` field.
+
 ### Tips for Good Datasets
 
 - Include at least 10-20 examples for meaningful optimization.

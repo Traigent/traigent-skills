@@ -4,7 +4,7 @@ description: "Create and improve a Traigent evaluation dataset / JSONL eval set.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Curate Dataset
@@ -47,6 +47,30 @@ Use one JSON object per line. Put model inputs under `input` or `input_data`, th
 {"input": {"question": "What is the refund window for annual plans?"}, "expected_output": "Annual plans are refundable within 30 days.", "metadata": {"split": "tune", "source": "policy-golden", "task": "qa"}}
 {"input": {"question": "Can I pause a monthly subscription?"}, "expected_output": "Monthly subscriptions can be paused from billing settings.", "metadata": {"split": "holdout", "source": "support-review", "task": "qa"}}
 ```
+
+### One canonical dataset contract
+
+Every Traigent skill maps a JSONL row the same way — this is the single contract (quickstart's
+flat `{"input": "...", "output": "..."}` is just this contract with scalar values):
+
+| Row key | Becomes | Notes |
+|---|---|---|
+| `input` (or `input_data`) | `example.input_data` | required; the value can be a scalar **or a nested dict**. Called as `func(**input_data)` when it is a dict. |
+| **gold key** (first match) | `example.expected_output` | the value can be a scalar **or a nested dict** (then index it, e.g. `expected["sql"]`). |
+| every **other top-level key** | `example.metadata[<key>]` | this is how a **per-example side field** (e.g. `db_path`) reaches a scorer. |
+
+**Accepted gold-key aliases**, in first-match order (SDK `evaluators/base.py` `_EXPECTED_OUTPUT_FIELDS`):
+`output`, `expected`, `expected_output`, `answer`, `target`, `label`. Pick **one** per row.
+
+So a nested, execution-scored row is fully supported:
+
+```json
+{"input": {"question": "...", "schema": "CREATE TABLE ...", "db_id": "sales"}, "output": {"sql": "SELECT COUNT(*) FROM customers;"}, "db_path": "data/sales.db"}
+```
+
+Here `input` → `example.input_data` (the nested dict), `output` → `example.expected_output`
+(gold SQL is `expected["sql"]`), and the top-level `db_path` → `example.metadata["db_path"]`.
+See `traigent-build-evaluator` for the scorer that reads a per-example `metadata` field.
 
 Holdout rules:
 
