@@ -139,7 +139,7 @@ SDK v0.14.2 — every value now emits a `DeprecationWarning` and remaps to the
 > previously implied no-egress, but on current SDK it maps to cloud-first and may egress.
 > Use `offline=True` explicitly for zero Traigent backend traffic.
 >
-> (Verified against `traigent/api/decorators.py:569-585` and `traigent/config/types.py:308-405`.)
+> (Verified against `_warn_for_legacy_execution_options` in `traigent/api/decorators.py` (≈:650) and the mode-remap logic in `traigent/config/types.py:308-405`, SDK `origin/develop`.)
 
 If you encounter these string values in legacy code, replace them with the `algorithm` and
 `offline` equivalents from the table above.
