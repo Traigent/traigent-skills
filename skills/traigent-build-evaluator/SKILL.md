@@ -4,7 +4,7 @@ description: "Build Traigent evaluators and scoring code. Use when wiring eval_d
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Build Evaluator
@@ -203,7 +203,7 @@ The `example` argument passed to `custom_evaluator(func, config, example)` is an
 
 ## The ExampleResult contract
 
-For `traigent==0.12.0`, construct `ExampleResult` with these fields:
+On `traigent` 0.12.0+ (including the current SDK), construct `ExampleResult` with these fields (0.14+ adds one optional field, `user_metrics`):
 
 | Field | Required | Meaning |
 |---|---|---|

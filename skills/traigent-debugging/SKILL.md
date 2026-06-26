@@ -26,7 +26,7 @@ Enable detailed logging to see what Traigent is doing at each step:
 
 ```bash
 # Full SDK verbose logging (SDK infrastructure, sampling, backend comms)
-export TRAIGENT_LOG_LEVEL=DEBUG  # requires traigent>=0.13.0
+export TRAIGENT_LOG_LEVEL=DEBUG  # read on all current SDK versions
 
 # Full tracebacks for ConfigurationError (shows raw exception, not user-friendly message)
 export TRAIGENT_DEBUG=1

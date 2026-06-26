@@ -17,7 +17,7 @@ Controls the verbosity of Traigent's internal logging.
 
 ```bash
 # Command line
-export TRAIGENT_LOG_LEVEL=DEBUG  # requires traigent>=0.13.0
+export TRAIGENT_LOG_LEVEL=DEBUG  # read on all current SDK versions
 
 # Or inline
 TRAIGENT_LOG_LEVEL=DEBUG python my_script.py
@@ -132,7 +132,7 @@ This only affects `ConfigurationError` and its subclasses. All other exceptions 
 For maximum diagnostic information:
 
 ```bash
-export TRAIGENT_LOG_LEVEL=DEBUG  # requires traigent>=0.13.0
+export TRAIGENT_LOG_LEVEL=DEBUG  # read on all current SDK versions
 export TRAIGENT_DEBUG=1
 python my_script.py
 ```
