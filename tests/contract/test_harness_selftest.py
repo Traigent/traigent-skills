@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from .extract import collect_file
+from .extract import collect_file, collect_runnable_file
 from .facts import ContractFact
 from .verifier import verify_python_fact
 
@@ -42,6 +42,29 @@ opts = EvaluationOptions(eval_dataset="eval.jsonl")
     assert any(
         fact.kind == "call_kwargs" and fact.target == "traigent.api.decorators.EvaluationOptions" for fact in facts
     )
+
+
+def test_extractor_detects_opt_in_runnable_python_blocks(tmp_path: Path) -> None:
+    path = tmp_path / "SKILL.md"
+    path.write_text(
+        """# Demo
+
+```python runnable
+print("runs")
+```
+
+```python
+print("static only")
+```
+""",
+        encoding="utf-8",
+    )
+
+    snippets = collect_runnable_file("demo", path)
+    assert len(snippets) == 1
+    assert snippets[0].language == "python"
+    assert snippets[0].start_line == 4
+    assert snippets[0].text == 'print("runs")'
 
 
 def test_extractor_detects_backend_url_facts(tmp_path: Path) -> None:

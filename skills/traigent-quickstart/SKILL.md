@@ -213,8 +213,15 @@ Here is a complete working example. This function classifies customer queries us
 
 **Why the example includes a `mock_demo_accuracy` scorer:** in mock mode every LLM call returns the *same* canned string, so a **real** accuracy metric scores every trial 0.0 — a discouraging all-zeros table that looks broken. The demo scorer below ignores the (canned) output and ranks trials by their config, so the keyless dry-run produces a meaningful table — the same approach the bundled `traigent quickstart` command uses. It is **mock-only: delete it for a real run**, where Traigent scores actual model output against your dataset labels. (Prefer not to keep a placeholder scorer in your own code? Just run `traigent quickstart` for the same ranked demo without writing one.)
 
-```python
+```python runnable
 import asyncio
+import os
+from pathlib import Path
+
+# Set no-egress flags before importing Traigent or LiteLLM.
+os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
+os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
+
 import litellm  # pip install traigent[integrations]
 import traigent
 from traigent import Choices
@@ -222,6 +229,18 @@ from traigent.testing import enable_mock_mode_for_quickstart
 
 # Step 1: dry-run in mock mode — no API keys required, no cost
 enable_mock_mode_for_quickstart()
+
+Path("eval_queries.jsonl").write_text(
+    "\n".join(
+        [
+            '{"input": "I was charged twice for my subscription", "output": "billing"}',
+            '{"input": "The API returns a 500 error on POST requests", "output": "technical"}',
+            '{"input": "What are your business hours?", "output": "general"}',
+        ]
+    )
+    + "\n",
+    encoding="utf-8",
+)
 
 
 def mock_demo_accuracy(output, expected, config=None, **_):
@@ -242,6 +261,8 @@ def mock_demo_accuracy(output, expected, config=None, **_):
 @traigent.optimize(
     eval_dataset="eval_queries.jsonl",
     objectives=["accuracy"],
+    algorithm="random",
+    offline=True,
     model=Choices(["gpt-4o-mini", "gpt-4o"]),
     temperature=Choices([0.0, 0.5, 1.0]),
     metric_functions={"accuracy": mock_demo_accuracy},  # mock-only; delete for a real run
@@ -262,7 +283,7 @@ def classify_query(query: str) -> str:
 
 async def main():
     # Step 1: dry-run (mock) — confirm the setup works and review estimated cost
-    results = await classify_query.optimize(max_trials=6)  # default algorithm="auto"
+    results = await classify_query.optimize(max_trials=6)
 
     # Inspect results
     print(f"Best config: {results.best_config}")
@@ -285,7 +306,7 @@ asyncio.run(main())
 If you prefer synchronous execution:
 
 ```python
-results = classify_query.optimize_sync(max_trials=6)  # default algorithm="auto"
+results = classify_query.optimize_sync(max_trials=6)  # uses the offline random dry-run settings above
 ```
 
 ### Key Concepts
@@ -295,7 +316,7 @@ results = classify_query.optimize_sync(max_trials=6)  # default algorithm="auto"
 3. **`func.optimize(max_trials=N)`** -- Run the optimization loop asynchronously. Returns an `OptimizationResult`.
 4. **`func.apply_best_config(results)`** -- Lock in the best configuration found so that subsequent calls use it.
 
-> **You've run your first optimization — now make it robust.** The decorator above is intentionally *minimal* (just `model` + `temperature`). For a real optimization, graduate to the more robust **`traigent-decorator-setup`** skill — custom evaluators / `metric_functions`, injection & execution control (`algorithm`/`offline`), and weighted objectives — then launch with **`traigent-run-optimization`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`bayesian`/`optuna` for large search spaces), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
+> **You've run your first optimization — now make it robust.** The decorator above is intentionally a *local dry-run* recipe: a small `model` + `temperature` space, `algorithm="random"`, and `offline=True`. For a real optimization, graduate to the more robust **`traigent-decorator-setup`** skill — custom evaluators / `metric_functions`, injection mode, execution policy, and weighted objectives — then launch with **`traigent-run-optimization`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`bayesian`/`optuna` for large search spaces), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
 
 ## Dataset Format
 
