@@ -122,6 +122,7 @@ enable_mock_mode_for_quickstart()
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install traigent` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install 'traigent[integrations]'`.)
+- **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` (or run with no key). `enable_mock_mode_for_quickstart()` alone does **not** make a run local.
 
 ### Legacy Env-Var Path
 
