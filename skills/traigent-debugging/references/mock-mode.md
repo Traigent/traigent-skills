@@ -148,7 +148,14 @@ Mock mode has important limitations to be aware of:
 
 4. **Provider-specific behavior is not simulated**: Rate limits, token limits, and provider-specific formatting are not mocked.
 
-5. **Evaluator scores may differ**: If your evaluator scores based on output quality, mock responses will produce different (usually lower) scores than real LLM responses.
+5. **Evaluator scores under mock — deterministic scorers will see uniform 0.0:** The mock
+   LLM always returns the same constant string (`"This is a mock response for testing."`,
+   `traigent/integrations/utils/mock_adapter.py:69`). For **output-based / deterministic
+   scorers** (exact-match, JSON-schema, SQL execution accuracy), every trial scores 0.0
+   because no output-based scorer can reward the constant mock text. This is **expected and
+   correct** — it means mock-plumbing is working, not that your agent is broken.
+   Config-aware scorers (those that read `traigent.get_config()`) will still produce varied
+   scores across trials, even in mock mode.
 
 ## Example: CI/CD Pipeline
 
