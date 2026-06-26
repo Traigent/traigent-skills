@@ -22,6 +22,10 @@ Use this skill when:
 
 ## Installation
 
+> **This is the Python SDK skill.** Building in **JavaScript/TypeScript** instead? Use the
+> **`traigent-js`** skill — it covers the native JS/TS optimizer (the `@traigent/sdk` package)
+> with a different install and API. The rest of this page assumes Python.
+
 ### Basic Install
 
 ```bash
