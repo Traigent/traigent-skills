@@ -178,7 +178,38 @@ print(f"Best score:    {results.best_score}")
 | Stop reason | `"max_trials_reached"` or `"optimizer"` | `"error"` = something broke |
 | Config keys | Expected keys in `best_config` | Missing keys = config space mismatch |
 
-Mock scores are random — ignore score values. Focus on whether the pipeline **runs without errors**.
+**Score interpretation depends on your evaluator type:**
+
+- **Config-aware scorer** (reads `traigent.get_config()` or a `config=` kwarg and returns a
+  value that varies by trial config): scores differ across trials and are meaningful for
+  ranking even in mock mode. This is the pattern used in the `traigent-quickstart` example.
+- **Output-based / deterministic scorer** (exact-match, JSON-schema, execution accuracy):
+  the mock LLM always returns the **same constant string** (`"This is a mock response for
+  testing."` — `traigent/integrations/utils/mock_adapter.py:69`). Every call to the
+  decorated function returns that constant, so **all scores will be uniformly 0.0** for
+  these scorers. This does **not** mean your agent is broken — it means mock-plumbing is
+  confirmed working. Uniform 0.0 under mock is expected for output-based scorers.
+
+> **WARNING — uniform 0.0 under mock is plumbing-OK, not a failure:**
+> If your scorer is output-based (exact-match, SQL execution accuracy, JSON-schema, etc.)
+> and all mock scores are 0.0, that is the correct expected result: the mock returns a
+> constant string that no deterministic scorer can score positively. Focus on whether trials
+> ran without errors (`failed_trials == 0`), not on the 0.0 score values.
+>
+> **Non-degenerate dry-run recipe:** To get a varied score spread without real LLM calls,
+> use a config-aware scorer that reads the trial config rather than the constant mock output:
+>
+> ```python
+> def mock_demo_accuracy(output, expected, config=None, **_):
+>     """Config-aware scorer for mock dry-runs — scores by config, not output."""
+>     cfg = config or traigent.get_config() or {}
+>     base = 0.85 if cfg.get("model") == "gpt-4o" else 0.65
+>     return max(0.0, base - 0.05 * float(cfg.get("temperature", 0.5)))
+> ```
+>
+> Delete this scorer for your real (paid) run — on a real run, let your output-based
+> scorer evaluate actual LLM output. This mock-only scorer is purely for confirming the
+> pipeline works end to end before spending API budget.
 
 ### If Mock Fails
 

@@ -115,6 +115,35 @@ def my_func(query: str) -> str:
     return call_llm(model=cfg["model"], prompt=query)
 ```
 
+## Legacy mode selector (deprecated)
+
+Earlier SDK versions accepted a string mode selector as an additional keyword argument
+to `@traigent.optimize` or `ExecutionOptions`. That parameter is deprecated as of
+SDK v0.14.2 — every value now emits a `DeprecationWarning` and remaps to the
+`algorithm`/`offline` equivalents:
+
+| Old string value | Behavior on current SDK | Modern equivalent |
+|---|---|---|
+| `"cloud"` | DeprecationWarning → cloud-first (semantic flip — no longer means local) | `algorithm="auto"` |
+| `"privacy"` | DeprecationWarning → cloud-first, **no no-egress guarantee** | `algorithm="auto", offline=True` for no egress |
+| `"hybrid"` / `"standard"` | DeprecationWarning → cloud-first | `algorithm="auto"` |
+| `"local"` | DeprecationWarning → local-only | `offline=True` |
+
+> **Key correction for `"cloud"` and `"privacy"`:** On the public `@traigent.optimize` path,
+> passing these string values does **not** raise an error and does **not** activate a separate
+> "full remote execution" mode — they remap to cloud-first with a warning. There is no
+> `CloudRemoteExecutionUnavailableError` on the public decorator path; that error lives on a
+> reserved cloud-client RPC surface unreachable from a decorated run.
+>
+> **No-egress is `offline=True`, not any string mode value.** The `"privacy"` value
+> previously implied no-egress, but on current SDK it maps to cloud-first and may egress.
+> Use `offline=True` explicitly for zero Traigent backend traffic.
+>
+> (Verified against `traigent/api/decorators.py:569-585` and `traigent/config/types.py:308-405`.)
+
+If you encounter these string values in legacy code, replace them with the `algorithm` and
+`offline` equivalents from the table above.
+
 ## JavaScript / TypeScript Applications
 
 To optimize an LLM application written in JavaScript/TypeScript, use the native
