@@ -10,8 +10,22 @@ Use this when the expected output is checkable without an LLM judge.
 import json
 import re
 
+import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
+
+def extract_fields(text: str, required_fields: list[str], *, temperature: float = 0.0) -> str:
+    prompt = (
+        "Extract the requested fields as a JSON object.\n"
+        f"Fields: {', '.join(required_fields)}\n"
+        f"Text:\n{text}"
+    )
+    response = litellm.completion(
+        model="gpt-4o-mini",
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 def normalize_text(value) -> str:
     return re.sub(r"\s+", " ", str(value).strip().lower())
@@ -40,11 +54,7 @@ def valid_schema_metric(output, expected, input_data) -> float:
 )
 def extract(text: str, required_fields: list[str]) -> str:
     cfg = traigent.get_config()
-    return call_extractor(
-        text,
-        required_fields=required_fields,
-        temperature=cfg["temperature"],
-    )
+    return extract_fields(text, required_fields, temperature=cfg["temperature"])
 ```
 
 ## LLM judge with rubric, strict parse, and cost guardrails
@@ -56,12 +66,21 @@ import json
 import time
 from typing import Any
 
+import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
 
 JUDGE_MODEL = "judge-model-name"
 JUDGE_COST_PER_CALL_USD = 0.002
+
+def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
+    response = litellm.completion(
+        model="gpt-4o-mini",
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 def build_judge_prompt(output: Any, expected: Any, input_data: dict[str, Any]) -> str:
     return json.dumps(
@@ -110,7 +129,11 @@ def llm_judge_evaluator(func, config, example) -> ExampleResult:
 
     prediction = func(**example.input_data)
     prompt = build_judge_prompt(prediction, example.expected_output, example.input_data)
-    raw = judge_client.responses.create(model=JUDGE_MODEL, input=prompt).output_text
+    judge_response = litellm.completion(
+        model=JUDGE_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = judge_response.choices[0].message.content or ""
     score, reason, parsed = parse_judge_response(raw)
 
     return ExampleResult(
@@ -144,7 +167,7 @@ def llm_judge_evaluator(func, config, example) -> ExampleResult:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(question, temperature=cfg["temperature"])
+    return prompt_model(question, temperature=cfg["temperature"])
 ```
 
 ## Statistical agreement over repeated calls
@@ -155,9 +178,18 @@ Use this when the same configuration can produce different outputs and stability
 import time
 from collections import Counter
 
+import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
+
+def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
+    response = litellm.completion(
+        model="gpt-4o-mini",
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
     started = time.perf_counter()
@@ -197,7 +229,7 @@ def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(question, temperature=cfg["temperature"])
+    return prompt_model(question, temperature=cfg["temperature"])
 ```
 
 ## Hybrid deterministic gate then judge
@@ -208,9 +240,25 @@ Use this when invalid outputs should fail before spending judge calls.
 import json
 import time
 
+import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
+
+JUDGE_MODEL = "judge-model-name"
+
+def extract_json(text: str, *, temperature: float = 0.0) -> str:
+    response = litellm.completion(
+        model="gpt-4o-mini",
+        temperature=temperature,
+        messages=[
+            {
+                "role": "user",
+                "content": f"Extract the relevant fields as a JSON object only:\n{text}",
+            }
+        ],
+    )
+    return response.choices[0].message.content or ""
 
 def parse_json_object(value: str) -> tuple[dict, str | None]:
     try:
@@ -231,7 +279,11 @@ def judge_json_quality(output: dict, expected: dict, input_data: dict) -> tuple[
         },
         ensure_ascii=True,
     )
-    raw = judge_client.responses.create(model="judge-model-name", input=prompt).output_text
+    judge_response = litellm.completion(
+        model=JUDGE_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    raw = judge_response.choices[0].message.content or ""
     try:
         parsed = json.loads(raw)
         score = float(parsed["score"])
@@ -289,5 +341,5 @@ def hybrid_evaluator(func, config, example) -> ExampleResult:
 )
 def extract(text: str) -> str:
     cfg = traigent.get_config()
-    return call_extractor(text, temperature=cfg["temperature"])
+    return extract_json(text, temperature=cfg["temperature"])
 ```

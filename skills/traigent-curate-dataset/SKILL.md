@@ -85,8 +85,17 @@ Holdout rules:
 Use client-side synthesis when data is sensitive, labels need local review, or the user has not approved a backend run. Passing your own `llm` keeps synthesis on the user's LLM path. Tag synthetic rows in metadata and keep the seed ids.
 
 ```python
+import litellm
+
 from traigent.evaluators import Dataset
 from traigent.generation import DatasetGrowthOptions, ExampleSynthesizer, GuidanceAction
+
+def private_llm(prompt: str) -> str:
+    response = litellm.completion(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 seed_dataset = Dataset.from_jsonl("eval/tune.jsonl")
 
@@ -95,7 +104,7 @@ growth_options = DatasetGrowthOptions(
     max_total_examples_added=30,
 )
 synthesizer = ExampleSynthesizer(
-    llm=call_private_llm,
+    llm=private_llm,
     options=growth_options,
 )
 
@@ -114,12 +123,21 @@ for example in synthetic_examples:
 For guided optimization flows, grow examples from the optimized function instead of separately managing the synthesizer:
 
 ```python
+import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.generation import DatasetGrowthOptions
 from traigent.testing import enable_mock_mode_for_quickstart
 
 enable_mock_mode_for_quickstart()
+
+def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
+    response = litellm.completion(
+        model="gpt-4o-mini",
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 @traigent.optimize(
     evaluation=EvaluationOptions(eval_dataset="eval/tune.jsonl"),
@@ -128,7 +146,7 @@ enable_mock_mode_for_quickstart()
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(question, temperature=cfg["temperature"])
+    return prompt_model(question, temperature=cfg["temperature"])
 
 growth_options = DatasetGrowthOptions(
     examples_per_round=4,
@@ -137,7 +155,7 @@ growth_options = DatasetGrowthOptions(
 
 results = answer.optimize_with_guidance(
     provider=guidance_provider,
-    rewrite_llm=call_private_llm,
+    rewrite_llm=prompt_model,
     grow_dataset=growth_options,
     weak_examples=weak_examples,
     max_trials=8,

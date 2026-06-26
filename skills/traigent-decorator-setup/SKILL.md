@@ -35,12 +35,22 @@ A typical **quick cycle is two steps**: configure the decorator with this skill,
 ## Imports
 
 ```python
+import litellm
 import traigent
 from traigent.api.decorators import (
     EvaluationOptions,
     InjectionOptions,
     ExecutionOptions,
 )
+
+def prompt_model(prompt: str, *, model: str = "gpt-4o-mini", temperature: float = 0.0, max_tokens: int = 512) -> str:
+    response = litellm.completion(
+        model=model,
+        temperature=temperature,
+        max_tokens=max_tokens,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 ```
 
 ## Objectives
@@ -56,8 +66,7 @@ Objectives tell Traigent what to optimize for. Pass them as a string list or as 
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 ```
 
 ### ObjectiveSchema (Weighted)
@@ -80,8 +89,7 @@ schema = ObjectiveSchema(
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 ```
 
 ## Naming and Labeling Runs
@@ -100,8 +108,7 @@ variant, dataset version) into a descriptive `experiment_name` instead.
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 ```
 
 - `experiment_name` accepts spaces and punctuation (it is not a Python identifier).
@@ -148,8 +155,7 @@ def exact_match(output: str, expected: str) -> float:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(temperature=cfg["temperature"], prompt=question)
+    return prompt_model(question, temperature=cfg["temperature"])
 ```
 
 ### Example: Metric Functions
@@ -174,8 +180,7 @@ def length_metric(output, expected, input_data) -> float:
 )
 def summarize(text: str) -> str:
     cfg = traigent.get_config()
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=cfg["model"], prompt=f"Summarize: {text}")
+    return prompt_model(f"Summarize: {text}", model=cfg["model"])
 ```
 
 ## Injection Modes
@@ -192,8 +197,7 @@ The recommended mode. Uses Python `contextvars` for thread-safe config access.
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()  # Thread-safe context access
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 ```
 
 ### Parameter Mode
@@ -209,8 +213,7 @@ Passes config as an explicit function parameter. Set `config_param` to the param
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str, config: dict = None) -> str:
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=config["model"], prompt=query)
+    return prompt_model(query, model=config["model"])
 ```
 
 ### Seamless Mode
@@ -247,8 +250,7 @@ See `references/execution-modes.md` for the full reference.
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 ```
 
 ### `algorithm` and `offline`
@@ -285,8 +287,7 @@ custom evaluator; keep optimization strategy on the same `algorithm`/`offline` k
 )
 def my_func(query: str) -> str:
     cfg = traigent.get_config()  # Works during trials AND after apply_best_config
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(model=cfg["model"], prompt=query)
+    return prompt_model(query, model=cfg["model"])
 
 # Run optimization
 results = await my_func.optimize(max_trials=6, algorithm="grid")
@@ -330,12 +331,11 @@ def exact_match(output: str, expected: str) -> float:
 )
 def answer_question(question: str) -> str:
     cfg = traigent.get_config()
-    # call_llm: replace with your actual LLM call, e.g. litellm.completion(...)
-    return call_llm(
+    return prompt_model(
+        question,
         model=cfg["model"],
         temperature=cfg["temperature"],
         max_tokens=cfg["max_tokens"],
-        prompt=question,
     )
 
 # Run optimization

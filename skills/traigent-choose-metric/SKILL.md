@@ -59,7 +59,16 @@ Evaluation methods:
 Start with built-ins when possible:
 
 ```python
+import litellm
 import traigent
+
+def prompt_model(prompt: str, *, model: str, temperature: float = 0.0) -> str:
+    response = litellm.completion(
+        model=model,
+        temperature=temperature,
+        messages=[{"role": "user", "content": prompt}],
+    )
+    return response.choices[0].message.content or ""
 
 @traigent.optimize(
     objectives=["accuracy", "cost"],
@@ -70,7 +79,7 @@ import traigent
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    return call_llm(question, model=cfg["model"], temperature=cfg["temperature"])
+    return prompt_model(question, model=cfg["model"], temperature=cfg["temperature"])
 ```
 
 Use custom metric functions when the domain has a checkable rule. Name each metric after the product concept it measures, and then include that name in `objectives` only if the optimizer should trade off against it.
@@ -99,7 +108,11 @@ def valid_schema_metric(output, expected, input_data) -> float:
 )
 def extract_invoice(text: str) -> str:
     cfg = traigent.get_config()
-    return call_extractor(text, temperature=cfg["temperature"])
+    return prompt_model(
+        f"Extract invoice_id, amount_due, and due_date as JSON from:\n{text}",
+        model="gpt-4o-mini",
+        temperature=cfg["temperature"],
+    )
 ```
 
 If you need weighted objective schemas, verify the exact `ObjectiveSchema` and `ObjectiveDefinition` import path against the installed SDK first. The public examples should prefer plain objective lists unless weights are essential.
