@@ -141,7 +141,7 @@ import litellm
             "gpt-4o",               # OpenAI
             "claude-3-haiku-20240307",  # Anthropic (versioned, not a -latest alias)
             "claude-3-5-sonnet-20241022",  # Anthropic
-            "gemini/gemini-1.5-flash",    # Google
+            "gemini/gemini-3-flash",    # Google
         ],
         "temperature": [0.0, 0.3, 0.7],
         "max_tokens": [256, 512, 1024],
