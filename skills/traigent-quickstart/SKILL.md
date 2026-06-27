@@ -4,7 +4,7 @@ description: "Install and set up the Traigent SDK for LLM optimization. Use when
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Traigent Quickstart
@@ -104,6 +104,17 @@ export TRAIGENT_API_KEY="sk_..."
 **Which key to use?** The portal experiments-scoped key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
 For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero egress is required.
+
+> **Prereq for real (non-offline) runs: set `TRAIGENT_API_KEY`, and set `TRAIGENT_BACKEND_URL` explicitly for dev/cloud to avoid the localhost fallback.**
+> The SDK and CLI default to `http://localhost:5000`; omitting `TRAIGENT_BACKEND_URL` causes a
+> connection-refused error on any non-offline `.optimize()` call or `traigent` CLI command.
+> The `traigent next-steps` CLI also accepts `--backend-url` as a flag to override the env var.
+> Portal-issued API keys use the `uk_...` prefix.
+>
+> ```bash
+> export TRAIGENT_API_KEY="uk_..."                           # portal-issued key
+> export TRAIGENT_BACKEND_URL="https://api.traigent.ai"     # cloud or dev endpoint
+> ```
 
 ## Environment Setup
 
@@ -206,6 +217,13 @@ See `references/environment-variables.md` for all available environment variable
 ## Your First Optimization
 
 > **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+>
+> **Real LLM runs require cost approval.** A real (non-mock) optimization is blocked by a cost
+> gate. To confirm you accept the cost, set `TRAIGENT_COST_APPROVED=true` in the environment
+> (the verified path); some SDK versions also accept `cost_approved=True` in the
+> `@traigent.optimize()` decorator. The SDK prints an estimate
+> before any trial executes; the estimate may be high (fallback pricing is conservative), but the
+> gate is a safety confirmation — nothing runs until you approve.
 
 Here is a complete working example. This function classifies customer queries using an LLM, and Traigent will find the best model and temperature combination.
 
@@ -308,6 +326,22 @@ If you prefer synchronous execution:
 ```python
 results = classify_query.optimize_sync(max_trials=6)  # uses the offline random dry-run settings above
 ```
+
+> **`expected` is a scoring label — do not put it in your agent function's signature.**
+> The evaluator calls your function with the example's *input* fields only (plus any
+> config-injected params). It then passes the function's *output* and the dataset's
+> `expected` / `output` field to your `scoring_function` or `metric_functions`. A
+> function that declares `expected` as a parameter will fail every trial with
+> `TypeError: missing required argument: 'expected'`.
+>
+> ```python
+> # WRONG — fails every trial
+> def classify_query(query: str, expected: str) -> str: ...
+>
+> # CORRECT — function takes input fields only; scorer receives (output, expected)
+> def classify_query(query: str) -> str: ...
+> def score(output: str, expected: str) -> float: ...
+> ```
 
 ### Key Concepts
 
