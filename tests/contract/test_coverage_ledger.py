@@ -52,13 +52,20 @@ def _waivers(repo_root: Path) -> set[str]:
 
 
 def derive_taught_ids(repo_root: Path, facts: tuple[ContractFact, ...]) -> set[str]:
-    taught: set[str] = {f"js:{f.module}#{f.symbol}" for f in facts if f.kind == "js_import"}
+    taught: set[str] = {
+        f"js:{f.module}#{f.symbol}" for f in facts if f.kind == "js_import"
+    }
     if _candidate_paths is None:
         return taught
     # BE: a route is taught if a url fact's candidate paths (and method) match it.
-    routes = json.loads(
-        (repo_root / "tests/data/backend_routes_snapshot.json").read_text(encoding="utf-8")
-    ).get("routes") or []
+    routes = (
+        json.loads(
+            (repo_root / "tests/data/backend_routes_snapshot.json").read_text(
+                encoding="utf-8"
+            )
+        ).get("routes")
+        or []
+    )
     url_facts = [f for f in facts if f.kind == "url"]
     for route in routes:
         method = str(route["method"]).upper()
@@ -95,9 +102,19 @@ def test_coverage_ledger_has_teeth(tmp_path: Path) -> None:
     current = {"js:@traigent/sdk#optimize", "js:@traigent/sdk#BrandNewExport"}
     taught: set[str] = set()
     waivers: set[str] = set()
-    new_unclassified = [c for c in (current - baseline) if c not in taught and c not in waivers]
+    new_unclassified = [
+        c for c in (current - baseline) if c not in taught and c not in waivers
+    ]
     assert new_unclassified == ["js:@traigent/sdk#BrandNewExport"]
     # taught silences it
-    assert not [c for c in (current - baseline) if c not in {"js:@traigent/sdk#BrandNewExport"} and c not in waivers]
+    assert not [
+        c
+        for c in (current - baseline)
+        if c not in {"js:@traigent/sdk#BrandNewExport"} and c not in waivers
+    ]
     # waiver silences it
-    assert not [c for c in (current - baseline) if c not in taught and c not in {"js:@traigent/sdk#BrandNewExport"}]
+    assert not [
+        c
+        for c in (current - baseline)
+        if c not in taught and c not in {"js:@traigent/sdk#BrandNewExport"}
+    ]

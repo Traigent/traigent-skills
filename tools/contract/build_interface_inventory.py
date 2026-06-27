@@ -17,6 +17,7 @@ Usage (from the repo root):
 
     python tools/contract/build_interface_inventory.py
 """
+
 from __future__ import annotations
 
 import json
@@ -37,7 +38,11 @@ def _js_ids(repo_root: Path) -> set[str]:
     if not path.is_file():
         return set()
     exports = json.loads(path.read_text(encoding="utf-8")).get("exports") or {}
-    return {f"js:{subpath}#{symbol}" for subpath, symbols in exports.items() for symbol in symbols}
+    return {
+        f"js:{subpath}#{symbol}"
+        for subpath, symbols in exports.items()
+        for symbol in symbols
+    }
 
 
 def _be_ids(repo_root: Path) -> set[str]:
@@ -52,7 +57,10 @@ def main() -> int:
     repo_root = Path.cwd()
     ids = build_ids(repo_root)
     OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps({"schema": "interface-inventory/v1", "ids": ids}, indent=2) + "\n", encoding="utf-8")
+    OUT.write_text(
+        json.dumps({"schema": "interface-inventory/v1", "ids": ids}, indent=2) + "\n",
+        encoding="utf-8",
+    )
     print(f"wrote {OUT.as_posix()} with {len(ids)} interface ids")
     return 0
 

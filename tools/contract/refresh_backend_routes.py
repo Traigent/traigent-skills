@@ -63,7 +63,9 @@ def main() -> int:
     snapshot = build_snapshot(repo=args.repo, ref=args.ref)
     out = args.out
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(snapshot, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     print(
         f"wrote {out.as_posix()} with {len(snapshot['routes'])} routes "
         f"from {snapshot['generated_from']['commit_sha']}",
@@ -216,7 +218,9 @@ def _collect_constants(tree: ast.AST) -> dict[str, tuple[str, ...]]:
     return constants
 
 
-def _blueprint_from_assignment(node: ast.Assign, *, source_file: str) -> BlueprintInfo | None:
+def _blueprint_from_assignment(
+    node: ast.Assign, *, source_file: str
+) -> BlueprintInfo | None:
     if len(node.targets) != 1 or not isinstance(node.targets[0], ast.Name):
         return None
     call = node.value
@@ -269,7 +273,9 @@ def _routes_from_function(
         if owner == "app" and source_file == "src/app.py":
             blueprint_key = ROOT_BLUEPRINT
         else:
-            blueprint_key = _resolve_blueprint_name(owner, source_file, imports, blueprints)
+            blueprint_key = _resolve_blueprint_name(
+                owner, source_file, imports, blueprints
+            )
             if blueprint_key is None:
                 continue
 
@@ -301,7 +307,10 @@ def _registration_from_call(
     imports: dict[str, tuple[str, str]],
     blueprints: dict[tuple[str, str], BlueprintInfo],
 ) -> Registration | None:
-    if not isinstance(node.func, ast.Attribute) or node.func.attr != "register_blueprint":
+    if (
+        not isinstance(node.func, ast.Attribute)
+        or node.func.attr != "register_blueprint"
+    ):
         return None
     if not node.args:
         return None
@@ -314,7 +323,9 @@ def _registration_from_call(
     if parent_name == "app" and source_file == "src/app.py":
         parent_key = ROOT_BLUEPRINT
     else:
-        resolved_parent = _resolve_blueprint_name(parent_name, source_file, imports, blueprints)
+        resolved_parent = _resolve_blueprint_name(
+            parent_name, source_file, imports, blueprints
+        )
         if resolved_parent is None:
             return None
         parent_key = resolved_parent
@@ -378,7 +389,9 @@ def _mount_prefixes(
     return {key: tuple(sorted(values)) for key, values in discovered.items()}
 
 
-def _route_methods(call: ast.Call, constants: dict[str, tuple[str, ...]]) -> tuple[str, ...]:
+def _route_methods(
+    call: ast.Call, constants: dict[str, tuple[str, ...]]
+) -> tuple[str, ...]:
     for keyword in call.keywords:
         if keyword.arg != "methods":
             continue
@@ -388,7 +401,9 @@ def _route_methods(call: ast.Call, constants: dict[str, tuple[str, ...]]) -> tup
     return ("GET",)
 
 
-def _string_sequence(node: ast.AST, constants: dict[str, tuple[str, ...]]) -> tuple[str, ...] | None:
+def _string_sequence(
+    node: ast.AST, constants: dict[str, tuple[str, ...]]
+) -> tuple[str, ...] | None:
     if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
         values: list[str] = []
         for item in node.elts:

@@ -51,9 +51,14 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
         selected = [
             fact
             for fact in facts
-            if fact.kind in {"import", "symbol", "call_kwargs"} and _in_bucket(fact.skill, sync_map, metafunc.config)
+            if fact.kind in {"import", "symbol", "call_kwargs"}
+            and _in_bucket(fact.skill, sync_map, metafunc.config)
         ]
-        metafunc.parametrize("python_fact", selected, ids=[fact.identifier(repo_root) for fact in selected])
+        metafunc.parametrize(
+            "python_fact",
+            selected,
+            ids=[fact.identifier(repo_root) for fact in selected],
+        )
 
     if "env_fact" in metafunc.fixturenames:
         selected = [
@@ -63,20 +68,36 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             and _in_bucket(fact.skill, sync_map, metafunc.config)
             and _env_fact_in_bucket(fact, sync_map, metafunc.config)
         ]
-        metafunc.parametrize("env_fact", selected, ids=[fact.identifier(repo_root) for fact in selected])
+        metafunc.parametrize(
+            "env_fact", selected, ids=[fact.identifier(repo_root) for fact in selected]
+        )
 
     if "cli_fact" in metafunc.fixturenames:
-        selected = [fact for fact in facts if fact.kind == "cli" and _in_bucket(fact.skill, sync_map, metafunc.config)]
-        metafunc.parametrize("cli_fact", selected, ids=[fact.identifier(repo_root) for fact in selected])
+        selected = [
+            fact
+            for fact in facts
+            if fact.kind == "cli" and _in_bucket(fact.skill, sync_map, metafunc.config)
+        ]
+        metafunc.parametrize(
+            "cli_fact", selected, ids=[fact.identifier(repo_root) for fact in selected]
+        )
 
     if "url_fact" in metafunc.fixturenames:
-        selected = [fact for fact in facts if fact.kind == "url" and _in_bucket(fact.skill, sync_map, metafunc.config)]
-        metafunc.parametrize("url_fact", selected, ids=[fact.identifier(repo_root) for fact in selected])
+        selected = [
+            fact
+            for fact in facts
+            if fact.kind == "url" and _in_bucket(fact.skill, sync_map, metafunc.config)
+        ]
+        metafunc.parametrize(
+            "url_fact", selected, ids=[fact.identifier(repo_root) for fact in selected]
+        )
 
     if "js_fact" in metafunc.fixturenames:
         # JS facts validate against the vendored JS API snapshot — version-independent.
         selected = [fact for fact in facts if fact.kind == "js_import"]
-        metafunc.parametrize("js_fact", selected, ids=[fact.identifier(repo_root) for fact in selected])
+        metafunc.parametrize(
+            "js_fact", selected, ids=[fact.identifier(repo_root) for fact in selected]
+        )
 
     if "runnable_snippet" in metafunc.fixturenames:
         snippets = [
@@ -95,7 +116,11 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
 def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
     outcome = yield
     report = outcome.get_result()
-    if report.when != "call" or not report.failed or os.environ.get("GITHUB_ACTIONS") != "true":
+    if (
+        report.when != "call"
+        or not report.failed
+        or os.environ.get("GITHUB_ACTIONS") != "true"
+    ):
         return
 
     fact = None
@@ -106,7 +131,9 @@ def pytest_runtest_makereport(item: pytest.Item, call: pytest.CallInfo[None]):
                 fact = value
                 break
 
-    snippet = item.funcargs.get("runnable_snippet") if hasattr(item, "funcargs") else None
+    snippet = (
+        item.funcargs.get("runnable_snippet") if hasattr(item, "funcargs") else None
+    )
 
     if fact is not None:
         path = fact.rel_path(Path(__file__).resolve().parents[2])
@@ -139,7 +166,11 @@ def _sdk_version_label(config: pytest.Config) -> str:
     selected = config.getoption("--sdk-version")
     if selected:
         return str(selected)
-    dist = _load_sync_map(Path(__file__).resolve().parents[2]).get("sdk", {}).get("dist", "traigent")
+    dist = (
+        _load_sync_map(Path(__file__).resolve().parents[2])
+        .get("sdk", {})
+        .get("dist", "traigent")
+    )
     try:
         return importlib.metadata.version(str(dist))
     except importlib.metadata.PackageNotFoundError:
@@ -157,7 +188,9 @@ def _in_bucket(skill: str, sync_map: dict[str, Any], config: pytest.Config) -> b
         return True
 
 
-def _env_fact_in_bucket(fact: ContractFact, sync_map: dict[str, Any], config: pytest.Config) -> bool:
+def _env_fact_in_bucket(
+    fact: ContractFact, sync_map: dict[str, Any], config: pytest.Config
+) -> bool:
     """Per-variable version floors for env facts.
 
     A skill may teach an env var that only exists at a newer SDK version than
@@ -166,7 +199,9 @@ def _env_fact_in_bucket(fact: ContractFact, sync_map: dict[str, Any], config: py
     variable only in buckets at or above its floor — and the skill text must
     state the version requirement in prose next to the variable.
     """
-    floors = ((sync_map.get("skills") or {}).get(fact.skill) or {}).get("env_version_floors") or {}
+    floors = ((sync_map.get("skills") or {}).get(fact.skill) or {}).get(
+        "env_version_floors"
+    ) or {}
     floor = floors.get(fact.name or "")
     if not floor:
         return True
