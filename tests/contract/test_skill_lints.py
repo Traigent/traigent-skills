@@ -74,15 +74,82 @@ NEXT_RUN_LOCAL_DECISION_PATTERNS = {
         r"(?:do|run|choose|recommend|promote|gate|curate|audit|reflect|score)\b"
     ),
 }
+ALLOWED_NEXT_STEP_ACTION_LABELS = {
+    "add_safety_gate",
+    "adjust_config_space",
+    "compare_with_baseline",
+    "expand_dataset",
+    "promote_winner",
+    "refine_metric",
+    "rerun_larger_sample",
+}
+FORBIDDEN_EXACT_LIFECYCLE_TOKENS = {
+    "artifact_states",
+    "audit_evaluator",
+    "audit_stale",
+    "blocker_codes",
+    "compare_baseline",
+    "LC_V1_DERIVED",
+    "ranked_operations",
+    "reason_code",
+    "result_stale",
+    "run_holdout",
+    "score-stale",
+    "score_examples",
+    "score_stale",
+    "scored-against",
+    "scored_against",
+    "scored-needs-tuning",
+    "scored_needs_tuning",
+    "smartopt_available",
+    "synth_harder_examples",
+    "target_artifact",
+    "tied_with_baseline",
+    "trust_label",
+    "unaudited",
+    "unknown_freshness",
+    "validated_on_holdout",
+}
+FORBIDDEN_CONTEXTUAL_STATE_TOKENS = {
+    "audited",
+    "audit_stale",
+    "baseline",
+    "blocked",
+    "broken",
+    "defined",
+    "degraded",
+    "empty",
+    "noisy",
+    "optimized",
+    "optimizing",
+    "populated",
+    "promotable",
+    "regressed",
+    "scored",
+    "trusted",
+    "undefined",
+}
+LIFECYCLE_CONTEXT_RE = re.compile(
+    r"\b("
+    r"artifact[-_ ]?(?:lifecycle|state|states)"
+    r"|cross[-_ ]artifact"
+    r"|per[-_ ]artifact"
+    r"|promotion[-_ ]rule"
+    r"|state\s+(?:label|labels|machine|machines|vocab|vocabulary|vocabularies)"
+    r"|states?\s+(?:for|of)"
+    r"|trust\s*/?\s*promotion"
+    r")\b",
+    re.IGNORECASE,
+)
 
 # Fields of the INSTALLED ExecutionOptions (extra="forbid" → any other kwarg is invalid).
 # None if the symbol can't be imported, in which case rule 3 no-ops for this run.
 try:
     from traigent.api.decorators import ExecutionOptions as _ExecutionOptions
 
-    _EXECUTION_OPTIONS_FIELDS: set[str] | None = (
-        set(inspect.signature(_ExecutionOptions).parameters) - {"self"}
-    )
+    _EXECUTION_OPTIONS_FIELDS: set[str] | None = set(
+        inspect.signature(_ExecutionOptions).parameters
+    ) - {"self"}
 except Exception:  # pragma: no cover - SDK shape/availability guard
     _EXECUTION_OPTIONS_FIELDS = None
 
@@ -99,6 +166,53 @@ def _skill_markdown_files(repo_root: Path) -> list[tuple[str, Path]]:
         if references.is_dir():
             out.extend((skill_dir.name, ref) for ref in sorted(references.glob("*.md")))
     return out
+
+
+def _token_re(token: str) -> re.Pattern[str]:
+    """Match a public vocabulary token without catching longer script/file names."""
+    return re.compile(
+        rf"(?<![A-Za-z0-9_-]){re.escape(token)}(?![A-Za-z0-9_-])",
+        re.IGNORECASE,
+    )
+
+
+def _line_for_offset(text: str, offset: int) -> int:
+    return text.count("\n", 0, offset) + 1
+
+
+def _scan_lifecycle_vocab_leaks(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
+    violations: list[str] = []
+    rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
+
+    for token in sorted(FORBIDDEN_EXACT_LIFECYCLE_TOKENS):
+        if token in ALLOWED_NEXT_STEP_ACTION_LABELS:
+            continue
+        match = _token_re(token).search(text)
+        if match:
+            violations.append(
+                f"LEAKED NEXT-RUN VOCAB  {rel}:{_line_for_offset(text, match.start())}\n"
+                f"  token   : {token}\n"
+                f"  problem : client-facing skills must present opaque posture prose and "
+                f"returned command templates, not internal lifecycle vocabulary."
+            )
+
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        window = "\n".join(lines[max(0, index - 1) : min(len(lines), index + 2)])
+        if not LIFECYCLE_CONTEXT_RE.search(window):
+            continue
+        for token in sorted(FORBIDDEN_CONTEXTUAL_STATE_TOKENS):
+            if not _token_re(token).search(line):
+                continue
+            violations.append(
+                f"LEAKED NEXT-RUN VOCAB  {rel}:{index + 1}\n"
+                f"  token   : {token}\n"
+                f"  problem : lifecycle/state prose in skills must stay opaque; do not "
+                f"teach per-artifact state vocabulary."
+            )
+    return violations
 
 
 def _python_blocks(text: str):
@@ -168,7 +282,9 @@ def _scan_dataset_kwarg(name: str, path: Path, text: str, repo_root: Path) -> li
     return violations
 
 
-def _scan_unawaited_optimize(name: str, path: Path, text: str, repo_root: Path) -> list[str]:
+def _scan_unawaited_optimize(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
     violations: list[str] = []
     for block in _python_blocks(text):
         try:
@@ -180,7 +296,9 @@ def _scan_unawaited_optimize(name: str, path: Path, text: str, repo_root: Path) 
             continue
         ok_ids = _awaited_or_runner_call_ids(tree)
         for node in ast.walk(tree):
-            if not (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)):
+            if not (
+                isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute)
+            ):
                 continue
             if node.func.attr != "optimize":
                 continue
@@ -210,7 +328,9 @@ def _callee_name(func: ast.AST) -> str | None:
     return None
 
 
-def _scan_executionoptions_kwargs(name: str, path: Path, text: str, repo_root: Path) -> list[str]:
+def _scan_executionoptions_kwargs(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
     if _EXECUTION_OPTIONS_FIELDS is None:
         return []
     violations: list[str] = []
@@ -220,9 +340,16 @@ def _scan_executionoptions_kwargs(name: str, path: Path, text: str, repo_root: P
         except SyntaxError:
             continue
         for node in ast.walk(tree):
-            if not (isinstance(node, ast.Call) and _callee_name(node.func) == "ExecutionOptions"):
+            if not (
+                isinstance(node, ast.Call)
+                and _callee_name(node.func) == "ExecutionOptions"
+            ):
                 continue
-            bad = [kw.arg for kw in node.keywords if kw.arg and kw.arg not in _EXECUTION_OPTIONS_FIELDS]
+            bad = [
+                kw.arg
+                for kw in node.keywords
+                if kw.arg and kw.arg not in _EXECUTION_OPTIONS_FIELDS
+            ]
             if not bad:
                 continue
             lineno = block.start_line + node.lineno - 1
@@ -237,7 +364,9 @@ def _scan_executionoptions_kwargs(name: str, path: Path, text: str, repo_root: P
     return violations
 
 
-def _scan_reps_per_trial(name: str, path: Path, text: str, repo_root: Path) -> list[str]:
+def _scan_reps_per_trial(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
     violations: list[str] = []
     for block in _python_blocks(text):
         for offset, line in enumerate(block.lines):
@@ -257,7 +386,9 @@ def _scan_reps_per_trial(name: str, path: Path, text: str, repo_root: Path) -> l
     return violations
 
 
-def _scan_validate_providers(name: str, path: Path, text: str, repo_root: Path) -> list[str]:
+def _scan_validate_providers(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
     violations: list[str] = []
     for block in _python_blocks(text):
         for offset, line in enumerate(block.lines):
@@ -274,7 +405,9 @@ def _scan_validate_providers(name: str, path: Path, text: str, repo_root: Path) 
     return violations
 
 
-def _scan_scoring_first_param(name: str, path: Path, text: str, repo_root: Path) -> list[str]:
+def _scan_scoring_first_param(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
     """A callback whose 2nd param is `expected` (the scoring/metric signature) must name
     its 1st param `output` — the SDK binds these by name; `prediction`/`pred` → silent 0.0."""
     violations: list[str] = []
@@ -304,42 +437,74 @@ def _scan_scoring_first_param(name: str, path: Path, text: str, repo_root: Path)
 def test_no_dataset_kwarg_on_optimize(repo_root: Path) -> None:
     violations: list[str] = []
     for name, path in _skill_markdown_files(repo_root):
-        violations.extend(_scan_dataset_kwarg(name, path, path.read_text(encoding="utf-8"), repo_root))
+        violations.extend(
+            _scan_dataset_kwarg(name, path, path.read_text(encoding="utf-8"), repo_root)
+        )
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
 def test_scoring_callbacks_first_param_is_output(repo_root: Path) -> None:
     violations: list[str] = []
     for name, path in _skill_markdown_files(repo_root):
-        violations.extend(_scan_scoring_first_param(name, path, path.read_text(encoding="utf-8"), repo_root))
+        violations.extend(
+            _scan_scoring_first_param(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
 def test_executionoptions_kwargs_are_real_fields(repo_root: Path) -> None:
     violations: list[str] = []
     for name, path in _skill_markdown_files(repo_root):
-        violations.extend(_scan_executionoptions_kwargs(name, path, path.read_text(encoding="utf-8"), repo_root))
+        violations.extend(
+            _scan_executionoptions_kwargs(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
 def test_no_enterprise_reps_per_trial(repo_root: Path) -> None:
     violations: list[str] = []
     for name, path in _skill_markdown_files(repo_root):
-        violations.extend(_scan_reps_per_trial(name, path, path.read_text(encoding="utf-8"), repo_root))
+        violations.extend(
+            _scan_reps_per_trial(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
 def test_no_validate_providers_kwarg(repo_root: Path) -> None:
     violations: list[str] = []
     for name, path in _skill_markdown_files(repo_root):
-        violations.extend(_scan_validate_providers(name, path, path.read_text(encoding="utf-8"), repo_root))
+        violations.extend(
+            _scan_validate_providers(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
 def test_optimize_method_calls_are_awaited_or_sync(repo_root: Path) -> None:
     violations: list[str] = []
     for name, path in _skill_markdown_files(repo_root):
-        violations.extend(_scan_unawaited_optimize(name, path, path.read_text(encoding="utf-8"), repo_root))
+        violations.extend(
+            _scan_unawaited_optimize(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
+    assert not violations, "\n\n".join(["", *violations, ""])
+
+
+def test_no_leaked_next_run_lifecycle_vocab_in_skill_markdown(repo_root: Path) -> None:
+    violations: list[str] = []
+    for name, path in _skill_markdown_files(repo_root):
+        if path.name != "SKILL.md":
+            continue
+        text = path.read_text(encoding="utf-8")
+        violations.extend(_scan_lifecycle_vocab_leaks(name, path, text, repo_root))
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
@@ -361,11 +526,26 @@ def test_next_run_skill_stays_service_decided_thin_client(repo_root: Path) -> No
         violations.append(f"{rel}:{line}: banned local-decision pattern {label!r}")
 
     assert not violations, "\n".join(violations)
-    assert re.search(r"\bfetch(?:es)?\b[\s\S]{0,160}\bTraigent service\b", text, re.IGNORECASE), (
-        "traigent-next-run must stay service-backed, not standalone"
+    assert re.search(
+        r"\bfetch(?:es)?\b[\s\S]{0,160}\bTraigent service\b", text, re.IGNORECASE
+    ), "traigent-next-run must stay service-backed, not standalone"
+    assert re.search(
+        r"\bdecision comes from the Traigent service\b", text, re.IGNORECASE
+    ), "traigent-next-run must state that the next-step decision comes from the service"
+    assert "posture.summary_text" in text, (
+        "traigent-next-run must present opaque posture prose"
     )
-    assert re.search(r"\bdecision comes from the Traigent service\b", text, re.IGNORECASE), (
-        "traigent-next-run must state that the next-step decision comes from the service"
+    assert "traigent next-steps RUN_ID --json" in text, (
+        "traigent-next-run must fetch the service next-steps payload"
+    )
+    assert "next_steps[]" in text, (
+        "traigent-next-run must reference returned next_steps"
+    )
+    assert "next_steps[].action.command_template" in text, (
+        "traigent-next-run must present the returned command template"
+    )
+    assert re.search(r"\bRun only the command template the service returns\b", text), (
+        "traigent-next-run must execute only returned command templates"
     )
 
 
@@ -387,13 +567,25 @@ def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
         "```\n",
         encoding="utf-8",
     )
-    assert _scan_dataset_kwarg("bad", bad, bad.read_text(), tmp_path), "dataset= lint missed a violation"
-    assert _scan_unawaited_optimize("bad", bad, bad.read_text(), tmp_path), "await lint missed a violation"
-    assert _scan_reps_per_trial("bad", bad, bad.read_text(), tmp_path), "reps_per_trial lint missed a violation"
-    assert _scan_validate_providers("bad", bad, bad.read_text(), tmp_path), "validate_providers lint missed a violation"
-    assert _scan_scoring_first_param("bad", bad, bad.read_text(), tmp_path), "scoring first-param lint missed a violation"
+    assert _scan_dataset_kwarg("bad", bad, bad.read_text(), tmp_path), (
+        "dataset= lint missed a violation"
+    )
+    assert _scan_unawaited_optimize("bad", bad, bad.read_text(), tmp_path), (
+        "await lint missed a violation"
+    )
+    assert _scan_reps_per_trial("bad", bad, bad.read_text(), tmp_path), (
+        "reps_per_trial lint missed a violation"
+    )
+    assert _scan_validate_providers("bad", bad, bad.read_text(), tmp_path), (
+        "validate_providers lint missed a violation"
+    )
+    assert _scan_scoring_first_param("bad", bad, bad.read_text(), tmp_path), (
+        "scoring first-param lint missed a violation"
+    )
     if _EXECUTION_OPTIONS_FIELDS is not None:
-        assert _scan_executionoptions_kwargs("bad", bad, bad.read_text(), tmp_path), "ExecutionOptions lint missed runtime="
+        assert _scan_executionoptions_kwargs("bad", bad, bad.read_text(), tmp_path), (
+            "ExecutionOptions lint missed runtime="
+        )
 
     good = tmp_path / "skills" / "good" / "SKILL.md"
     good.parent.mkdir(parents=True)
@@ -402,7 +594,7 @@ def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
         "import traigent\n"
         "from traigent.api.decorators import ExecutionOptions\n"
         '@traigent.optimize(eval_dataset="d.jsonl",\n'
-        '    execution=ExecutionOptions(reps_per_trial=1))\n'
+        "    execution=ExecutionOptions(reps_per_trial=1))\n"
         "def f(x):\n"
         "    return x\n"
         "results = f.optimize_sync()\n"
@@ -411,9 +603,48 @@ def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
         "```\n",
         encoding="utf-8",
     )
-    assert not _scan_dataset_kwarg("good", good, good.read_text(), tmp_path), "dataset= lint false-positive"
-    assert not _scan_unawaited_optimize("good", good, good.read_text(), tmp_path), "await lint false-positive"
-    assert not _scan_reps_per_trial("good", good, good.read_text(), tmp_path), "reps_per_trial false-positive"
-    assert not _scan_validate_providers("good", good, good.read_text(), tmp_path), "validate_providers false-positive"
-    assert not _scan_executionoptions_kwargs("good", good, good.read_text(), tmp_path), "ExecutionOptions false-positive"
-    assert not _scan_scoring_first_param("good", good, good.read_text(), tmp_path), "scoring first-param false-positive"
+    assert not _scan_dataset_kwarg("good", good, good.read_text(), tmp_path), (
+        "dataset= lint false-positive"
+    )
+    assert not _scan_unawaited_optimize("good", good, good.read_text(), tmp_path), (
+        "await lint false-positive"
+    )
+    assert not _scan_reps_per_trial("good", good, good.read_text(), tmp_path), (
+        "reps_per_trial false-positive"
+    )
+    assert not _scan_validate_providers("good", good, good.read_text(), tmp_path), (
+        "validate_providers false-positive"
+    )
+    assert not _scan_executionoptions_kwargs(
+        "good", good, good.read_text(), tmp_path
+    ), "ExecutionOptions false-positive"
+    assert not _scan_scoring_first_param("good", good, good.read_text(), tmp_path), (
+        "scoring first-param false-positive"
+    )
+
+
+def test_lifecycle_vocab_lint_has_teeth(tmp_path: Path) -> None:
+    bad = tmp_path / "skills" / "bad" / "SKILL.md"
+    bad.parent.mkdir(parents=True)
+    bad.write_text(
+        "Fetch artifact_states and show per-artifact state vocabulary.\n"
+        "Dataset state labels: empty/populated/scored/trusted.\n"
+        "Then run score_examples.\n",
+        encoding="utf-8",
+    )
+    bad_violations = _scan_lifecycle_vocab_leaks("bad", bad, bad.read_text(), tmp_path)
+    assert bad_violations, "lifecycle vocabulary lint missed known leaks"
+
+    good = tmp_path / "skills" / "good" / "SKILL.md"
+    good.parent.mkdir(parents=True)
+    good.write_text(
+        "Present posture.summary_text and next_steps[].action.command_template.\n"
+        "Allowed next step labels include expand_dataset, refine_metric, "
+        "adjust_config_space, rerun_larger_sample, add_safety_gate, "
+        "compare_with_baseline, and promote_winner.\n"
+        "Use an empty string only in this generic example, without lifecycle context.\n",
+        encoding="utf-8",
+    )
+    assert not _scan_lifecycle_vocab_leaks("good", good, good.read_text(), tmp_path), (
+        "lifecycle vocabulary lint false-positive on allowed next-step labels"
+    )

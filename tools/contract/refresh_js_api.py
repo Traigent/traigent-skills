@@ -12,6 +12,7 @@ Usage (from the traigent-skills repo root):
 
     python tools/contract/refresh_js_api.py --js-repo /path/to/traigent-js --ref origin/main
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,8 +45,12 @@ KEY_TO_SUBPATH = {
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Refresh the vendored traigent-js API snapshot.")
-    parser.add_argument("--js-repo", type=Path, required=True, help="Path to a traigent-js checkout.")
+    parser = argparse.ArgumentParser(
+        description="Refresh the vendored traigent-js API snapshot."
+    )
+    parser.add_argument(
+        "--js-repo", type=Path, required=True, help="Path to a traigent-js checkout."
+    )
     parser.add_argument("--ref", default="origin/main")
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = parser.parse_args()
@@ -53,7 +58,9 @@ def main() -> int:
     snapshot = build_snapshot(js_repo=args.js_repo, ref=args.ref)
     out = args.out
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps(snapshot, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out.write_text(
+        json.dumps(snapshot, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
     total = sum(len(v) for v in snapshot["exports"].values())
     print(
         f"wrote {out.as_posix()} with {len(snapshot['exports'])} subpaths / {total} symbols "
@@ -85,10 +92,14 @@ def build_snapshot(*, js_repo: Path, ref: str) -> dict[str, Any]:
 
 def _commit_sha(repo: Path, ref: str) -> str:
     try:
-        return subprocess.check_output(["git", "-C", str(repo), "rev-parse", ref], text=True).strip()
+        return subprocess.check_output(
+            ["git", "-C", str(repo), "rev-parse", ref], text=True
+        ).strip()
     except Exception:
         try:
-            return subprocess.check_output(["git", "-C", str(repo), "rev-parse", "HEAD"], text=True).strip()
+            return subprocess.check_output(
+                ["git", "-C", str(repo), "rev-parse", "HEAD"], text=True
+            ).strip()
         except Exception:
             return "unknown"
 

@@ -56,9 +56,15 @@ def render(data: dict[str, Any]) -> str:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Render SYNC_MAP.md from sync_map.yml.")
-    parser.add_argument("--check", action="store_true", help="fail if SYNC_MAP.md is not current")
-    parser.add_argument("--write", action="store_true", help="write rendered output to SYNC_MAP.md")
+    parser = argparse.ArgumentParser(
+        description="Render SYNC_MAP.md from sync_map.yml."
+    )
+    parser.add_argument(
+        "--check", action="store_true", help="fail if SYNC_MAP.md is not current"
+    )
+    parser.add_argument(
+        "--write", action="store_true", help="write rendered output to SYNC_MAP.md"
+    )
     args = parser.parse_args()
 
     root = repo_root()

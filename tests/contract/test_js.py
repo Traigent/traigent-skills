@@ -28,12 +28,17 @@ JS_FIX_MENU = (
 
 @pytest.fixture(scope="session")
 def js_api_snapshot(repo_root: Path) -> dict[str, Any]:
-    return json.loads((repo_root / "tests/data/js_api_snapshot.json").read_text(encoding="utf-8"))
+    return json.loads(
+        (repo_root / "tests/data/js_api_snapshot.json").read_text(encoding="utf-8")
+    )
 
 
 @pytest.fixture(scope="session")
 def js_export_index(js_api_snapshot: dict[str, Any]) -> dict[str, set[str]]:
-    return {sub: set(symbols) for sub, symbols in (js_api_snapshot.get("exports") or {}).items()}
+    return {
+        sub: set(symbols)
+        for sub, symbols in (js_api_snapshot.get("exports") or {}).items()
+    }
 
 
 def check_js_import(module: str, symbol: str, index: dict[str, set[str]]) -> str | None:
@@ -49,7 +54,9 @@ def _js_declared(skill: str, sync_map: dict) -> bool:
     return bool(((sync_map.get("skills") or {}).get(skill) or {}).get("js"))
 
 
-def _js_dead_teaching(fact: ContractFact, repo_root: Path, problem: str, ref: str) -> str:
+def _js_dead_teaching(
+    fact: ContractFact, repo_root: Path, problem: str, ref: str
+) -> str:
     return (
         f"DEAD TEACHING  {fact.rel_path(repo_root)}:{fact.line}\n"
         f"  teaches : {fact.display()}\n"
@@ -68,16 +75,23 @@ def test_taught_js_import_is_exported(
 ) -> None:
     if not _js_declared(js_fact.skill, sync_map):
         pytest.skip(f"js not declared for {js_fact.skill} — advisory only")
-    reason = check_js_import(js_fact.module or "", js_fact.symbol or "", js_export_index)
+    reason = check_js_import(
+        js_fact.module or "", js_fact.symbol or "", js_export_index
+    )
     if reason is None:
         return
-    ref = str((js_api_snapshot.get("generated_from") or {}).get("commit_sha") or "unknown")
+    ref = str(
+        (js_api_snapshot.get("generated_from") or {}).get("commit_sha") or "unknown"
+    )
     raise AssertionError(_js_dead_teaching(js_fact, repo_root, reason, ref))
 
 
 def test_js_contract_has_teeth() -> None:
     """Self-test: the validator must flag bad symbol/subpath and pass a good one."""
-    index = {"@traigent/sdk": {"optimize", "param", "getTrialParam"}, "@traigent/sdk/langchain": {"withTraigentModel"}}
+    index = {
+        "@traigent/sdk": {"optimize", "param", "getTrialParam"},
+        "@traigent/sdk/langchain": {"withTraigentModel"},
+    }
     assert check_js_import("@traigent/sdk", "optimize", index) is None
     assert check_js_import("@traigent/sdk", "notReal", index) is not None
     assert check_js_import("@traigent/sdk/nope", "optimize", index) is not None

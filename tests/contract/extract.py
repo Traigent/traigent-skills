@@ -101,7 +101,9 @@ def collect_runnable_file(skill: str, path: Path) -> list[RunnableSnippet]:
     return collect_runnable_markdown(skill, path, path.read_text(encoding="utf-8"))
 
 
-def collect_runnable_markdown(skill: str, path: Path, text: str) -> list[RunnableSnippet]:
+def collect_runnable_markdown(
+    skill: str, path: Path, text: str
+) -> list[RunnableSnippet]:
     snippets: list[RunnableSnippet] = []
     for block in _iter_fenced_blocks(text.splitlines()):
         language = block.language.lower()
@@ -126,13 +128,25 @@ def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
     lines = text.splitlines()
     for line_number, line in enumerate(lines, start=1):
         for match in ENV_RE.finditer(line):
-            facts.append(ContractFact(kind="env", skill=skill, path=path, line=line_number, name=match.group(0)))
+            facts.append(
+                ContractFact(
+                    kind="env",
+                    skill=skill,
+                    path=path,
+                    line=line_number,
+                    name=match.group(0),
+                )
+            )
         for inline_match in INLINE_CODE_RE.finditer(line):
-            facts.extend(_extract_url_facts(skill, path, line_number, inline_match.group(1)))
+            facts.extend(
+                _extract_url_facts(skill, path, line_number, inline_match.group(1))
+            )
 
     for block in _iter_fenced_blocks(lines):
         for offset, line in enumerate(block.lines):
-            facts.extend(_extract_url_facts(skill, path, block.start_line + offset, line))
+            facts.extend(
+                _extract_url_facts(skill, path, block.start_line + offset, line)
+            )
         language = block.language.lower()
         if language in {"python", "py"}:
             facts.extend(_extract_python_block(skill, path, block))
@@ -143,7 +157,9 @@ def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
     return _dedupe(facts)
 
 
-def _extract_url_facts(skill: str, path: Path, line_number: int, text: str) -> list[ContractFact]:
+def _extract_url_facts(
+    skill: str, path: Path, line_number: int, text: str
+) -> list[ContractFact]:
     facts: list[ContractFact] = []
     for match in URL_RE.finditer(text):
         method = match.group("method")
@@ -180,7 +196,14 @@ def _iter_fenced_blocks(lines: list[str]) -> list[CodeBlock]:
             collected = []
             continue
         if match and in_block:
-            blocks.append(CodeBlock(language=language, attrs=attrs, start_line=start_line, lines=tuple(collected)))
+            blocks.append(
+                CodeBlock(
+                    language=language,
+                    attrs=attrs,
+                    start_line=start_line,
+                    lines=tuple(collected),
+                )
+            )
             in_block = False
             language = ""
             attrs = frozenset()
@@ -193,7 +216,9 @@ def _iter_fenced_blocks(lines: list[str]) -> list[CodeBlock]:
     return blocks
 
 
-def _extract_python_block(skill: str, path: Path, block: CodeBlock) -> list[ContractFact]:
+def _extract_python_block(
+    skill: str, path: Path, block: CodeBlock
+) -> list[ContractFact]:
     if block.lines and block.lines[0].strip() == "# contract: skip":
         return []
     try:
@@ -210,15 +235,29 @@ def _extract_python_block(skill: str, path: Path, block: CodeBlock) -> list[Cont
                 if not _rooted_at_traigent(alias.name):
                     continue
                 line = block.start_line + node.lineno - 1
-                facts.append(ContractFact(kind="import", skill=skill, path=path, line=line, module=alias.name))
+                facts.append(
+                    ContractFact(
+                        kind="import",
+                        skill=skill,
+                        path=path,
+                        line=line,
+                        module=alias.name,
+                    )
+                )
                 binding = alias.asname or alias.name.split(".", 1)[0]
-                imported_roots[binding] = alias.name if alias.asname else alias.name.split(".", 1)[0]
+                imported_roots[binding] = (
+                    alias.name if alias.asname else alias.name.split(".", 1)[0]
+                )
         elif isinstance(node, ast.ImportFrom):
             module = _import_from_module(node)
             if not _rooted_at_traigent(module):
                 continue
             line = block.start_line + node.lineno - 1
-            facts.append(ContractFact(kind="import", skill=skill, path=path, line=line, module=module))
+            facts.append(
+                ContractFact(
+                    kind="import", skill=skill, path=path, line=line, module=module
+                )
+            )
             for alias in node.names:
                 if alias.name == "*":
                     continue
@@ -256,7 +295,9 @@ def _extract_python_block(skill: str, path: Path, block: CodeBlock) -> list[Cont
     return facts
 
 
-def _regex_import_fallback(skill: str, path: Path, block: CodeBlock) -> list[ContractFact]:
+def _regex_import_fallback(
+    skill: str, path: Path, block: CodeBlock
+) -> list[ContractFact]:
     facts: list[ContractFact] = []
     for offset, line in enumerate(block.lines):
         if not IMPORT_LINE_RE.match(line):
@@ -268,7 +309,15 @@ def _regex_import_fallback(skill: str, path: Path, block: CodeBlock) -> list[Con
             for item in imported.split(","):
                 module = item.strip().split(" as ", 1)[0].strip()
                 if _rooted_at_traigent(module):
-                    facts.append(ContractFact(kind="import", skill=skill, path=path, line=line_number, module=module))
+                    facts.append(
+                        ContractFact(
+                            kind="import",
+                            skill=skill,
+                            path=path,
+                            line=line_number,
+                            module=module,
+                        )
+                    )
         elif stripped.startswith("from "):
             rest = stripped.removeprefix("from ")
             if " import " not in rest:
@@ -277,7 +326,15 @@ def _regex_import_fallback(skill: str, path: Path, block: CodeBlock) -> list[Con
             module = module.strip()
             if not _rooted_at_traigent(module):
                 continue
-            facts.append(ContractFact(kind="import", skill=skill, path=path, line=line_number, module=module))
+            facts.append(
+                ContractFact(
+                    kind="import",
+                    skill=skill,
+                    path=path,
+                    line=line_number,
+                    module=module,
+                )
+            )
             symbols = symbols.strip().removeprefix("(").removesuffix(")")
             for item in symbols.split(","):
                 symbol = item.strip().split(" as ", 1)[0].strip()
@@ -303,10 +360,26 @@ def _extract_cli_block(skill: str, path: Path, block: CodeBlock) -> list[Contrac
             stripped = stripped[2:].strip()
         if stripped.startswith("traigent "):
             command = stripped.split("#", 1)[0].strip()
-            facts.append(ContractFact(kind="cli", skill=skill, path=path, line=block.start_line + offset, command=command))
+            facts.append(
+                ContractFact(
+                    kind="cli",
+                    skill=skill,
+                    path=path,
+                    line=block.start_line + offset,
+                    command=command,
+                )
+            )
         elif stripped.startswith("python -m traigent."):
             command = stripped.split("#", 1)[0].strip()
-            facts.append(ContractFact(kind="cli", skill=skill, path=path, line=block.start_line + offset, command=command))
+            facts.append(
+                ContractFact(
+                    kind="cli",
+                    skill=skill,
+                    path=path,
+                    line=block.start_line + offset,
+                    command=command,
+                )
+            )
     return facts
 
 
@@ -319,11 +392,20 @@ def _extract_js_block(skill: str, path: Path, block: CodeBlock) -> list[Contract
         for raw in match.group("names").split(","):
             name = raw.strip()
             if " as " in name:
-                name = name.split(" as ", 1)[0].strip()  # validate the imported (real) name
+                name = name.split(" as ", 1)[
+                    0
+                ].strip()  # validate the imported (real) name
             name = name.removeprefix("type ").strip()
             if name and name != "*":
                 facts.append(
-                    ContractFact(kind="js_import", skill=skill, path=path, line=line, module=module, symbol=name)
+                    ContractFact(
+                        kind="js_import",
+                        skill=skill,
+                        path=path,
+                        line=line,
+                        module=module,
+                        symbol=name,
+                    )
                 )
     return facts
 
