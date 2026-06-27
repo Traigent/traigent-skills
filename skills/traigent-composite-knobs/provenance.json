@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "8f096a893ab3478b",
+  "doc_hash": "fc6a1842ce75be92",
   "entries": [
     {
       "edit_id": "genesis",
@@ -9,6 +9,15 @@
       "run_id": null,
       "timestamp": "2026-06-12T00:00:00Z",
       "note": "baseline snapshot at adoption of skill-provenance/v1",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "interaction-policy-v1",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-06-27T00:00:00Z",
+      "note": "inject shared interaction-policy v1 managed region",
       "source_type": "human"
     }
   ]
