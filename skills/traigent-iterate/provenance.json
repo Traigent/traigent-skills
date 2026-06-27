@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b478f8902cbcc345",
+  "doc_hash": "800549cd65120d1f",
   "entries": [
     {
       "edit_id": "genesis",
@@ -31,6 +31,15 @@
       "doc_before_hash": "01d87e7b549444f3",
       "doc_after_hash": "b478f8902cbcc345",
       "note": "remove remaining fabricated brief-field mentions and tighten example-metadata wording",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "interaction-policy-v1",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-06-27T00:00:00Z",
+      "note": "inject shared interaction-policy v1 managed region",
       "source_type": "human"
     }
   ]
