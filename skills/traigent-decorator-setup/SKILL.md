@@ -4,7 +4,7 @@ description: "Configure the @traigent.optimize() decorator with evaluation, inje
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Traigent Decorator Setup
@@ -120,6 +120,22 @@ def my_func(query: str) -> str:
 ## Evaluation Setup
 
 Configure how Traigent evaluates each trial using `EvaluationOptions`.
+
+> **The decorated agent function must not accept `expected` as a parameter.**
+> Traigent calls your function with the example's *input* fields only (plus any
+> config-injected params such as a `config` dict in parameter-injection mode).
+> `expected` is the ground-truth label used *exclusively* by the scoring function
+> to score the function's output. Including `expected` in the function signature
+> causes every trial to fail with `TypeError: missing required argument: 'expected'`.
+>
+> ```python
+> # WRONG — will fail every trial
+> def my_agent(query: str, expected: str) -> str: ...
+>
+> # CORRECT — function takes input fields only; scorer receives (output, expected)
+> def my_agent(query: str) -> str: ...
+> def score(output: str, expected: str) -> float: ...
+> ```
 
 ### Fields
 
@@ -240,6 +256,12 @@ def my_func(query: str) -> str:
 
 Where and how runs execute is controlled by two public knobs: `algorithm` and `offline`.
 See `references/execution-modes.md` for the full reference.
+
+> **Real LLM runs require cost approval.** A real (non-mock, non-offline) optimization is
+> blocked by a cost gate. Set `TRAIGENT_COST_APPROVED=true` to confirm (the verified path);
+> some SDK versions also accept `cost_approved=True` in the decorator. The SDK prints an estimate before executing any
+> trial; the estimate may be high (fallback pricing is conservative) but the gate is a
+> safety confirmation — no spend occurs until approved.
 
 ```python
 @traigent.optimize(

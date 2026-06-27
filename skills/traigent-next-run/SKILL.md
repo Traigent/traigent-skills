@@ -4,7 +4,7 @@ description: "After every Traigent run, fetch the server-owned posture and next-
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.3"
+  version: "1.4"
 ---
 
 # Traigent Next Run Thin Client
@@ -41,21 +41,45 @@ fresh recommendation.
 
 ## Protocol
 
-1. Collect the completed run id and the portal `View` link printed by the SDK or
-   shown in the Traigent portal.
-2. Fetch next steps with `traigent next-steps RUN_ID --json`.
+> **`TRAIGENT_BACKEND_URL` must be set before any `traigent next-steps` call.** The CLI
+> defaults to `http://localhost:5000`; without the env var or the `--backend-url` flag
+> pointing to the cloud/dev endpoint, the command fails with a connection-refused error.
+>
+> ```bash
+> export TRAIGENT_BACKEND_URL="https://api.traigent.ai"   # or pass --backend-url <url>
+> export TRAIGENT_API_KEY="uk_..."
+> ```
+
+1. Collect the completed run id and the portal `View` link.
+   In SDK >= 0.18.1.dev2, `result.experiment_run_id` (and `result.experiment_id`) are
+   populated directly on the optimize result object — use `result.experiment_run_id` as
+   the `RUN_ID`. Do not ask the user to search logs; the value is on the result.
+   ```python
+   results = await my_func.optimize(max_trials=10)
+   run_id = results.experiment_run_id   # available directly; pass this to next-steps
+   ```
+2. Fetch next steps with `traigent next-steps RUN_ID --json` (add `--backend-url <url>`
+   if `TRAIGENT_BACKEND_URL` is not set).
 3. Present the returned payload without re-ranking it:
-   - `posture.summary_text`, when present,
+   - `posture.summary_text`, when present (show this first),
    - `posture.generated_at`, when present,
-   - the first returned `next_steps[]` item,
+   - the first returned `next_steps[]` item, **if `next_steps` is non-empty**,
    - `next_steps[].action.command_template`,
    - the returned rationale for that next action,
    - portal link,
    - best config or comparison fields if present,
    - any caveat, advisory, or confidence text returned by the service,
    - any requested follow-up actions.
-4. Ask the user whether to pursue the returned command template. If the response
-   has no command template, ask whether to retry the backend request.
+
+   **If `next_steps` is an empty list** (normal for very small or low-coverage runs),
+   present `posture.summary_text` as the complete guidance for this run and do not
+   fabricate step recommendations. Tell the user there are no step recommendations for
+   this run and suggest they expand coverage (more trials or more dataset examples) before
+   the next run.
+
+4. Ask the user whether to pursue the returned command template. If `next_steps` is empty
+   or has no command template, ask whether to retry the backend request after expanding
+   run coverage.
 5. Run only the command template the service returns, and only after the user
    confirms it.
 6. Loop back to `traigent-run-plan`, passing the run id, portal link, posture
