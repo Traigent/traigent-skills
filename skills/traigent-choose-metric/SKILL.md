@@ -4,7 +4,7 @@ description: "Choose Traigent objectives and metric functions before optimizing.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Traigent Choose Metric
@@ -50,7 +50,7 @@ Evaluation methods:
 | Method | Use when |
 |---|---|
 | `deterministic` | Exact match, normalized match, schema validation, tests, cost, latency, or tool-call rules can be checked directly. |
-| `llm_based` | A rubric is required and deterministic labels are insufficient. Label the result as a judge score. |
+| `llm_based` | A rubric is required and deterministic labels are insufficient. Label the result as a judge score. LLM-based evaluators are subject to service-side evaluator-quality auditing (ACET) after runs complete — the optimizer tensor is used to retroactively assess the judge, no new gold collection required. Favor a verifiable anchor (execution-match, unit-test pass, MCQ exact match) where the task allows, as it enables honest confidence from the service audit. |
 | `statistical` | Repeated runs, variance, agreement, or confidence intervals matter. |
 | `hybrid` | A deterministic gate should run before a judge or repeated-sample score. |
 

@@ -4,7 +4,7 @@ description: "Run the local content-reflection loop after Traigent has flagged h
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Reflect On Hard Examples
@@ -66,7 +66,11 @@ not decide which examples are hard.
 4. Classify the local failure pattern from expected-vs-actual. Keep the
    classification factual and content-local, for example: label mismatch,
    missing context, retrieval miss, tool-use failure, output-format failure,
-   prompt ambiguity, evaluator issue, or agent-code bug.
+   prompt ambiguity, evaluator issue, or agent-code bug. If the classification
+   is "evaluator issue", the server next-step may be `audit_evaluator`
+   (ACET-based, read-only) or `improve_evaluator` (lockbox repair). Present
+   the server action verbatim and hand off to `traigent-evaluator-audit`; do
+   not manually re-rank or re-score evaluators.
 5. Pick exactly one server-suggested action and ask the user to approve it:
    - `ExampleSynthesizer` with `GuidanceAction.GENERATE_HARDER`,
    - `ExampleSynthesizer` with `GuidanceAction.GENERATE_SIMILAR`,

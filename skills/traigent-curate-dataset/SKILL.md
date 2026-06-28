@@ -4,7 +4,7 @@ description: "Create and improve a Traigent evaluation dataset / JSONL eval set.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Traigent Curate Dataset
@@ -238,6 +238,7 @@ Planned: automatic curation-advice endpoints are not available in this SDK surfa
 - Dataset quality statements are observations about the reviewed evaluation dataset, labels, split, and scoring method.
 - Synthetic examples are useful coverage candidates until reviewed; do not treat them as independent holdout evidence.
 - Backend example-scoring client output is non-signal metadata. Do not describe redacted proprietary signals as available.
+- Backend example-scoring (via `ExampleInsightsClient`) reports properties of examples. Evaluator-quality audit (ACET, via the `audit_evaluator` server action) reports properties of evaluators. These are separate surfaces — scoring a dataset does not validate the evaluator, and auditing the evaluator does not score the dataset.
 - A holdout result supports a claim only for the task distribution represented by that holdout slice.
 
 ## See Also

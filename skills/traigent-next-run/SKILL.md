@@ -4,7 +4,7 @@ description: "After every Traigent run, fetch the server-owned posture and next-
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.4"
+  version: "1.5"
 ---
 
 # Traigent Next Run Thin Client
@@ -112,6 +112,7 @@ handoff labels for a returned action, not a local menu:
 - dataset curation -> `traigent-curate-dataset`
 - hard-example reflection -> `traigent-reflect-hard-examples`
 - evaluator review -> `traigent-evaluator-audit`
+- evaluator repair -> `traigent-evaluator-audit` (service `improve_evaluator` action; present the returned action verbatim, do not repair locally)
 - optimization run -> `traigent-run-optimization`
 - safety gate setup -> `traigent-ci-safety-gate`
 
