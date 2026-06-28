@@ -4,7 +4,7 @@ description: "Audit evaluator reliability before trusting Traigent optimization 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Evaluator Audit
@@ -19,17 +19,25 @@ Use this skill before trusting an evaluator that drives optimization decisions, 
 - "calibrate thresholds"
 - "why are my optimization results noisy?"
 
+## Service-Side Evaluator Audit (ACET)
+
+Traigent is adding a server-side ACET evaluator audit. The platform assesses the evaluators used in a run **read-only**, computed from the optimizer's persisted config×example×evaluator tensor and anchored to a separate verifiable signal — such as execution-match, unit-test pass, or MCQ exact-match correctness — without requiring new gold-label collection. When available it will surface as an `audit_evaluator` next-step action (server-side; no local re-scoring).
+
+**Fail-closed honest confidence.** If no verifiable anchor exists for the run, the service audit abstains: no leaderboard is emitted and no promote gate passes. A proxy anchor (another model or heuristic) is accepted but capped at ≤0.30 confidence and cannot be upgraded to verifiable-level confidence. Do not treat an abstain result as a pass, and do not interpret a proxy-anchor result as equivalent to a verifiable-anchor result.
+
+The manual gold-slice protocol below and the service-side ACET audit are complementary: the gold-slice protocol gives early construction-time trust, while ACET is a retroactive quality signal computed from real optimizer runs.
+
 ## Why Audit
 
 An unreliable evaluator silently corrupts every optimization decision downstream. If the judge rewards verbosity, misses parse failures, changes labels on repeated calls, or disagrees with humans on the target evaluation dataset, the optimizer can faithfully optimize the wrong thing.
 
 Run the audit before the first real optimization, then re-run it whenever the judge model, prompt, output schema, scoring rubric, or evaluation dataset changes.
 
-## Gold-Set Agreement
+## Gold-Set Agreement (Manual Protocol)
 
 Build a 20-50 example human-labeled gold slice from the same evaluation dataset distribution the optimizer will use. Include easy, borderline, and known-bad cases. Lock the labels before inspecting judge outputs.
 
-Minimum bars before trusting the judge as a primary optimizer objective:
+Minimum bars for the manual gold-slice protocol before trusting the judge as a primary optimizer objective:
 
 - Parse success rate: at least 98% on the gold slice.
 - Human agreement: at least 85% exact agreement for categorical pass/fail labels, or rank correlation above 0.70 for ordinal scores.
@@ -149,9 +157,19 @@ Use a hybrid evaluator when the judge is useful but not reliable enough to own t
 
 Hybrid evaluation is the default for high-risk workflows: deterministic gates protect non-negotiable behavior, and the judge handles semantic residue.
 
+## Evaluator Repair (`improve_evaluator`)
+
+The service may emit `improve_evaluator` as a next-step action when the ACET audit identifies a weak or suspicious evaluator. This is a service-side repair flow, not a local prompt edit.
+
+The repair is accepted only when a disjoint held-out lockbox anchor shows improvement: the service proposes a revised evaluator, scores a held-out subset (the lockbox) that was not used in the proposal, and accepts the revision only if held-out anchor agreement improves and no new bias controls trip. Do not accept or apply a critic-repaired evaluator based on proposal-split results alone — the lockbox result is the acceptance gate.
+
+If the service emits `improve_evaluator`, present the returned action verbatim and hand off to this skill for context. Wait for the service outcome rather than rewriting the rubric locally.
+
 ## Claim Scope
 
 Audit results hold only for the audited evaluation dataset distribution, judge model version, judge prompt, output schema, sampling settings, and threshold. Re-audit on any model, prompt, schema, rubric, or dataset-distribution change.
+
+For service-side ACET audits: confidence ceiling is a hard cap, not a display hint. A proxy-anchor result cannot be cited as verifiable-level evidence. Promotion gate requires ACET gate evidence (verifiable-anchor verdict, confidence ceiling) — manual gold-slice calibration alone is not sufficient for promotion.
 
 ## See Also
 

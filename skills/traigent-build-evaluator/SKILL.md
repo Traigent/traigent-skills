@@ -4,7 +4,7 @@ description: "Build Traigent evaluators and scoring code. Use when wiring eval_d
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Traigent Build Evaluator
@@ -307,7 +307,7 @@ If the optimized function returns `(output, metrics)`, make sure the custom scor
 
 - `traigent-choose-metric` - choose objectives before building evaluator code
 - `traigent` Step 3.5 - lightweight evaluator sanity gate (run this before the first paid optimization)
-- `traigent-evaluator-audit` - full LLM-judge reliability protocol (human-labeled gold slice, bias probes)
+- `traigent-evaluator-audit` - evaluator reliability: manual gold-slice protocol + service `audit_evaluator` action (ACET from optimizer tensor, no new gold collection required)
 - `traigent-decorator-setup` - decorator wiring for evaluation options
 - `traigent-analyze-results` - inspect the metrics emitted by evaluator runs
 - `traigent-curate-dataset` - create and improve the evaluation dataset
