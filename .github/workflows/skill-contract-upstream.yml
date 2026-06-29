@@ -68,11 +68,19 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install uv
+        if: steps.guard.outputs.armed == 'true'
+        run: python -m pip install "uv==0.9.11"
+
       - name: Install the PR SDK + harness deps
         if: steps.guard.outputs.armed == 'true'
         run: |
-          python -m pip install pytest pyyaml packaging
-          python -m pip install .  # the caller's PR build of the SDK
+          # Locked harness tooling from the skills repo's uv.lock (checked out in
+          # _skills/), then the caller's PR build of the SDK (.) layered on top — the
+          # SDK is the moving target here, so it is intentionally not in the lock.
+          uv export --frozen --no-emit-project --no-hashes --project _skills -o harness-requirements.txt
+          uv pip install --system -r harness-requirements.txt
+          uv pip install --system .  # the caller's PR build of the SDK
 
       - name: Run the skill contract against the PR SDK
         if: steps.guard.outputs.armed == 'true'

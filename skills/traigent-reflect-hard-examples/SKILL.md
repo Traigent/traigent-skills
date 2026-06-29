@@ -67,8 +67,8 @@ not decide which examples are hard.
    classification factual and content-local, for example: label mismatch,
    missing context, retrieval miss, tool-use failure, output-format failure,
    prompt ambiguity, evaluator issue, or agent-code bug. If the classification
-   is "evaluator issue", the server next-step may be `audit_evaluator`
-   (ACET-based, read-only) or `improve_evaluator` (lockbox repair). Present
+   is "evaluator issue", the server next-step may be a server-side evaluator
+   audit (ACET-based, read-only) or `improve_evaluator` (lockbox repair). Present
    the server action verbatim and hand off to `traigent-evaluator-audit`; do
    not manually re-rank or re-score evaluators.
 5. Pick exactly one server-suggested action and ask the user to approve it:

@@ -260,7 +260,7 @@ Flag-to-curation-action guide for step 3:
 - Dataset quality statements are observations about the reviewed evaluation dataset, labels, split, and scoring method.
 - Synthetic examples are useful coverage candidates until reviewed; do not treat them as independent holdout evidence.
 - Backend example-scoring client output is non-signal metadata. Do not describe redacted proprietary signals as available.
-- Backend example-scoring (via `ExampleInsightsClient`) reports properties of examples. Evaluator-quality audit (ACET, via the `audit_evaluator` server action) reports properties of evaluators. These are separate surfaces — scoring a dataset does not validate the evaluator, and auditing the evaluator does not score the dataset.
+- Backend example-scoring (via `ExampleInsightsClient`) reports properties of examples. Evaluator-quality audit (ACET, via the server-side evaluator-audit action) reports properties of evaluators. These are separate surfaces — scoring a dataset does not validate the evaluator, and auditing the evaluator does not score the dataset.
 - Ranked and flagged "examples to review" rows (from `analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) are non-signal: they convey review urgency (`review_priority`), enum flags (`suspicious_flags`), and a suggested action (`recommended_action`) — not quality scores, formulas, or composite values.
 - A holdout result supports a claim only for the task distribution represented by that holdout slice.
 
