@@ -307,7 +307,7 @@ If the optimized function returns `(output, metrics)`, make sure the custom scor
 
 - `traigent-choose-metric` - choose objectives before building evaluator code
 - `traigent` Step 3.5 - lightweight evaluator sanity gate (run this before the first paid optimization)
-- `traigent-evaluator-audit` - evaluator reliability: manual gold-slice protocol + service `audit_evaluator` action (ACET from optimizer tensor, no new gold collection required)
+- `traigent-evaluator-audit` - evaluator reliability: manual gold-slice protocol + service-side evaluator-audit action (ACET from optimizer tensor, no new gold collection required)
 - `traigent-decorator-setup` - decorator wiring for evaluation options
 - `traigent-analyze-results` - inspect the metrics emitted by evaluator runs
 - `traigent-curate-dataset` - create and improve the evaluation dataset

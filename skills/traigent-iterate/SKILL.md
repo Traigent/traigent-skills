@@ -93,7 +93,7 @@ Backend-only report surfaces, each requiring a Traigent account/backend:
 | Symptom | Likely read | Ranked next action |
 |---|---|---|
 | Flat scores everywhere | Evaluation dataset is too easy, objective is saturated, or the space lacks meaningful variation | Synthesize harder examples with `traigent-curate-dataset`; add discriminating cases; then re-run a small grid |
-| High variance across repetitions | Evaluator or model behavior is noisy | Raise repetitions, use statistical aggregation, and audit the evaluator with `traigent-evaluator-audit`. A server-side ACET `audit_evaluator` action (computed from the run's tensor) is coming as a next-step option — prefer it when available. |
+| High variance across repetitions | Evaluator or model behavior is noisy | Raise repetitions, use statistical aggregation, and audit the evaluator with `traigent-evaluator-audit`. A server-side ACET evaluator-audit action (computed from the run's tensor) is coming as a next-step option — prefer it when available. |
 | One knob dominates | The useful region is narrower than the current space | Narrow that knob's range; add structural knobs with `traigent-configuration-space` or `traigent-composite-knobs` |
 | Winner ties baseline | Objective weights or threshold may not reflect the product decision | Revisit objective weights with `traigent-choose-metric`; inspect holdout slices before changing the space |
 | `stop_reason` is budget-bound | Search stopped before enough evidence accumulated | Adjust budget, cheaper models, max trials, or algorithm with `traigent-run-optimization` |

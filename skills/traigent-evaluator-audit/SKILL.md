@@ -21,7 +21,7 @@ Use this skill before trusting an evaluator that drives optimization decisions, 
 
 ## Service-Side Evaluator Audit (ACET)
 
-Traigent is adding a server-side ACET evaluator audit. The platform assesses the evaluators used in a run **read-only**, computed from the optimizer's persisted config×example×evaluator tensor and anchored to a separate verifiable signal — such as execution-match, unit-test pass, or MCQ exact-match correctness — without requiring new gold-label collection. When available it will surface as an `audit_evaluator` next-step action (server-side; no local re-scoring).
+Traigent is adding a server-side ACET evaluator audit. The platform assesses the evaluators used in a run **read-only**, computed from the optimizer's persisted config×example×evaluator tensor and anchored to a separate verifiable signal — such as execution-match, unit-test pass, or MCQ exact-match correctness — without requiring new gold-label collection. When available it will surface as an evaluator-audit next-step action (server-side; no local re-scoring).
 
 **Fail-closed honest confidence.** If no verifiable anchor exists for the run, the service audit abstains: no leaderboard is emitted and no promote gate passes. A proxy anchor (another model or heuristic) is accepted but capped at ≤0.30 confidence and cannot be upgraded to verifiable-level confidence. Do not treat an abstain result as a pass, and do not interpret a proxy-anchor result as equivalent to a verifiable-anchor result.
 
