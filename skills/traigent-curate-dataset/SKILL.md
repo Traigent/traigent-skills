@@ -189,7 +189,7 @@ Prefer client-side synthesis when data-handling review is incomplete, no account
 `ExampleInsightsClient` can ask the backend to compute and return example-scoring metadata for a completed run. This requires a Traigent account/backend.
 
 <!-- PROTECTED -->
-Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /runs/{run_id}/example-insights`) is likewise non-signal: it conveys review urgency, enum flags, and a suggested action — never raw scores, formulas, or composite values.
+Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) is likewise non-signal: it conveys review urgency, enum flags, and a suggested action — never raw scores, formulas, or composite values.
 <!-- /PROTECTED -->
 
 > **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead. The `traigent.analytics` shim still works but emits a deprecation warning.
@@ -237,7 +237,7 @@ When a run completes, the `analytics_get_example_insights` MCP tool (or `GET /ap
 
 1. Run a mock/offline smoke check.
 2. Run a small tuning pass with a fixed tuning slice and explicit cost limit.
-3. Pull examples to review from `GET /runs/{run_id}/example-insights` (MCP: `analytics_get_example_insights`); work them in `review_priority` order and act on each `suspicious_flag` using the table below.
+3. Pull examples to review from `GET /api/v1/analytics/runs/{run_id}/example-insights` (MCP: `analytics_get_example_insights`); work them in `review_priority` order and act on each `suspicious_flag` using the table below.
 4. Synthesize harder or more diverse examples around those weak examples.
 5. Human-review synthetic labels and metadata before adding them to the tuning slice.
 6. Re-run on the enlarged tuning slice.
@@ -261,7 +261,7 @@ Flag-to-curation-action guide for step 3:
 - Synthetic examples are useful coverage candidates until reviewed; do not treat them as independent holdout evidence.
 - Backend example-scoring client output is non-signal metadata. Do not describe redacted proprietary signals as available.
 - Backend example-scoring (via `ExampleInsightsClient`) reports properties of examples. Evaluator-quality audit (ACET, via the `audit_evaluator` server action) reports properties of evaluators. These are separate surfaces — scoring a dataset does not validate the evaluator, and auditing the evaluator does not score the dataset.
-- Ranked and flagged "examples to review" rows (from `analytics_get_example_insights` / `GET /runs/{run_id}/example-insights`) are non-signal: they convey review urgency (`review_priority`), enum flags (`suspicious_flags`), and a suggested action (`recommended_action`) — not quality scores, formulas, or composite values.
+- Ranked and flagged "examples to review" rows (from `analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) are non-signal: they convey review urgency (`review_priority`), enum flags (`suspicious_flags`), and a suggested action (`recommended_action`) — not quality scores, formulas, or composite values.
 - A holdout result supports a claim only for the task distribution represented by that holdout slice.
 
 ## See Also
