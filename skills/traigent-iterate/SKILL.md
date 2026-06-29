@@ -58,7 +58,7 @@ If importance is empty, do not infer that no knob matters. Common reasons are to
 ## Example-Side Evidence
 
 <!-- PROTECTED -->
-Use example-side evidence when the aggregate score hides where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent account/backend and returns scoring metadata only: example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or latent feature-vector values.
+Use example-side evidence when the aggregate score hides where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent account/backend and returns scoring metadata only: example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or latent feature-vector values. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) is likewise non-signal: it ranks by review urgency and provides enum flags and a suggested action — never raw scores or hidden feature values.
 <!-- /PROTECTED -->
 
 > **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead.
@@ -79,13 +79,14 @@ async def fetch_example_metadata(run_id: str):
         return {"status": status, "scores": scores, "quality": quality}
 ```
 
+When aggregate scores hide where the candidate wins or fails, pull the ranked "examples to review" rows: use the `analytics_get_example_insights` MCP tool (or the `GET /api/v1/analytics/runs/{run_id}/example-insights` endpoint). Work through rows in `review_priority` order (critical first) and use each row's `suspicious_flags` and `recommended_action` to choose the next iteration — these are coarse enum signals, not hidden numeric scores. See `traigent-curate-dataset` for the flag-to-action guide.
+
 Backend-only report surfaces, each requiring a Traigent account/backend:
 
 - `GET /api/v1/experiment-runs/runs/{run_id}/report-payload`: winner, trade-off, and stability insights.
 - `/api/v1/optimization-comparisons`: cross-run comparison across candidate runs.
 - Example-scoring compute, scores, and dataset-quality endpoints: scoring status and scoring metadata.
-
-Planned: future curation-advice endpoints may package weak-example recommendations; until then, use the manual evidence loop below.
+- `GET /api/v1/analytics/runs/{run_id}/example-insights`: ranked and flagged examples to review (IP-safe: review_priority, suspicious_flags, recommended_action).
 
 ## Next-Step Decision Table
 

@@ -189,7 +189,7 @@ Prefer client-side synthesis when data-handling review is incomplete, no account
 `ExampleInsightsClient` can ask the backend to compute and return example-scoring metadata for a completed run. This requires a Traigent account/backend.
 
 <!-- PROTECTED -->
-Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response.
+Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) is likewise non-signal: it conveys review urgency, enum flags, and a suggested action — never raw scores, formulas, or composite values.
 <!-- /PROTECTED -->
 
 > **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead. The `traigent.analytics` shim still works but emits a deprecation warning.
@@ -219,19 +219,41 @@ Example-scoring endpoints:
 | `POST /api/v1/analytics/example-scoring/{run_id}/compute` | Start scoring for a completed run. |
 | `GET /api/v1/analytics/example-scoring/{run_id}/scores` | Read per-example scoring metadata. |
 | `GET /api/v1/analytics/example-scoring/{run_id}/dataset-quality` | Read dataset-level quality metadata. |
+| `GET /api/v1/analytics/runs/{run_id}/example-insights` | Read ranked and flagged examples to review (IP-safe: review_priority, suspicious_flags, recommended_action). |
+
+### Examples to review (ranked & flagged)
+
+When a run completes, the `analytics_get_example_insights` MCP tool (or `GET /api/v1/analytics/runs/{run_id}/example-insights`) returns up to 100 examples ranked by review urgency — no raw scores or formulas are exposed. The summary includes `dataset_quality` (low | medium | high) and flag-type counts. Each example row carries:
+
+| Field | Values |
+|---|---|
+| `safe_example_ref` | Opaque hashed ref (`exref_...`) — not a raw id or content |
+| `review_priority` | critical \| high \| medium \| low — review urgency, not a quality score |
+| `difficulty_bucket` | low \| medium \| high \| unknown — coarse bucket only |
+| `suspicious_flags` | See flag-to-action table in the improve loop below |
+| `recommended_action` | review_label \| clarify_expected_output \| increase_repetitions \| replace_or_rewrite \| keep_as_hard_case \| remove_redundant \| inspect_evaluator |
 
 ## The improve loop
 
 1. Run a mock/offline smoke check.
 2. Run a small tuning pass with a fixed tuning slice and explicit cost limit.
-3. Identify weak examples from failed or low-scoring trials.
+3. Pull examples to review from `GET /api/v1/analytics/runs/{run_id}/example-insights` (MCP: `analytics_get_example_insights`); work them in `review_priority` order and act on each `suspicious_flag` using the table below.
 4. Synthesize harder or more diverse examples around those weak examples.
 5. Human-review synthetic labels and metadata before adding them to the tuning slice.
 6. Re-run on the enlarged tuning slice.
 7. Validate once on the untouched holdout slice.
 8. Report tune and holdout results separately, including failed trials and cost.
 
-Planned: automatic curation-advice endpoints are not available in this SDK surface yet.
+Flag-to-curation-action guide for step 3:
+
+| Flag | Curation action |
+|---|---|
+| `possible_mislabel` | Re-check the expected answer / rubric |
+| `redundant_pattern` | Remove or dedupe; broaden coverage elsewhere |
+| `anomalous_low_success` | Clarify the expected output, or keep as a deliberate hard case |
+| `high_response_variance` | Clarify acceptable answers or add repetitions |
+| `low_agent_strength_correlation` | Review the label or the evaluator for this example |
+| `low_sample_support` | Rerun for more evidence before a permanent dataset change |
 
 ## Claim scope
 
@@ -239,6 +261,7 @@ Planned: automatic curation-advice endpoints are not available in this SDK surfa
 - Synthetic examples are useful coverage candidates until reviewed; do not treat them as independent holdout evidence.
 - Backend example-scoring client output is non-signal metadata. Do not describe redacted proprietary signals as available.
 - Backend example-scoring (via `ExampleInsightsClient`) reports properties of examples. Evaluator-quality audit (ACET, via the `audit_evaluator` server action) reports properties of evaluators. These are separate surfaces — scoring a dataset does not validate the evaluator, and auditing the evaluator does not score the dataset.
+- Ranked and flagged "examples to review" rows (from `analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) are non-signal: they convey review urgency (`review_priority`), enum flags (`suspicious_flags`), and a suggested action (`recommended_action`) — not quality scores, formulas, or composite values.
 - A holdout result supports a claim only for the task distribution represented by that holdout slice.
 
 ## See Also
