@@ -4,7 +4,7 @@ description: "The key principles / recommendations for running a trustworthy, hi
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0"
+  version: "1.1"
 ---
 
 # Traigent optimization — key principles (recommendations)
@@ -98,7 +98,10 @@ over-claim a winner from a small slice.
 After a run, verify the experiment appears in the portal **with its trials**. If a
 run doesn't show up, it seems there may be a temporary connectivity issue — we
 recommend retrying the run and confirming the `View` link populates.
-(See `traigent-run-recommendations`.)
+The portal may group related runs that share the same agent and canonical
+dataset, but that grouped view is only a browsing aid. Keep analytics and
+promotion decisions tied to exact source run/configuration ids, not to the
+group label. (See `traigent-run-recommendations`.)
 
 ### P13 — Decide from the Pareto frontier, not just the single winner
 Pick the frontier point that fits your budget and latency SLA; the "best overall"

@@ -4,7 +4,7 @@ description: "Recommended setup so Traigent optimization runs go smoothly and re
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.1"
+  version: "1.2"
 ---
 
 # Traigent run recommendations — robust setup & smooth runs
@@ -50,6 +50,12 @@ never switch silently. After a run, **confirm the experiment appears in the port
 with its trials**. If it doesn't show up, it's likely a temporary connectivity
 issue — **retry the run** and confirm the printed `View` link populates. Keep a
 hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real run.
+
+The portal may show related runs as a cohort/group when they share the same agent
+and canonical dataset. Use that grouping to browse related runs, not as a
+merged result: configurations are not deduped across runs by tuned variables,
+objectives, or config hashes. When acting on a configuration, copy the exact
+source `experiment_id`, `experiment_run_id`, and `configuration_run_id`.
 
 ## Run naming (include the permutation count)
 The portal experiment name comes from the decorated function's name — make it

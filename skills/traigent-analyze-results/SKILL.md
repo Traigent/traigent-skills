@@ -4,7 +4,7 @@ description: "Analyze Traigent optimization results from the terminal — withou
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.4"
+  version: "1.1.5"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -58,6 +58,12 @@ Before calling anything, pin down **which project and which run**. Never assume 
 - If neither is given, ask which project first.
 
 Keep these as opaque ids the user provides; the skill does not guess or enumerate them.
+
+If the portal shows several optimization runs together as a cohort/group, treat that as
+browsing help only. The group is formed from source ids for runs that share the same agent and
+canonical dataset; it does not merge configurations, dedupe by tuned variables/objectives/config
+hashes, or create one analytics run. Analytics stay scoped to one explicit `run_id`, or to an
+explicit `run_ids` list when the user asks to compare runs.
 
 ### 2. Call the decision brief first (progressive disclosure)
 
@@ -369,6 +375,12 @@ print(f"Portal link:       {results.cloud_url}")      # direct URL to the experi
 
 An `offline=True` run, or a non-offline run that fell back to local (no key), is **not** on the
 portal — use the dataframe read above instead.
+
+The portal may group runs that share the same agent and canonical dataset. Use that group only to
+find related source runs. Before applying or recommending a configuration, record the exact source
+`experiment_id`, `experiment_run_id`, and `configuration_run_id` shown by the portal/API. A grouped
+view does not make grouped configurations a single analytics run, and it does not imply equivalent
+configs have been merged across runs.
 
 ## Stop Reasons
 

@@ -80,6 +80,12 @@ They return `ok: true` plus one payload key named after the requested object:
 `run_report`, `project_overview`, or `run_comparison`. Treat those payloads as backend-owned
 open objects. Do not claim a field exists unless it is present.
 
+Portal cohort/group views are not a substitute for `analytics_compare_runs`. A cohort is a
+read-time portal/API convenience over source ids for runs sharing the same agent and canonical
+dataset. It does not dedupe configurations by tuned variables, objectives, or config hashes, and it
+does not turn multiple runs into one analytics run. For analytics, use one explicit `run_id` or pass
+the exact `run_ids` to `analytics_compare_runs`.
+
 ## Chart Rendering
 
 The render tool is local rendering only:
