@@ -1,6 +1,6 @@
 ---
 name: traigent-run-optimization
-description: "Run Traigent optimization: async/sync execution, algorithm selection, cost limits, stop conditions, and parallel trials. Use when calling func.optimize() or optimize_sync(), choosing algorithms (auto/grid/random/bayesian/optuna), setting max_trials or cost_limit, configuring parallel execution, or handling CostLimitExceeded."
+description: "Run Traigent optimization: async/sync execution, algorithm selection, cost limits, stop conditions, and parallel trials. Use when calling func.optimize() or optimize_sync(), choosing algorithms (auto/grid/random today; bayesian/optuna are roadmap, not yet executable), setting max_trials or cost_limit, configuring parallel execution, or handling CostLimitExceeded."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -14,7 +14,7 @@ metadata:
 Use this skill after you have decorated a function with `@traigent.optimize()` and need to:
 
 - Run optimization (async or sync)
-- Choose an algorithm (auto, grid, random, bayesian, optuna)
+- Choose an algorithm (`auto`, `grid`, `random` today — `bayesian`/`optuna`/`tpe`/`cmaes`/`nsga2` are roadmap names, not yet executable locally or in the cloud)
 - Set trial limits, timeouts, or cost budgets
 - Configure parallel trial execution
 - Handle cost limit exceptions
@@ -74,7 +74,7 @@ results = await answer.optimize(max_trials=10)  # default algorithm="auto"
 
 | Parameter | Type | Description |
 |---|---|---|
-| `algorithm` | `str \| None` | Algorithm: `"auto"` (default cloud smart optimizer), `"grid"`/`"random"` (local search), or cloud-only smart algorithms such as `"bayesian"`/`"optuna"`. Falls back to decorator setting. |
+| `algorithm` | `str \| None` | Algorithm: `"auto"` (default cloud smart optimizer), `"grid"`/`"random"` (local search). Named smart algorithms such as `"bayesian"`/`"optuna"` validate but are not yet executable — see below. Falls back to decorator setting. |
 | `max_trials` | `int \| None` | Maximum number of trials to run. |
 | `timeout` | `float \| None` | Maximum wall-clock time in seconds. |
 | `save_to` | `str \| None` | Path to save results to disk. |
@@ -128,29 +128,18 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 **Best for**: Large config spaces, quick exploration, when you have a limited trial budget.
 
-### Bayesian Optimization *(cloud only)*
+### Smart Algorithms (Bayesian / Optuna / TPE / CMA-ES / NSGA-II) — Not Yet Executable
 
-> **Requires a Traigent cloud connection.** `algorithm="bayesian"` (and the other smart optimizers) run in the Traigent cloud, not the local SDK. With `offline=True` or no Traigent cloud connection, it raises `OptimizationError`. Use `"grid"` or `"random"` for local search.
-
-Uses a surrogate model to guide the search toward promising configurations.
+> **Not currently executable, locally or in the cloud** (verified against SDK 0.18.x). `algorithm="bayesian"`, `"optuna"`, `"tpe"`, `"cmaes"`, `"nsga2"`, and the other Optuna-family names validate as known names but do not run trials today — every path fails before any trial starts, with a clear error. With `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*); online without cloud credentials the run raises `ConfigurationError` (*"Cloud execution is required, but backend session creation failed"*); and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). Connecting to the Traigent cloud does not unlock them either — the backend's current session dispatcher also only executes `grid`/`random` and rejects the rest. Treat these names as roadmap, not selectable values.
 
 ```python
-results = await func.optimize(max_trials=30, algorithm="bayesian")
+# Do NOT teach this as runnable — fails before any trial runs
+# (ConfigurationError/OptimizationError depending on path):
+# results = await func.optimize(max_trials=30, algorithm="bayesian")
+
+# Use local search instead:
+results = await func.optimize(max_trials=30, algorithm="random")
 ```
-
-**Best for**: Medium to large config spaces with continuous parameters (cloud runs).
-
-### Optuna *(cloud only)*
-
-> **Requires a Traigent cloud connection.** `algorithm="optuna"` (and the other smart optimizers) run in the Traigent cloud, not the local SDK. With `offline=True` or no Traigent cloud connection, it raises `OptimizationError`. Use `"grid"` or `"random"` for local search.
-
-Cloud-only access to advanced Optuna-style optimization with features like pruning and multi-objective optimization.
-
-```python
-results = await func.optimize(max_trials=50, algorithm="optuna")
-```
-
-**Best for**: Advanced users running in the Traigent cloud who need Optuna-specific features or very large search spaces.
 
 ### Quick Comparison
 
@@ -159,8 +148,7 @@ results = await func.optimize(max_trials=50, algorithm="optuna")
 | `"auto"` | Cloud smart default | Any | Any | Traigent cloud |
 | `"grid"` | Exhaustive | Small (< 50) | Matches space size | Local SDK search |
 | `"random"` | Sampling | Any | Limited | Local SDK search |
-| `"bayesian"` | Model-guided | Medium-Large | 15-100 | Cloud only |
-| `"optuna"` | Advanced sampling | Large | 30+ | Cloud only |
+| `"bayesian"` / `"optuna"` / `"tpe"` / `"cmaes"` / `"nsga2"` | — | — | — | **Not executable today** (roadmap name; fails before any trial runs — see above) |
 
 Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero-egress path and does not sync results.
 
@@ -194,7 +182,7 @@ The default limit is $2.00 per run.
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    results = await func.optimize(max_trials=100, algorithm="bayesian")
+    results = await func.optimize(max_trials=100, algorithm="random")
 except CostLimitExceeded as e:          # kept for forward-compat; not raised today
     print(f"Cost limit hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
 except OptimizationError as e:           # the pre-run "estimate > limit" decline

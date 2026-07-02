@@ -343,25 +343,26 @@ os.environ["TRAIGENT_RUN_COST_LIMIT"] = "2.00"
 
 ### 3. Run Real Optimization
 
-> **Smart algorithms are cloud-only.** `bayesian` (and the rest of the Optuna/Bayesian family,
-> incl. `tpe`) run on the Traigent backend and require `TRAIGENT_API_KEY` (`traigent auth`) — the
-> provider keys exported above are **not** enough. Without it the run raises `OptimizationError`.
-> For a fully local real run, use `algorithm="grid"` or `algorithm="random"`.
+> **Smart algorithms are not yet executable.** `bayesian` (and the rest of the Optuna/Bayesian
+> family, incl. `tpe`/`cmaes`/`nsga2`) validate as known names but fail before any trial runs —
+> without `TRAIGENT_API_KEY` the run raises `ConfigurationError` (*"Cloud execution is required,
+> but backend session creation failed"*), and even when connected to the Traigent cloud the
+> current backend session dispatcher only executes `grid`/`random` (verified against SDK
+> 0.18.x). For a real run today, use `algorithm="grid"` or `algorithm="random"`.
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    # `bayesian` is cloud-only (needs TRAIGENT_API_KEY); use "grid"/"random" to stay local.
-    results = my_function.optimize_sync(max_trials=10, algorithm="bayesian")
+    # Use "grid"/"random" — smart algorithms like "bayesian" are roadmap and
+    # fail before any trial runs, whether or not TRAIGENT_API_KEY is set.
+    results = my_function.optimize_sync(max_trials=10, algorithm="random")
 except CostLimitExceeded as e:
     print(f"Budget hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
     print("Increase TRAIGENT_RUN_COST_LIMIT to allow more spending.")
     raise
 except OptimizationError as e:
-    # e.g. a cloud-only algorithm with no TRAIGENT_API_KEY set.
     print(f"Optimization could not run: {e}")
-    print("Set TRAIGENT_API_KEY for smart algorithms, or use algorithm='grid'/'random'.")
     raise
 
 print(f"Best config:  {results.best_config}")

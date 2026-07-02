@@ -86,7 +86,8 @@ answerQuestion.applyBestConfig(result);
 ## Runtime Rules
 
 - Native/local algorithms are `grid` and `random`.
-- Smart strategy names such as `bayesian`, `tpe`, `hyperband`, and `frontier_scout` are backend-routed surfaces, not native local search implementations.
+- Smart strategy names such as `bayesian`, `tpe`, `hyperband`, and `frontier_scout` are backend-routed surfaces, not native local search implementations — this skill does not claim they currently execute.
+- **Backend availability (verified server-side 2026-07-02):** the backend's **classic session-create path** — the one the Python decorator uses — executes only `grid`/`random` and rejects other algorithm names; `frontier_scout` is not recognized by the backend at all. A **separate typed/interactive backend session API** does support `optimization_strategy.algorithm="optuna"` with TPE/random/CMA-ES samplers. Whether the JS SDK's smart strategies (`bayesian`, `tpe`, `hyperband`) route to that typed path has **not been verified** — confirm live behavior against your backend before promising a smart strategy runs; do not present them as verified-working values.
 - TVL accepts `pareto_optimal` as a compatibility alias for `frontier_scout`.
 - `evaluation.data` or `evaluation.loadData` is required for high-level native optimization.
 <!-- PROTECTED -->
@@ -102,7 +103,7 @@ answerQuestion.applyBestConfig(result);
 | Python decorator suggested in JS | Use `optimize(spec)(agentFn)` from `@traigent/sdk`. |
 | No evaluation data | Add `evaluation.data` or `evaluation.loadData`. |
 | Context missing in delayed callbacks | Use `wrapCallback` or run host-managed execution inside `TrialContext.run(...)`. |
-| Smart strategy expected to run locally | Use native `grid`/`random`, or route through a Traigent-compatible backend service. |
+| Smart strategy expected to run locally | Use native `grid`/`random`. Backend routing helps only if the request reaches the backend's typed interactive session API — the classic session path serves only `grid`/`random`, and JS routing to the typed path is unverified (see Runtime Rules). |
 | Cost budget not enforced | Return numeric `metrics.total_cost` or `metrics.cost` for every trial. |
 | Metric cannot be aggregated | Return numeric or boolean metrics with stable names. |
 

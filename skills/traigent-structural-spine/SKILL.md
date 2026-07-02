@@ -155,7 +155,7 @@ Transform the decorator from a frozen evaluator into a real optimizer.
  
 -result = await fn.optimize(algorithm="grid", max_trials=1)
 +result = await fn.optimize(
-+    algorithm="tpe",
++    algorithm="random",
 +    max_trials=80,
 +    timeout=1800.0,
 +)
@@ -163,7 +163,7 @@ Transform the decorator from a frozen evaluator into a real optimizer.
 ```
 
 The before state is useful only as a baseline: `configuration_space={k:[baseline_v]}` and
-`objectives=["accuracy"]`. The after state gives TPE a full structural search space, keeps the
+`objectives=["accuracy"]`. The after state gives random search a full structural search space, keeps the
 baseline explicit through `default_config=BASELINE`, optimizes both accuracy and cost, records
 metrics through named `metric_functions`, and reads completed trials from `result.to_dataframe()`.
 
@@ -171,7 +171,7 @@ metrics through named `metric_functions`, and reads completed trials from `resul
 
 Use this checklist before running a real demo:
 
-1. Confirm execution mode before a paid run: `grid` and `random` run **fully locally** in the SDK; smarter algorithms like `tpe` (the Optuna/Bayesian family) are **cloud/smart optimizers** that route through the Traigent backend in hybrid mode and require `traigent auth` or `TRAIGENT_API_KEY`. Installing Optuna (`traigent[integrations]`) does **not** make `tpe` resolve on the local SDK — the only locally-registered algorithms are `grid` and `random` (`_LOCAL_ALGORITHMS = {grid, random}`), so a `tpe` run with no backend auth does not start.
+1. Confirm execution mode before a paid run: only `grid` and `random` are executable today, and both run **fully locally** in the SDK. Smarter algorithms like `tpe` (the Optuna/Bayesian family) validate as known names but are **not yet executable** — a `tpe` run fails before any trial starts (`ConfigurationError` with `offline=True` or without cloud credentials; the SDK's local optimizer registry likewise rejects the name with `OptimizationError`: *"Smart optimization ('tpe') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"* — verified against SDK 0.18.x), and connecting to the Traigent cloud does not unlock it either — the current backend session dispatcher also only executes `grid`/`random` for this request shape. Installing Optuna (`traigent[integrations]`) does **not** make `tpe` resolve — the only locally-registered algorithms are `grid` and `random` (`_LOCAL_ALGORITHMS = {grid, random}`). Use `algorithm="random"` for a large structural search space today.
 2. Set `TRAIGENT_COST_APPROVED=true` and a high `TRAIGENT_RUN_COST_LIMIT`; rely on your own real-usage budget guard.
 3. Use a fresh per-run study directory. A persistent study dedups configs and can stop early.
 4. Read trials from `result.to_dataframe()`, not from `custom_evaluator` callbacks.

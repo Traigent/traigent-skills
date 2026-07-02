@@ -36,20 +36,25 @@ under a distinct name (e.g. `exec_accuracy`) so the true accuracy is visible
 alongside the composite score.
 
 ## Algorithm prerequisites
-For `algorithm="bayesian"`, ensure `scikit-learn` and `scipy` are installed (or
-use `tpe` / `optuna`). Use a clean Python 3.11/3.12 environment.
+Named smart algorithms (`algorithm="bayesian"`/`"tpe"`/`"optuna"`/`"cmaes"`/`"nsga2"`)
+are **not yet executable** — they validate as known names but fail before any
+trial runs (the SDK raises a clear error), and the current backend session
+dispatcher also only executes `grid`/`random` and rejects the rest (verified
+against SDK 0.18.x). Use `algorithm="grid"` or `algorithm="random"` today; a
+clean Python 3.11/3.12 environment is still recommended either way.
 
 ## Execution selector & portal tracking
 **SDK v0.17 contract:** the selector is `ExecutionOptions(offline=...)` + the
 `algorithm` arg. Legacy selector names are gone. Default to
-**`offline=False`** (online): smart algorithms (`bayesian`/`tpe`/`optuna`) run in
-the Traigent cloud with portal tracking while the agent and data stay local (only
-configs + numeric scores leave the machine). Use **`offline=True`** for a local,
-zero-egress run (grid/random only — no smart search) ONLY when explicitly chosen;
-never switch silently. After a run, **confirm the experiment appears in the portal
-with its trials**. If it doesn't show up, it's likely a temporary connectivity
-issue — **retry the run** and confirm the printed `View` link populates. Keep a
-hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real run.
+**`offline=False`** (online) with `algorithm="grid"`/`"random"`/`"auto"`: trials
+run with portal tracking while the agent and data stay local (only configs +
+numeric scores leave the machine). Named smart algorithms (`bayesian`/`tpe`/`optuna`)
+do **not** currently run — do not select them expecting cloud execution. Use
+**`offline=True`** for a local, zero-egress run (grid/random only) ONLY when
+explicitly chosen; never switch silently. After a run, **confirm the experiment
+appears in the portal with its trials**. If it doesn't show up, it's likely a
+temporary connectivity issue — **retry the run** and confirm the printed `View`
+link populates. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real run.
 
 ## Run naming (include the permutation count)
 The portal experiment name comes from the decorated function's name — make it

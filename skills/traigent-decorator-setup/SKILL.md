@@ -281,7 +281,7 @@ def my_func(query: str) -> str:
 |---|---|
 | `algorithm="auto"` (default) | Traigent cloud smart optimizer proposes trials; your agent/LLM calls run in your environment. Results sync to the portal. |
 | `algorithm="grid"` / `"random"` | Local search in the SDK. Results still sync to the portal unless `offline=True`. |
-| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/… | Smart optimizers are **cloud-only**; use them only with a Traigent cloud connection. |
+| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/`"cmaes"`/`"nsga2"` | **Not yet executable** — roadmap names. They validate but fail before any trial runs: `ConfigurationError` with `offline=True` or without cloud credentials, and the current backend session dispatcher rejects them too (verified against SDK 0.18.x). Use `"grid"` or `"random"` today. |
 | `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
 
 The synced path sends configuration IDs and numeric metrics for portal result history, not
@@ -361,7 +361,7 @@ def answer_question(question: str) -> str:
     )
 
 # Run optimization
-results = await answer_question.optimize(max_trials=10, algorithm="bayesian")
+results = await answer_question.optimize(max_trials=10, algorithm="random")
 
 # Apply best configuration for production
 answer_question.apply_best_config(results)

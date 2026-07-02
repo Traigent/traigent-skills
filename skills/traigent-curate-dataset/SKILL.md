@@ -192,24 +192,24 @@ Prefer client-side synthesis when data-handling review is incomplete, no account
 Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) is likewise non-signal: it conveys review urgency, enum flags, and a suggested action — never raw scores, formulas, or composite values.
 <!-- /PROTECTED -->
 
-> **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead. The `traigent.analytics` shim still works but emits a deprecation warning.
+> **Import note (verified against SDK 0.18.x):** `ExampleInsightsClient` ships in the core SDK at `traigent.analytics` — no separate install required. The `traigent.analytics` module docstring recommends the separate `traigent-analytics` plugin (`pip install traigent-analytics`), but that plugin's public API (meta-learning, predictive analytics, anomaly detection, cost optimization, scheduling — see its own `__all__`) does not include `ExampleInsightsClient`; `from traigent_analytics import ExampleInsightsClient` raises `ImportError`. Use the core import below and ignore the module's `DeprecationWarning` for this class specifically. **Caveat if you HAVE installed the plugin:** the core shim then defers to the plugin and stops exposing this class, so `from traigent.analytics import ExampleInsightsClient` itself raises `ImportError` — either uninstall the plugin (`pip uninstall traigent-analytics`) or use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient`, which works with or without the plugin (verified).
 
 ```python
-# Canonical (traigent-analytics plugin):
-from traigent_analytics import ExampleInsightsClient
-# Legacy (deprecated, emits DeprecationWarning):
-# from traigent.analytics import ExampleInsightsClient
+from traigent.analytics import ExampleInsightsClient
 
-client = ExampleInsightsClient(
-    backend_url="https://traigent.example",
-    api_key="trg_...",
-)
-
-job = client.compute_scores("run_123")
-status = client.get_job_status(job["job_id"])
-scores = client.get_example_scores("run_123", example_ids=["ex_001", "ex_002"])
-quality = client.get_dataset_quality("run_123")
-client.close()
+async def compute_example_scores(run_id: str) -> dict:
+    # compute_scores/get_job_status/get_example_scores/get_dataset_quality are
+    # all async — await each one (a common mistake is calling them unawaited
+    # at module scope, which yields un-subscriptable coroutine objects).
+    async with ExampleInsightsClient(
+        backend_url="https://traigent.example",
+        api_key="trg_...",
+    ) as client:
+        job = await client.compute_scores(run_id)
+        status = await client.get_job_status(job["job_id"])
+        scores = await client.get_example_scores(run_id, example_ids=["ex_001", "ex_002"])
+        quality = await client.get_dataset_quality(run_id)
+        return {"status": status, "scores": scores, "quality": quality}
 ```
 
 Example-scoring endpoints:

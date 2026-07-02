@@ -21,7 +21,7 @@ def prompt_model(prompt: str, *, model: str) -> str:
 
 | Knob | Type | Default | Description |
 |---|---|---|---|
-| `algorithm` | `str` | `"auto"` | `"auto"` uses the Traigent **cloud smart optimizer** while your trials run in your environment. `"grid"`/`"random"` run local search in the SDK. Smart optimizers (`"bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"`, `"optuna_grid"`, `"optuna_cmaes"`, `"optuna_nsga2"`, `"nsga2"`, `"cmaes"`, `"nsgaii"`, `"nsga_ii"`, `"cma_es"`) are **cloud-only**. Unknown names are rejected. |
+| `algorithm` | `str` | `"auto"` | `"auto"` uses the Traigent **cloud smart optimizer** while your trials run in your environment. `"grid"`/`"random"` run local search in the SDK. Named smart algorithms (`"bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"`, `"optuna_grid"`, `"optuna_cmaes"`, `"optuna_nsga2"`, `"nsga2"`, `"cmaes"`, `"nsgaii"`, `"nsga_ii"`, `"cma_es"`) validate as known names but are **not yet executable** — they fail before any trial runs (`ConfigurationError` with `offline=True` or without cloud credentials) and are rejected by the current backend session dispatcher too (verified against SDK 0.18.x). Unknown names are rejected. |
 | `offline` | `bool` | `False` | `True` forces a fully local run with **zero backend egress** and no portal sync. |
 
 ```python
@@ -38,7 +38,7 @@ def my_func(query: str) -> str:
 
 - **`algorithm="auto"` (default).** The Traigent cloud smart optimizer proposes each configuration and learns across runs; **your agent and your LLM calls run in your environment**. Results sync to the portal.
 - **`algorithm="grid"` / `"random"` — local search.** The search runs in the SDK. Results still sync to the portal unless `offline=True`.
-- **Smart algorithms — cloud-only.** `"bayesian"`, `"optuna"`, and related smart optimizers require a Traigent cloud connection. Do not present them as local options.
+- **Smart algorithms — not yet executable.** `"bayesian"`, `"optuna"`, and related named smart algorithms fail before any trial runs — `ConfigurationError` at decoration time with `offline=True`, `ConfigurationError` at run time without cloud credentials — and are rejected by the current backend session dispatcher too, even when cloud-connected. Do not present them as usable options today — use `"grid"`/`"random"`.
 - **`offline=True` — zero egress.** Nothing leaves your machine and results do not sync to the portal. Use this for air-gapped or strict-no-network runs.
 
 > **Data flow.** Portal-synced runs send configuration IDs and numeric metrics, not dataset example inputs, prompts, or outputs. For zero outbound traffic, use `offline=True`.
