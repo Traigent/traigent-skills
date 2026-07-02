@@ -162,8 +162,8 @@ CONFIGURATION_SPACE = {
    - DELEGATE: `traigent-iterate` owns post-run next-action selection.
 
 12. COMPLETE: recommend the safety gate and CI checks.
-   - Use in-run `safety_constraints` for must-not-violate trial filters.
-   - Use `PromotionGate` for candidate-vs-incumbent decisions on the same holdout.
+   - In-run `safety_constraints` is planned but not yet implemented (raises `NotImplementedError` at decoration time — see `traigent-ci-safety-gate`); do not teach it as usable today.
+   - Use `PromotionGate` for candidate-vs-incumbent decisions on the same holdout — the working gating mechanism today.
    - Recommend SAFETY and EFFICIENCY CI jobs before promotion: holdout regression for safety, plus cost and latency budget checks for efficiency.
    - DELEGATE: `traigent-ci-safety-gate` owns safety constraints, promotion gates, and CI recipes.
 

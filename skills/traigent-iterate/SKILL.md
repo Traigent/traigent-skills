@@ -61,11 +61,10 @@ If importance is empty, do not infer that no knob matters. Common reasons are to
 Use example-side evidence when the aggregate score hides where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent account/backend and returns scoring metadata only: example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or latent feature-vector values. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) is likewise non-signal: it ranks by review urgency and provides enum flags and a suggested action — never raw scores or hidden feature values.
 <!-- /PROTECTED -->
 
-> **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead.
+> **Import note (verified against SDK 0.18.x):** `ExampleInsightsClient` ships in the core SDK at `traigent.analytics` — no separate install required. The module's own `DeprecationWarning` points at the separate `traigent-analytics` plugin, but that plugin does not export `ExampleInsightsClient` (`from traigent_analytics import ExampleInsightsClient` raises `ImportError`); use the core import below and ignore the warning for this class. **Caveat if you HAVE installed the plugin:** the core shim then defers to the plugin and stops exposing this class, so the import below itself raises `ImportError` — uninstall the plugin or use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (works with or without the plugin, verified).
 
 ```python
-from traigent_analytics import ExampleInsightsClient  # canonical (traigent-analytics plugin)
-# from traigent.analytics import ExampleInsightsClient  # deprecated shim — still works
+from traigent.analytics import ExampleInsightsClient
 
 async def fetch_example_metadata(run_id: str):
     async with ExampleInsightsClient(

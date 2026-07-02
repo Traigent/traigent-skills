@@ -55,7 +55,7 @@ from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    results = await func.optimize(max_trials=100, algorithm="bayesian")
+    results = await func.optimize(max_trials=100, algorithm="random")
 except CostLimitExceeded as e:          # forward-compatible budget exception
     print(f"Cost limit exceeded: ${e.accumulated:.2f} of ${e.limit:.2f} budget")
 except OptimizationError as e:           # pre-run estimate above limit, cloud/auth issue, etc.

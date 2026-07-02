@@ -23,73 +23,16 @@ Use this skill when the user asks:
 The gate should fail closed: missing metrics, NaN metrics, parse failures, rejected promotion decisions, and budget breaches should stop promotion.
 <!-- /PROTECTED -->
 
-## In-Run Safety Constraints
+## In-Run Safety Constraints (Not Yet Available)
 
-Use `safety_constraints=[...]` on `@traigent.optimize` to filter unsafe trial results during optimization. `SafetyConstraint` and `CompoundSafetyConstraint` are callable as `constraint(config, metrics) -> bool`; a failed threshold returns `False`. NaN scores fail closed, and missing metric keys should use a failing default.
+`safety_constraints=[...]` on `@traigent.optimize` is planned to filter unsafe trial results during optimization, but the installed SDK does not implement it yet. Passing any non-empty value raises `NotImplementedError` **at decoration time** (verified against SDK 0.18.x): *"safety_constraints are not yet implemented. Statistical chance-constraints are on the roadmap — track progress at https://github.com/Traigent/traigent-smartopt/issues/26"*. The `SafetyConstraint`, `CompoundSafetyConstraint`, `MetricKeyMetric`, `CallableMetric`, and `SafetyThreshold` classes exist and import cleanly, but do not pass any of them via `safety_constraints=` today.
 
-```python
-import litellm
-import traigent
-from traigent.api.safety import (
-    CallableMetric,
-    CompoundSafetyConstraint,
-    MetricKeyMetric,
-    SafetyConstraint,
-    SafetyThreshold,
-)
+Do not teach a `safety_constraints=[...]` code sample as runnable. For gating today, use the two mechanisms this skill already covers that ARE implemented:
 
-def prompt_model(prompt: str, *, model: str) -> str:
-    response = litellm.completion(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.choices[0].message.content or ""
+- **`PromotionGate`** (below) to statistically compare a candidate config against the incumbent before promoting it.
+- **TVL spec validation** (`python -m traigent.tvl ... --strict`) to enforce configuration-space and objective constraints ahead of a run.
 
-quality_gate = SafetyConstraint(
-    metric=MetricKeyMetric(
-        name="quality_score",
-        metric_key="quality_score",
-        default=0.0,
-    ),
-    threshold=SafetyThreshold(
-        metric_name="quality_score",
-        operator=">=",
-        value=0.85,
-    ),
-)
-
-def latency_within_budget(config, metrics):
-    latency_ms = metrics.get("latency_ms")
-    return 1.0 if isinstance(latency_ms, (int, float)) and latency_ms <= 1200 else 0.0
-
-latency_gate = SafetyConstraint(
-    metric=CallableMetric(
-        name="latency_budget",
-        evaluator=latency_within_budget,
-    ),
-    threshold=SafetyThreshold(
-        metric_name="latency_budget",
-        operator=">=",
-        value=1.0,
-    ),
-)
-
-hard_gate = CompoundSafetyConstraint(
-    constraints=[quality_gate, latency_gate],
-    combinator="and",
-)
-
-@traigent.optimize(
-    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
-    objectives=["quality_score"],
-    safety_constraints=[hard_gate],
-)
-def answer(question: str) -> str:
-    config = traigent.get_config()
-    return prompt_model(question, model=config["model"])
-```
-
-Keep safety metrics simple, explicit, and reviewable. Complex semantic safety should still have a deterministic shell: schema validity, refusal policy, citation checks, cost caps, and latency caps.
+Keep safety semantics simple, explicit, and reviewable regardless of mechanism: schema validity, refusal policy, citation checks, cost caps, and latency caps.
 
 ## Promotion Gate
 

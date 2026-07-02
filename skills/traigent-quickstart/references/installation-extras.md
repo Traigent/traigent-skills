@@ -75,7 +75,7 @@ These packages are installed with the base `pip install traigent`:
 
 - Requires Python >= 3.11.
 - `faiss-cpu` (in `integrations`) is not available on Windows.
-- Algorithm selection is controlled by `algorithm`, not by extras: omit it for the default cloud smart optimizer, use `grid`/`random` for local search, and use smart algorithms such as `bayesian`/`optuna` only with Traigent cloud.
+- Algorithm selection is controlled by `algorithm`, not by extras: omit it for the default cloud smart optimizer, or use `grid`/`random` for local search. Named smart algorithms such as `bayesian`/`optuna` validate as known names but are **not yet executable**, locally or in the Traigent cloud (verified against SDK 0.18.x) — the `bayesian`/`ml` extras install their dependencies ahead of that roadmap work, not a usable algorithm today.
 - `all` includes user-facing runtime extras only — it does **not** include `dev`, `docs`, `dspy`, `ml`, or `cloud`. Use `enterprise` for ml+cloud, or `recommended` as the primary install.
 - `enterprise` includes `ml` and `cloud` on top of the runtime extras; `dev` and `docs` remain opt-in.
 - The difference between `all` and `enterprise`: `enterprise` adds `ml` and `cloud`; `all` does not include `bayesian` as a top-level extra (it's pulled in transitively by `ml`).
