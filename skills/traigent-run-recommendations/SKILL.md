@@ -44,7 +44,7 @@ against SDK 0.18.x). Use `algorithm="grid"` or `algorithm="random"` today; a
 clean Python 3.11/3.12 environment is still recommended either way.
 
 ## Execution selector & portal tracking
-**SDK v0.17 contract:** the selector is `ExecutionOptions(offline=...)` + the
+**Current SDK contract:** the selector is `ExecutionOptions(offline=...)` + the
 `algorithm` arg. Legacy selector names are gone. Default to
 **`offline=False`** (online) with `algorithm="grid"`/`"random"`/`"auto"`: trials
 run with portal tracking while the agent and data stay local (only configs +
@@ -57,10 +57,15 @@ temporary connectivity issue — **retry the run** and confirm the printed `View
 link populates. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real run.
 
 ## Run naming (include the permutation count)
-The portal experiment name comes from the decorated function's name — make it
-self-descriptive: **who · weights · problem-space · permutation count · date**
-(e.g. `Amir_ACL_80_15_05_txt2sql_216perms_20260620`). Recording the config-space
-size (permutations) in the name makes runs comparable at a glance.
+Set an explicit decorator `experiment_name` when you need a stable portal label.
+Name precedence is: explicit decorator argument; `TRAIGENT_EXPERIMENT_NAME`
+checked at access time; deterministic self-describing default built at decoration
+time as `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"` with at most 4 knobs
+shown and a 120-character cap; bare `func.__name__` only when no objectives or
+knobs were registered. Make explicit names self-descriptive: **who · weights ·
+problem-space · permutation count · date** (e.g.
+`Amir_ACL_80_15_05_txt2sql_216perms_20260620`). Recording the config-space size
+(permutations) in the name makes runs comparable at a glance.
 
 ## Models & gateway
 Fund your gateway before real runs. Prefer reliable low-cost **paid** models over
@@ -80,7 +85,7 @@ run.
 4. `ExecutionOptions(offline=False)` (DEFAULT = online/cloud; `offline=True` local-only if chosen) + `algorithm` arg; cost cap set.
 5. Mock dry-run (free) → confirm trials run + metrics non-zero → real run.
 6. After the real run, confirm the experiment shows its trials; if not, retry.
-7. Name the run with its permutation count + weights + date.
+7. Set an explicit `experiment_name` with its permutation count + weights + date.
 
 ## See also
 - `traigent-run-plan` (MANDATORY: ask ALL run options before every run) · `traigent-optimization-principles` · `traigent-text2sql-optimize` · `traigent-next-run`

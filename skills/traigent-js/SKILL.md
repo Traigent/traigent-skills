@@ -96,6 +96,20 @@ answerQuestion.applyBestConfig(result);
 - Trial context is available during wrapped execution. Use `getTrialParam`, `getTrialConfig`, `TrialContext.run`, `isInTrial`, and `wrapCallback` rather than module-level globals.
 - JS supports `context`, `parameter`, and `seamless` injection modes. Use `context` unless the host app naturally accepts a config parameter or intentionally opts into seamless framework/rewrite support.
 
+## Offline / Zero-Egress
+
+Set `offline: true` in the optimize spec when the run must avoid Traigent-backend
+egress. `TRAIGENT_OFFLINE_MODE` is also recognized. Mode `"local"` is the
+recommended, non-deprecated canonical mode for local/offline optimization;
+legacy aliases such as `"native"` are deprecated and map to it.
+
+In offline mode, backend HTTP is refused by the SDK's offline guard and only
+local algorithms (`grid` and `random`) run. Do not expect portal tracking or
+backend-routed strategies in this mode.
+
+Honest boundary: zero-egress means no Traigent-backend egress. Calls to the
+user's own LLM provider still happen if their agent makes them.
+
 ## Common Fixes
 
 | Problem | Fix |
