@@ -69,6 +69,23 @@ Validate TVL specs in CI before running the gate:
 python -m traigent.tvl path/to/promotion-gate.tvl --strict
 ```
 
+## Applying the Winning Config
+
+This skill covers the gate in the export -> gate -> apply flow. For the full
+end-to-end flow, see `traigent` section "4. Export a candidate, gate, then
+apply". Keep promotion staged: export the winning config as a candidate, run the
+holdout/promotion gate, then apply only after the gate passes and the user
+approves.
+
+```python
+# Export the winning config as a CANDIDATE artifact for review/gating
+my_function.export_config("candidate_config.json")
+
+# After the holdout/promotion gate passes and the user approves:
+my_function.apply_best_config(results)
+answer = my_function("What is Python?")
+```
+
 ## The Two CI Checks
 
 SAFETY: run a holdout regression check against a pinned baseline config.
