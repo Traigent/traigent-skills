@@ -35,6 +35,8 @@ For richer export artifacts and honest `directional` vs `significant` labels, de
 
 Use example-side evidence when aggregate scores hide where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent backend/account. The honest reportable scope is non-signal metadata such as job status, example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or signal-vector values.
 
+> **Import note (verified against SDK 0.18.x):** `ExampleInsightsClient` ships in the core SDK at `traigent.analytics` — no separate install required. The module's own `DeprecationWarning` points at the separate `traigent-analytics` plugin, but that plugin does not export `ExampleInsightsClient` (`from traigent_analytics import ExampleInsightsClient` raises `ImportError`); use the core import below and ignore the warning for this class. **Caveat if you HAVE installed the plugin:** the core shim then defers to the plugin and stops exposing this class, so the import below itself raises `ImportError` — uninstall the plugin or use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (works with or without the plugin, verified).
+
 ```python
 from traigent.analytics import ExampleInsightsClient
 
