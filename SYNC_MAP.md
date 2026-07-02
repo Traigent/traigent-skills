@@ -15,7 +15,6 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 | `traigent-analyze-results` | `traigent/api/types.py`, `traigent/core/optimized_function.py` |
 | `traigent-integrations` | `traigent/integrations/*`, `docs/architecture/integrations-inventory.md` |
 | `traigent-debugging` | `traigent/utils/exceptions.py`, `traigent/utils/env_config.py` |
-| `traigent-structural-spine` | `traigent/api/decorators.py`, `traigent/api/parameter_ranges.py`, `traigent/api/constraint_builders.py`, `docs/user-guide/tuned_variables.md` |
 | `traigent-composite-knobs` | `traigent/knobs/patterns.py`, `traigent/knobs/runtime.py`, `traigent/knobs/telemetry.py`, `examples/advanced/composite-knobs/*`, `docs/traceability/concepts/composite-knobs.md` |
 | `traigent-boost-agent` | `traigent/config_generator/recommendations.py`, `traigent/config_generator/catalog/tvar_catalog.v1.json`, `traigent/api/decorators.py`, `traigent/core/optimized_function.py`, `traigent/knobs/patterns.py`, `traigent/knobs/runtime.py`, `traigent/knobs/telemetry.py`, `traigent/utils/insights.py`, `traigent/utils/importance.py`, `traigent/analytics/example_insights.py`, `traigent/testing/*` |
 | `show-significant-tuned-variables` | `traigent/utils/importance.py`, `traigent/utils/insights.py`, `optimization trial artifact schema` |
@@ -28,6 +27,4 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 | `traigent-run-plan` | `traigent/api/decorators.py`, `traigent/core/optimized_function.py` |
 | `traigent-next-run` | `traigent/core/optimized_function.py`, `traigent/api/types.py` |
 | `traigent-reflect-hard-examples` | `traigent/generation/*`, `traigent/analytics/example_insights.py`, `traigent/evaluators/base.py`, `traigent/core/optimized_function.py`, `traigent/testing/*` |
-| `traigent-optimization-principles` | `traigent/api/decorators.py`, `traigent/core/optimized_function.py` |
-| `traigent-run-recommendations` | `traigent/api/decorators.py`, `traigent/utils/env_config.py` |
 | `traigent-text2sql-optimize` | `traigent/__init__.py`, `traigent/api/decorators.py`, `traigent/core/objectives.py`, `traigent/evaluators/base.py`, `traigent/testing/*`, `traigent/core/optimized_function.py` |

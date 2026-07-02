@@ -1,6 +1,6 @@
 ---
 name: traigent-iterate
-description: "Decide what to do after a Traigent optimization run. Use when results are flat, noisy, negative, budget-bound, or tied with baseline; when users ask what next after a run, which knob mattered, expand or narrow the space, use weak examples, inspect example-side evidence, compare runs, or choose the next iteration hypothesis."
+description: "Diagnose offline/local Traigent optimization runs and local evidence when no service next-steps payload is available. Use for offline=True or no-backend-access runs, flat/noisy/negative local results, which knob mattered locally, example-side evidence, comparing local runs, or forming a next iteration hypothesis when `traigent next-steps RUN_ID --json` cannot return guidance. For portal-tracked runs, use `traigent-next-run` first."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -9,31 +9,41 @@ metadata:
 
 # Iterate After a Run
 
+## Boundary / Arbitration
+
+For a portal-tracked run, the next-step decision is server-owned — use `traigent-next-run` (CLI `traigent next-steps RUN_ID --json`) FIRST; use this skill when the run is offline/local or the service payload is unavailable, or to diagnose local evidence the service flagged.
+
 ## When to Use
 
-Use this skill after a Traigent optimization run when the user asks:
+Use this skill after an offline/local Traigent optimization run (`offline=True` or no backend
+access), or when a portal run's service next-steps payload is unavailable and you need to form a
+local hypothesis from evidence. It also applies when the service has already flagged local evidence
+for inspection and the user asks:
 
 - "results are flat/noisy/negative"
-- "what next after a run?"
-- "which knob mattered?"
+- "which knob mattered locally?"
 - "should I expand or narrow the space?"
 - "what do I do with weak examples?"
 
-The goal is to choose the next single hypothesis, not to change every part of the system at once.
+The goal is to choose the next single local hypothesis, not to change every part of the system at
+once.
 
 ## Read the Evidence First
 
-Start with the run object and existing analysis skills. `traigent-analyze-results` covers result fields in depth, and `show-significant-tuned-variables` covers richer importance reporting. Use this skill to decide the next action after those facts are known.
+Start with the local run object and existing analysis skills. `traigent-analyze-results` covers
+result fields in depth, and `show-significant-tuned-variables` covers richer importance reporting.
+Use this skill to form the local next hypothesis after those facts are known.
 
-For a cloud/portal run, the fastest way to get the evidence is the terminal-first decision
-brief in `traigent-analyze-results` (the `traigent-analytics` MCP `analytics_get_run_decision_brief`
-tool). Read the brief first and base the next iteration on its real fields:
+For a portal-tracked run, first fetch the service-owned next-step payload through
+`traigent-next-run`. If that payload is unavailable, or if it flags local evidence that needs
+diagnosis, keep the service limitation visible and use the local facts below as a fallback or
+supporting diagnosis:
 
 - `confidence` - keep low/medium confidence visible; do not upgrade it based on intuition.
-- `evidence[].summary` - use these summaries to identify whether the issue is flat scores,
-  noisy examples, high cost, thin samples, a dominated winner, or a narrow knob.
-- `recommended_action.kind` - use the backend's action as the starting point, then use the
-  symptom rows below to turn it into one concrete next hypothesis.
+- `evidence[].summary` - use backend summaries only when they are actually present in the service
+  payload; otherwise use local result fields.
+- local result fields - identify whether the issue is flat scores, noisy examples, high cost, thin
+  samples, a dominated winner, or a narrow knob.
 
 ```python
 from traigent.utils.insights import get_optimization_insights
@@ -156,6 +166,21 @@ Track an interaction profile and adapt to it. Persona (stable): control=`delegat
 expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
 unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
 an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
 
 - Always be concise.
 - Match terminology to expertise. For `se`: plain engineering words; define each Traigent or

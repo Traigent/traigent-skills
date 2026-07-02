@@ -103,7 +103,7 @@ CONFIG_SPACE = {
 ```
 > Encode discrete/integer knobs as **strings** (`"0"/"2"/"4"`) and `int()` them at
 > the call site — the most robust, portable encoding for fixed-set knobs.
-> See `traigent-run-recommendations`.
+> See `traigent-run-plan/references/preflight.md`.
 
 ## 4. Weighted objectives (ACL)
 ```python
@@ -152,10 +152,10 @@ plan-then-SQL beat both the mid model and (separately) a premium Sonnet config
 (86.7% at 20-50x the cost).
 
 ## See also
-- `traigent-optimization-principles` — the key recommendations to apply on every run.
+- `traigent-run-plan/references/optimization-principles.md` — the key recommendations to apply on every run.
 - `traigent-run-plan` — build the run-plan WITH the user before every run.
 - `traigent-next-run` — after each run: the portal link, which knobs to keep/drop, and the next-run recommendation.
-- `traigent-run-recommendations` — robust setup so runs go smoothly and track to the portal.
+- `traigent-run-plan/references/preflight.md` — robust setup so runs go smoothly and track to the portal.
 
 <!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
 ## Traigent Interaction Policy
@@ -163,6 +163,21 @@ Track an interaction profile and adapt to it. Persona (stable): control=`delegat
 expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
 unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
 an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
 
 - Always be concise.
 - Match terminology to expertise. For `se`: plain engineering words; define each Traigent or

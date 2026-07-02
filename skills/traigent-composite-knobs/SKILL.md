@@ -120,8 +120,10 @@ Spread `.members` into the surrounding configuration space **only when the facto
 The vocabulary, in one line: **TVARs are searched, CVARs are calibrated,
 policies govern control flow, KPIs/objectives score outcomes.** For
 domain-specific structural knob vocabularies (text2SQL, RAG/multi-hop QA),
-cross-reference `traigent-structural-spine` — this skill extends it with
-composite control flow; it does not replace it.
+cross-reference `traigent-configuration-space` and
+`traigent-configuration-space/references/structural-spine.md` -- this skill
+extends that structural vocabulary with composite control flow; it does not
+replace it.
 
 ## Telemetry
 
@@ -161,6 +163,21 @@ Track an interaction profile and adapt to it. Persona (stable): control=`delegat
 expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
 unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
 an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
 
 - Always be concise.
 - Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
