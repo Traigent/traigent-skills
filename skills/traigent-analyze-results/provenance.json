@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1304fd657c6d23e6",
+  "doc_hash": "6b0e636291897c76",
   "entries": [
     {
       "edit_id": "genesis",
@@ -20,6 +20,17 @@
       "doc_before_hash": "92c7c68f1ef2a9b5",
       "doc_after_hash": "1304fd657c6d23e6",
       "note": "align privacy wording so no fabricated brief-field names remain in the skill docs",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "manual-portal-grouping-2026-06-30",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-06-30T09:49:20Z",
+      "doc_before_hash": "1304fd657c6d23e6",
+      "doc_after_hash": "6b0e636291897c76",
+      "note": "clarify portal cohort grouping versus explicit run analytics",
       "source_type": "human"
     }
   ]
