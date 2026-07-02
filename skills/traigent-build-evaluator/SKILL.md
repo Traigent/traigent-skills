@@ -100,6 +100,8 @@ def extract(text: str) -> str:
 `output`/`expected` (the row's prediction + gold), `input_data` (the **nested `input` dict only**),
 `metadata` (the row's top-level extras), `config`, `example`, and `example_index`.
 
+For optional `surrogate_evaluator` mechanics and caveats, see `traigent-decorator-setup` -> "Evaluation Setup".
+
 The documented `(output, expected, input_data)` signature **cannot** see a top-level side field like
 `db_path` — `input_data` is only the `input` dict. To reach it, **name a `metadata` parameter** and
 read the key the dataset contract routed there (see `traigent-curate-dataset` for the row mapping):

@@ -4,12 +4,19 @@ import importlib.metadata
 import re
 from pathlib import Path
 
+from packaging.version import Version
+
 
 UNPUBLISHED_NPM_INSTALL_RE = re.compile(r"\bnpm\s+(?:i|install|add)\s+@traigent/sdk\b")
 
 
 def test_public_python_sdk_install_target_is_present(sdk_version_label: str) -> None:
     installed = importlib.metadata.version("traigent")
+    if sdk_version_label == "develop":
+        # Develop is a moving target; released buckets enforce version identity.
+        assert installed
+        Version(installed)
+        return
     assert installed == sdk_version_label
 
 

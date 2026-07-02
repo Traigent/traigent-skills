@@ -112,8 +112,12 @@ def my_func(query: str) -> str:
 ```
 
 - `experiment_name` accepts spaces and punctuation (it is not a Python identifier).
-- When omitted, the decorated function's `__name__` is used; the `TRAIGENT_EXPERIMENT_NAME`
-  environment variable is used as a fallback if no explicit value is passed.
+- Experiment-name precedence, highest to lowest: explicit `experiment_name` decorator
+  argument; `TRAIGENT_EXPERIMENT_NAME` environment variable checked at access time,
+  not decoration time; self-describing default built at decoration time as
+  `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"` with at most 4 knobs shown, a
+  120-character cap, and deterministic ordering; bare `func.__name__` only when no
+  objectives or knobs were registered.
 - The label is set on the **decorator**, not on the run call — there is no `experiment_name`
   (or `tags`) parameter on `.optimize()` / `.optimize_sync()`.
 
@@ -144,7 +148,24 @@ Configure how Traigent evaluates each trial using `EvaluationOptions`.
 | `eval_dataset` | `str \| list[str] \| Dataset \| None` | Path to JSONL dataset or list of paths |
 | `custom_evaluator` | `Callable \| None` | Full-control evaluator: `(func, config, example) -> ExampleResult` |
 | `scoring_function` | `Callable \| None` | Lightweight scorer: `(output, expected) -> float` |
+| `surrogate_evaluator` | `Callable \| None` | Optional secondary scorer for existing outputs only; it never re-executes the decorated function. |
+| `surrogate_evaluator_name` | `str \| None` | Display/evaluator id override for `surrogate_evaluator`; runtime `optimize(surrogate_evaluator_name=...)` can override it. |
 | `metric_functions` | `dict[str, Callable] \| None` | Named metrics: `{"accuracy": fn, "relevance": fn}` |
+
+`surrogate_evaluator` uses the same calling convention as `scoring_function`:
+`(output, expected_output=None, example=None) -> float` in `[0, 1]`, or a dict
+containing `surrogate_score` or `score`. Its result is stored alongside primary
+metrics as `surrogate_score` and feeds the backend's per-evaluator score tensor.
+The evaluator id comes from the callable `__name__` or class name, falling back to
+`"surrogate"`, unless `surrogate_evaluator_name` or runtime
+`optimize(surrogate_evaluator_name=...)` overrides it.
+
+Public API, mechanically supported. A cheap surrogate has **no validated
+evaluation-cost benefit**: in Traigent's 3-domain evaluation, a cheap surrogate
+judge did not reliably track the authoritative judge; on hard tasks its agreement
+collapsed to the anchor base rate. Do not use it as a substitute for the
+authoritative evaluator. Quality and promotion decisions remain anchored
+server-side.
 
 ### When to Use Each
 

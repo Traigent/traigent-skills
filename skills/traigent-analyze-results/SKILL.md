@@ -191,9 +191,12 @@ print(results.timestamp)        # datetime when optimization completed
 ```
 
 > **Identifying a run in the portal.** Runs are labeled by the `experiment_name` set on the
-> decorator (`@traigent.optimize(experiment_name=...)`), not by tags — the current SDK has no
-> `tags`/`metadata` argument. To make runs easy to find later, give each one a descriptive
-> `experiment_name` before you run it. See `traigent-decorator-setup` → "Naming and Labeling Runs".
+> decorator (`@traigent.optimize(experiment_name=...)`) or, if omitted, by the access-time
+> `TRAIGENT_EXPERIMENT_NAME` env var, then the deterministic self-describing default
+> `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"`, then bare `func.__name__` only when no
+> objectives or knobs were registered. The current SDK has no `tags`/`metadata` argument.
+> To make runs easy to find later, give each one a descriptive `experiment_name` before you run it.
+> See `traigent-decorator-setup` -> "Naming and Labeling Runs".
 
 `best_score` is `None` when no trial produced a valid score (e.g., all trials failed). Always check before comparing:
 
@@ -364,7 +367,7 @@ print(f"Portal experiment: {results.experiment_id}")  # backend experiment ident
 print(f"Portal link:       {results.cloud_url}")      # direct URL to the experiment on the portal
 # (results.optimization_id is the SDK's local run id, not the portal identifier.)
 # Open results.cloud_url, or go to https://portal.traigent.ai -> Experiments and find this run by
-# its experiment_id (or the experiment_name you set on the decorator) to read the rendered view.
+# its experiment_id (or resolved experiment_name) to read the rendered view.
 ```
 
 An `offline=True` run, or a non-offline run that fell back to local (no key), is **not** on the
