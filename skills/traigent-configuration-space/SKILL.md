@@ -1,6 +1,6 @@
 ---
 name: traigent-configuration-space
-description: "Define tuned variables and configuration spaces for Traigent optimization. Use when setting up parameter search spaces, choosing models/temperatures/prompts to optimize, using Range/IntRange/Choices/LogRange types, adding constraints between parameters, or using factory presets like Range.temperature()."
+description: "Define tuned variables, structural knobs, and configuration spaces for Traigent optimization. Use when setting up parameter search spaces, choosing models/temperatures/prompts, designing task-level text2SQL/RAG/multi-hop knobs, using Range/IntRange/Choices/LogRange types, adding constraints, or using factory presets like Range.temperature()."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -15,6 +15,9 @@ Use this skill when:
 
 - Defining which parameters to optimize (model, temperature, max_tokens, prompts, etc.)
 - Choosing between dict-based and typed parameter definitions
+- Designing task-level structural knobs for text2SQL, RAG, multi-hop QA, schema
+  context, retrieval strategy, generation paths, few-shot policies,
+  self-consistency, or repair policies (see `references/structural-spine.md`)
 - Using `Range`, `IntRange`, `Choices`, or `LogRange` for search spaces
 - Adding constraints between parameters (e.g., "if model is gpt-4, temperature must be low")
 - Using factory presets like `Range.temperature()` or `Choices.model()`
@@ -490,6 +493,21 @@ Track an interaction profile and adapt to it. Persona (stable): control=`delegat
 expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
 unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
 an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
 
 - Always be concise.
 - Match terminology to expertise. For `se`: plain engineering words; define each Traigent or

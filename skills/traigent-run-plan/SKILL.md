@@ -1,6 +1,6 @@
 ---
 name: traigent-run-plan
-description: "Fetch the Traigent service run-plan before every optimization run, present the returned objectives/models/knobs/search/budget/offline options one by one, confirm or adjust them with the user, mock dry-run first, and launch only on the user's explicit go. The plan and next-step decision come from Traigent, not local markdown logic."
+description: "Fetch the Traigent service run-plan before every optimization run, present objectives/models/knobs/search/budget/offline options one by one, apply preflight and program-level optimization principles, confirm or adjust them with the user, mock dry-run first, and launch only on the user's explicit go. The plan and next-step decision come from Traigent, not local markdown logic."
 license: Apache-2.0
 metadata:
   author: Traigent
@@ -65,15 +65,17 @@ Do not embed local planning intelligence in this skill:
    `references/run-plan.txt2sql-example.md` for a filled text2SQL example of this
    capture format (the recommended values shown there came from the service, not
    from this skill).
-6. Mock dry-run first. The mock must be free/no-spend and should verify that the
+6. Before launching, walk the preflight checklist in `references/preflight.md`.
+   For program-level principles, see `references/optimization-principles.md`.
+7. Mock dry-run first. The mock must be free/no-spend and should verify that the
    agent, dataset loader, scorer, and returned steps are wired.
-7. Stop after the mock with a short readout: what executed, what did not execute,
+8. Stop after the mock with a short readout: what executed, what did not execute,
    estimated cost if available, and the exact real-run command or SDK step that
    will run next.
-8. Launch the real run only when the user explicitly says to go and the returned
+9. Launch the real run only when the user explicitly says to go and the returned
    plan's cost cap is set. Execute the returned `steps[]`; do not substitute a
    locally generated run sequence.
-9. After the run, hand control to `traigent-next-run` with the run id and portal
+10. After the run, hand control to `traigent-next-run` with the run id and portal
    link.
 
 ## Confirmation Rules
@@ -115,6 +117,21 @@ Track an interaction profile and adapt to it. Persona (stable): control=`delegat
 expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
 unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
 an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
 
 - Always be concise.
 - Match terminology to expertise. For `se`: plain engineering words; define each Traigent or

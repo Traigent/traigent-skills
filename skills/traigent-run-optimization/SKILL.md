@@ -466,6 +466,21 @@ expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`.
 unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
 an explicit correction wins immediately. Never store or send this profile anywhere by default.
 
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
 - Always be concise.
 - Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
   statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon

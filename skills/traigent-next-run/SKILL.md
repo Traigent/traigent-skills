@@ -1,6 +1,6 @@
 ---
 name: traigent-next-run
-description: "After every Traigent run, fetch the server-owned posture and next-step payload with `traigent next-steps RUN_ID --json`, present the opaque prose summary plus the single returned command template and rationale, then loop back to `traigent-run-plan`. The decision comes from Traigent, not local markdown logic."
+description: "After every portal-tracked Traigent run, fetch the server-owned posture and next-step payload with `traigent next-steps RUN_ID --json`, present the opaque prose summary plus the single returned command template and rationale, then loop back to `traigent-run-plan`. The decision comes from Traigent, not local markdown logic; offline/local runs hand off to `traigent-iterate`."
 license: Apache-2.0
 metadata:
   author: Traigent
@@ -13,7 +13,14 @@ metadata:
 
 Requires `traigent>=0.16.0`.
 
-Use this after every Traigent optimization run before planning the next one.
+Use this after every portal-tracked Traigent optimization run before planning the next one.
+
+This is the canonical "what next" skill for portal-tracked runs: fetch and follow the
+server-owned next-step payload first. For offline/local runs with no service payload, hand off to
+`traigent-iterate`; for reading result fields or producing reports without making a decision, hand
+off to `traigent-analyze-results`.
+
+Fetch the next-step payload from the Traigent service; do not substitute markdown reasoning.
 
 This skill is a thin client. It fetches the post-run payload from the Traigent
 service, presents the returned `posture.summary_text` and the single recommended
@@ -31,8 +38,8 @@ retry.
 
 ## Boundary
 
-The next-step decision comes from the Traigent service. Do not maintain local
-next-action rules, derive recommendations from local files, or infer what should
+For portal-tracked runs handled by this skill, the decision comes from the Traigent service. Do not
+maintain local next-action rules, derive recommendations from local files, or infer what should
 happen next from markdown.
 
 Only execute commands returned by the service. If the user asks for a change
@@ -132,6 +139,21 @@ Track an interaction profile and adapt to it. Persona (stable): control=`delegat
 expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
 unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
 an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
 
 - Always be concise.
 - Match terminology to expertise. For `se`: plain engineering words; define each Traigent or

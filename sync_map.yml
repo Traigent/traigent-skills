@@ -94,18 +94,6 @@ skills:
       - traigent/utils/exceptions.py
       - traigent/utils/env_config.py
 
-  traigent-structural-spine:
-    modules:
-      - traigent.api.decorators
-      - traigent.api.parameter_ranges
-      - traigent.api.constraint_builders
-    sdk_paths:
-      - traigent/api/decorators.py
-      - traigent/api/parameter_ranges.py
-      - traigent/api/constraint_builders.py
-    docs:
-      - docs/user-guide/tuned_variables.md
-
   traigent-composite-knobs:
     min_sdk_version: "0.15.0"
     modules:
@@ -260,24 +248,6 @@ skills:
       - traigent/evaluators/base.py
       - traigent/core/optimized_function.py
       - traigent/testing/*
-
-  traigent-optimization-principles:
-    min_sdk_version: "0.16.0"
-    modules:
-      - traigent.api.decorators
-      - traigent.core.optimized_function
-    sdk_paths:
-      - traigent/api/decorators.py
-      - traigent/core/optimized_function.py
-
-  traigent-run-recommendations:
-    min_sdk_version: "0.16.0"
-    modules:
-      - traigent.api.decorators
-      - traigent.utils.env_config
-    sdk_paths:
-      - traigent/api/decorators.py
-      - traigent/utils/env_config.py
 
   traigent-text2sql-optimize:
     min_sdk_version: "0.16.0"

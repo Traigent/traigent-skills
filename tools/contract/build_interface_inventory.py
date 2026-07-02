@@ -6,6 +6,10 @@ EXIST, with stable IDs per surface:
 
     js:@traigent/sdk[/sub]#<symbol>     (from tests/data/js_api_snapshot.json)
     be:<METHOD> <path_template>          (from tests/data/backend_routes_snapshot.json)
+    py:optimize#<kwarg>                  (from tests/data/python_api_snapshot.json)
+    py:EvaluationOptions#<field>         (   "" — also InjectionOptions / ExecutionOptions)
+    py:exception#<ClassName>             (   "" )
+    py:cli#<command path>                (   "" )
 
 The coverage ledger test (``test_coverage_ledger.py``) diffs the *current* inventory against
 this committed baseline: a NEW element that no skill teaches and that has no `no_skill` waiver
@@ -30,6 +34,7 @@ def build_ids(repo_root: Path) -> list[str]:
     ids: set[str] = set()
     ids.update(_js_ids(repo_root))
     ids.update(_be_ids(repo_root))
+    ids.update(_py_ids(repo_root))
     return sorted(ids)
 
 
@@ -51,6 +56,29 @@ def _be_ids(repo_root: Path) -> set[str]:
         return set()
     routes = json.loads(path.read_text(encoding="utf-8")).get("routes") or []
     return {f"be:{str(r['method']).upper()} {r['path_template']}" for r in routes}
+
+
+# python_api_snapshot.json list-key -> the interface-id namespace it maps into.
+_PY_SECTION_NAMESPACES = {
+    "optimize_kwargs": "optimize",
+    "evaluation_options": "EvaluationOptions",
+    "injection_options": "InjectionOptions",
+    "execution_options": "ExecutionOptions",
+    "exceptions": "exception",
+    "cli_commands": "cli",
+}
+
+
+def _py_ids(repo_root: Path) -> set[str]:
+    path = repo_root / "tests/data/python_api_snapshot.json"
+    if not path.is_file():
+        return set()
+    snapshot = json.loads(path.read_text(encoding="utf-8"))
+    return {
+        f"py:{namespace}#{name}"
+        for section, namespace in _PY_SECTION_NAMESPACES.items()
+        for name in (snapshot.get(section) or [])
+    }
 
 
 def main() -> int:
