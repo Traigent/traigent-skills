@@ -4,7 +4,7 @@ description: "Choose Traigent objectives and metric functions before optimizing.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1"
+  version: "1.1.1"
 ---
 
 # Traigent Choose Metric
@@ -82,7 +82,9 @@ def answer(question: str) -> str:
     return prompt_model(question, model=cfg["model"], temperature=cfg["temperature"])
 ```
 
-Use custom metric functions when the domain has a checkable rule. Name each metric after the product concept it measures, and then include that name in `objectives` only if the optimizer should trade off against it.
+Use custom metric functions when the domain has a checkable rule. Default to an `accuracy`-labeled primary quality objective when correctness or answer quality applies, either as a built-in objective or as a `metric_functions` key. Name the primary quality metric after the product concept only when `accuracy` semantically does not fit the problem, such as ranking quality, generation quality, schema validity, or latency-only tuning; note why accuracy was skipped, and include that name in `objectives` only if the optimizer should trade off against it.
+
+In the schema-only example below, `valid_schema` is the product-concept KPI because output format validity is the primary target; add an `accuracy` metric too if answer correctness also matters.
 
 ```python
 import json

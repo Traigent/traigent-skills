@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Traigent Quickstart
@@ -268,6 +268,18 @@ See `references/environment-variables.md` for all available environment variable
 > `@traigent.optimize()` decorator. The SDK prints an estimate
 > before any trial executes; the estimate may be high (fallback pricing is conservative), but the
 > gate is a safety confirmation — nothing runs until you approve.
+
+### Tiny Real Cost and KPI Probe
+
+After the mock dry-run passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check `results.total_cost` and trial metrics before scaling up.
+
+`results.total_cost` is `float | None`: `None` means cost tracking is unavailable, and `0.0` with real calls means the model was unpriced. Both mean cost is not wired. Also verify that each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with non-degenerate values rather than all `0.0` or all `1.0`.
+
+If custom services, self-hosted endpoints, or unknown model ids are not picked up, fix cost tracking in this order: use a LiteLLM-priced model id or `litellm.model_alias_map`; provide `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE` with JSON like `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; or return per-trial metrics containing `total_cost`, `cost`, or `input_cost` plus `output_cost`. Custom pricing accepts `input`/`output` aliases, normalizes provider prefixes like `openai/`, requires finite non-negative floats, and resolves after LiteLLM pricing and before the built-in fallback table. Use `TRAIGENT_STRICT_COST_ACCOUNTING=true` when unpriced models should fail loudly.
+
+> **NOTE:** Before any full run, verify with a tiny real optimization call that cost and your other KPIs are actually tracked (`results.total_cost` is not None/$0 and objective metrics are populated). If not, wire them (custom model pricing env vars, or return `total_cost` in metrics) before scaling up.
+
+> **Objective naming rule:** Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
 Here is a complete working example. This function classifies customer queries using an LLM, and Traigent will find the best model and temperature combination.
 

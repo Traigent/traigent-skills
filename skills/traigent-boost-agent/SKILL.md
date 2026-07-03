@@ -4,7 +4,7 @@ description: "End-to-end 12-step lifecycle playbook for adding Traigent to an ex
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.0.2"
+  version: "2.0.3"
 ---
 
 # Traigent Boost Agent
@@ -45,6 +45,7 @@ For detailed grep patterns and evidence-mining heuristics, read `references/code
 3. CHOOSE the metric.
    - Decide what "good" means before writing optimizer code: task success, correctness, cost, latency, safety, reliability, or a measured combination.
    - Prefer built-in objective names when they match the product decision; use custom metric functions only when domain logic is checkable and necessary.
+   - Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept and note why accuracy was skipped.
    - Treat must-not-violate behavior as a safety constraint or promotion gate, not as an ordinary objective to trade away.
    - DELEGATE: `traigent-choose-metric` owns the metric interview and objective vocabulary.
 

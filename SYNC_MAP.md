@@ -6,11 +6,11 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 
 | Skill | SDK Source Dependencies |
 |-------|----------------------|
-| `traigent-quickstart` | `docs/getting-started/*`, `pyproject.toml`, `examples/quickstart/` |
-| `traigent` | `traigent/api/decorators.py`, `traigent/utils/env_config.py`, `traigent/core/optimized_function.py` |
+| `traigent-quickstart` | `traigent/utils/cost_calculator.py`, `traigent/core/cost_estimator.py`, `docs/getting-started/*`, `docs/features/safety-gates.md`, `pyproject.toml`, `examples/quickstart/` |
+| `traigent` | `traigent/api/decorators.py`, `traigent/utils/env_config.py`, `traigent/core/optimized_function.py`, `traigent/utils/cost_calculator.py`, `traigent/core/cost_estimator.py` |
 | `traigent-js` | `traigent-js/src/optimization/*`, `traigent-js/src/core/context.ts`, `traigent-js/src/seamless/*`, `traigent-js/src/integrations/*`, `traigent-js/src/routing/*`, `traigent-js/README.md`, `traigent-js/docs/*` |
 | `traigent-configuration-space` | `traigent/api/parameter_ranges.py`, `traigent/api/constraint_builders.py`, `docs/user-guide/tuned_variables.md` |
-| `traigent-decorator-setup` | `traigent/api/decorators.py`, `docs/user-guide/injection_modes.md` |
+| `traigent-decorator-setup` | `traigent/api/decorators.py`, `traigent/utils/cost_calculator.py`, `traigent/core/cost_estimator.py`, `docs/user-guide/injection_modes.md`, `docs/features/safety-gates.md` |
 | `traigent-run-optimization` | `traigent/core/optimized_function.py`, `traigent/core/orchestrator.py`, `traigent/config/parallel.py` |
 | `traigent-analyze-results` | `traigent/api/types.py`, `traigent/core/optimized_function.py` |
 | `traigent-integrations` | `traigent/integrations/*`, `docs/architecture/integrations-inventory.md` |

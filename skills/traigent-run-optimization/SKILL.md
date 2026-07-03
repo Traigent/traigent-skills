@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Running Traigent Optimization
@@ -19,6 +19,10 @@ Use this skill after you have decorated a function with `@traigent.optimize()` a
 - Configure parallel trial execution
 - Handle cost limit exceptions
 - Interpret stop reasons and results
+
+## Objective Naming Rule
+
+Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
 ## Async Execution
 
@@ -160,6 +164,12 @@ Results sync to the portal for every non-offline run, including `grid` and `rand
 
 Traigent tracks LLM API costs in real time and enforces budgets to prevent runaway spending.
 <!-- /PROTECTED -->
+
+### Cost Wiring Probe
+
+Before any full paid run, do a tiny real optimization after mock validation: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Verify `results.total_cost` is neither `None` nor `0.0` for real calls, and verify each trial's `metrics` contains the declared objectives with populated, non-degenerate values.
+
+If cost is missing for custom services or unknown models, use a LiteLLM-priced model id or `litellm.model_alias_map`, provide `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`, or return `total_cost`, `cost`, or `input_cost` plus `output_cost` in per-trial metrics. Use `TRAIGENT_STRICT_COST_ACCOUNTING=true` when unpriced models should fail loudly.
 
 ### Setting a Cost Limit
 

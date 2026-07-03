@@ -4,7 +4,7 @@ description: "Configure the @traigent.optimize() decorator with evaluation, inje
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Traigent Decorator Setup
@@ -56,6 +56,8 @@ def prompt_model(prompt: str, *, model: str = "gpt-4o-mini", temperature: float 
 ## Objectives
 
 Objectives tell Traigent what to optimize for. Pass them as a string list or as an `ObjectiveSchema` for weighted multi-objective optimization.
+
+**Objective naming rule:** Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
 ### String List (Simple)
 
@@ -277,6 +279,16 @@ def my_func(query: str) -> str:
 
 Where and how runs execute is controlled by two public knobs: `algorithm` and `offline`.
 See `references/execution-modes.md` for the full reference.
+
+### Tiny Real Cost and KPI Probe
+
+After mock/dry-run validation passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check `results.total_cost`: `None` means cost tracking is unavailable, and `0.0` with real calls means the model was unpriced even though the provider may still bill. Both mean cost is not wired.
+
+Also inspect each trial's `metrics`. The declared objectives, especially an `accuracy`-labeled primary KPI by default, must be populated with non-degenerate values rather than all `0.0` or all `1.0`.
+
+If custom services, self-hosted endpoints, or unknown model ids are not picked up, fix cost tracking in this order: use a LiteLLM-priced model id or `litellm.model_alias_map`; provide `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE` with JSON like `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; or return per-trial metrics containing `total_cost`, `cost`, or `input_cost` plus `output_cost`. Custom pricing accepts `input`/`output` aliases, normalizes provider prefixes like `openai/`, requires finite non-negative floats, and resolves after LiteLLM pricing and before the built-in fallback table. Use `TRAIGENT_STRICT_COST_ACCOUNTING=true` when unpriced models should fail loudly.
+
+> **NOTE:** Before any full run, verify with a tiny real optimization call that cost and your other KPIs are actually tracked (`results.total_cost` is not None/$0 and objective metrics are populated). If not, wire them (custom model pricing env vars, or return `total_cost` in metrics) before scaling up.
 
 > **Real LLM runs require cost approval.** A real (non-mock, non-offline) optimization is
 > blocked by a cost gate. Set `TRAIGENT_COST_APPROVED=true` to confirm (the verified path);

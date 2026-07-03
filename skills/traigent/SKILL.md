@@ -4,7 +4,7 @@ description: "Guide users through Traigent optimization: setup, dry-run validati
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.2"
+  version: "1.1.3"
 ---
 
 # Traigent: Dry-Run First, Real When Ready
@@ -42,6 +42,8 @@ Planned: a playbook artifact may eventually package this lifecycle; today, follo
 ## Step 1: Set Up the Decorator
 
 The user's function needs four things:
+
+> **Objective naming rule:** Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
 ```python
 import traigent
@@ -292,6 +294,25 @@ For a `custom_evaluator` / `BaseEvaluator`, call `.evaluate([good_example])` and
 > **If both assertions pass:** the metric wires correctly — proceed to Step 4.
 >
 > **If either fails:** fix the metric before spending tokens. Common causes: wrong field name in the result, inverted logic (`>` vs `<`), exception swallowed to `0.0`. See [traigent-build-evaluator](../traigent-build-evaluator/SKILL.md) for diagnostic steps. For LLM-judge metrics, see [traigent-evaluator-audit](../traigent-evaluator-audit/SKILL.md) for the full reliability protocol.
+
+## Step 3.6: Tiny Real Cost and KPI Probe
+
+After mock mode and the evaluator sanity gate pass, run one tiny **real** optimization before any full run: 1-2 dataset examples, minimal trials, and the cheapest candidate model. This is paid, but should cost pennies, and it proves the billing and objective plumbing before scaling up.
+
+Check both surfaces:
+
+- `results.total_cost` is `float | None`. `None` means cost tracking is unavailable. `0.0` with real calls means the model was unpriced, so the provider may bill while Traigent reports zero. Treat both as cost **not wired**.
+- Each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with real non-degenerate values. If all objective values are `0.0` or all are `1.0`, fix the evaluator/KPI wiring before the full run.
+
+If cost or other KPIs are not picked up for custom services, self-hosted endpoints, or unknown models, fix in this order:
+
+1. Use a model id LiteLLM can price, or map an alias with `litellm.model_alias_map`.
+2. Supply custom per-token pricing with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`. The JSON shape is `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; `input`/`output` aliases are accepted, provider prefixes like `openai/` are normalized, and values must be finite non-negative floats. Pricing resolves in this order: LiteLLM, custom pricing, built-in fallback table, then `UnknownModelError`.
+3. Report cost directly from the optimized function's per-trial metrics using `total_cost`, `cost`, or `input_cost` plus `output_cost`. This bypasses pricing tables and is the primary path for fully custom services.
+
+Set `TRAIGENT_STRICT_COST_ACCOUNTING=true` when an unpriced model should fail loudly instead of reporting zero.
+
+> **NOTE:** Before any full run, verify with a tiny real optimization call that cost and your other KPIs are actually tracked (`results.total_cost` is not None/$0 and objective metrics are populated). If not, wire them (custom model pricing env vars, or return `total_cost` in metrics) before scaling up.
 
 ## Step 4: Report and Estimate Costs
 
