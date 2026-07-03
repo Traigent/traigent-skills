@@ -1,0 +1,25 @@
+{
+  "name": "traigent",
+  "displayName": "Traigent Agent Optimization",
+  "description": "Improve LLM agents with Traigent: curate eval datasets, build and audit evaluators, run cost-aware prompt, model, and parameter optimizations, and analyze results.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Traigent",
+    "url": "https://traigent.ai"
+  },
+  "homepage": "https://github.com/Traigent/traigent-skills",
+  "repository": "https://github.com/Traigent/traigent-skills",
+  "license": "Apache-2.0",
+  "keywords": [
+    "traigent",
+    "agent-optimization",
+    "llm-optimization",
+    "llm-evaluation",
+    "evals",
+    "evaluator",
+    "dataset-curation",
+    "prompt-optimization",
+    "model-selection",
+    "cost-optimization"
+  ]
+}

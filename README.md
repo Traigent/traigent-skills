@@ -41,7 +41,28 @@ These skills guide your agent through the full Traigent optimization lifecycle, 
 
 ## Install
 
-### Via `npx skills` (recommended)
+### As a plugin (recommended — one step, stays in sync)
+
+This repo is a plugin marketplace for Claude Code, OpenAI Codex, and GitHub
+Copilot CLI. Installing the `traigent` plugin gives you all 22 skills at once,
+namespaced as `traigent:<skill-name>`, with updates delivered through your
+agent's normal plugin-update flow.
+
+```bash
+# Claude Code
+/plugin marketplace add Traigent/traigent-skills
+/plugin install traigent@traigent
+
+# OpenAI Codex
+codex plugin marketplace add https://github.com/Traigent/traigent-skills
+codex plugin add traigent@traigent
+
+# GitHub Copilot CLI
+copilot plugin marketplace add Traigent/traigent-skills
+copilot plugin install traigent@traigent
+```
+
+### Via `npx skills` (cross-agent, pick individual skills)
 
 ```bash
 # List available skills in this repo
