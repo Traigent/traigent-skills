@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.6"
+  version: "1.0.8"
 ---
 
 # Traigent Quickstart
@@ -132,7 +132,7 @@ Backend-connected features (the default cloud smart optimizer, dataset synthesis
 3. This issues a `user`-type key scoped to `experiments:read experiments:write` — sufficient for SDK optimizations and analytics.
 
 ```bash
-export TRAIGENT_API_KEY="sk_..."
+export TRAIGENT_API_KEY="uk_..."   # portal keys use the uk_ prefix
 ```
 
 ### CLI device-authorization key (project-scoped)
@@ -178,6 +178,7 @@ enable_mock_mode_for_quickstart()
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install traigent` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install 'traigent[integrations]'`.)
 - **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` (or run with no key). `enable_mock_mode_for_quickstart()` alone does **not** make a run local.
+- **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer).
 
 ### Legacy Env-Var Path
 
@@ -190,7 +191,7 @@ The previous quickstart docs taught `export TRAIGENT_MOCK_LLM=true`. That env va
 Traigent supports `.env` files via `python-dotenv` (included in the `integrations` extra). Create a `.env` file in your project root:
 
 ```
-TRAIGENT_API_KEY=sk_...
+TRAIGENT_API_KEY=uk_...   # portal key; use your sk_... key here if you used the CLI device flow
 OPENAI_API_KEY=sk-...
 TRAIGENT_DEBUG=1
 ```
@@ -374,6 +375,10 @@ async def main():
 
 asyncio.run(main())
 ```
+
+> **In a notebook (Jupyter/IPython/Colab)?** `asyncio.run()` raises
+> `RuntimeError: asyncio.run() cannot be called from a running event loop` there — the notebook
+> already runs one. Use `await main()` directly in a cell, or the synchronous alternative below.
 
 ### Synchronous Alternative
 

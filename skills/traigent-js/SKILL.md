@@ -4,7 +4,7 @@ description: "Set up and run native JavaScript/TypeScript optimization with @tra
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Traigent JS/TS SDK
@@ -86,9 +86,9 @@ answerQuestion.applyBestConfig(result);
 ## Runtime Rules
 
 - Native/local algorithms are `grid` and `random`.
-- Smart strategy names such as `bayesian`, `tpe`, `hyperband`, and `frontier_scout` are backend-routed surfaces, not native local search implementations — this skill does not claim they currently execute.
-- **Backend availability (verified server-side 2026-07-02):** the backend's **classic session-create path** — the one the Python decorator uses — executes only `grid`/`random` and rejects other algorithm names; `frontier_scout` is not recognized by the backend at all. A **separate typed/interactive backend session API** does support `optimization_strategy.algorithm="optuna"` with TPE/random/CMA-ES samplers. Whether the JS SDK's smart strategies (`bayesian`, `tpe`, `hyperband`) route to that typed path has **not been verified** — confirm live behavior against your backend before promising a smart strategy runs; do not present them as verified-working values.
-- TVL accepts `pareto_optimal` as a compatibility alias for `frontier_scout`.
+- Smart strategy names accepted by the JS SDK's algorithm contract are the `bayesian`/`optuna`/`tpe` family plus `cmaes`/`nsga2` variants (`SMART_OPTIMIZATION_ALGORITHMS` in `src/optimization/algorithm-contract.ts`). They are backend-routed surfaces, not native local search implementations — this skill does not claim they currently execute. **`hyperband` is not an accepted JS algorithm name, and `frontier_scout` is not an algorithm at all** — it is TVL selection-policy vocabulary (see below).
+- **Backend availability (verified server-side 2026-07-02):** the backend's **classic session-create path** — the one the Python decorator uses — executes only `grid`/`random` and rejects other algorithm names. A **separate typed/interactive backend session API** does support `optimization_strategy.algorithm="optuna"` with TPE/random/CMA-ES samplers. Whether the JS SDK's smart strategies route to that typed path has **not been verified** — confirm live behavior against your backend before promising a smart strategy runs; do not present them as verified-working values.
+- In TVL promotion/selection policy, `pareto_optimal` is accepted as a compatibility alias for `frontier_scout` — selection-policy vocabulary, not an `algorithm` value.
 - `evaluation.data` or `evaluation.loadData` is required for high-level native optimization.
 <!-- PROTECTED -->
 - `budget.maxCostUsd` is enforced from numeric `metrics.total_cost` or `metrics.cost`; provider billing remains the user's responsibility.
