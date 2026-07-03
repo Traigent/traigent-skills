@@ -4,7 +4,7 @@ description: "Set up and run native JavaScript/TypeScript optimization with @tra
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Traigent JS/TS SDK
@@ -51,7 +51,7 @@ const answerQuestion = optimize({
       { input: 'What is the capital of France?', output: 'Paris' },
     ],
     metrics: {
-      quality: (output, expectedOutput) => output === expectedOutput,
+      accuracy: (output, expectedOutput) => output === expectedOutput,
       cost: (_output, _expectedOutput, _runtimeMetrics, row) =>
         row.input.includes('capital') ? 0.2 : 0.1,
     },
@@ -77,7 +77,7 @@ answerQuestion.applyBestConfig(result);
 
 1. Install `@traigent/sdk` — build from source, see **Installation** above (not on public npm yet).
 2. Define `configurationSpace` with `param.enum`, `param.float`, `param.int`, or another exported parameter helper.
-3. Add `evaluation.data` or `evaluation.loadData`, plus metrics that score outputs.
+3. Add `evaluation.data` or `evaluation.loadData`, plus metrics that score outputs. Default to at least one metric named `accuracy`; if accuracy doesn't apply, name the primary quality KPI after the product concept and note why accuracy was skipped.
 4. Set `budget.maxCostUsd`, `timeoutMs`, and trial/example limits before running.
 5. Run `await wrapped.optimize(...)`.
 6. Inspect `result.bestConfig`, `result.bestMetrics`, trial details, stop reasons, and cost metrics.
@@ -92,6 +92,8 @@ answerQuestion.applyBestConfig(result);
 - `evaluation.data` or `evaluation.loadData` is required for high-level native optimization.
 <!-- PROTECTED -->
 - `budget.maxCostUsd` is enforced from numeric `metrics.total_cost` or `metrics.cost`; provider billing remains the user's responsibility.
+- The JS SDK has no pricing tables or pricing env vars. Cost exists only when the trial returns numeric `metrics.total_cost`, `metrics.cost`, or `metrics.input_cost` plus `metrics.output_cost`.
+- Before any full run, verify with a tiny real optimization that cost and your other KPIs are actually tracked: trial metrics must include numeric cost and populated objective metrics, with an `accuracy` metric by default unless accuracy does not apply. If not, return the cost metrics directly before scaling up. The probe is itself a paid run — the same dry-run-first / explicit-user-approval gate applies to it.
 <!-- /PROTECTED -->
 - Trial context is available during wrapped execution. Use `getTrialParam`, `getTrialConfig`, `TrialContext.run`, `isInTrial`, and `wrapCallback` rather than module-level globals.
 - JS supports `context`, `parameter`, and `seamless` injection modes. Use `context` unless the host app naturally accepts a config parameter or intentionally opts into seamless framework/rewrite support.
@@ -118,7 +120,7 @@ user's own LLM provider still happen if their agent makes them.
 | No evaluation data | Add `evaluation.data` or `evaluation.loadData`. |
 | Context missing in delayed callbacks | Use `wrapCallback` or run host-managed execution inside `TrialContext.run(...)`. |
 | Smart strategy expected to run locally | Use native `grid`/`random`. Backend routing helps only if the request reaches the backend's typed interactive session API — the classic session path serves only `grid`/`random`, and JS routing to the typed path is unverified (see Runtime Rules). |
-| Cost budget not enforced | Return numeric `metrics.total_cost` or `metrics.cost` for every trial. |
+| Cost budget not enforced | Return numeric `metrics.total_cost`, `metrics.cost`, or `metrics.input_cost` plus `metrics.output_cost` for every trial. |
 | Metric cannot be aggregated | Return numeric or boolean metrics with stable names. |
 
 ## Verification
@@ -130,7 +132,7 @@ npm test
 npm run typecheck
 ```
 
-If the project uses examples, prefer a small native optimization smoke with `algorithm: 'grid'`, low `maxTrials`, and a tiny in-memory evaluation dataset before any backend-routed run.
+If the project uses examples, prefer a small native optimization smoke with `algorithm: 'grid'`, low `maxTrials`, and a tiny in-memory evaluation dataset before any backend-routed or full paid run. Verify trial metrics include numeric cost and populated objective metrics before increasing the run size.
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

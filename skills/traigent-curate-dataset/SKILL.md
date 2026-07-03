@@ -4,7 +4,7 @@ description: "Create and improve a Traigent evaluation dataset / JSONL eval set.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Traigent Curate Dataset
@@ -153,11 +153,15 @@ growth_options = DatasetGrowthOptions(
     max_total_examples_added=12,
 )
 
+# `guidance_provider` and `weak_examples` are NOT defined here — they come
+# from your prior run: the service next-step payload (see `traigent-next-run`)
+# supplies the provider, and the flagged/weak example ids come from that
+# payload or your own analysis (see `traigent-reflect-hard-examples`).
 results = answer.optimize_with_guidance(
-    provider=guidance_provider,
+    provider=guidance_provider,      # from the traigent-next-run payload
     rewrite_llm=prompt_model,
     grow_dataset=growth_options,
-    weak_examples=weak_examples,
+    weak_examples=weak_examples,     # flagged example ids from the prior run
     max_trials=8,
 )
 ```

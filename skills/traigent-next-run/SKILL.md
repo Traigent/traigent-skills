@@ -4,7 +4,7 @@ description: "After every portal-tracked Traigent run, fetch the server-owned po
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.5"
+  version: "1.5.1"
 ---
 
 # Traigent Next Run Thin Client
@@ -34,7 +34,8 @@ The service response may include an optional top-level `posture` object:
 
 The skill is inert without the backend payload. If the command cannot fetch a
 service response, report that directly and stop unless the user asks you to
-retry.
+retry. Retry **at most once**; if the second attempt also fails, hand off to
+`traigent-iterate` for local diagnosis instead of retrying again.
 
 ## Boundary
 

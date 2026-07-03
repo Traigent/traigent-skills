@@ -4,7 +4,7 @@ description: "Diagnose offline/local Traigent optimization runs and local eviden
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.2.3"
+  version: "1.2.4"
 ---
 
 # Iterate After a Run
@@ -124,6 +124,8 @@ results = await answer.optimize_with_guidance(
 
 `optimize_with_guidance` is a method on the decorated optimized function. Keep the provider and rewrite settings project-specific, and confirm the new candidate still improves on a heldout slice.
 
+This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent` lifecycle skill).
+
 ## One Iteration = One Hypothesis
 
 Change one thing per round. Good iteration statements look like:
@@ -141,6 +143,12 @@ For each round:
 5. Keep a tiny iteration log.
 
 Use `references/iteration-log-template.md` as the 10-line per-iteration log.
+
+**Stop condition (mandatory):** stop iterating and report to the user when any
+of these hold — two consecutive rounds with no heldout improvement, the cost
+budget or sample quota is exhausted, or the user's goal is met. Never start
+another paid round after a stop condition fires without the user's explicit
+go-ahead. Iteration is a loop with an exit, not a background process.
 
 ## Claim Scope
 

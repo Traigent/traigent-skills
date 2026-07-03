@@ -4,7 +4,7 @@ description: "Fetch the Traigent service run-plan before every optimization run,
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.1"
+  version: "1.1.1"
 ---
 
 # Traigent Run Plan Thin Client
@@ -71,7 +71,8 @@ Do not embed local planning intelligence in this skill:
    agent, dataset loader, scorer, and returned steps are wired.
 8. Stop after the mock with a short readout: what executed, what did not execute,
    estimated cost if available, and the exact real-run command or SDK step that
-   will run next.
+   will run next. **If the mock fails** (agent, loader, or scorer unwired), do
+   NOT present the real-run go prompt — fix the wiring first and re-mock.
 9. Launch the real run only when the user explicitly says to go and the returned
    plan's cost cap is set. Execute the returned `steps[]`; do not substitute a
    locally generated run sequence.
@@ -89,7 +90,9 @@ Do not embed local planning intelligence in this skill:
   task, do not patch it locally. Re-query with corrected context or stop.
 - If prior runs exist, call `traigent-next-run` first and pass its server
   recommendations into the plan request as context. The next-step decision still
-  comes from the service.
+  comes from the service. Call it **at most once per planning cycle** — if you
+  arrived here *from* `traigent-next-run`, do not call it again; proceed to
+  step 1 with its payload as context.
 - Keep content local unless the user approves egress. Summaries sent to the
   service should be minimal and should not include raw private examples by
   default.

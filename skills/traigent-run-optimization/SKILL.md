@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Running Traigent Optimization
@@ -19,6 +19,10 @@ Use this skill after you have decorated a function with `@traigent.optimize()` a
 - Configure parallel trial execution
 - Handle cost limit exceptions
 - Interpret stop reasons and results
+
+## Objective Naming Rule
+
+Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
 ## Async Execution
 
@@ -160,6 +164,12 @@ Results sync to the portal for every non-offline run, including `grid` and `rand
 
 Traigent tracks LLM API costs in real time and enforces budgets to prevent runaway spending.
 <!-- /PROTECTED -->
+
+### Cost Wiring Probe
+
+Before any full paid run, do a tiny real optimization after mock validation: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Verify `results.total_cost` is neither `None` nor `0.0` for real calls, and verify each trial's `metrics` contains the declared objectives with populated, non-degenerate values.
+
+If cost is missing for custom services or unknown models, use a LiteLLM-priced model id or `litellm.model_alias_map`, provide `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`, or return `total_cost`, `cost`, or `input_cost` plus `output_cost` in per-trial metrics. Use `TRAIGENT_STRICT_COST_ACCOUNTING=true` when unpriced models should fail loudly.
 
 ### Setting a Cost Limit
 
@@ -382,7 +392,7 @@ End-to-end optimization from import to results:
 import traigent
 from traigent.api.decorators import EvaluationOptions, ExecutionOptions
 from traigent.config.parallel import ParallelConfig
-from traigent.utils.exceptions import CostLimitExceeded
+from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 from traigent.utils.results_table import print_results_table
 
 def exact_match(output: str, expected: str) -> float:
@@ -417,14 +427,27 @@ def answer_question(question: str) -> str:
     return resp.choices[0].message.content
 
 async def main():
+    # All three cost/failure surfaces from "Handling Cost Limit Exceptions" above.
     try:
         results = await answer_question.optimize(
             max_trials=6,
             algorithm="grid",
             timeout=300.0,
         )
-    except CostLimitExceeded as e:
+    except CostLimitExceeded as e:  # kept for forward-compat; not raised today
         print(f"Budget exceeded: ${e.accumulated:.2f} / ${e.limit:.2f}")
+        return
+    except OptimizationError as e:  # pre-run "estimate > limit" decline, and run errors
+        print(f"Run declined or failed: {e}")
+        return
+
+    if results.stop_reason == "cost_limit":
+        print("Budget reached mid-run; results below are partial.")
+
+    if results.best_score is None:
+        # No successful trials — do NOT apply anything; report and stop.
+        print(f"No trial succeeded (stop reason: {results.stop_reason}). "
+              "Inspect the failed trials before spending more.")
         return
 
     print_results_table(
@@ -437,7 +460,10 @@ async def main():
     print(f"Best score:  {results.best_score}")
     print(f"Stop reason: {results.stop_reason}")
     print(f"Duration:    {results.duration:.1f}s")
-    print(f"Total cost:  ${results.total_cost:.2f}" if results.total_cost else "")
+    if results.total_cost:
+        print(f"Total cost:  ${results.total_cost:.2f}")
+    else:
+        print("Total cost:  NOT TRACKED — wire cost before the next run (see Cost Wiring Probe)")
 
     # Apply and use in production
     answer_question.apply_best_config(results)

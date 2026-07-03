@@ -4,7 +4,7 @@ description: "End-to-end 12-step lifecycle playbook for adding Traigent to an ex
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.0.2"
+  version: "2.0.3"
 ---
 
 # Traigent Boost Agent
@@ -45,6 +45,7 @@ For detailed grep patterns and evidence-mining heuristics, read `references/code
 3. CHOOSE the metric.
    - Decide what "good" means before writing optimizer code: task success, correctness, cost, latency, safety, reliability, or a measured combination.
    - Prefer built-in objective names when they match the product decision; use custom metric functions only when domain logic is checkable and necessary.
+   - Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept and note why accuracy was skipped.
    - Treat must-not-violate behavior as a safety constraint or promotion gate, not as an ordinary objective to trade away.
    - DELEGATE: `traigent-choose-metric` owns the metric interview and objective vocabulary.
 
@@ -134,7 +135,7 @@ CONFIGURATION_SPACE = {
 9. OPTIMIZE for real only with cost limits and explicit approval.
    - Cross-reference `traigent-run-optimization` for `func.optimize()`, `optimize_sync()`, algorithms, `max_trials`, parallelism, and `CostLimitExceeded`.
    - Set an explicit `TRAIGENT_RUN_COST_LIMIT` and verify provider keys before the real run. If a Traigent backend is used, set `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL` as appropriate for the client environment. See [Getting your Traigent API key](../traigent-quickstart/SKILL.md#get-your-traigent-api-key) if you have not yet obtained `TRAIGENT_API_KEY`.
-   - Present a cost estimate and get the user's explicit approval before any paid run.
+   - Present a cost estimate and get the user's explicit approval before any paid run. The approval signal depends on context: interactive real runs are gated by `TRAIGENT_COST_APPROVED=true` (set only after the user approves the estimate); CI/offline runs (including mock wiring checks under `CI=true`) require `TRAIGENT_RUN_APPROVED=1` instead — see `traigent-ci-safety-gate`.
    - Start with a bounded trial budget, keep the current production baseline in the search space, and save results artifacts for audit.
    - DELEGATE: `traigent-run-optimization` owns algorithms, budgets, and execution controls.
 

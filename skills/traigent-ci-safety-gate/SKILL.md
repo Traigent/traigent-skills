@@ -4,7 +4,7 @@ description: "Add Traigent safety and promotion gates to CI. Use when users ask 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # CI Safety Gate
@@ -124,8 +124,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python -m traigent.tvl tvl/ --strict
-      - run: python scripts/run_holdout_eval.py --config configs/baseline.json --output .gate/incumbent.json
-      - run: python scripts/run_holdout_eval.py --config configs/candidate.json --output .gate/candidate.json
+      - run: python scripts/run_holdout_eval.py --mode mock --config configs/baseline.json --output .gate/incumbent.json
+      - run: python scripts/run_holdout_eval.py --mode mock --config configs/candidate.json --output .gate/candidate.json
       - run: python scripts/traigent_gate.py --incumbent .gate/incumbent.json --candidate .gate/candidate.json --max-cost 0.01 --max-latency-ms 1200
 ```
 

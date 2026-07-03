@@ -251,6 +251,9 @@ def main() -> int:
             print("ERROR: TRAIGENT_API_KEY not set (.env).")
             return 2
         os.environ["TRAIGENT_RUN_COST_LIMIT"] = str(args.budget)
+        # --real IS the user's approval: the human chose the flag and the budget.
+        # An agent must never invoke --real on the user's behalf without first
+        # showing the permutation count + budget and getting an explicit go.
         os.environ["TRAIGENT_COST_APPROVED"] = "true"
         os.environ["TRAIGENT_OFFLINE_MODE"] = "false"
         # offline=False -> online/cloud, portal-tracked. "bayesian"/"tpe"/"optuna"
