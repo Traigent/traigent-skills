@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.7"
+  version: "1.0.8"
 ---
 
 # Traigent Quickstart
@@ -375,6 +375,10 @@ async def main():
 
 asyncio.run(main())
 ```
+
+> **In a notebook (Jupyter/IPython/Colab)?** `asyncio.run()` raises
+> `RuntimeError: asyncio.run() cannot be called from a running event loop` there — the notebook
+> already runs one. Use `await main()` directly in a cell, or the synchronous alternative below.
 
 ### Synchronous Alternative
 
