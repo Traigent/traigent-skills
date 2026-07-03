@@ -4,7 +4,7 @@ description: "Build Traigent evaluators and scoring code. Use when wiring eval_d
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Traigent Build Evaluator
@@ -16,6 +16,7 @@ Use this skill after the metric is chosen and the user needs concrete evaluator 
 - For metric selection first, use `traigent-choose-metric`.
 - Mock/offline check before paid runs with `TRAIGENT_OFFLINE_MODE`, `enable_mock_mode_for_quickstart()`, and a tiny local dataset.
 - Ask for explicit approval and set `TRAIGENT_RUN_COST_LIMIT` before any evaluator calls paid LLMs or backend services.
+- Disjointness invariant: any slice used to tune a threshold, rubric, or metric must be disjoint from the holdout used to claim the result (see `traigent-evaluator-audit`). The example dataset paths below stand for your *tuning* slice.
 - For full templates by method, read `references/evaluator-templates.md`.
 
 ## Wire-first decision ladder
