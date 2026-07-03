@@ -1,6 +1,6 @@
 ---
 name: traigent-quickstart
-description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, API-key setup, mock mode, and running a first optimization."
+description: "Install, set up, and get first value from the Traigent SDK for LLM optimization. The cold-start path: use when the user is new to traigent, wants their first run, has no dataset yet, or wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, API-key setup, mock mode, a linear first-value walkthrough, and running a first optimization."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -19,6 +19,50 @@ Use this skill when:
 - Building an evaluation dataset in JSONL format
 - Verifying that the installation works correctly
 - Running optimization in mock mode for development
+
+## Cold Start — First Value, One Step at a Time
+
+**When there's no prior run to look at**, do not open with menus, methodology, or the
+advanced sections below. Detect cold start — the user is new to Traigent, has never
+viewed a run, and has no dataset or decorated function ready — and walk them to their
+**first visible result** one action at a time: one question or one command, wait, then
+the next. Never dump the whole pipeline at once.
+
+The linear path:
+
+1. **Find the agent to optimize.** Ask for (or detect from the project) the one function
+   that calls an LLM. Just that — don't discuss knobs yet.
+2. **Find or make the dataset.** If they already have labeled examples, hand off to
+   `traigent-curate-dataset` for the one canonical dataset contract. If they have
+   **nothing** ready, use the bundled fallback below — no dataset needed to see value.
+3. **Mock dry-run first.** Always run keyless mock mode before anything paid (the "Your
+   First Optimization" example below is exactly this). Show the ranked table so they see
+   the loop work at zero cost and zero egress.
+4. **Confirm the real run explicitly.** A real (paid) run happens only after the user
+   sees the mock result and says go — and after the cost-gate approval. Never jump from
+   mock straight to spend.
+5. **View it in the portal.** Once a real run launches, watch the run start, watch the
+   rows appear on the portal, and have the user open and inspect the run.
+
+**Where the plan comes from — honesty rule.** When it's time to decide *what* to tune,
+ask the Traigent **service** for the run plan via the `traigent-run-plan` skill (its
+`traigent plan` CLI / `get_optimization_plan` MCP tool). Present the **one** plan the
+service returns — not a menu you invented. There is **no onboarding/phase parameter** in
+the SDK or CLI today, so don't pass one or imply the client picks a phase. If the service
+can't return a plan, say so plainly and fall back to a **generic, conservative knob
+family** — `model` + `temperature` only, explicitly labeled as a generic fallback. Never
+encode task-specific ordering (scout/pivot/routing) in these docs; the service owns that.
+Tasks like text2SQL, RAG, classification, and extraction may be *named* as things the
+service plans for — but the plan logic stays server-side.
+
+**No agent or dataset yet?** Start from `references/first-value-fallback.md` — a complete
+mock-first first-value path that needs neither, then gates any real-provider spend behind
+explicit approval and a `cost_limit` cap.
+
+Once the user has seen a first result, hand off to the lifecycle skills rather than
+duplicating them here: `traigent-curate-dataset` (real data), `traigent-decorator-setup`
+(a real decorator), and `traigent-next-run` (what to do after a run). Do **not** surface
+advanced playbooks during cold start.
 
 ## Installation
 

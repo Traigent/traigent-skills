@@ -61,6 +61,19 @@ REMOVED_EXECUTION_VOCABULARY = {
 }
 
 
+RELEASE_GATED_FEATURES = {
+    "buildGuaranteedSelectionRequest": (
+        "guaranteed-selection epic exists, but no release posture is approved"
+    ),
+    "GuaranteedSelectionRequest": (
+        "guaranteed-selection epic exists, but no release posture is approved"
+    ),
+    "guaranteed selection": (
+        "guaranteed-selection epic exists, but no release posture is approved"
+    ),
+}
+
+
 def test_skills_do_not_reintroduce_removed_execution_vocabulary(
     repo_root: Path,
 ) -> None:
@@ -77,6 +90,24 @@ def test_skills_do_not_reintroduce_removed_execution_vocabulary(
     assert not violations, "\n".join(violations)
 
 
+def test_skills_do_not_teach_release_gated_features(repo_root: Path) -> None:
+    """Teach release-gated features only via the release PR that removes the entry."""
+    violations: list[str] = []
+    for path in sorted((repo_root / "skills").glob("**/*.md")):
+        text = path.read_text(encoding="utf-8")
+        rel = path.relative_to(repo_root).as_posix()
+        for feature, reason in RELEASE_GATED_FEATURES.items():
+            pattern = _release_gated_pattern(feature)
+            for match in pattern.finditer(text):
+                line = text.count("\n", 0, match.start()) + 1
+                violations.append(
+                    f"{rel}:{line}: {feature!r} is a release-gated feature; "
+                    f"see the guard's docstring: teach only via the release PR "
+                    f"that removes this entry ({reason})"
+                )
+    assert not violations, "\n".join(violations)
+
+
 def _section(text: str, heading: str) -> str:
     lines = text.splitlines()
     try:
@@ -89,3 +120,16 @@ def _section(text: str, heading: str) -> str:
             break
         collected.append(line)
     return "\n".join(collected)
+
+
+def _release_gated_pattern(feature: str) -> re.Pattern[str]:
+    if feature == "guaranteed selection":
+        return re.compile(r"guaranteed[-_\s]+selection", re.IGNORECASE)
+    if feature in {"GuaranteedSelectionRequest", "buildGuaranteedSelectionRequest"}:
+        return re.compile(rf"\b{re.escape(feature)}\w*")
+
+    escaped = re.escape(feature)
+    if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", feature):
+        escaped = rf"\b{escaped}\b"
+        return re.compile(escaped)
+    return re.compile(escaped, re.IGNORECASE)
