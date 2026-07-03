@@ -4,7 +4,7 @@ description: "Create and improve a Traigent evaluation dataset / JSONL eval set.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Traigent Curate Dataset
@@ -216,7 +216,7 @@ async def compute_example_scores(run_id: str) -> dict:
     # at module scope, which yields un-subscriptable coroutine objects).
     async with ExampleInsightsClient(
         backend_url="https://traigent.example",
-        api_key="trg_...",
+        api_key="uk_...",
     ) as client:
         job = await client.compute_scores(run_id)
         status = await client.get_job_status(job["job_id"])

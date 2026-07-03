@@ -141,7 +141,7 @@ Only after the user has seen the mock result and explicitly approved spend. A re
 
 ```bash
 export TRAIGENT_API_KEY="uk_..."                        # portal-issued key
-export TRAIGENT_BACKEND_URL="https://api.traigent.ai"   # cloud or dev endpoint
+export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"   # optional: cloud is already the default
 export OPENAI_API_KEY="sk-..."                          # the provider this project uses
 export TRAIGENT_COST_APPROVED=true                      # explicit spend approval
 ```
