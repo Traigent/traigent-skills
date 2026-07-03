@@ -8,7 +8,9 @@ name: Backend Route Snapshot Drift
 # changes every run and is not drift).
 #
 # Requires a repo secret BACKEND_REPO_TOKEN with read access to Traigent/TraigentBackend.
-# Until that secret is set, the job skips cleanly (no failure, no issue).
+# A missing/expired secret fails the run loudly (matching snapshot-refresh.yml):
+# a silent skip here means zero drift detection with no signal, and taught
+# endpoints could false-green against stale routes indefinitely.
 
 on:
   schedule:
@@ -38,11 +40,10 @@ jobs:
           BACKEND_REPO_TOKEN: ${{ secrets.BACKEND_REPO_TOKEN }}
         run: |
           if [ -z "${BACKEND_REPO_TOKEN:-}" ]; then
-            echo "BACKEND_REPO_TOKEN not set - skipping snapshot drift check."
-            echo "armed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "armed=true" >> "$GITHUB_OUTPUT"
+            echo "::error::BACKEND_REPO_TOKEN not set - snapshot drift check cannot run. Without it, removed backend routes can false-green against the stale snapshot with no signal."
+            exit 1
           fi
+          echo "armed=true" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
         if: steps.guard.outputs.armed == 'true'

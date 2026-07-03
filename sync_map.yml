@@ -64,8 +64,6 @@ skills:
     docs:
       - docs/user-guide/injection_modes.md
       - docs/features/safety-gates.md
-    backend_prefixes:
-      - /api/v1/hybrid/optimizer
 
   traigent-run-optimization:
     modules:
@@ -119,6 +117,8 @@ skills:
 
   traigent-boost-agent:
     min_sdk_version: "0.15.0"
+    backend_prefixes:
+      - /api/v1/analytics/runs
     modules:
       - traigent.config_generator.recommendations
       - traigent.api.decorators
@@ -155,6 +155,7 @@ skills:
     backend_prefixes:
       - /api/v1/datasets
       - /api/v1/analytics/example-scoring
+      - /api/v1/analytics/runs
     modules:
       - traigent.generation
       - traigent.analytics
@@ -198,6 +199,7 @@ skills:
       - /api/v1/experiment-runs
       - /api/v1/optimization-comparisons
       - /api/v1/analytics/example-scoring
+      - /api/v1/analytics/runs
     modules:
       - traigent.utils.insights
       - traigent.utils.importance
