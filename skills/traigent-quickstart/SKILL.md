@@ -1,10 +1,10 @@
 ---
 name: traigent-quickstart
-description: "Install and set up the Traigent SDK for LLM optimization. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, API-key setup, mock mode, and running a first optimization."
+description: "Install, set up, and get first value from the Traigent SDK for LLM optimization. The cold-start path: use when the user is new to traigent, wants their first run, has no dataset yet, or wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, API-key setup, mock mode, a linear first-value walkthrough, and running a first optimization."
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.6"
 ---
 
 # Traigent Quickstart
@@ -19,6 +19,50 @@ Use this skill when:
 - Building an evaluation dataset in JSONL format
 - Verifying that the installation works correctly
 - Running optimization in mock mode for development
+
+## Cold Start — First Value, One Step at a Time
+
+**When there's no prior run to look at**, do not open with menus, methodology, or the
+advanced sections below. Detect cold start — the user is new to Traigent, has never
+viewed a run, and has no dataset or decorated function ready — and walk them to their
+**first visible result** one action at a time: one question or one command, wait, then
+the next. Never dump the whole pipeline at once.
+
+The linear path:
+
+1. **Find the agent to optimize.** Ask for (or detect from the project) the one function
+   that calls an LLM. Just that — don't discuss knobs yet.
+2. **Find or make the dataset.** If they already have labeled examples, hand off to
+   `traigent-curate-dataset` for the one canonical dataset contract. If they have
+   **nothing** ready, use the bundled fallback below — no dataset needed to see value.
+3. **Mock dry-run first.** Always run keyless mock mode before anything paid (the "Your
+   First Optimization" example below is exactly this). Show the ranked table so they see
+   the loop work at zero cost and zero egress.
+4. **Confirm the real run explicitly.** A real (paid) run happens only after the user
+   sees the mock result and says go — and after the cost-gate approval. Never jump from
+   mock straight to spend.
+5. **View it in the portal.** Once a real run launches, watch the run start, watch the
+   rows appear on the portal, and have the user open and inspect the run.
+
+**Where the plan comes from — honesty rule.** When it's time to decide *what* to tune,
+ask the Traigent **service** for the run plan via the `traigent-run-plan` skill (its
+`traigent plan` CLI / `get_optimization_plan` MCP tool). Present the **one** plan the
+service returns — not a menu you invented. There is **no onboarding/phase parameter** in
+the SDK or CLI today, so don't pass one or imply the client picks a phase. If the service
+can't return a plan, say so plainly and fall back to a **generic, conservative knob
+family** — `model` + `temperature` only, explicitly labeled as a generic fallback. Never
+encode task-specific ordering (scout/pivot/routing) in these docs; the service owns that.
+Tasks like text2SQL, RAG, classification, and extraction may be *named* as things the
+service plans for — but the plan logic stays server-side.
+
+**No agent or dataset yet?** Start from `references/first-value-fallback.md` — a complete
+mock-first first-value path that needs neither, then gates any real-provider spend behind
+explicit approval and a `cost_limit` cap.
+
+Once the user has seen a first result, hand off to the lifecycle skills rather than
+duplicating them here: `traigent-curate-dataset` (real data), `traigent-decorator-setup`
+(a real decorator), and `traigent-next-run` (what to do after a run). Do **not** surface
+advanced playbooks during cold start.
 
 ## Installation
 
@@ -104,6 +148,17 @@ export TRAIGENT_API_KEY="sk_..."
 **Which key to use?** The portal experiments-scoped key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
 For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero egress is required.
+
+> **Prereq for real (non-offline) runs: set `TRAIGENT_API_KEY`, and set `TRAIGENT_BACKEND_URL` explicitly for dev/cloud to avoid the localhost fallback.**
+> The SDK and CLI default to `http://localhost:5000`; omitting `TRAIGENT_BACKEND_URL` causes a
+> connection-refused error on any non-offline `.optimize()` call or `traigent` CLI command.
+> The `traigent next-steps` CLI also accepts `--backend-url` as a flag to override the env var.
+> Portal-issued API keys use the `uk_...` prefix.
+>
+> ```bash
+> export TRAIGENT_API_KEY="uk_..."                           # portal-issued key
+> export TRAIGENT_BACKEND_URL="https://api.traigent.ai"     # cloud or dev endpoint
+> ```
 
 ## Environment Setup
 
@@ -206,6 +261,25 @@ See `references/environment-variables.md` for all available environment variable
 ## Your First Optimization
 
 > **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+>
+> **Real LLM runs require cost approval.** A real (non-mock) optimization is blocked by a cost
+> gate. To confirm you accept the cost, set `TRAIGENT_COST_APPROVED=true` in the environment
+> (the verified path); some SDK versions also accept `cost_approved=True` in the
+> `@traigent.optimize()` decorator. The SDK prints an estimate
+> before any trial executes; the estimate may be high (fallback pricing is conservative), but the
+> gate is a safety confirmation — nothing runs until you approve.
+
+### Tiny Real Cost and KPI Probe
+
+After the mock dry-run passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check `results.total_cost` and trial metrics before scaling up.
+
+`results.total_cost` is `float | None`: `None` means cost tracking is unavailable, and `0.0` with real calls means the model was unpriced. Both mean cost is not wired. Also verify that each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with non-degenerate values rather than all `0.0` or all `1.0`.
+
+If custom services, self-hosted endpoints, or unknown model ids are not picked up, fix cost tracking in this order: use a LiteLLM-priced model id or `litellm.model_alias_map`; provide `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE` with JSON like `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; or return per-trial metrics containing `total_cost`, `cost`, or `input_cost` plus `output_cost`. Custom pricing accepts `input`/`output` aliases, normalizes provider prefixes like `openai/`, requires finite non-negative floats, and resolves after LiteLLM pricing and before the built-in fallback table. Use `TRAIGENT_STRICT_COST_ACCOUNTING=true` when unpriced models should fail loudly.
+
+> **NOTE:** Before any full run, verify with a tiny real optimization call that cost and your other KPIs are actually tracked (`results.total_cost` is not None/$0 and objective metrics are populated). If not, wire them (custom model pricing env vars, or return `total_cost` in metrics) before scaling up.
+
+> **Objective naming rule:** Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
 Here is a complete working example. This function classifies customer queries using an LLM, and Traigent will find the best model and temperature combination.
 
@@ -309,6 +383,22 @@ If you prefer synchronous execution:
 results = classify_query.optimize_sync(max_trials=6)  # uses the offline random dry-run settings above
 ```
 
+> **`expected` is a scoring label — do not put it in your agent function's signature.**
+> The evaluator calls your function with the example's *input* fields only (plus any
+> config-injected params). It then passes the function's *output* and the dataset's
+> `expected` / `output` field to your `scoring_function` or `metric_functions`. A
+> function that declares `expected` as a parameter will fail every trial with
+> `TypeError: missing required argument: 'expected'`.
+>
+> ```python
+> # WRONG — fails every trial
+> def classify_query(query: str, expected: str) -> str: ...
+>
+> # CORRECT — function takes input fields only; scorer receives (output, expected)
+> def classify_query(query: str) -> str: ...
+> def score(output: str, expected: str) -> float: ...
+> ```
+
 ### Key Concepts
 
 1. **`@traigent.optimize(...)`** -- Decorator that wraps your function for optimization. Define what parameters to tune in the decorator arguments.
@@ -316,7 +406,7 @@ results = classify_query.optimize_sync(max_trials=6)  # uses the offline random 
 3. **`func.optimize(max_trials=N)`** -- Run the optimization loop asynchronously. Returns an `OptimizationResult`.
 4. **`func.apply_best_config(results)`** -- Lock in the best configuration found so that subsequent calls use it.
 
-> **You've run your first optimization — now make it robust.** The decorator above is intentionally a *local dry-run* recipe: a small `model` + `temperature` space, `algorithm="random"`, and `offline=True`. For a real optimization, graduate to the more robust **`traigent-decorator-setup`** skill — custom evaluators / `metric_functions`, injection mode, execution policy, and weighted objectives — then launch with **`traigent-run-optimization`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`bayesian`/`optuna` for large search spaces), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
+> **You've run your first optimization — now make it robust.** The decorator above is intentionally a *local dry-run* recipe: a small `model` + `temperature` space, `algorithm="random"`, and `offline=True`. For a real optimization, graduate to the more robust **`traigent-decorator-setup`** skill — custom evaluators / `metric_functions`, injection mode, execution policy, and weighted objectives — then launch with **`traigent-run-optimization`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`"grid"`/`"random"` today — named smart algorithms like `bayesian`/`optuna` are roadmap, not yet executable), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
 
 ## Dataset Format
 
@@ -401,7 +491,7 @@ traigent onboard         # guided first-run setup wizard
 - **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
 - **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-run-optimization` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-configuration-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
-- **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options. `"grid"` and `"random"` run locally; `"bayesian"` and `"optuna"` require a Traigent cloud connection.
+- **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options. `"grid"` and `"random"` run locally today; `"bayesian"` and `"optuna"` validate as known names but are not yet executable, locally or in the Traigent cloud.
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.
 - **Use framework integrations** -- Install `traigent[integrations]` for LangChain, OpenAI, and Anthropic adapters.
 - **Verify model IDs before a real run** -- Catalogs change; run `traigent models --provider <p> --check <id>` (or query the provider's live catalog) so a delisted/renamed ID doesn't cause a 404 or a degraded, unpriced trial. See `traigent-integrations`.
@@ -409,3 +499,45 @@ traigent onboard         # guided first-run setup wizard
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

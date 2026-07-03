@@ -4,7 +4,7 @@ description: "Add Traigent safety and promotion gates to CI. Use when users ask 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # CI Safety Gate
@@ -23,73 +23,16 @@ Use this skill when the user asks:
 The gate should fail closed: missing metrics, NaN metrics, parse failures, rejected promotion decisions, and budget breaches should stop promotion.
 <!-- /PROTECTED -->
 
-## In-Run Safety Constraints
+## In-Run Safety Constraints (Not Yet Available)
 
-Use `safety_constraints=[...]` on `@traigent.optimize` to filter unsafe trial results during optimization. `SafetyConstraint` and `CompoundSafetyConstraint` are callable as `constraint(config, metrics) -> bool`; a failed threshold returns `False`. NaN scores fail closed, and missing metric keys should use a failing default.
+`safety_constraints=[...]` on `@traigent.optimize` is planned to filter unsafe trial results during optimization, but the installed SDK does not implement it yet. Passing any non-empty value raises `NotImplementedError` **at decoration time** (verified against SDK 0.18.x): *"safety_constraints are not yet implemented. Statistical chance-constraints are on the roadmap — track progress at https://github.com/Traigent/traigent-smartopt/issues/26"*. The `SafetyConstraint`, `CompoundSafetyConstraint`, `MetricKeyMetric`, `CallableMetric`, and `SafetyThreshold` classes exist and import cleanly, but do not pass any of them via `safety_constraints=` today.
 
-```python
-import litellm
-import traigent
-from traigent.api.safety import (
-    CallableMetric,
-    CompoundSafetyConstraint,
-    MetricKeyMetric,
-    SafetyConstraint,
-    SafetyThreshold,
-)
+Do not teach a `safety_constraints=[...]` code sample as runnable. For gating today, use the two mechanisms this skill already covers that ARE implemented:
 
-def prompt_model(prompt: str, *, model: str) -> str:
-    response = litellm.completion(
-        model=model,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return response.choices[0].message.content or ""
+- **`PromotionGate`** (below) to statistically compare a candidate config against the incumbent before promoting it.
+- **TVL spec validation** (`python -m traigent.tvl ... --strict`) to enforce configuration-space and objective constraints ahead of a run.
 
-quality_gate = SafetyConstraint(
-    metric=MetricKeyMetric(
-        name="quality_score",
-        metric_key="quality_score",
-        default=0.0,
-    ),
-    threshold=SafetyThreshold(
-        metric_name="quality_score",
-        operator=">=",
-        value=0.85,
-    ),
-)
-
-def latency_within_budget(config, metrics):
-    latency_ms = metrics.get("latency_ms")
-    return 1.0 if isinstance(latency_ms, (int, float)) and latency_ms <= 1200 else 0.0
-
-latency_gate = SafetyConstraint(
-    metric=CallableMetric(
-        name="latency_budget",
-        evaluator=latency_within_budget,
-    ),
-    threshold=SafetyThreshold(
-        metric_name="latency_budget",
-        operator=">=",
-        value=1.0,
-    ),
-)
-
-hard_gate = CompoundSafetyConstraint(
-    constraints=[quality_gate, latency_gate],
-    combinator="and",
-)
-
-@traigent.optimize(
-    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
-    objectives=["quality_score"],
-    safety_constraints=[hard_gate],
-)
-def answer(question: str) -> str:
-    config = traigent.get_config()
-    return prompt_model(question, model=config["model"])
-```
-
-Keep safety metrics simple, explicit, and reviewable. Complex semantic safety should still have a deterministic shell: schema validity, refusal policy, citation checks, cost caps, and latency caps.
+Keep safety semantics simple, explicit, and reviewable regardless of mechanism: schema validity, refusal policy, citation checks, cost caps, and latency caps.
 
 ## Promotion Gate
 
@@ -126,12 +69,33 @@ Validate TVL specs in CI before running the gate:
 python -m traigent.tvl path/to/promotion-gate.tvl --strict
 ```
 
+## Applying the Winning Config
+
+This skill covers the gate in the export -> gate -> apply flow. For the full
+end-to-end flow, see `traigent` section "4. Export a candidate, gate, then
+apply". Keep promotion staged: export the winning config as a candidate, run the
+holdout/promotion gate, then apply only after the gate passes and the user
+approves.
+
+```python
+# Export the winning config as a CANDIDATE artifact for review/gating
+my_function.export_config("candidate_config.json")
+
+# After the holdout/promotion gate passes and the user approves:
+my_function.apply_best_config(results)
+answer = my_function("What is Python?")
+```
+
 ## The Two CI Checks
 
 SAFETY: run a holdout regression check against a pinned baseline config.
 
 - Pull request job: run offline/mock under `TRAIGENT_OFFLINE_MODE=true` to verify wiring, script shape, and fail-closed behavior without spending.
 - Scheduled job: run the real holdout evaluation under `TRAIGENT_RUN_COST_LIMIT` with account credentials and compare candidate vs incumbent.
+
+Any CI workflow that executes `optimize()` or `optimize_sync()` in local/offline mode, including
+mock/offline wiring checks, must set `TRAIGENT_RUN_APPROVED=1`. This is the SDK's explicit
+approval signal for approved CI runs, not a bypass; cloud-mode runs are unaffected.
 
 EFFICIENCY: assert `results.total_cost` and latency metrics remain within budget. Fail the job on cost breach, latency breach, rejected promotion, missing metrics, parse failures, or safety regression.
 
@@ -152,6 +116,7 @@ jobs:
     env:
       TRAIGENT_RUN_COST_LIMIT: "0.00"
       TRAIGENT_OFFLINE_MODE: "true"
+      TRAIGENT_RUN_APPROVED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -159,8 +124,8 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.txt
       - run: python -m traigent.tvl tvl/ --strict
-      - run: python scripts/run_holdout_eval.py --config configs/baseline.json --output .gate/incumbent.json
-      - run: python scripts/run_holdout_eval.py --config configs/candidate.json --output .gate/candidate.json
+      - run: python scripts/run_holdout_eval.py --mode mock --config configs/baseline.json --output .gate/incumbent.json
+      - run: python scripts/run_holdout_eval.py --mode mock --config configs/candidate.json --output .gate/candidate.json
       - run: python scripts/traigent_gate.py --incumbent .gate/incumbent.json --candidate .gate/candidate.json --max-cost 0.01 --max-latency-ms 1200
 ```
 
@@ -181,3 +146,45 @@ Gate decisions are statistical decisions on the measured evaluation dataset and 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

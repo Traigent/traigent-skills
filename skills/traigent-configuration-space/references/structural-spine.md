@@ -1,28 +1,14 @@
----
-name: traigent-structural-spine
-description: "Author structural configuration spines for Traigent optimization. Use when turning an @traigent.optimize evaluator into an optimizer by defining task-level knobs for text2SQL, RAG, multi-hop QA, schema context, retrieval strategy, generation paths, few-shot policies, self-consistency, repair policies, or cost-aware accuracy/cost objectives."
-license: Apache-2.0
-metadata:
-  author: Nimrod
-  version: "1.0.1"
----
+# Structural Configuration Spine
 
-# Traigent Structural Spine
+Use this reference when turning an `@traigent.optimize` evaluator into an
+optimizer by defining task-level knobs for text2SQL, RAG, multi-hop QA, schema
+context, retrieval strategy, generation paths, few-shot policies,
+self-consistency, repair policies, or cost-aware accuracy/cost objectives.
 
-## When to Use
+For typed parameter APIs, use `traigent-configuration-space`. For execution
+details, budgets, timeouts, and result handling, use `traigent-run-optimization`.
 
-Use this skill when:
-
-- Turning an `@traigent.optimize` evaluator into an optimizer
-- Designing structural knobs beyond model, temperature, and one prompt string
-- Building a text2SQL or RAG configuration space where the optimizer can change data flow, evidence, examples, generation paths, or repair paths
-- Explaining why the winning configuration adapted to the task
-- Preparing a demo that later uses `show-significant-tuned-variables` to show which knobs mattered
-
-For typed parameter APIs, use `traigent-configuration-space`. For execution details, budgets,
-timeouts, and result handling, use `traigent-run-optimization`.
-
-## Core Rule
+## Core rule
 
 Do not stop at naive prompt tuning.
 
@@ -35,8 +21,8 @@ configuration_space = {
 }
 ```
 
-Structural = a task spine whose knobs change what the agent can see, how it reasons, how many
-candidates it samples, and how it recovers from errors:
+Structural = a task spine whose knobs change what the agent can see, how it
+reasons, how many candidates it samples, and how it recovers from errors:
 
 ```python
 configuration_space = {
@@ -50,13 +36,14 @@ configuration_space = {
 }
 ```
 
-Structural knobs carry the gains because they change the optimization problem itself. Schema
-presence and retrieval structure decide whether the agent has the evidence it needs. Few-shot
-examples often help only after schema or retrieved context is present. Self-consistency can help
-multi-hop QA, while it may be flat on a strong SQL default. The optimizer should adapt the winning
-configuration to the task instead of forcing one global recipe.
+Structural knobs carry the gains because they change the optimization problem
+itself. Schema presence and retrieval structure decide whether the agent has the
+evidence it needs. Few-shot examples often help only after schema or retrieved
+context is present. Self-consistency can help multi-hop QA, while it may be flat
+on a strong SQL default. The optimizer should adapt the winning configuration to
+the task instead of forcing one global recipe.
 
-## Structural Knob Taxonomy
+## Structural knob taxonomy
 
 ### text2SQL
 
@@ -132,7 +119,7 @@ RAG_STRUCTURAL_SPACE = {
 | `fewshot_k` | How many multi-hop exemplars are supplied. |
 | `self_consistency` | How many answer candidates are sampled before selection. |
 
-## Evaluator to Optimizer
+## Evaluator to optimizer
 
 Transform the decorator from a frozen evaluator into a real optimizer.
 
@@ -155,39 +142,33 @@ Transform the decorator from a frozen evaluator into a real optimizer.
  
 -result = await fn.optimize(algorithm="grid", max_trials=1)
 +result = await fn.optimize(
-+    algorithm="tpe",
++    algorithm="random",
 +    max_trials=80,
 +    timeout=1800.0,
 +)
 +trials_df = result.to_dataframe()
 ```
 
-The before state is useful only as a baseline: `configuration_space={k:[baseline_v]}` and
-`objectives=["accuracy"]`. The after state gives TPE a full structural search space, keeps the
-baseline explicit through `default_config=BASELINE`, optimizes both accuracy and cost, records
-metrics through named `metric_functions`, and reads completed trials from `result.to_dataframe()`.
+The before state is useful only as a baseline:
+`configuration_space={k:[baseline_v]}` and `objectives=["accuracy"]`. The after
+state gives random search a full structural search space, keeps the baseline
+explicit through `default_config=BASELINE`, optimizes both accuracy and cost,
+records metrics through named `metric_functions`, and reads completed trials
+from `result.to_dataframe()`.
 
-## Operational Checklist
+## Operational checklist
 
-Use this checklist before running a real demo:
-
-1. Confirm execution mode before a paid run: `grid` and `random` run **fully locally** in the SDK; smarter algorithms like `tpe` (the Optuna/Bayesian family) are **cloud/smart optimizers** that route through the Traigent backend in hybrid mode and require `traigent auth` or `TRAIGENT_API_KEY`. Installing Optuna (`traigent[integrations]`) does **not** make `tpe` resolve on the local SDK — the only locally-registered algorithms are `grid` and `random` (`_LOCAL_ALGORITHMS = {grid, random}`), so a `tpe` run with no backend auth does not start.
+1. Confirm execution mode before a paid run: only `grid` and `random` are executable today, and both run **fully locally** in the SDK. Smarter algorithms like `tpe` (the Optuna/Bayesian family) validate as known names but are **not yet executable** -- a `tpe` run fails before any trial starts (`ConfigurationError` with `offline=True` or without cloud credentials; the SDK's local optimizer registry likewise rejects the name with `OptimizationError`: *"Smart optimization ('tpe') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"* -- verified against SDK 0.18.x), and connecting to the Traigent cloud does not unlock it either -- the current backend session dispatcher also only executes `grid`/`random` for this request shape. Installing Optuna (`traigent[integrations]`) does **not** make `tpe` resolve -- the only locally-registered algorithms are `grid` and `random` (`_LOCAL_ALGORITHMS = {grid, random}`). Use `algorithm="random"` for a large structural search space today.
 2. Set `TRAIGENT_COST_APPROVED=true` and a high `TRAIGENT_RUN_COST_LIMIT`; rely on your own real-usage budget guard.
 3. Use a fresh per-run study directory. A persistent study dedups configs and can stop early.
 4. Read trials from `result.to_dataframe()`, not from `custom_evaluator` callbacks.
 5. Pass a large `timeout=` to `.optimize()`. The default 60s can silently truncate real runs.
 
-## After the Run
+## After the run
 
-<!-- PROTECTED -->
-Use `show-significant-tuned-variables` to rank which structural knobs mattered. Report results with
-honest task-local language: "on this fixed Spider slice" or "on this HotpotQA slice," not as a
-universal causal claim.
-<!-- /PROTECTED -->
+Use `show-significant-tuned-variables` to rank which structural knobs mattered.
+Report results with honest task-local language: "on this fixed Spider slice" or
+"on this HotpotQA slice," not as a universal causal claim.
 
-Use `traigent-run-optimization` for `func.optimize()` parameters, cost handling, stop reasons,
-parallel execution, and result-table display.
-
-<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
-<!-- SLOW_UPDATE -->
-<!-- /SLOW_UPDATE -->
+Use `traigent-run-optimization` for `func.optimize()` parameters, cost handling,
+stop reasons, parallel execution, and result-table display.

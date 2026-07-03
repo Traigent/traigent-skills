@@ -37,18 +37,23 @@ the optimizer is searching.
 - **Vary only MINOR knobs:** temperature{0,0.2,0.4} · fewshot_k{0,2,4} · repair{off,on} ·
   output_mode{sql_only, allow_prose}. **Hold the high-impact STRUCTURAL levers at basic
   defaults** — `generation_path=direct`, `schema_context=ddl_fk`, `fewshot_selector=fixed`.
-- `3 · 3 · 3 · 2 · 2 = 108` perms; bayesian ~18 trials, plateau on.
-- **What it teaches:** with nothing structural optimized, the result is basically *"you
-  get what you pay for"* — the model tier dominates and the cheap model hasn't shone yet.
+- `3 · 3 · 3 · 2 · 2 = 108` perms; `algorithm="random"` ~18 trials, plateau on. ~18 random
+  trials over 108 perms is a **probe**, not coverage — it samples roughly a sixth of the space.
+- **What it typically shows:** with nothing structural optimized, the picture is usually *"you
+  get what you pay for"* — the model tier tends to dominate and the cheap model hasn't shone
+  yet. Treat an 18-trial random read as suggestive; to actually *claim* tier dominance, add
+  trials/seeds or run a `grid` pass over the reduced space.
 
 **Run 2 — make the low-cost model SHINE (add the structural levers).**
 - Keep the cheap model (+ maybe one mid), and **add the high-impact knobs that were held
   back:** `schema_context = {ddl_fk_rows, m_schema, compact}`, `fewshot_selector = similar`,
   `generation_path = {direct, plan_then_sql}`, keep `output_mode` unpinned.
 - Keep the space at **~several hundred perms** and state the count; weight accuracy-first.
-- **What it teaches:** the **low-cost model leaps up to match or beat the premium at a
-  fraction of the cost.** *That jump — structural optimization on a cheap model — is the
-  Traigent value.*
+- **What it teaches:** in the original field run, the **low-cost model leapt up to match or
+  beat the premium at a fraction of the cost.** *That jump — structural optimization on a
+  cheap model — is the Traigent value.* Expect the direction, not the exact numbers: with
+  random search, budget enough trials (or a grid pass on the pruned space) before reporting
+  the jump on a new agent.
 - Caveat: don't pair `plan_then_sql`/`cot` with `output_mode=sql_only` (they conflict —
   sql-only forbids the reasoning the plan path wants); keep output_mode unpinned so the
   optimizer pairs them correctly.
@@ -61,7 +66,7 @@ the optimizer is searching.
 1. **Baseline** the un-optimized agent with an OBJECTIVE metric.
 2. **Instrument** the entry function with `@traigent.optimize`.
 3. **Mock dry-run** (free) to validate the pipeline.
-4. **Real run** (bayesian, cost-capped, portal-tracked).
+4. **Real run** (`algorithm="random"`, cost-capped, portal-tracked).
 5. **Iterate** — drop knobs that didn't move accuracy, swap in better ones
    (see `traigent-next-run`), then re-run.
 
@@ -98,7 +103,7 @@ CONFIG_SPACE = {
 ```
 > Encode discrete/integer knobs as **strings** (`"0"/"2"/"4"`) and `int()` them at
 > the call site — the most robust, portable encoding for fixed-set knobs.
-> See `traigent-run-recommendations`.
+> See `traigent-run-plan/references/preflight.md`.
 
 ## 4. Weighted objectives (ACL)
 ```python
@@ -123,11 +128,11 @@ decorated = traigent.optimize(
     evaluation=EvaluationOptions(eval_dataset=DS, custom_evaluator=exec_eval),
     execution=ExecutionOptions(offline=False),   # False -> online/cloud; True -> local zero-egress
 )(run_agent)
-results = decorated.optimize_sync(max_trials=25, algorithm="bayesian")  # or: await decorated.optimize(...)
+results = decorated.optimize_sync(max_trials=25, algorithm="random")  # or: await decorated.optimize(...)
 ```
-- **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. Smart algorithms (`bayesian`/`tpe`/`optuna`) run in the Traigent cloud when `offline=False` + authenticated; `offline=True` keeps everything local.
-- **Mock first (free):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (smart algorithms are cloud-only).
-- **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, `algorithm="bayesian"`. For bayesian install `scikit-learn`+`scipy` (or use `tpe`/`optuna`).
+- **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. Named smart algorithms (`bayesian`/`tpe`/`optuna`) are **not yet executable** — they fail before any trial runs with a clear error (`ConfigurationError` with `offline=True` or without cloud credentials; the backend also rejects them even when connected — verified against SDK 0.18.x). Use `"grid"`/`"random"`; `offline=True` keeps everything local (zero egress), `offline=False` syncs trials to the portal.
+- **Mock first (free):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms are not yet executable).
+- **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, `algorithm="random"` (or `"grid"`) — `bayesian`/`tpe`/`optuna` are roadmap names, not yet executable.
 - **Dataset path:** `eval_dataset` must live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.
 
 ## Runnable example (copy-paste, self-contained)
@@ -147,7 +152,49 @@ plan-then-SQL beat both the mid model and (separately) a premium Sonnet config
 (86.7% at 20-50x the cost).
 
 ## See also
-- `traigent-optimization-principles` — the key recommendations to apply on every run.
+- `traigent-run-plan/references/optimization-principles.md` — the key recommendations to apply on every run.
 - `traigent-run-plan` — build the run-plan WITH the user before every run.
 - `traigent-next-run` — after each run: the portal link, which knobs to keep/drop, and the next-run recommendation.
-- `traigent-run-recommendations` — robust setup so runs go smoothly and track to the portal.
+- `traigent-run-plan/references/preflight.md` — robust setup so runs go smoothly and track to the portal.
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

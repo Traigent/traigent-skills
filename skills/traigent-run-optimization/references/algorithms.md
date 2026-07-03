@@ -1,6 +1,6 @@
 # Algorithm Reference
 
-Traigent uses `algorithm="auto"` by default and also supports explicit local and cloud smart algorithms. Pass the algorithm name as a string to `optimize()` or `optimize_sync()`.
+Traigent uses `algorithm="auto"` by default and also supports explicit local search algorithms (`"grid"`, `"random"`). Named smart algorithms (`"bayesian"`, `"optuna"`, `"tpe"`, `"cmaes"`, `"nsga2"`) validate as known names but are **not yet executable** — locally or in the Traigent cloud (verified against SDK 0.18.x; see the note below the comparison table). Pass the algorithm name as a string to `optimize()` or `optimize_sync()`.
 
 ```python
 results = await func.optimize(max_trials=10)  # default algorithm="auto"
@@ -13,10 +13,10 @@ results = await func.optimize(max_trials=10)  # default algorithm="auto"
 | `"auto"` | Traigent cloud smart default | Any | Any | No | **Cloud** | Most users, portal-tracked optimization |
 | `"grid"` | Exhaustive enumeration | Small (< 50 combos) | Must cover full space | Yes | Local SDK search | Complete coverage, reproducibility |
 | `"random"` | Uniform random sampling | Any | Limited (10-50) | No | Local SDK search | Large spaces, quick exploration |
-| `"bayesian"` | Surrogate model guided | Medium-Large | 15-100 | No | **Cloud only** | Expensive trials, continuous params |
-| `"optuna"` | Advanced TPE sampling | Large | 30+ | No | **Cloud only** | Advanced users, multi-objective |
+| `"bayesian"` | Surrogate model guided | — | — | — | **Not executable today** | Roadmap only |
+| `"optuna"` | Advanced TPE sampling | — | — | — | **Not executable today** | Roadmap only |
 
-> **`"bayesian"` and `"optuna"` (and the other smart optimizers) run in the Traigent cloud.** Use `"grid"` or `"random"` for local search. Results sync to the portal for every non-offline run, including local search; `offline=True` is the zero-egress path and does not sync results.
+> **`"bayesian"`, `"optuna"`, and the other named smart algorithms do not run today, locally or in the Traigent cloud** — every path fails before any trial starts, with a clear error. With `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*); online without cloud credentials the run raises `ConfigurationError` (*"Cloud execution is required, but backend session creation failed"*); and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). Connecting to the Traigent cloud does not unlock them either — the backend's current session dispatcher also only executes `grid`/`random` and rejects the rest. Use `"grid"` or `"random"` for local search today. Results sync to the portal for every non-offline run, including local search; `offline=True` is the zero-egress path and does not sync results.
 
 ## Grid Search
 
@@ -64,7 +64,7 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 - Large configuration spaces where exhaustive search is impractical
 - You have a fixed trial budget and want broad coverage
-- Early exploration phase before switching to Bayesian
+- Early exploration phase before a larger `"random"`/`"grid"` budget (smart algorithms are roadmap, not an available next step today)
 - Parameters have similar importance (no strong interactions)
 
 ### Behavior
@@ -73,54 +73,28 @@ results = await func.optimize(max_trials=20, algorithm="random")
 - Stops when `max_trials` is reached
 - Provides good coverage of high-dimensional spaces with fewer trials than grid
 
-## Bayesian Optimization
+## Bayesian Optimization — Roadmap, Not Yet Executable
 
-Uses a probabilistic surrogate model to predict which configurations are likely to perform well, then focuses trials on the most promising regions. The planner runs in Traigent cloud; your decorated function and LLM calls run in your environment.
-
-```python
-results = await func.optimize(max_trials=30, algorithm="bayesian")
-```
-
-### When to Use
-
-- Trials are expensive (each trial costs real money via LLM API calls)
-- Configuration space has continuous parameters (temperature, top_p)
-- You want to find good configs with fewer trials than random/grid
-- Medium to large config spaces (50-10,000 combinations)
-
-### Behavior
-
-- First few trials are random (exploration phase)
-- Subsequent trials are guided by the surrogate model (exploitation)
-- Balances exploration vs exploitation automatically
-- More sample-efficient than random search for smooth objective landscapes
-
-### Limitations
-
-- Requires several initial random trials before the model is useful (typically 5-10)
-- Less effective for purely categorical spaces with no ordinal structure
-- Non-deterministic: different runs may find different optima
-
-## Optuna (Advanced)
-
-Cloud-only access to advanced Optuna-style optimization, including pruning, multi-objective optimization, and custom samplers.
+Intended design: a probabilistic surrogate model predicts which configurations are likely to perform well and focuses trials on the most promising regions, with the planner running in the Traigent cloud while your decorated function and LLM calls run in your environment. **This is not available today.** `algorithm="bayesian"` fails before any trial runs (`ConfigurationError` with `offline=True` or without cloud credentials; `OptimizationError` from the local optimizer registry) and is rejected by the current backend session dispatcher too — do not teach it as a runnable option.
 
 ```python
-results = await func.optimize(max_trials=50, algorithm="optuna")
+# Do NOT teach this as runnable — fails before any trial runs (clear SDK error):
+# results = await func.optimize(max_trials=30, algorithm="bayesian")
+
+# Use local search instead:
+results = await func.optimize(max_trials=30, algorithm="random")
 ```
 
-### When to Use
+Use `"random"` for expensive-trial, continuous-parameter spaces today; revisit this section once the smart algorithms ship.
 
-- You need advanced Optuna features (pruning, custom samplers)
-- Very large or complex search spaces
-- Multi-objective optimization with Pareto frontier analysis
-- You are already familiar with Optuna and want fine-grained control
+## Optuna (Advanced) — Roadmap, Not Yet Executable
 
-### Behavior
+Intended design: advanced Optuna-style optimization, including pruning, multi-objective optimization, and custom samplers, dispatched to the Traigent cloud. **This is not available today** through the `algorithm="optuna"` decorator/`optimize()` kwarg documented by this skill. It fails before any trial runs (`ConfigurationError` with `offline=True` or without cloud credentials; `OptimizationError` from the local optimizer registry); the current backend session dispatcher also only executes `grid`/`random` for this request shape and rejects `"optuna"`.
 
-- Uses TPE sampler by default
-- Supports early stopping of unpromising trials (pruning)
-- Can handle mixed categorical/continuous/integer parameter spaces
+```python
+# Do NOT teach this as runnable — fails before any trial runs (clear SDK error):
+# results = await func.optimize(max_trials=50, algorithm="optuna")
+```
 
 ## Choosing an Algorithm
 
@@ -128,9 +102,7 @@ results = await func.optimize(max_trials=50, algorithm="optuna")
 
 1. **No special constraint?** Omit `algorithm` and use the default `"auto"` cloud smart optimizer.
 2. **Need deterministic local coverage?** Use `"grid"`.
-3. **Need local search with a fixed budget?** Use `"random"`.
-4. **Trials are expensive and you have cloud access?** Use `"bayesian"` for guided search.
-5. **Need advanced cloud smart optimization?** Use `"optuna"`.
+3. **Need local search with a fixed budget, including large or expensive-trial spaces?** Use `"random"`. (`"bayesian"`/`"optuna"` are roadmap names — not yet executable, see above.)
 
 ### Budget Guidelines
 
@@ -139,8 +111,7 @@ results = await func.optimize(max_trials=50, algorithm="optuna")
 | Any size, normal setup | `"auto"` | Start with 10-30 |
 | 1-10 and local coverage required | `"grid"` | Match space size |
 | 10-50 and local coverage required | `"grid"` or `"random"` | Match space size or 20-30 |
-| 50-500 and local search required | `"random"` | 20-50 |
-| 50+ with cloud smart optimization | `"bayesian"` or `"optuna"` | 30-100 |
+| 50+ and local search required | `"random"` | 20-100 |
 
 ### Runtime Override
 
@@ -164,6 +135,7 @@ def my_func(query: str) -> str:
     cfg = traigent.get_config()
     return prompt_model(query, model=cfg["model"])
 
-# Override at runtime; smart algorithms require Traigent cloud
-results = await my_func.optimize(algorithm="bayesian", max_trials=20)
+# Override at runtime — stick to "auto"/"grid"/"random"; named smart
+# algorithms (e.g. "bayesian") are roadmap and fail before any trial runs.
+results = await my_func.optimize(algorithm="random", max_trials=20)
 ```

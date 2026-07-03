@@ -4,7 +4,7 @@ description: "Create and improve a Traigent evaluation dataset / JSONL eval set.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.4"
 ---
 
 # Traigent Curate Dataset
@@ -153,11 +153,15 @@ growth_options = DatasetGrowthOptions(
     max_total_examples_added=12,
 )
 
+# `guidance_provider` and `weak_examples` are NOT defined here — they come
+# from your prior run: the service next-step payload (see `traigent-next-run`)
+# supplies the provider, and the flagged/weak example ids come from that
+# payload or your own analysis (see `traigent-reflect-hard-examples`).
 results = answer.optimize_with_guidance(
-    provider=guidance_provider,
+    provider=guidance_provider,      # from the traigent-next-run payload
     rewrite_llm=prompt_model,
     grow_dataset=growth_options,
-    weak_examples=weak_examples,
+    weak_examples=weak_examples,     # flagged example ids from the prior run
     max_trials=8,
 )
 ```
@@ -189,27 +193,27 @@ Prefer client-side synthesis when data-handling review is incomplete, no account
 `ExampleInsightsClient` can ask the backend to compute and return example-scoring metadata for a completed run. This requires a Traigent account/backend.
 
 <!-- PROTECTED -->
-Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response.
+Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) is likewise non-signal: it conveys review urgency, enum flags, and a suggested action — never raw scores, formulas, or composite values.
 <!-- /PROTECTED -->
 
-> **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead. The `traigent.analytics` shim still works but emits a deprecation warning.
+> **Import note (verified against SDK 0.18.x):** `ExampleInsightsClient` ships in the core SDK at `traigent.analytics` — no separate install required. The `traigent.analytics` module docstring recommends the separate `traigent-analytics` plugin (`pip install traigent-analytics`), but that plugin's public API (meta-learning, predictive analytics, anomaly detection, cost optimization, scheduling — see its own `__all__`) does not include `ExampleInsightsClient`; `from traigent_analytics import ExampleInsightsClient` raises `ImportError`. Use the core import below and ignore the module's `DeprecationWarning` for this class specifically. **Caveat if you HAVE installed the plugin:** the core shim then defers to the plugin and stops exposing this class, so `from traigent.analytics import ExampleInsightsClient` itself raises `ImportError` — either uninstall the plugin (`pip uninstall traigent-analytics`) or use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient`, which works with or without the plugin (verified).
 
 ```python
-# Canonical (traigent-analytics plugin):
-from traigent_analytics import ExampleInsightsClient
-# Legacy (deprecated, emits DeprecationWarning):
-# from traigent.analytics import ExampleInsightsClient
+from traigent.analytics import ExampleInsightsClient
 
-client = ExampleInsightsClient(
-    backend_url="https://traigent.example",
-    api_key="trg_...",
-)
-
-job = client.compute_scores("run_123")
-status = client.get_job_status(job["job_id"])
-scores = client.get_example_scores("run_123", example_ids=["ex_001", "ex_002"])
-quality = client.get_dataset_quality("run_123")
-client.close()
+async def compute_example_scores(run_id: str) -> dict:
+    # compute_scores/get_job_status/get_example_scores/get_dataset_quality are
+    # all async — await each one (a common mistake is calling them unawaited
+    # at module scope, which yields un-subscriptable coroutine objects).
+    async with ExampleInsightsClient(
+        backend_url="https://traigent.example",
+        api_key="trg_...",
+    ) as client:
+        job = await client.compute_scores(run_id)
+        status = await client.get_job_status(job["job_id"])
+        scores = await client.get_example_scores(run_id, example_ids=["ex_001", "ex_002"])
+        quality = await client.get_dataset_quality(run_id)
+        return {"status": status, "scores": scores, "quality": quality}
 ```
 
 Example-scoring endpoints:
@@ -219,25 +223,49 @@ Example-scoring endpoints:
 | `POST /api/v1/analytics/example-scoring/{run_id}/compute` | Start scoring for a completed run. |
 | `GET /api/v1/analytics/example-scoring/{run_id}/scores` | Read per-example scoring metadata. |
 | `GET /api/v1/analytics/example-scoring/{run_id}/dataset-quality` | Read dataset-level quality metadata. |
+| `GET /api/v1/analytics/runs/{run_id}/example-insights` | Read ranked and flagged examples to review (IP-safe: review_priority, suspicious_flags, recommended_action). |
+
+### Examples to review (ranked & flagged)
+
+When a run completes, the `analytics_get_example_insights` MCP tool (or `GET /api/v1/analytics/runs/{run_id}/example-insights`) returns up to 100 examples ranked by review urgency — no raw scores or formulas are exposed. The summary includes `dataset_quality` (low | medium | high) and flag-type counts. Each example row carries:
+
+| Field | Values |
+|---|---|
+| `safe_example_ref` | Opaque hashed ref (`exref_...`) — not a raw id or content |
+| `review_priority` | critical \| high \| medium \| low — review urgency, not a quality score |
+| `difficulty_bucket` | low \| medium \| high \| unknown — coarse bucket only |
+| `suspicious_flags` | See flag-to-action table in the improve loop below |
+| `recommended_action` | review_label \| clarify_expected_output \| increase_repetitions \| replace_or_rewrite \| keep_as_hard_case \| remove_redundant \| inspect_evaluator |
 
 ## The improve loop
 
 1. Run a mock/offline smoke check.
 2. Run a small tuning pass with a fixed tuning slice and explicit cost limit.
-3. Identify weak examples from failed or low-scoring trials.
+3. Pull examples to review from `GET /api/v1/analytics/runs/{run_id}/example-insights` (MCP: `analytics_get_example_insights`); work them in `review_priority` order and act on each `suspicious_flag` using the table below.
 4. Synthesize harder or more diverse examples around those weak examples.
 5. Human-review synthetic labels and metadata before adding them to the tuning slice.
 6. Re-run on the enlarged tuning slice.
 7. Validate once on the untouched holdout slice.
 8. Report tune and holdout results separately, including failed trials and cost.
 
-Planned: automatic curation-advice endpoints are not available in this SDK surface yet.
+Flag-to-curation-action guide for step 3:
+
+| Flag | Curation action |
+|---|---|
+| `possible_mislabel` | Re-check the expected answer / rubric |
+| `redundant_pattern` | Remove or dedupe; broaden coverage elsewhere |
+| `anomalous_low_success` | Clarify the expected output, or keep as a deliberate hard case |
+| `high_response_variance` | Clarify acceptable answers or add repetitions |
+| `low_agent_strength_correlation` | Review the label or the evaluator for this example |
+| `low_sample_support` | Rerun for more evidence before a permanent dataset change |
 
 ## Claim scope
 
 - Dataset quality statements are observations about the reviewed evaluation dataset, labels, split, and scoring method.
 - Synthetic examples are useful coverage candidates until reviewed; do not treat them as independent holdout evidence.
 - Backend example-scoring client output is non-signal metadata. Do not describe redacted proprietary signals as available.
+- Backend example-scoring (via `ExampleInsightsClient`) reports properties of examples. Evaluator-quality audit (ACET, via the server-side evaluator-audit action) reports properties of evaluators. These are separate surfaces — scoring a dataset does not validate the evaluator, and auditing the evaluator does not score the dataset.
+- Ranked and flagged "examples to review" rows (from `analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) are non-signal: they convey review urgency (`review_priority`), enum flags (`suspicious_flags`), and a suggested action (`recommended_action`) — not quality scores, formulas, or composite values.
 - A holdout result supports a claim only for the task distribution represented by that holdout slice.
 
 ## See Also
@@ -250,3 +278,45 @@ Planned: automatic curation-advice endpoints are not available in this SDK surfa
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

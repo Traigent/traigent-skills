@@ -1,0 +1,24 @@
+# Contract-test / CI tooling for the Traigent SDK skills repo.
+#
+# This repo ships markdown Agent Skills, not a published Python package — so this
+# project is non-packaged (`tool.uv.package = false`). Its only purpose is to give
+# the CI harness (tests/, tools/contract/) a single, locked dependency set instead
+# of `pip install pytest pyyaml packaging` floating to latest on every run, and to
+# provide the committed `uv.lock` that SCA (Aikido) scans.
+#
+# The Traigent SDK itself is intentionally NOT pinned here: the contract workflows
+# install it as a moving target (`traigent==<released version>`, `@develop`, or the
+# caller's PR build) so they can detect skill/SDK drift. Keep it out of this lock.
+[project]
+name = "traigent-skills"
+version = "0"
+description = "Contract-test / CI tooling for the Traigent SDK skills repo (not a published package)."
+requires-python = ">=3.11"
+dependencies = [
+    "packaging",
+    "pytest",
+    "pyyaml",
+]
+
+[tool.uv]
+package = false

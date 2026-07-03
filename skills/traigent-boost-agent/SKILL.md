@@ -4,7 +4,7 @@ description: "End-to-end 12-step lifecycle playbook for adding Traigent to an ex
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.0.1"
+  version: "2.0.3"
 ---
 
 # Traigent Boost Agent
@@ -45,6 +45,7 @@ For detailed grep patterns and evidence-mining heuristics, read `references/code
 3. CHOOSE the metric.
    - Decide what "good" means before writing optimizer code: task success, correctness, cost, latency, safety, reliability, or a measured combination.
    - Prefer built-in objective names when they match the product decision; use custom metric functions only when domain logic is checkable and necessary.
+   - Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept and note why accuracy was skipped.
    - Treat must-not-violate behavior as a safety constraint or promotion gate, not as an ordinary objective to trade away.
    - DELEGATE: `traigent-choose-metric` owns the metric interview and objective vocabulary.
 
@@ -134,7 +135,7 @@ CONFIGURATION_SPACE = {
 9. OPTIMIZE for real only with cost limits and explicit approval.
    - Cross-reference `traigent-run-optimization` for `func.optimize()`, `optimize_sync()`, algorithms, `max_trials`, parallelism, and `CostLimitExceeded`.
    - Set an explicit `TRAIGENT_RUN_COST_LIMIT` and verify provider keys before the real run. If a Traigent backend is used, set `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL` as appropriate for the client environment. See [Getting your Traigent API key](../traigent-quickstart/SKILL.md#get-your-traigent-api-key) if you have not yet obtained `TRAIGENT_API_KEY`.
-   - Present a cost estimate and get the user's explicit approval before any paid run.
+   - Present a cost estimate and get the user's explicit approval before any paid run. The approval signal depends on context: interactive real runs are gated by `TRAIGENT_COST_APPROVED=true` (set only after the user approves the estimate); CI/offline runs (including mock wiring checks under `CI=true`) require `TRAIGENT_RUN_APPROVED=1` instead — see `traigent-ci-safety-gate`.
    - Start with a bounded trial budget, keep the current production baseline in the search space, and save results artifacts for audit.
    - DELEGATE: `traigent-run-optimization` owns algorithms, budgets, and execution controls.
 
@@ -162,8 +163,8 @@ CONFIGURATION_SPACE = {
    - DELEGATE: `traigent-iterate` owns post-run next-action selection.
 
 12. COMPLETE: recommend the safety gate and CI checks.
-   - Use in-run `safety_constraints` for must-not-violate trial filters.
-   - Use `PromotionGate` for candidate-vs-incumbent decisions on the same holdout.
+   - In-run `safety_constraints` is planned but not yet implemented (raises `NotImplementedError` at decoration time — see `traigent-ci-safety-gate`); do not teach it as usable today.
+   - Use `PromotionGate` for candidate-vs-incumbent decisions on the same holdout — the working gating mechanism today.
    - Recommend SAFETY and EFFICIENCY CI jobs before promotion: holdout regression for safety, plus cost and latency budget checks for efficiency.
    - DELEGATE: `traigent-ci-safety-gate` owns safety constraints, promotion gates, and CI recipes.
 
@@ -181,3 +182,45 @@ CONFIGURATION_SPACE = {
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

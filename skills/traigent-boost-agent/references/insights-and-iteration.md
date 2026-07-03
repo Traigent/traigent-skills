@@ -35,6 +35,8 @@ For richer export artifacts and honest `directional` vs `significant` labels, de
 
 Use example-side evidence when aggregate scores hide where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent backend/account. The honest reportable scope is non-signal metadata such as job status, example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or signal-vector values.
 
+> **Import note (verified against SDK 0.18.x):** `ExampleInsightsClient` ships in the core SDK at `traigent.analytics` — no separate install required. The module's own `DeprecationWarning` points at the separate `traigent-analytics` plugin, but that plugin does not export `ExampleInsightsClient` (`from traigent_analytics import ExampleInsightsClient` raises `ImportError`); use the core import below and ignore the warning for this class. **Caveat if you HAVE installed the plugin:** the core shim then defers to the plugin and stops exposing this class, so the import below itself raises `ImportError` — uninstall the plugin or use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (works with or without the plugin, verified).
+
 ```python
 from traigent.analytics import ExampleInsightsClient
 
@@ -63,6 +65,8 @@ async def fetch_example_insights(
 
 Use these outputs to target curation or audit work, not to claim hidden causal explanations.
 
+The `analytics_get_example_insights` MCP tool (or `GET /api/v1/analytics/runs/{run_id}/example-insights`) provides a ranked and flagged complement: up to 100 rows ordered by `review_priority` (critical | high | medium | low), each with `suspicious_flags` and a `recommended_action`. This surface is non-signal — it ranks by review urgency and provides enum flags, not raw scores or formulas. Use the flag-to-action guide below when acting on these rows.
+
 ## Symptom-to-Next-Step Table
 
 | Symptom | Next action | Owning skill |
@@ -76,5 +80,19 @@ Use these outputs to target curation or audit work, not to claim hidden causal e
 | Search stopped because of budget or trials | Adjust algorithm, `max_trials`, parallelism, model mix, or cost limit after approval | `traigent-run-optimization` |
 | Weak examples recur across good configs | Feed weak examples into the curation loop and preserve a heldout check | `traigent-curate-dataset` |
 | Candidate looks promotable | Compare candidate vs incumbent on the same holdout and add CI checks | `traigent-ci-safety-gate` |
+| `analytics_get_example_insights` returns critical or high rows | Work in `review_priority` order; apply the flag-to-action guide below | `traigent-curate-dataset` |
 
 Use `traigent-iterate` to choose the next single hypothesis after these facts are known.
+
+### Suspicious Flag → Next Action
+
+When the example-insights surface flags rows, map each `suspicious_flag` to a curation action:
+
+| suspicious_flag | Next action |
+|---|---|
+| `possible_mislabel` | Re-check the expected answer / rubric before any dataset change |
+| `redundant_pattern` | Remove or dedupe; broaden coverage elsewhere in the dataset |
+| `anomalous_low_success` | Clarify the expected output, or mark as a deliberate hard case |
+| `high_response_variance` | Clarify acceptable answers or increase repetitions |
+| `low_agent_strength_correlation` | Review the example label or the evaluator for this example |
+| `low_sample_support` | Rerun for more evidence before making a permanent dataset change |

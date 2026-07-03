@@ -4,7 +4,7 @@ description: "Declare and run Traigent composite knobs: cascades, routers, ensem
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.2"
+  version: "1.0.4"
 ---
 
 # Traigent Composite Knobs
@@ -36,13 +36,25 @@ The canonical wiring is:
 Use this portal-compatible return shape from `composite_telemetry.py`:
 
 ```python
+from pathlib import Path
+
 import traigent
 from traigent.knobs.patterns import binary_cascade
 from traigent.knobs.runtime import StageRunner, execute_composite
 from traigent.knobs.telemetry import merge_composite_measures
 
 GATE = "router_margin_threshold"
+
+# On the tuple-return path the function scores itself (see the note below),
+# so it needs the expected answer in scope. _EXPECTED stands in for your
+# dataset's expected_output; in real code look it up per example.
 _EXPECTED = "STRONG"
+
+# Tiny self-contained dataset so this block runs as-is.
+Path("eval").mkdir(exist_ok=True)
+Path("eval/composite_demo.jsonl").write_text(
+    '{"input": {"text": "route me"}, "expected_output": "STRONG"}\n'
+)
 
 COMPOSITE = binary_cascade(
     "answerer",
@@ -60,7 +72,7 @@ def _stage(outputs: list[str]) -> StageRunner:
     )
 
 @traigent.optimize(
-    eval_dataset=...,
+    eval_dataset="eval/composite_demo.jsonl",
     objectives=["accuracy"],
     configuration_space={
         "variant": ["cheap", "strong"],
@@ -76,7 +88,7 @@ def answer(text: str) -> tuple[str, dict[str, float]]:
     params = dict(cfg)
     run = execute_composite(
         COMPOSITE.structure,
-        {"cheap": _stage([...]), "strong": _stage([_EXPECTED])},
+        {"cheap": _stage(["weak-guess"]), "strong": _stage([_EXPECTED])},
         config=params,
         calibrated_values={GATE: params[GATE]},
     )
@@ -93,7 +105,19 @@ With the tuple return, use the BUILT-IN evaluator (expected outputs in
 3-arg `metric_functions` is currently NOT invoked with the unpacked prediction
 on this path, and every trial silently scores `accuracy=0.0` (known SDK
 issue). Uniform zero accuracy next to a sane built-in `score` means scoring
-wiring, not a bad agent.
+wiring, not a bad agent. **Escape hatch:** if you need custom scoring on this
+path, compute the metric inside the function and return it in the tuple's
+metrics dict (as the Quick Start's `accuracy` does) — do not wire a
+`scoring_function` and wonder why it never fires. If neither works for your
+case, stop and surface the SDK limitation to the user rather than iterating.
+
+Before any paid run, assert the gate CVAR is actually resolvable — an
+undeclared threshold is a per-trial `KeyError` after money is spent:
+
+```python
+# contract: skip
+assert GATE in answer.configuration_space or GATE in calibrated_values
+```
 
 ## WHEN-TO-USE DECISION TABLE
 
@@ -120,8 +144,10 @@ Spread `.members` into the surrounding configuration space **only when the facto
 The vocabulary, in one line: **TVARs are searched, CVARs are calibrated,
 policies govern control flow, KPIs/objectives score outcomes.** For
 domain-specific structural knob vocabularies (text2SQL, RAG/multi-hop QA),
-cross-reference `traigent-structural-spine` — this skill extends it with
-composite control flow; it does not replace it.
+cross-reference `traigent-configuration-space` and
+`traigent-configuration-space/references/structural-spine.md` -- this skill
+extends that structural vocabulary with composite control flow; it does not
+replace it.
 
 ## Telemetry
 
@@ -154,3 +180,45 @@ Composite end-to-end metrics are OBSERVATIONS from the evaluated trials. Per-var
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->
