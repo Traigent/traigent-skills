@@ -4,7 +4,7 @@ description: "Audit evaluator reliability before trusting Traigent optimization 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 
 # Evaluator Audit
@@ -39,7 +39,12 @@ Run the audit before the first real optimization, then re-run it whenever the ju
 
 ## Gold-Set Agreement (Manual Protocol)
 
-Build a 20-50 example human-labeled gold slice from the same evaluation dataset distribution the optimizer will use. Include easy, borderline, and known-bad cases. Lock the labels before inspecting judge outputs.
+Build a 20-50 example human-labeled gold slice from the same evaluation dataset distribution the optimizer will use, but **disjoint from the holdout** that will back the final claim — draw it from the tuning slice or from fresh examples, never from holdout rows. Include easy, borderline, and known-bad cases; if known-bad (negative) cases are naturally rare — the common situation for safety gates — **oversample them deliberately**, because the false-pass bar below is meaningless on two negatives. Lock the labels before inspecting judge outputs.
+
+> **The disjointness invariant (applies across all evaluator skills):** any slice used to *tune*
+> a threshold, rubric, prompt, or metric must be disjoint from the holdout used to *claim* the
+> result. Calibrating on rows that later back the claim is leakage — the exact failure this
+> audit exists to catch.
 
 Minimum bars for the manual gold-slice protocol before trusting the judge as a primary optimizer objective:
 
@@ -47,6 +52,11 @@ Minimum bars for the manual gold-slice protocol before trusting the judge as a p
 - Human agreement: at least 85% exact agreement for categorical pass/fail labels, or rank correlation above 0.70 for ordinal scores.
 - False-pass rate on known-bad cases: low enough for the product risk. For safety or compliance gates, any repeated false pass is a blocker.
 - Disagreement review: every disagreement gets a written reason, assigned to either human label error, ambiguous rubric, judge failure, or data ambiguity.
+
+These bars are noisy estimates at 20-50 examples — one flipped example moves agreement by 2-5
+points, so 84% vs 86% is not a meaningful pass/fail difference. For a result near a bar, either
+grow the gold slice before deciding or require a margin (e.g. clear the bar by 5+ points);
+never report a near-bar pass as confident.
 
 ```python
 from statistics import mean
@@ -147,7 +157,7 @@ for threshold in [0.60, 0.70, 0.80, 0.90]:
     print(threshold, confusion_counts(gold_pass, judge_scores, threshold))
 ```
 
-Lock the chosen threshold before running optimization. Do not tune the threshold on the same holdout used to claim the final result.
+Lock the chosen threshold before running optimization. Do not tune the threshold on the same holdout used to claim the final result — the gold slice used for this sweep must already be holdout-disjoint (see the disjointness invariant above).
 
 ## When to Demote to Hybrid
 
