@@ -4,7 +4,7 @@ description: "Create and improve a Traigent evaluation dataset / JSONL eval set.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Traigent Curate Dataset
@@ -71,6 +71,15 @@ So a nested, execution-scored row is fully supported:
 Here `input` → `example.input_data` (the nested dict), `output` → `example.expected_output`
 (gold SQL is `expected["sql"]`), and the top-level `db_path` → `example.metadata["db_path"]`.
 See `traigent-build-evaluator` for the scorer that reads a per-example `metadata` field.
+
+**No ground-truth labels to put in the gold key?** For subjective/generative tasks (summaries,
+chat, open-ended agents), curation still applies — it just produces different assets: a
+representative, stratified set of **inputs**, a **rubric** with anchored score levels (and
+optionally a few reference outputs as calibration anchors, clearly marked as references, not
+gold). The score then comes from an LLM judge, not a label comparison — follow
+`traigent-choose-metric` → "The no-gold track" and `traigent-build-evaluator`'s judge template,
+and treat `traigent-evaluator-audit` as mandatory. Holdout discipline below applies unchanged:
+the judge's calibration examples must stay out of the holdout.
 
 Holdout rules:
 

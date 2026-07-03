@@ -4,7 +4,7 @@ description: "Choose Traigent objectives and metric functions before optimizing.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 
 # Traigent Choose Metric
@@ -30,6 +30,24 @@ Ask these six questions and write down the answers before coding:
 6. Who consumes the score: optimizer, CI gate, release owner, customer report, or debugging workflow?
 
 Convert the answers into one primary metric, optional secondary objectives, and any hard gates.
+
+### The no-gold track (Q2 = neither)
+
+If Q2 comes back with **no checkable ground truth at all** — subjective or generative quality
+(summaries, chat, writing, open-ended agents) with no labels to compare against — do not stall
+and do not force an exact-match metric. Route onto the judge track:
+
+1. Write a short rubric for what "good" means in product terms (from Q1), with 2-3 anchored
+   score levels.
+2. Build the metric from `traigent-build-evaluator`'s **"LLM judge with rubric, strict parse,
+   and cost guardrails"** template — the judge score is the primary quality KPI (label it for
+   what it is, e.g. `judge_quality`; the accuracy-labeled default does not apply here — say so).
+3. `traigent-evaluator-audit` is **mandatory** on this track, not optional: the judge now owns
+   the entire quality signal, so its agreement/stability audit is the only thing standing
+   between you and optimizing noise.
+4. Budget the judge itself: every trial example costs a judge call on top of the agent call.
+   Flag judge cost as its own line in the run budget (and consider `cost` as a secondary
+   objective so expensive judge-pleasing configs don't win by default).
 
 ## Measure-type grounding
 

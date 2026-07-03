@@ -4,7 +4,7 @@ description: "Audit evaluator reliability before trusting Traigent optimization 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1"
+  version: "1.1.1"
 ---
 
 # Evaluator Audit
@@ -18,6 +18,10 @@ Use this skill before trusting an evaluator that drives optimization decisions, 
 - "judge agreement"
 - "calibrate thresholds"
 - "why are my optimization results noisy?"
+
+On the **no-gold track** (no ground-truth labels; the judge is the entire quality signal — see
+`traigent-choose-metric` → "The no-gold track"), this audit is **mandatory before the first paid
+optimization run**, not an optional check: without it you may be optimizing judge noise.
 
 ## Service-Side Evaluator Audit (ACET)
 
