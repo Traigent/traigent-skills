@@ -17,7 +17,7 @@ it runs end-to-end with only a Traigent key + an LLM key, in minutes.
     python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 
 Env (from .env): TRAIGENT_API_KEY, and an LLM key (OPENROUTER_API_KEY is easiest).
-Requires: pip install -U traigent litellm scikit-learn scipy  (Python 3.12).
+Requires: pip install -U traigent litellm  (Python 3.12).
 
 To scale up: swap the embedded DB + questions for the real SPIDER dev set (each
 example carries a db_id; resolve schema/connection per db_id) — the wiring below
@@ -245,15 +245,21 @@ def main() -> int:
         os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
         from traigent.testing import enable_mock_mode_for_quickstart
         enable_mock_mode_for_quickstart()
-        offline, algorithm = True, "grid"          # smart algorithms are cloud-only
+        offline, algorithm = True, "grid"          # named smart algorithms are not yet executable
     else:
         if not os.environ.get("TRAIGENT_API_KEY"):
             print("ERROR: TRAIGENT_API_KEY not set (.env).")
             return 2
         os.environ["TRAIGENT_RUN_COST_LIMIT"] = str(args.budget)
+        # --real IS the user's approval: the human chose the flag and the budget.
+        # An agent must never invoke --real on the user's behalf without first
+        # showing the permutation count + budget and getting an explicit go.
         os.environ["TRAIGENT_COST_APPROVED"] = "true"
         os.environ["TRAIGENT_OFFLINE_MODE"] = "false"
-        offline, algorithm = False, "bayesian"     # offline=False -> online/cloud
+        # offline=False -> online/cloud, portal-tracked. "bayesian"/"tpe"/"optuna"
+        # validate as known names but fail before any trial runs (clear SDK
+        # error, verified against SDK 0.18.x) — use "random".
+        offline, algorithm = False, "random"
 
     decorated = traigent.optimize(
         configuration_space=CONFIG_SPACE,

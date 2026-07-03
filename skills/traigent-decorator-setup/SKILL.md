@@ -4,7 +4,7 @@ description: "Configure the @traigent.optimize() decorator with evaluation, inje
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.2"
+  version: "1.0.5"
 ---
 
 # Traigent Decorator Setup
@@ -56,6 +56,8 @@ def prompt_model(prompt: str, *, model: str = "gpt-4o-mini", temperature: float 
 ## Objectives
 
 Objectives tell Traigent what to optimize for. Pass them as a string list or as an `ObjectiveSchema` for weighted multi-objective optimization.
+
+**Objective naming rule:** Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
 ### String List (Simple)
 
@@ -112,14 +114,34 @@ def my_func(query: str) -> str:
 ```
 
 - `experiment_name` accepts spaces and punctuation (it is not a Python identifier).
-- When omitted, the decorated function's `__name__` is used; the `TRAIGENT_EXPERIMENT_NAME`
-  environment variable is used as a fallback if no explicit value is passed.
+- Experiment-name precedence, highest to lowest: explicit `experiment_name` decorator
+  argument; `TRAIGENT_EXPERIMENT_NAME` environment variable checked at access time,
+  not decoration time; self-describing default built at decoration time as
+  `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"` with at most 4 knobs shown, a
+  120-character cap, and deterministic ordering; bare `func.__name__` only when no
+  objectives or knobs were registered.
 - The label is set on the **decorator**, not on the run call — there is no `experiment_name`
   (or `tags`) parameter on `.optimize()` / `.optimize_sync()`.
 
 ## Evaluation Setup
 
 Configure how Traigent evaluates each trial using `EvaluationOptions`.
+
+> **The decorated agent function must not accept `expected` as a parameter.**
+> Traigent calls your function with the example's *input* fields only (plus any
+> config-injected params such as a `config` dict in parameter-injection mode).
+> `expected` is the ground-truth label used *exclusively* by the scoring function
+> to score the function's output. Including `expected` in the function signature
+> causes every trial to fail with `TypeError: missing required argument: 'expected'`.
+>
+> ```python
+> # WRONG — will fail every trial
+> def my_agent(query: str, expected: str) -> str: ...
+>
+> # CORRECT — function takes input fields only; scorer receives (output, expected)
+> def my_agent(query: str) -> str: ...
+> def score(output: str, expected: str) -> float: ...
+> ```
 
 ### Fields
 
@@ -128,7 +150,24 @@ Configure how Traigent evaluates each trial using `EvaluationOptions`.
 | `eval_dataset` | `str \| list[str] \| Dataset \| None` | Path to JSONL dataset or list of paths |
 | `custom_evaluator` | `Callable \| None` | Full-control evaluator: `(func, config, example) -> ExampleResult` |
 | `scoring_function` | `Callable \| None` | Lightweight scorer: `(output, expected) -> float` |
+| `surrogate_evaluator` | `Callable \| None` | Optional secondary scorer for existing outputs only; it never re-executes the decorated function. |
+| `surrogate_evaluator_name` | `str \| None` | Display/evaluator id override for `surrogate_evaluator`; runtime `optimize(surrogate_evaluator_name=...)` can override it. |
 | `metric_functions` | `dict[str, Callable] \| None` | Named metrics: `{"accuracy": fn, "relevance": fn}` |
+
+`surrogate_evaluator` uses the same calling convention as `scoring_function`:
+`(output, expected_output=None, example=None) -> float` in `[0, 1]`, or a dict
+containing `surrogate_score` or `score`. Its result is stored alongside primary
+metrics as `surrogate_score` and feeds the backend's per-evaluator score tensor.
+The evaluator id comes from the callable `__name__` or class name, falling back to
+`"surrogate"`, unless `surrogate_evaluator_name` or runtime
+`optimize(surrogate_evaluator_name=...)` overrides it.
+
+Public API, mechanically supported. A cheap surrogate has **no validated
+evaluation-cost benefit**: in Traigent's 3-domain evaluation, a cheap surrogate
+judge did not reliably track the authoritative judge; on hard tasks its agreement
+collapsed to the anchor base rate. Do not use it as a substitute for the
+authoritative evaluator. Quality and promotion decisions remain anchored
+server-side.
 
 ### When to Use Each
 
@@ -241,6 +280,22 @@ def my_func(query: str) -> str:
 Where and how runs execute is controlled by two public knobs: `algorithm` and `offline`.
 See `references/execution-modes.md` for the full reference.
 
+### Tiny Real Cost and KPI Probe
+
+After mock/dry-run validation passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check `results.total_cost`: `None` means cost tracking is unavailable, and `0.0` with real calls means the model was unpriced even though the provider may still bill. Both mean cost is not wired.
+
+Also inspect each trial's `metrics`. The declared objectives, especially an `accuracy`-labeled primary KPI by default, must be populated with non-degenerate values rather than all `0.0` or all `1.0`.
+
+If custom services, self-hosted endpoints, or unknown model ids are not picked up, fix cost tracking in this order: use a LiteLLM-priced model id or `litellm.model_alias_map`; provide `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE` with JSON like `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; or return per-trial metrics containing `total_cost`, `cost`, or `input_cost` plus `output_cost`. Custom pricing accepts `input`/`output` aliases, normalizes provider prefixes like `openai/`, requires finite non-negative floats, and resolves after LiteLLM pricing and before the built-in fallback table. Use `TRAIGENT_STRICT_COST_ACCOUNTING=true` when unpriced models should fail loudly.
+
+> **NOTE:** Before any full run, verify with a tiny real optimization call that cost and your other KPIs are actually tracked (`results.total_cost` is not None/$0 and objective metrics are populated). If not, wire them (custom model pricing env vars, or return `total_cost` in metrics) before scaling up.
+
+> **Real LLM runs require cost approval.** A real (non-mock, non-offline) optimization is
+> blocked by a cost gate. Set `TRAIGENT_COST_APPROVED=true` to confirm (the verified path);
+> some SDK versions also accept `cost_approved=True` in the decorator. The SDK prints an estimate before executing any
+> trial; the estimate may be high (fallback pricing is conservative) but the gate is a
+> safety confirmation — no spend occurs until approved.
+
 ```python
 @traigent.optimize(
     algorithm="auto",   # default: Traigent cloud smart optimizer
@@ -259,7 +314,7 @@ def my_func(query: str) -> str:
 |---|---|
 | `algorithm="auto"` (default) | Traigent cloud smart optimizer proposes trials; your agent/LLM calls run in your environment. Results sync to the portal. |
 | `algorithm="grid"` / `"random"` | Local search in the SDK. Results still sync to the portal unless `offline=True`. |
-| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/… | Smart optimizers are **cloud-only**; use them only with a Traigent cloud connection. |
+| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/`"cmaes"`/`"nsga2"` | **Not yet executable** — roadmap names. They validate but fail before any trial runs: `ConfigurationError` with `offline=True` or without cloud credentials, and the current backend session dispatcher rejects them too (verified against SDK 0.18.x). Use `"grid"` or `"random"` today. |
 | `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
 
 The synced path sends configuration IDs and numeric metrics for portal result history, not
@@ -339,7 +394,7 @@ def answer_question(question: str) -> str:
     )
 
 # Run optimization
-results = await answer_question.optimize(max_trials=10, algorithm="bayesian")
+results = await answer_question.optimize(max_trials=10, algorithm="random")
 
 # Apply best configuration for production
 answer_question.apply_best_config(results)
@@ -360,3 +415,45 @@ answer = answer_question("What is the capital of France?")
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

@@ -13,7 +13,9 @@ def repo_root() -> Path:
 
 
 def main() -> int:
-    data: dict[str, Any] = yaml.safe_load((repo_root() / "sync_map.yml").read_text(encoding="utf-8"))
+    data: dict[str, Any] = yaml.safe_load(
+        (repo_root() / "sync_map.yml").read_text(encoding="utf-8")
+    )
     default_floor = str(data["default_min_sdk_version"])
     floors = {default_floor}
     current_release = data.get("current_released_sdk_version")

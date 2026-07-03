@@ -11,7 +11,9 @@ from .facts import ContractFact
 from .verifier import format_dead_teaching
 
 
-def test_taught_traigent_env_vars_exist_in_sdk_source(env_fact: ContractFact, repo_root: Path, sdk_version_label: str) -> None:
+def test_taught_traigent_env_vars_exist_in_sdk_source(
+    env_fact: ContractFact, repo_root: Path, sdk_version_label: str
+) -> None:
     import traigent
 
     sdk_root = Path(traigent.__file__).parent
@@ -30,7 +32,9 @@ def test_taught_traigent_env_vars_exist_in_sdk_source(env_fact: ContractFact, re
     )
 
 
-def test_taught_traigent_cli_commands_exist(cli_fact: ContractFact, repo_root: Path, sdk_version_label: str) -> None:
+def test_taught_traigent_cli_commands_exist(
+    cli_fact: ContractFact, repo_root: Path, sdk_version_label: str
+) -> None:
     command = cli_fact.command or ""
     if command.startswith("python -m traigent."):
         module = command.split()[2]
@@ -55,13 +59,22 @@ def test_taught_traigent_cli_commands_exist(cli_fact: ContractFact, repo_root: P
     help_text = subprocess.check_output([str(executable), "--help"], text=True)
     subcmd = command.split()[1]
     if _command_in_help(subcmd, help_text):
-        _assert_taught_flags_exist(cli_fact, executable, command, repo_root, sdk_version_label)
+        _assert_taught_flags_exist(
+            cli_fact, executable, command, repo_root, sdk_version_label
+        )
         return
 
     for group in _groups_to_probe(command):
-        group_help = subprocess.run([str(executable), group, "--help"], text=True, capture_output=True, check=False)
+        group_help = subprocess.run(
+            [str(executable), group, "--help"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
         if _command_in_help(subcmd, group_help.stdout + group_help.stderr):
-            _assert_taught_flags_exist(cli_fact, executable, command, repo_root, sdk_version_label)
+            _assert_taught_flags_exist(
+                cli_fact, executable, command, repo_root, sdk_version_label
+            )
             return
 
     raise AssertionError(
@@ -95,7 +108,10 @@ def _assert_taught_flags_exist(
         return
     parts = command.split()
     sub_help = subprocess.run(
-        [str(executable), *parts[1:2], "--help"], text=True, capture_output=True, check=False
+        [str(executable), *parts[1:2], "--help"],
+        text=True,
+        capture_output=True,
+        check=False,
     )
     help_text = sub_help.stdout + sub_help.stderr
     for flag in flags:
@@ -109,7 +125,10 @@ def _assert_taught_flags_exist(
 
 
 def _command_in_help(subcmd: str, help_text: str) -> bool:
-    return any(line.strip().startswith(f"{subcmd} ") or line.strip() == subcmd for line in help_text.splitlines())
+    return any(
+        line.strip().startswith(f"{subcmd} ") or line.strip() == subcmd
+        for line in help_text.splitlines()
+    )
 
 
 def _groups_to_probe(command: str) -> list[str]:

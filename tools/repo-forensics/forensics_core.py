@@ -63,18 +63,51 @@ class Finding:
 # --- .forensicsignore Support (backward compatible) ---
 
 
+def resolve_repo_root(repo_path):
+    """Return the canonical repo root for containment checks."""
+    return os.path.realpath(os.path.abspath(repo_path))
+
+
+def resolve_path_within_root(repo_root, file_path):
+    """Resolve a file path and refuse traversal outside the canonical repo root."""
+    canonical_root = resolve_repo_root(repo_root)
+    candidate = os.path.realpath(os.path.abspath(file_path))
+
+    try:
+        common = os.path.commonpath([canonical_root, candidate])
+    except ValueError as exc:
+        raise ValueError(
+            f"{file_path} is not on the same filesystem scope as {canonical_root}"
+        ) from exc
+
+    if common != canonical_root:
+        raise ValueError(f"{file_path} resolves outside repo root {canonical_root}")
+
+    return candidate
+
+
+def read_text_file_within_root(repo_root, file_path, *, encoding="utf-8", errors="ignore"):
+    """Read text only when the resolved file stays inside the canonical repo root."""
+    resolved_path = resolve_path_within_root(repo_root, file_path)
+    with open(resolved_path, "r", encoding=encoding, errors=errors) as f:
+        return f.read()
+
+
 def load_ignore_patterns(repo_path):
     """Loads ignore patterns from a .forensicsignore file in the repo root."""
-    ignore_file = os.path.join(repo_path, ".forensicsignore")
+    repo_root = resolve_repo_root(repo_path)
+    ignore_file = os.path.join(repo_root, ".forensicsignore")
     patterns = []
 
     if os.path.exists(ignore_file):
         try:
-            with open(ignore_file, "r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if line and not line.startswith("#"):
-                        patterns.append(line)
+            content = read_text_file_within_root(repo_root, ignore_file)
+            for line in content.splitlines():
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    patterns.append(line)
+        except FileNotFoundError:
+            return patterns
         except Exception as e:
             print(f"[!] Warning: Could not read .forensicsignore: {e}")
 
@@ -86,12 +119,13 @@ DANGEROUS_IGNORE_PATTERNS = {"*", "**", "**/*", "*.*", "."}
 
 def warn_forensicsignore(repo_path):
     """Return warning findings if .forensicsignore exists. Escalate for broad patterns."""
-    ignore_file = os.path.join(repo_path, ".forensicsignore")
+    repo_root = resolve_repo_root(repo_path)
+    ignore_file = os.path.join(repo_root, ".forensicsignore")
     if not os.path.exists(ignore_file):
         return []
 
     findings = []
-    patterns = load_ignore_patterns(repo_path)
+    patterns = load_ignore_patterns(repo_root)
     has_broad = any(p in DANGEROUS_IGNORE_PATTERNS for p in patterns)
 
     if has_broad:

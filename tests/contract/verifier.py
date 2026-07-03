@@ -35,12 +35,18 @@ def format_dead_teaching(
     )
 
 
-def verify_python_fact(fact: ContractFact, *, repo_root: Path | None, sdk_version: str) -> None:
+def verify_python_fact(
+    fact: ContractFact, *, repo_root: Path | None, sdk_version: str
+) -> None:
     if fact.kind == "import":
-        _assert_imports(fact, fact.module or "", repo_root=repo_root, sdk_version=sdk_version)
+        _assert_imports(
+            fact, fact.module or "", repo_root=repo_root, sdk_version=sdk_version
+        )
         return
     if fact.kind == "symbol":
-        module = _assert_imports(fact, fact.module or "", repo_root=repo_root, sdk_version=sdk_version)
+        module = _assert_imports(
+            fact, fact.module or "", repo_root=repo_root, sdk_version=sdk_version
+        )
         if not hasattr(module, fact.symbol or ""):
             message = format_dead_teaching(
                 fact,
@@ -57,7 +63,9 @@ def verify_python_fact(fact: ContractFact, *, repo_root: Path | None, sdk_versio
     raise AssertionError(f"unsupported python fact kind: {fact.kind}")
 
 
-def _assert_imports(fact: ContractFact, module_name: str, *, repo_root: Path | None, sdk_version: str) -> ModuleType:
+def _assert_imports(
+    fact: ContractFact, module_name: str, *, repo_root: Path | None, sdk_version: str
+) -> ModuleType:
     try:
         return importlib.import_module(module_name)
     except ModuleNotFoundError as exc:
@@ -80,7 +88,9 @@ def _assert_imports(fact: ContractFact, module_name: str, *, repo_root: Path | N
         raise AssertionError(message) from exc
 
 
-def _assert_call_kwargs(fact: ContractFact, *, repo_root: Path | None, sdk_version: str) -> None:
+def _assert_call_kwargs(
+    fact: ContractFact, *, repo_root: Path | None, sdk_version: str
+) -> None:
     target = fact.target or ""
     try:
         obj = resolve_dotted(target)
@@ -109,7 +119,10 @@ def _assert_call_kwargs(fact: ContractFact, *, repo_root: Path | None, sdk_versi
     except (TypeError, ValueError) as exc:
         pytest.skip(f"{target} has no inspectable signature: {exc}")
 
-    if any(parameter.kind is inspect.Parameter.VAR_KEYWORD for parameter in signature.parameters.values()):
+    if any(
+        parameter.kind is inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    ):
         pytest.skip(f"{target} accepts **kwargs")
 
     missing = [name for name in fact.kwargs if name not in signature.parameters]

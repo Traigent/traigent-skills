@@ -1,10 +1,10 @@
 ---
 name: traigent-analyze-results
-description: "Analyze Traigent optimization results from the terminal — without opening the portal's tabs. Use when a user asks to analyze a run, 'how did my run do?', 'analyze my latest run in project X', what the winner is, whether to deploy, or to read a run's decision brief, leaderboard, Pareto trade-off, correlation, or parameter/example insights. Also covers the local OptimizationResult object: reading results.best_config, comparing trials, checking stop_reason, calling apply_best_config(), accessing total_cost or total_tokens, or understanding why optimization stopped."
+description: "Analyze and report Traigent optimization results from the terminal — without opening the portal's tabs. Use when a user asks to analyze a run, 'how did my run do?', 'analyze my latest run in project X', what the winner is, or to read result fields, reports, leaderboards, Pareto trade-offs, correlations, or parameter/example insights. Decision questions route to `traigent-next-run` for portal-tracked runs and `traigent-iterate` for offline/local runs. Also covers the local OptimizationResult object: reading results.best_config, comparing trials, checking stop_reason, calling apply_best_config(), accessing total_cost or total_tokens, or understanding why optimization stopped."
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.5"
+  version: "1.1.6"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -12,8 +12,8 @@ metadata:
 This skill makes optimization-result analysis **terminal-first**. Instead of navigating the
 portal's many tabs, ask in plain language ("how did my latest run in project X do?") and the
 skill calls the `traigent-analytics` MCP server, then narrates the answer: a headline, a
-confidence label, a few evidence bullets, the single recommended next action, and a portal
-deep-link as a fallback. It surfaces a deeper view (Pareto, leaderboard, correlation,
+confidence label, a few evidence bullets, and a portal deep-link as a fallback. It surfaces a
+deeper view (Pareto, leaderboard, correlation,
 parameter/example insights) only when the brief's evidence/action calls for it or you ask.
 
 There are two surfaces, and this skill covers both:
@@ -28,8 +28,8 @@ There are two surfaces, and this skill covers both:
 
 Use this skill when you want to understand a finished run. This covers:
 
-- "Analyze my latest run in project X" / "how did my run do?" / "what should I do next?"
-- Getting the one-line verdict, confidence, and the single recommended action for a run
+- "Analyze my latest run in project X" / "how did my run do?"
+- Getting the one-line verdict, confidence, and evidence summary for a run
 - Pulling a focused drilldown (Pareto, leaderboard, correlations, parameter- or
   example-insights) directly via its registered tool, with the portal deep-link for
   interactive exploration
@@ -65,10 +65,11 @@ canonical dataset; it does not merge configurations, dedupe by tuned variables/o
 hashes, or create one analytics run. Analytics stay scoped to one explicit `run_id`, or to an
 explicit `run_ids` list when the user asks to compare runs.
 
-### 2. Call the decision brief first (progressive disclosure)
+### 2. Call the analytics brief first (progressive disclosure)
 
-The keystone tool returns an already-computed decision brief. Call it first and lead with
-its headline and single recommended action — do **not** open a drilldown yet.
+The keystone tool returns an already-computed backend brief. Call it first and lead with
+its headline, confidence, evidence, and any backend-reported action fields — do **not** open a
+drilldown yet.
 
 ```text
 analytics_get_run_decision_brief(
@@ -78,8 +79,13 @@ analytics_get_run_decision_brief(
 )
 ```
 
-Use `deploy` for "can I ship this?", `debug` for "why is it stuck?", `report` for a
-summary/report request, and `iterate` for open-ended "what next?" analysis.
+Use `deploy` for reading deployment-relevant result fields, `debug` for "why is it stuck?",
+`report` for a summary/report request, and `iterate` only when you are inspecting the backend's
+analysis payload without deciding the next run.
+
+Decision questions are out of scope for this read-only analysis skill. For portal-tracked runs,
+route open-ended next-step decisions to `traigent-next-run` (`traigent next-steps RUN_ID --json`);
+for offline/local runs or unavailable service payloads, route them to `traigent-iterate`.
 
 The tool returns an `ok` flag and a `decision_brief` object. Narrate the brief in this order:
 
@@ -87,7 +93,9 @@ The tool returns an `ok` flag and a `decision_brief` object. Narrate the brief i
 2. **Confidence** — the brief's `confidence`. Never upgrade a `low`/`medium` confidence
    into a stronger claim.
 3. **Evidence** — the `summary` strings from the brief's `evidence` list.
-4. **Recommended action** — `recommended_action.kind`, optional `config_id`, and `why`.
+4. **Backend-reported action fields** — `recommended_action.kind`, optional `config_id`, and
+   `why`, if present. Report these fields as analysis output; do not turn them into this skill's
+   decision.
 5. **Fallback** — build a navigation-only portal link:
    `https://portal.traigent.ai/p/<project_id>/runs/<run_id>`.
 
@@ -118,21 +126,22 @@ drilldown; it renders an already-fetched backend payload. Call it only when you 
 backend-produced `run_pareto` or `run_correlations` object from a registered tool response.
 If the payload is absent, use the portal deep-link instead.
 
-| Symptom / requested view | First surface (only if triggered / asked) | Recommended next action |
+| Symptom / requested view | First surface (only if triggered / asked) | Reported signal / handoff |
 |---|---|---|
-| Clean winner | (none — headline is enough) | Deploy the winner; gate with `traigent-ci-safety-gate` |
-| Expensive winner / Pareto trade-off | `analytics_get_single_run_pareto`, then `analytics_render_chart` with `kind="run_pareto"` to draw it | Pick the Pareto **knee**, not the raw max |
-| Dominated winner / leaderboard | `analytics_get_run_leaderboard` | Reject it; promote the dominating config |
-| Low trials | (none — state low confidence) | Run more trials before deciding (`traigent-run-optimization`) |
-| One knob dominates | `analytics_get_parameter_insights` | Narrow that knob; add structural knobs (`traigent-configuration-space`) |
-| Flat scores | `analytics_get_parameter_insights` | Change the space or harden the data (`traigent-curate-dataset`) |
-| Noisy examples | `analytics_get_example_insights` (safe projection) | Fix the dataset / audit the evaluator (`traigent-evaluator-audit`) |
-| Cost blowup | `analytics_get_single_run_pareto` (+ render `kind="run_pareto"`) | Add a budget/guardrail (`traigent-run-optimization`, `traigent-ci-safety-gate`) |
+| Clean winner | (none — headline is enough) | Report the winner and route promotion decisions to `traigent-next-run` or `traigent-ci-safety-gate` |
+| Expensive winner / Pareto trade-off | `analytics_get_single_run_pareto`, then `analytics_render_chart` with `kind="run_pareto"` to draw it | Report the trade-off; route operating-point decisions to `traigent-next-run` for portal runs |
+| Dominated winner / leaderboard | `analytics_get_run_leaderboard` | Report the dominating config; route the next-step decision to `traigent-next-run` |
+| Low trials | (none — state low confidence) | Report low confidence; route more-trials decisions to `traigent-next-run` or `traigent-iterate` for offline/local runs |
+| One knob dominates | `analytics_get_parameter_insights` | Report the dominant knob; route space changes to `traigent-next-run` or offline/local diagnosis to `traigent-iterate` |
+| Flat scores | `analytics_get_parameter_insights` | Report flatness; route dataset/space decisions to `traigent-next-run` or offline/local diagnosis to `traigent-iterate` |
+| Noisy examples | `analytics_get_example_insights` (safe projection) | Report the safe projection; route evaluator/data changes to `traigent-next-run` or offline/local diagnosis to `traigent-iterate` |
+| Cost blowup | `analytics_get_single_run_pareto` (+ render `kind="run_pareto"`) | Report cost evidence; route budget/guardrail decisions to `traigent-next-run` or `traigent-ci-safety-gate` |
 
 For the full tool contract (every tool's arguments and response shape and the geometry-vs-words
 rule), see
-[references/mcp-analytics-tools.md](references/mcp-analytics-tools.md). For deciding the
-*next experiment* once the brief names the problem, hand off to `traigent-iterate`.
+[references/mcp-analytics-tools.md](references/mcp-analytics-tools.md). For choosing the
+*next experiment* once analysis names the problem, hand off portal-tracked runs to
+`traigent-next-run` and offline/local runs to `traigent-iterate`.
 
 <!-- PROTECTED -->
 ### Privacy: narrate findings, not raw example values
@@ -197,9 +206,12 @@ print(results.timestamp)        # datetime when optimization completed
 ```
 
 > **Identifying a run in the portal.** Runs are labeled by the `experiment_name` set on the
-> decorator (`@traigent.optimize(experiment_name=...)`), not by tags — the current SDK has no
-> `tags`/`metadata` argument. To make runs easy to find later, give each one a descriptive
-> `experiment_name` before you run it. See `traigent-decorator-setup` → "Naming and Labeling Runs".
+> decorator (`@traigent.optimize(experiment_name=...)`) or, if omitted, by the access-time
+> `TRAIGENT_EXPERIMENT_NAME` env var, then the deterministic self-describing default
+> `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"`, then bare `func.__name__` only when no
+> objectives or knobs were registered. The current SDK has no `tags`/`metadata` argument.
+> To make runs easy to find later, give each one a descriptive `experiment_name` before you run it.
+> See `traigent-decorator-setup` -> "Naming and Labeling Runs".
 
 `best_score` is `None` when no trial produced a valid score (e.g., all trials failed). Always check before comparing:
 
@@ -282,7 +294,10 @@ if len(sorted_trials) >= 2:
 
 ### Configuration Insights
 
-Use `get_optimization_insights(results)` for a first structured pass over top configurations, performance summary, parameter insights, and recommendations. Treat it as analysis input; deciding the next experiment belongs in `traigent-iterate`.
+Use `get_optimization_insights(results)` for a first structured pass over top configurations,
+performance summary, parameter insights, and recommendations. Treat it as analysis input; deciding
+the next experiment belongs in `traigent-next-run` for portal-tracked runs or `traigent-iterate`
+for offline/local runs.
 
 ```python
 from traigent.utils.insights import get_optimization_insights
@@ -362,7 +377,8 @@ per-trial rows if you want to plot the full cloud behind the frontier.)
 A run that actually reaches the backend syncs to the Traigent portal, where the same trade-off is
 rendered visually. That requires **both** `offline=False` (the default) **and** valid credentials
 (`TRAIGENT_API_KEY`): a run with no key can fall back to local-only execution and then is **not**
-portal-tracked. To locate a synced run:
+portal-tracked. The portal Pareto/frontier view also requires >=2 objectives; a single-objective
+run shows an "add a second measure" hint there, not a blank frontier. To locate a synced run:
 
 ```python
 # The portal/backend identifiers (None when offline or local-fallback):
@@ -370,7 +386,7 @@ print(f"Portal experiment: {results.experiment_id}")  # backend experiment ident
 print(f"Portal link:       {results.cloud_url}")      # direct URL to the experiment on the portal
 # (results.optimization_id is the SDK's local run id, not the portal identifier.)
 # Open results.cloud_url, or go to https://portal.traigent.ai -> Experiments and find this run by
-# its experiment_id (or the experiment_name you set on the decorator) to read the rendered view.
+# its experiment_id (or resolved experiment_name) to read the rendered view.
 ```
 
 An `offline=True` run, or a non-offline run that fell back to local (no key), is **not** on the
@@ -554,10 +570,53 @@ else:
 
 | Skill | Use |
 |---|---|
-| `traigent-iterate` | Decide the next experiment once the brief has named the problem — flat, noisy, dominated, budget-bound, or weak-example heavy. |
+| `traigent-next-run` | Get the canonical next-step decision for a portal-tracked run. |
+| `traigent-iterate` | Form a local next-iteration hypothesis for offline/local runs, unavailable service payloads, or service-flagged local evidence. |
 | `show-significant-tuned-variables` | A deeper, local tuned-variable importance card when `one_knob_dominates` and you want the bootstrap-CI breakdown. |
 | `traigent-ci-safety-gate` | Gate a `clean_winner` (or a cost guardrail for `cost_blowup`) before promoting it to production. |
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

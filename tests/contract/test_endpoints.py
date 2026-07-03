@@ -32,7 +32,9 @@ ENDPOINT_FIX_MENU = (
 @pytest.fixture(scope="session")
 def backend_routes_snapshot(repo_root: Path) -> dict[str, Any]:
     return json.loads(
-        (repo_root / "tests/data/backend_routes_snapshot.json").read_text(encoding="utf-8")
+        (repo_root / "tests/data/backend_routes_snapshot.json").read_text(
+            encoding="utf-8"
+        )
     )
 
 
@@ -73,7 +75,10 @@ def test_taught_backend_endpoint_exists_in_snapshot(
     if found:
         return
 
-    sha = str((backend_routes_snapshot.get("generated_from") or {}).get("commit_sha") or "unknown")
+    sha = str(
+        (backend_routes_snapshot.get("generated_from") or {}).get("commit_sha")
+        or "unknown"
+    )
     raise AssertionError(
         format_dead_teaching(
             url_fact,
@@ -87,7 +92,7 @@ def test_taught_backend_endpoint_exists_in_snapshot(
 
 
 def _falls_under_declared_prefix(skill: str, taught_path: str, sync_map: dict) -> bool:
-    entry = ((sync_map.get("skills") or {}).get(skill) or {})
+    entry = (sync_map.get("skills") or {}).get(skill) or {}
     prefixes = [str(prefix) for prefix in (entry.get("backend_prefixes") or [])]
     if not prefixes:
         return False

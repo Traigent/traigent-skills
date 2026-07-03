@@ -3,7 +3,7 @@ name: Skill Contracts
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, develop]
   schedule:
     - cron: "17 3 * * *"
   workflow_dispatch:
@@ -31,25 +31,34 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install harness dependencies
-        run: python -m pip install pytest pyyaml packaging
+      - name: Install uv
+        run: python -m pip install "uv==0.9.11"
+
+      - name: Install harness dependencies (locked)
+        run: |
+          uv export --frozen --no-emit-project --no-hashes -o harness-requirements.txt
+          uv pip install --system -r harness-requirements.txt
 
       - name: Run released SDK buckets
         run: |
           set -euo pipefail
+          # Locked harness tooling (harness-requirements.txt, derived from uv.lock) +
+          # the matrix SDK version, which is intentionally NOT locked so every
+          # released SDK is exercised against the same pinned harness.
           while IFS= read -r version; do
             [ -n "$version" ] || continue
-            python -m venv ".bucket-$version"
-            ".bucket-$version/bin/pip" install pytest pyyaml packaging "traigent==$version"
+            uv venv --python "$(command -v python)" ".bucket-$version"
+            uv pip install --python ".bucket-$version/bin/python" \
+              -r harness-requirements.txt "traigent==$version"
             ".bucket-$version/bin/python" -m pytest tests/contract --sdk-version="$version" -q
           done < <(python tools/contract/list_buckets.py)
 
   develop-contracts:
     name: develop-contracts
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    continue-on-error: true
+    continue-on-error: ${{ github.event_name == 'schedule' }}
     permissions:
       contents: read
       issues: write
@@ -63,10 +72,16 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install uv
+        run: python -m pip install "uv==0.9.11"
+
       - name: Install develop SDK and harness dependencies
         run: |
-          python -m pip install pytest pyyaml packaging
-          python -m pip install "git+https://github.com/Traigent/Traigent@develop"
+          # Locked harness tooling, then the develop SDK (a moving target by design,
+          # so it stays out of the lock).
+          uv export --frozen --no-emit-project --no-hashes -o harness-requirements.txt
+          uv pip install --system -r harness-requirements.txt
+          uv pip install --system "git+https://github.com/Traigent/Traigent@develop"
 
       - name: Run develop contract drift check
         id: contracts
@@ -77,10 +92,13 @@ jobs:
           set -e
           cat contract-failures.txt
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
-          exit 0
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            exit 0
+          fi
+          exit "$rc"
 
       - name: Create or update drift issue
-        if: steps.contracts.outputs.rc != '0'
+        if: github.event_name == 'schedule' && steps.contracts.outputs.rc != '0'
         env:
           GH_TOKEN: ${{ github.token }}
           TITLE: Skill contract drift vs SDK develop

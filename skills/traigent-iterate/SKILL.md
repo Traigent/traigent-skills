@@ -1,39 +1,49 @@
 ---
 name: traigent-iterate
-description: "Decide what to do after a Traigent optimization run. Use when results are flat, noisy, negative, budget-bound, or tied with baseline; when users ask what next after a run, which knob mattered, expand or narrow the space, use weak examples, inspect example-side evidence, compare runs, or choose the next iteration hypothesis."
+description: "Diagnose offline/local Traigent optimization runs and local evidence when no service next-steps payload is available. Use for offline=True or no-backend-access runs, flat/noisy/negative local results, which knob mattered locally, example-side evidence, comparing local runs, or forming a next iteration hypothesis when `traigent next-steps RUN_ID --json` cannot return guidance. For portal-tracked runs, use `traigent-next-run` first."
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.2.1"
+  version: "1.2.4"
 ---
 
 # Iterate After a Run
 
+## Boundary / Arbitration
+
+For a portal-tracked run, the next-step decision is server-owned — use `traigent-next-run` (CLI `traigent next-steps RUN_ID --json`) FIRST; use this skill when the run is offline/local or the service payload is unavailable, or to diagnose local evidence the service flagged.
+
 ## When to Use
 
-Use this skill after a Traigent optimization run when the user asks:
+Use this skill after an offline/local Traigent optimization run (`offline=True` or no backend
+access), or when a portal run's service next-steps payload is unavailable and you need to form a
+local hypothesis from evidence. It also applies when the service has already flagged local evidence
+for inspection and the user asks:
 
 - "results are flat/noisy/negative"
-- "what next after a run?"
-- "which knob mattered?"
+- "which knob mattered locally?"
 - "should I expand or narrow the space?"
 - "what do I do with weak examples?"
 
-The goal is to choose the next single hypothesis, not to change every part of the system at once.
+The goal is to choose the next single local hypothesis, not to change every part of the system at
+once.
 
 ## Read the Evidence First
 
-Start with the run object and existing analysis skills. `traigent-analyze-results` covers result fields in depth, and `show-significant-tuned-variables` covers richer importance reporting. Use this skill to decide the next action after those facts are known.
+Start with the local run object and existing analysis skills. `traigent-analyze-results` covers
+result fields in depth, and `show-significant-tuned-variables` covers richer importance reporting.
+Use this skill to form the local next hypothesis after those facts are known.
 
-For a cloud/portal run, the fastest way to get the evidence is the terminal-first decision
-brief in `traigent-analyze-results` (the `traigent-analytics` MCP `analytics_get_run_decision_brief`
-tool). Read the brief first and base the next iteration on its real fields:
+For a portal-tracked run, first fetch the service-owned next-step payload through
+`traigent-next-run`. If that payload is unavailable, or if it flags local evidence that needs
+diagnosis, keep the service limitation visible and use the local facts below as a fallback or
+supporting diagnosis:
 
 - `confidence` - keep low/medium confidence visible; do not upgrade it based on intuition.
-- `evidence[].summary` - use these summaries to identify whether the issue is flat scores,
-  noisy examples, high cost, thin samples, a dominated winner, or a narrow knob.
-- `recommended_action.kind` - use the backend's action as the starting point, then use the
-  symptom rows below to turn it into one concrete next hypothesis.
+- `evidence[].summary` - use backend summaries only when they are actually present in the service
+  payload; otherwise use local result fields.
+- local result fields - identify whether the issue is flat scores, noisy examples, high cost, thin
+  samples, a dominated winner, or a narrow knob.
 
 ```python
 from traigent.utils.insights import get_optimization_insights
@@ -58,14 +68,13 @@ If importance is empty, do not infer that no knob matters. Common reasons are to
 ## Example-Side Evidence
 
 <!-- PROTECTED -->
-Use example-side evidence when the aggregate score hides where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent account/backend and returns scoring metadata only: example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or latent feature-vector values.
+Use example-side evidence when the aggregate score hides where the candidate wins or fails. `ExampleInsightsClient` requires a Traigent account/backend and returns scoring metadata only: example ids, sample counts, algorithm version, and scored flags. It does not expose proprietary difficulty, informativeness, ambiguity, or latent feature-vector values. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) is likewise non-signal: it ranks by review urgency and provides enum flags and a suggested action — never raw scores or hidden feature values.
 <!-- /PROTECTED -->
 
-> **Deprecated:** `traigent.analytics` is deprecated since SDK 0.9.0. Use the `traigent-analytics` plugin: `pip install traigent-analytics` and import from `traigent_analytics` instead.
+> **Import note (verified against SDK 0.18.x):** `ExampleInsightsClient` ships in the core SDK at `traigent.analytics` — no separate install required. The module's own `DeprecationWarning` points at the separate `traigent-analytics` plugin, but that plugin does not export `ExampleInsightsClient` (`from traigent_analytics import ExampleInsightsClient` raises `ImportError`); use the core import below and ignore the warning for this class. **Caveat if you HAVE installed the plugin:** the core shim then defers to the plugin and stops exposing this class, so the import below itself raises `ImportError` — uninstall the plugin or use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (works with or without the plugin, verified).
 
 ```python
-from traigent_analytics import ExampleInsightsClient  # canonical (traigent-analytics plugin)
-# from traigent.analytics import ExampleInsightsClient  # deprecated shim — still works
+from traigent.analytics import ExampleInsightsClient
 
 async def fetch_example_metadata(run_id: str):
     async with ExampleInsightsClient(
@@ -79,20 +88,21 @@ async def fetch_example_metadata(run_id: str):
         return {"status": status, "scores": scores, "quality": quality}
 ```
 
+When aggregate scores hide where the candidate wins or fails, pull the ranked "examples to review" rows: use the `analytics_get_example_insights` MCP tool (or the `GET /api/v1/analytics/runs/{run_id}/example-insights` endpoint). Work through rows in `review_priority` order (critical first) and use each row's `suspicious_flags` and `recommended_action` to choose the next iteration — these are coarse enum signals, not hidden numeric scores. See `traigent-curate-dataset` for the flag-to-action guide.
+
 Backend-only report surfaces, each requiring a Traigent account/backend:
 
 - `GET /api/v1/experiment-runs/runs/{run_id}/report-payload`: winner, trade-off, and stability insights.
 - `/api/v1/optimization-comparisons`: cross-run comparison across candidate runs.
 - Example-scoring compute, scores, and dataset-quality endpoints: scoring status and scoring metadata.
-
-Planned: future curation-advice endpoints may package weak-example recommendations; until then, use the manual evidence loop below.
+- `GET /api/v1/analytics/runs/{run_id}/example-insights`: ranked and flagged examples to review (IP-safe: review_priority, suspicious_flags, recommended_action).
 
 ## Next-Step Decision Table
 
 | Symptom | Likely read | Ranked next action |
 |---|---|---|
 | Flat scores everywhere | Evaluation dataset is too easy, objective is saturated, or the space lacks meaningful variation | Synthesize harder examples with `traigent-curate-dataset`; add discriminating cases; then re-run a small grid |
-| High variance across repetitions | Evaluator or model behavior is noisy | Raise repetitions, use statistical aggregation, and audit the evaluator with `traigent-evaluator-audit` |
+| High variance across repetitions | Evaluator or model behavior is noisy | Raise repetitions, use statistical aggregation, and audit the evaluator with `traigent-evaluator-audit`. A server-side ACET evaluator-audit action (computed from the run's tensor) is coming as a next-step option — prefer it when available. |
 | One knob dominates | The useful region is narrower than the current space | Narrow that knob's range; add structural knobs with `traigent-configuration-space` or `traigent-composite-knobs` |
 | Winner ties baseline | Objective weights or threshold may not reflect the product decision | Revisit objective weights with `traigent-choose-metric`; inspect holdout slices before changing the space |
 | `stop_reason` is budget-bound | Search stopped before enough evidence accumulated | Adjust budget, cheaper models, max trials, or algorithm with `traigent-run-optimization` |
@@ -114,6 +124,8 @@ results = await answer.optimize_with_guidance(
 
 `optimize_with_guidance` is a method on the decorated optimized function. Keep the provider and rewrite settings project-specific, and confirm the new candidate still improves on a heldout slice.
 
+This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent` lifecycle skill).
+
 ## One Iteration = One Hypothesis
 
 Change one thing per round. Good iteration statements look like:
@@ -132,6 +144,12 @@ For each round:
 
 Use `references/iteration-log-template.md` as the 10-line per-iteration log.
 
+**Stop condition (mandatory):** stop iterating and report to the user when any
+of these hold — two consecutive rounds with no heldout improvement, the cost
+budget or sample quota is exhausted, or the user's goal is met. Never start
+another paid round after a stop condition fires without the user's explicit
+go-ahead. Iteration is a loop with an exit, not a background process.
+
 ## Claim Scope
 
 Iteration decisions are local to the current evaluation dataset, holdout, objective, evaluator, configuration space, and budget. A better next action on one slice does not imply the same action is best after the dataset, evaluator, model provider, or objective weights change.
@@ -149,3 +167,45 @@ Iteration decisions are local to the current evaluation dataset, holdout, object
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

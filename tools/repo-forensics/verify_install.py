@@ -18,11 +18,23 @@ import sys
 import json
 import hashlib
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import forensics_core as core
 
-def sha256_file(filepath):
+
+def sha256_file(filepath, skill_root):
     """Compute SHA256 hash of a file."""
+    try:
+        resolved_path = core.resolve_path_within_root(skill_root, filepath)
+    except ValueError as e:
+        print(
+            f"[!] verify_install: Skipping out-of-root file {filepath}: {e}",
+            file=sys.stderr,
+        )
+        return None
+
     h = hashlib.sha256()
-    with open(filepath, "rb") as f:
+    with open(resolved_path, "rb") as f:
         for chunk in iter(lambda: f.read(8192), b""):
             h.update(chunk)
     return h.hexdigest()
@@ -31,7 +43,7 @@ def sha256_file(filepath):
 def get_skill_root():
     """Get the root directory of the repo-forensics skill."""
     scripts_dir = os.path.dirname(os.path.abspath(__file__))
-    return os.path.dirname(scripts_dir)  # skill/
+    return core.resolve_repo_root(os.path.dirname(scripts_dir))  # skill/
 
 
 def get_tracked_files(skill_root):
@@ -48,6 +60,14 @@ def get_tracked_files(skill_root):
             if f.endswith((".pyc", ".pyo")):
                 continue
             fp = os.path.join(root, f)
+            try:
+                core.resolve_path_within_root(skill_root, fp)
+            except ValueError as e:
+                print(
+                    f"[!] verify_install: Skipping out-of-root file {fp}: {e}",
+                    file=sys.stderr,
+                )
+                continue
             rel = os.path.relpath(fp, skill_root)
             tracked.append(rel)
 
@@ -60,7 +80,10 @@ def generate_checksums(skill_root):
     checksums = {}
     for rel in files:
         fp = os.path.join(skill_root, rel)
-        checksums[rel] = sha256_file(fp)
+        digest = sha256_file(fp, skill_root)
+        if digest is None:
+            continue
+        checksums[rel] = digest
 
     output = {
         "version": "2",
@@ -94,6 +117,7 @@ def verify_checksums(skill_root):
     tampered = []
     missing = []
     extra = []
+    skipped = []
 
     # Check all expected files
     for rel, expected_hash in expected.items():
@@ -102,7 +126,11 @@ def verify_checksums(skill_root):
             missing.append(rel)
             report.append(f"  MISSING: {rel}")
             continue
-        actual_hash = sha256_file(fp)
+        actual_hash = sha256_file(fp, skill_root)
+        if actual_hash is None:
+            skipped.append(rel)
+            report.append(f"  SKIPPED: {rel} (resolves outside skill root)")
+            continue
         if actual_hash != expected_hash:
             tampered.append(rel)
             report.append(
@@ -118,21 +146,21 @@ def verify_checksums(skill_root):
         report.append(f"  NEW FILE: {rel} (not in checksums.json)")
 
     # Summary
-    passed = len(tampered) == 0 and len(missing) == 0
+    passed = len(tampered) == 0 and len(missing) == 0 and len(skipped) == 0
     if passed and len(extra) == 0:
         report.insert(
             0,
             f"[+] VERIFIED: All {len(expected)} files match checksums.json (v{data.get('version', '?')})",
         )
-    elif passed:
+    elif len(tampered) == 0 and len(missing) == 0:
         report.insert(
             0,
-            f"[~] PARTIAL: All {len(expected)} tracked files OK, but {len(extra)} untracked file(s) found",
+            f"[~] PARTIAL: All {len(expected)} tracked files OK, but {len(extra)} untracked file(s) and {len(skipped)} skipped file(s) found",
         )
     else:
         report.insert(
             0,
-            f"[!] FAILED: {len(tampered)} tampered, {len(missing)} missing out of {len(expected)} tracked files",
+            f"[!] FAILED: {len(tampered)} tampered, {len(missing)} missing, {len(skipped)} skipped out of {len(expected)} tracked files",
         )
 
     return passed, report

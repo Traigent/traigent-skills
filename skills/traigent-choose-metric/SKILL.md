@@ -4,7 +4,7 @@ description: "Choose Traigent objectives and metric functions before optimizing.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.1.1"
 ---
 
 # Traigent Choose Metric
@@ -50,7 +50,7 @@ Evaluation methods:
 | Method | Use when |
 |---|---|
 | `deterministic` | Exact match, normalized match, schema validation, tests, cost, latency, or tool-call rules can be checked directly. |
-| `llm_based` | A rubric is required and deterministic labels are insufficient. Label the result as a judge score. |
+| `llm_based` | A rubric is required and deterministic labels are insufficient. Label the result as a judge score. LLM-based evaluators are subject to service-side evaluator-quality auditing (ACET) after runs complete — the optimizer tensor is used to retroactively assess the judge, no new gold collection required. Favor a verifiable anchor (execution-match, unit-test pass, MCQ exact match) where the task allows, as it enables honest confidence from the service audit. |
 | `statistical` | Repeated runs, variance, agreement, or confidence intervals matter. |
 | `hybrid` | A deterministic gate should run before a judge or repeated-sample score. |
 
@@ -82,7 +82,9 @@ def answer(question: str) -> str:
     return prompt_model(question, model=cfg["model"], temperature=cfg["temperature"])
 ```
 
-Use custom metric functions when the domain has a checkable rule. Name each metric after the product concept it measures, and then include that name in `objectives` only if the optimizer should trade off against it.
+Use custom metric functions when the domain has a checkable rule. Default to an `accuracy`-labeled primary quality objective when correctness or answer quality applies, either as a built-in objective or as a `metric_functions` key. The label does not have to be the literal string `accuracy`: an accuracy-*semantic* name that carries a qualifier (`label_accuracy`, `exec_accuracy`) satisfies the rule and is preferred when it says *which* accuracy is measured. Name the primary quality metric after the product concept only when `accuracy` semantically does not fit the problem, such as ranking quality, generation quality, schema validity, or latency-only tuning; note why accuracy was skipped, and include that name in `objectives` only if the optimizer should trade off against it.
+
+In the schema-only example below, `valid_schema` is the product-concept KPI because output format validity is the primary target; add an `accuracy` metric too if answer correctness also matters.
 
 ```python
 import json
@@ -103,6 +105,8 @@ def valid_schema_metric(output, expected, input_data) -> float:
         eval_dataset="eval/invoices.jsonl",
         metric_functions={"valid_schema": valid_schema_metric},
     ),
+    # Schema validity is the primary target here (accuracy skipped: format-only
+    # task). Add an accuracy metric if answer correctness also matters.
     objectives=["valid_schema", "cost"],
     configuration_space={"temperature": [0.0, 0.2]},
 )
@@ -148,3 +152,45 @@ Treat safety properties as constraints or gates when a violation is unacceptable
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

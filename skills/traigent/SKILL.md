@@ -4,7 +4,7 @@ description: "Guide users through Traigent optimization: setup, dry-run validati
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.1"
+  version: "1.1.3"
 ---
 
 # Traigent: Dry-Run First, Real When Ready
@@ -42,6 +42,8 @@ Planned: a playbook artifact may eventually package this lifecycle; today, follo
 ## Step 1: Set Up the Decorator
 
 The user's function needs four things:
+
+> **Objective naming rule:** Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
 ```python
 import traigent
@@ -293,6 +295,25 @@ For a `custom_evaluator` / `BaseEvaluator`, call `.evaluate([good_example])` and
 >
 > **If either fails:** fix the metric before spending tokens. Common causes: wrong field name in the result, inverted logic (`>` vs `<`), exception swallowed to `0.0`. See [traigent-build-evaluator](../traigent-build-evaluator/SKILL.md) for diagnostic steps. For LLM-judge metrics, see [traigent-evaluator-audit](../traigent-evaluator-audit/SKILL.md) for the full reliability protocol.
 
+## Step 3.6: Tiny Real Cost and KPI Probe
+
+After mock mode and the evaluator sanity gate pass, run one tiny **real** optimization before any full run: 1-2 dataset examples, minimal trials, and the cheapest candidate model. This is paid, but should cost pennies, and it proves the billing and objective plumbing before scaling up.
+
+Check both surfaces:
+
+- `results.total_cost` is `float | None`. `None` means cost tracking is unavailable. `0.0` with real calls means the model was unpriced, so the provider may bill while Traigent reports zero. Treat both as cost **not wired**.
+- Each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with real non-degenerate values. If all objective values are `0.0` or all are `1.0`, fix the evaluator/KPI wiring before the full run.
+
+If cost or other KPIs are not picked up for custom services, self-hosted endpoints, or unknown models, fix in this order:
+
+1. Use a model id LiteLLM can price, or map an alias with `litellm.model_alias_map`.
+2. Supply custom per-token pricing with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`. The JSON shape is `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; `input`/`output` aliases are accepted, provider prefixes like `openai/` are normalized, and values must be finite non-negative floats. Pricing resolves in this order: LiteLLM, custom pricing, built-in fallback table, then `UnknownModelError`.
+3. Report cost directly from the optimized function's per-trial metrics using `total_cost`, `cost`, or `input_cost` plus `output_cost`. This bypasses pricing tables and is the primary path for fully custom services.
+
+Set `TRAIGENT_STRICT_COST_ACCOUNTING=true` when an unpriced model should fail loudly instead of reporting zero.
+
+> **NOTE:** Before any full run, verify with a tiny real optimization call that cost and your other KPIs are actually tracked (`results.total_cost` is not None/$0 and objective metrics are populated). If not, wire them (custom model pricing env vars, or return `total_cost` in metrics) before scaling up.
+
 ## Step 4: Report and Estimate Costs
 
 After a successful mock run, tell the user:
@@ -339,34 +360,45 @@ os.environ.pop("TRAIGENT_OFFLINE_MODE", None)
 
 # Cost limit — default $2.00 USD per run
 os.environ["TRAIGENT_RUN_COST_LIMIT"] = "2.00"
+
+# Real runs are blocked by the cost-approval gate until this is set.
+# Set it ONLY after the user has seen the cost estimate and explicitly
+# approved the spend — never set it preemptively on the user's behalf.
+os.environ["TRAIGENT_COST_APPROVED"] = "true"
 ```
 
 ### 3. Run Real Optimization
 
-> **Smart algorithms are cloud-only.** `bayesian` (and the rest of the Optuna/Bayesian family,
-> incl. `tpe`) run on the Traigent backend and require `TRAIGENT_API_KEY` (`traigent auth`) — the
-> provider keys exported above are **not** enough. Without it the run raises `OptimizationError`.
-> For a fully local real run, use `algorithm="grid"` or `algorithm="random"`.
+> **Smart algorithms are not yet executable.** `bayesian` (and the rest of the Optuna/Bayesian
+> family, incl. `tpe`/`cmaes`/`nsga2`) validate as known names but fail before any trial runs —
+> without `TRAIGENT_API_KEY` the run raises `ConfigurationError` (*"Cloud execution is required,
+> but backend session creation failed"*), and even when connected to the Traigent cloud the
+> current backend session dispatcher only executes `grid`/`random` (verified against SDK
+> 0.18.x). For a real run today, use `algorithm="grid"` or `algorithm="random"`.
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    # `bayesian` is cloud-only (needs TRAIGENT_API_KEY); use "grid"/"random" to stay local.
-    results = my_function.optimize_sync(max_trials=10, algorithm="bayesian")
+    # Use "grid"/"random" — smart algorithms like "bayesian" are roadmap and
+    # fail before any trial runs, whether or not TRAIGENT_API_KEY is set.
+    results = my_function.optimize_sync(max_trials=10, algorithm="random")
 except CostLimitExceeded as e:
     print(f"Budget hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
     print("Increase TRAIGENT_RUN_COST_LIMIT to allow more spending.")
     raise
 except OptimizationError as e:
-    # e.g. a cloud-only algorithm with no TRAIGENT_API_KEY set.
     print(f"Optimization could not run: {e}")
-    print("Set TRAIGENT_API_KEY for smart algorithms, or use algorithm='grid'/'random'.")
     raise
 
 print(f"Best config:  {results.best_config}")
 print(f"Best score:   {results.best_score}")
-print(f"Total cost:   ${results.total_cost:.2f}" if results.total_cost else "")
+if results.total_cost:
+    print(f"Total cost:   ${results.total_cost:.2f}")
+else:
+    # None or 0.0 after real calls = cost is NOT wired (see Step 3.6) —
+    # say so loudly instead of hiding the row.
+    print("Total cost:   NOT TRACKED — wire cost before the next run (Step 3.6)")
 print(f"Duration:     {results.duration:.1f}s")
 print(f"Stop reason:  {results.stop_reason}")
 ```
@@ -412,3 +444,45 @@ answer = my_function("What is Python?")
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
 <!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

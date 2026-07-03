@@ -125,11 +125,16 @@ CLAWHAVOC = [
 ]
 
 
-def _read(path):
+def _read(repo_root, path):
     try:
-        with open(path, "r", encoding="utf-8", errors="ignore") as f:
-            return f.read()
+        return core.read_text_file_within_root(repo_root, path, encoding="utf-8", errors="ignore")
     except FileNotFoundError:
+        return None
+    except ValueError as e:
+        print(
+            f"[!] {SCANNER_NAME}: Skipping out-of-root file {path}: {e}",
+            file=sys.stderr,
+        )
         return None
     except Exception as e:
         print(f"[!] {SCANNER_NAME}: Failed to read {path}: {e}", file=sys.stderr)
@@ -148,13 +153,13 @@ def is_openclaw_skill(repo_path):
     # SKILL.md with frontmatter = OpenClaw/NanoClaw style
     skill_md = os.path.join(repo_path, "SKILL.md")
     if os.path.isfile(skill_md):
-        content = _read(skill_md)
+        content = _read(repo_path, skill_md)
         if content and content.startswith("---"):
             return True
     # tools.json with tool definitions (not generic config)
     tools_json = os.path.join(repo_path, "tools.json")
     if os.path.isfile(tools_json):
-        content = _read(tools_json)
+        content = _read(repo_path, tools_json)
         if content:
             try:
                 data = json.loads(content)
@@ -173,7 +178,7 @@ def is_openclaw_skill(repo_path):
 def scan_frontmatter(repo_path):
     """Cat 1: Parse SKILL.md frontmatter, validate name/author/triggers/description."""
     findings = []
-    content = _read(os.path.join(repo_path, "SKILL.md"))
+    content = _read(repo_path, os.path.join(repo_path, "SKILL.md"))
     if not content:
         return findings
     fm_match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
@@ -250,7 +255,7 @@ def scan_tools_json(repo_path):
     """Cat 2: Check tools.json for schema poisoning and credential fields."""
     findings = []
     path = os.path.join(repo_path, "tools.json")
-    raw = _read(path)
+    raw = _read(repo_path, path)
     if not raw:
         return findings
     try:
@@ -332,7 +337,7 @@ def scan_agent_configs(repo_path):
             os.path.join("memory", f) for f in os.listdir(mem_dir) if f.endswith(".md")
         ]
     for rel in targets:
-        content = _read(os.path.join(repo_path, rel))
+        content = _read(repo_path, os.path.join(repo_path, rel))
         if not content:
             continue
         for i, line in enumerate(content.split("\n")):
@@ -374,7 +379,7 @@ def scan_agent_configs(repo_path):
 def scan_clawhubignore(repo_path):
     """Cat 4: Check .clawhubignore for patterns that hide executable code."""
     findings = []
-    content = _read(os.path.join(repo_path, ".clawhubignore"))
+    content = _read(repo_path, os.path.join(repo_path, ".clawhubignore"))
     if not content:
         return findings
     for i, raw in enumerate(content.split("\n")):
@@ -422,7 +427,7 @@ def scan_clawhavoc(repo_path):
     openclaw_files = ["SKILL.md", "tools.json", "SOUL.md", "AGENTS.md"]
     for name in openclaw_files:
         file_path = os.path.join(repo_path, name)
-        content = _read(file_path)
+        content = _read(repo_path, file_path)
         if not content:
             continue
         for i, line in enumerate(content.split("\n")):
@@ -449,7 +454,7 @@ def main(args):
     """Run all OpenClaw skill checks. Returns list[Finding].
     Args can be a namespace with .repo_path or a string path (for testing).
     """
-    repo_path = args if isinstance(args, str) else args.repo_path
+    repo_path = core.resolve_repo_root(args if isinstance(args, str) else args.repo_path)
     if not is_openclaw_skill(repo_path):
         print("[+] Not an OpenClaw skill. Skipping.")
         return []
