@@ -11,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "tools" / "repo-forensics"))
 
 import forensics_core as core
+import scan_integrity
 import scan_openclaw_skills
 import verify_install
 
@@ -130,6 +131,29 @@ def test_verify_install_sha256_file_refuses_symlink_outside_root(
     link.symlink_to(outside)
 
     assert verify_install.sha256_file(str(link), str(repo)) is None
+    captured = capsys.readouterr()
+    assert "Skipping out-of-root file" in captured.err
+    assert "outside repo root" in captured.err
+
+
+def test_scan_integrity_find_critical_files_refuses_symlink_outside_root(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    repo = tmp_path / "repo"
+    commands_dir = repo / ".claude" / "commands"
+    commands_dir.mkdir(parents=True)
+    outside = tmp_path / "payload.md"
+    outside.write_text("secret\n", encoding="utf-8")
+    link = commands_dir / "payload.md"
+    link.symlink_to(outside)
+
+    critical_files, findings = scan_integrity.find_critical_files(str(repo))
+
+    assert critical_files == {}
+    assert len(findings) == 1
+    assert findings[0].category == "integrity-containment"
+    assert findings[0].file == ".claude/commands/payload.md"
+
     captured = capsys.readouterr()
     assert "Skipping out-of-root file" in captured.err
     assert "outside repo root" in captured.err
