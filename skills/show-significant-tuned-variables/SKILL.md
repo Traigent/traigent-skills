@@ -4,7 +4,7 @@ description: "Show significant tuned variables and rank which variables mattered
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Show Significant Tuned Variables
@@ -25,6 +25,11 @@ Use this skill when the user asks:
 - "feature importance for optimization"
 - "what drove the optimization gains?"
 - "make a video card for the important knobs"
+
+The script ranks knobs within **one run's** trials. For multi-run evidence, fetch the cohort table,
+export each run's rows to a separate per-run trials JSONL, run the script per run, and compare the
+rankings across runs. Do not concatenate runs into one file; mixed search spaces or objectives
+corrupt the ranking.
 
 ## Inputs
 
