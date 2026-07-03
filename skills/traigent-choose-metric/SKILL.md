@@ -82,7 +82,7 @@ def answer(question: str) -> str:
     return prompt_model(question, model=cfg["model"], temperature=cfg["temperature"])
 ```
 
-Use custom metric functions when the domain has a checkable rule. Default to an `accuracy`-labeled primary quality objective when correctness or answer quality applies, either as a built-in objective or as a `metric_functions` key. Name the primary quality metric after the product concept only when `accuracy` semantically does not fit the problem, such as ranking quality, generation quality, schema validity, or latency-only tuning; note why accuracy was skipped, and include that name in `objectives` only if the optimizer should trade off against it.
+Use custom metric functions when the domain has a checkable rule. Default to an `accuracy`-labeled primary quality objective when correctness or answer quality applies, either as a built-in objective or as a `metric_functions` key. The label does not have to be the literal string `accuracy`: an accuracy-*semantic* name that carries a qualifier (`label_accuracy`, `exec_accuracy`) satisfies the rule and is preferred when it says *which* accuracy is measured. Name the primary quality metric after the product concept only when `accuracy` semantically does not fit the problem, such as ranking quality, generation quality, schema validity, or latency-only tuning; note why accuracy was skipped, and include that name in `objectives` only if the optimizer should trade off against it.
 
 In the schema-only example below, `valid_schema` is the product-concept KPI because output format validity is the primary target; add an `accuracy` metric too if answer correctness also matters.
 
@@ -105,6 +105,8 @@ def valid_schema_metric(output, expected, input_data) -> float:
         eval_dataset="eval/invoices.jsonl",
         metric_functions={"valid_schema": valid_schema_metric},
     ),
+    # Schema validity is the primary target here (accuracy skipped: format-only
+    # task). Add an accuracy metric if answer correctness also matters.
     objectives=["valid_schema", "cost"],
     configuration_space={"temperature": [0.0, 0.2]},
 )

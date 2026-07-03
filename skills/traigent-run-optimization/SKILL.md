@@ -392,7 +392,7 @@ End-to-end optimization from import to results:
 import traigent
 from traigent.api.decorators import EvaluationOptions, ExecutionOptions
 from traigent.config.parallel import ParallelConfig
-from traigent.utils.exceptions import CostLimitExceeded
+from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 from traigent.utils.results_table import print_results_table
 
 def exact_match(output: str, expected: str) -> float:
@@ -427,14 +427,27 @@ def answer_question(question: str) -> str:
     return resp.choices[0].message.content
 
 async def main():
+    # All three cost/failure surfaces from "Handling Cost Limit Exceptions" above.
     try:
         results = await answer_question.optimize(
             max_trials=6,
             algorithm="grid",
             timeout=300.0,
         )
-    except CostLimitExceeded as e:
+    except CostLimitExceeded as e:  # kept for forward-compat; not raised today
         print(f"Budget exceeded: ${e.accumulated:.2f} / ${e.limit:.2f}")
+        return
+    except OptimizationError as e:  # pre-run "estimate > limit" decline, and run errors
+        print(f"Run declined or failed: {e}")
+        return
+
+    if results.stop_reason == "cost_limit":
+        print("Budget reached mid-run; results below are partial.")
+
+    if results.best_score is None:
+        # No successful trials — do NOT apply anything; report and stop.
+        print(f"No trial succeeded (stop reason: {results.stop_reason}). "
+              "Inspect the failed trials before spending more.")
         return
 
     print_results_table(
@@ -447,7 +460,10 @@ async def main():
     print(f"Best score:  {results.best_score}")
     print(f"Stop reason: {results.stop_reason}")
     print(f"Duration:    {results.duration:.1f}s")
-    print(f"Total cost:  ${results.total_cost:.2f}" if results.total_cost else "")
+    if results.total_cost:
+        print(f"Total cost:  ${results.total_cost:.2f}")
+    else:
+        print("Total cost:  NOT TRACKED — wire cost before the next run (see Cost Wiring Probe)")
 
     # Apply and use in production
     answer_question.apply_best_config(results)

@@ -135,7 +135,7 @@ CONFIGURATION_SPACE = {
 9. OPTIMIZE for real only with cost limits and explicit approval.
    - Cross-reference `traigent-run-optimization` for `func.optimize()`, `optimize_sync()`, algorithms, `max_trials`, parallelism, and `CostLimitExceeded`.
    - Set an explicit `TRAIGENT_RUN_COST_LIMIT` and verify provider keys before the real run. If a Traigent backend is used, set `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL` as appropriate for the client environment. See [Getting your Traigent API key](../traigent-quickstart/SKILL.md#get-your-traigent-api-key) if you have not yet obtained `TRAIGENT_API_KEY`.
-   - Present a cost estimate and get the user's explicit approval before any paid run.
+   - Present a cost estimate and get the user's explicit approval before any paid run. The approval signal depends on context: interactive real runs are gated by `TRAIGENT_COST_APPROVED=true` (set only after the user approves the estimate); CI/offline runs (including mock wiring checks under `CI=true`) require `TRAIGENT_RUN_APPROVED=1` instead — see `traigent-ci-safety-gate`.
    - Start with a bounded trial budget, keep the current production baseline in the search space, and save results artifacts for audit.
    - DELEGATE: `traigent-run-optimization` owns algorithms, budgets, and execution controls.
 

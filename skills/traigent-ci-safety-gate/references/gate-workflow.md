@@ -1,6 +1,6 @@
 # Gate Workflow
 
-Copy this workflow into `.github/workflows/traigent-safety-gate.yml` and adapt the two `scripts/run_holdout_eval.py` calls to your project. Each run should write JSON with this shape:
+Copy this workflow into `.github/workflows/traigent-safety-gate.yml` and adapt the two `scripts/run_holdout_eval.py` calls to your project (a reference implementation is provided below — the gate does not work without it). The config files are the export artifacts from the lifecycle skill: `configs/baseline.json` is the pinned incumbent, and `configs/candidate.json` is the `export_config("candidate_config.json")` artifact from the winning run, committed by the PR under review. Each run should write JSON with this shape:
 
 ```json
 {
@@ -36,6 +36,9 @@ jobs:
     env:
       TRAIGENT_OFFLINE_MODE: "true"
       TRAIGENT_RUN_COST_LIMIT: "0.00"
+      # Required for ANY offline/mock optimize() under CI=true — without it
+      # the SDK raises OptimizationError and this job red-fails on every PR.
+      TRAIGENT_RUN_APPROVED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -77,6 +80,67 @@ jobs:
         run: python scripts/run_holdout_eval.py --config configs/candidate.json --output .gate/candidate.json
       - name: Enforce promotion, safety, and efficiency
         run: python scripts/traigent_gate.py --incumbent .gate/incumbent.json --candidate .gate/candidate.json --max-cost 5.00 --max-latency-ms 1200 --require-promote
+```
+
+## Holdout Eval Script
+
+Save this as `scripts/run_holdout_eval.py`. Only `evaluate_one` is project-specific — adapt it to call your agent with the config applied; everything else (arg parsing, JSONL loop, output shape) matches what `traigent_gate.py` consumes.
+
+```python
+#!/usr/bin/env python3
+"""Reference implementation — adapt evaluate_one() to your agent."""
+from __future__ import annotations
+
+import argparse
+import json
+import time
+from pathlib import Path
+
+
+def evaluate_one(example: dict, config: dict, mode: str) -> tuple[float, float, float]:
+    """Return (accuracy, latency_ms, cost) for one holdout example.
+
+    ADAPT THIS: apply `config` to your agent and call it. In --mode mock
+    return canned values without touching any provider (zero spend).
+    """
+    if mode == "mock":
+        return 1.0, 0.0, 0.0
+    start = time.perf_counter()
+    output = run_my_agent(example["input"], config)  # <- your agent call
+    latency_ms = (time.perf_counter() - start) * 1000.0
+    accuracy = 1.0 if output.strip() == example["expected_output"].strip() else 0.0
+    return accuracy, latency_ms, 0.0  # supply real per-call cost if you track it
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--config", type=Path, required=True)
+    parser.add_argument("--holdout", type=Path, default=Path("eval/holdout.jsonl"))
+    parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--mode", choices=["real", "mock"], default="real")
+    args = parser.parse_args()
+
+    config = json.loads(args.config.read_text(encoding="utf-8"))
+    accuracy: list[float] = []
+    latency: list[float] = []
+    total_cost = 0.0
+    for line in args.holdout.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        score, ms, cost = evaluate_one(json.loads(line), config, args.mode)
+        accuracy.append(score)
+        latency.append(ms)
+        total_cost += cost
+
+    args.output.parent.mkdir(parents=True, exist_ok=True)
+    args.output.write_text(json.dumps({
+        "metrics": {"accuracy": accuracy, "latency_ms": latency},
+        "total_cost": total_cost,
+    }), encoding="utf-8")
+
+
+if __name__ == "__main__":
+    main()
 ```
 
 ## Gate Script

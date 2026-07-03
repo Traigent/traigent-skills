@@ -4,7 +4,7 @@ description: "Build Traigent evaluators and scoring code. Use when wiring eval_d
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Traigent Build Evaluator
@@ -71,8 +71,13 @@ def valid_json_metric(output, expected, input_data) -> float:
     return 1.0
 
 def expected_field_metric(output, expected, input_data) -> float:
-    data = json.loads(output)
-    return 1.0 if data.get("label") == expected.get("label") else 0.0
+    # Guard the parse AND the access: model output may not be valid JSON,
+    # and `expected` may be a scalar — both must score 0.0, not raise.
+    try:
+        data = json.loads(output)
+        return 1.0 if data.get("label") == expected.get("label") else 0.0
+    except (json.JSONDecodeError, AttributeError, TypeError):
+        return 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(

@@ -360,6 +360,11 @@ os.environ.pop("TRAIGENT_OFFLINE_MODE", None)
 
 # Cost limit — default $2.00 USD per run
 os.environ["TRAIGENT_RUN_COST_LIMIT"] = "2.00"
+
+# Real runs are blocked by the cost-approval gate until this is set.
+# Set it ONLY after the user has seen the cost estimate and explicitly
+# approved the spend — never set it preemptively on the user's behalf.
+os.environ["TRAIGENT_COST_APPROVED"] = "true"
 ```
 
 ### 3. Run Real Optimization
@@ -388,7 +393,12 @@ except OptimizationError as e:
 
 print(f"Best config:  {results.best_config}")
 print(f"Best score:   {results.best_score}")
-print(f"Total cost:   ${results.total_cost:.2f}" if results.total_cost else "")
+if results.total_cost:
+    print(f"Total cost:   ${results.total_cost:.2f}")
+else:
+    # None or 0.0 after real calls = cost is NOT wired (see Step 3.6) —
+    # say so loudly instead of hiding the row.
+    print("Total cost:   NOT TRACKED — wire cost before the next run (Step 3.6)")
 print(f"Duration:     {results.duration:.1f}s")
 print(f"Stop reason:  {results.stop_reason}")
 ```

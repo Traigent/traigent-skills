@@ -93,7 +93,7 @@ answerQuestion.applyBestConfig(result);
 <!-- PROTECTED -->
 - `budget.maxCostUsd` is enforced from numeric `metrics.total_cost` or `metrics.cost`; provider billing remains the user's responsibility.
 - The JS SDK has no pricing tables or pricing env vars. Cost exists only when the trial returns numeric `metrics.total_cost`, `metrics.cost`, or `metrics.input_cost` plus `metrics.output_cost`.
-- Before any full run, verify with a tiny real optimization that cost and your other KPIs are actually tracked: trial metrics must include numeric cost and populated objective metrics, with an `accuracy` metric by default unless accuracy does not apply. If not, return the cost metrics directly before scaling up.
+- Before any full run, verify with a tiny real optimization that cost and your other KPIs are actually tracked: trial metrics must include numeric cost and populated objective metrics, with an `accuracy` metric by default unless accuracy does not apply. If not, return the cost metrics directly before scaling up. The probe is itself a paid run — the same dry-run-first / explicit-user-approval gate applies to it.
 <!-- /PROTECTED -->
 - Trial context is available during wrapped execution. Use `getTrialParam`, `getTrialConfig`, `TrialContext.run`, `isInTrial`, and `wrapCallback` rather than module-level globals.
 - JS supports `context`, `parameter`, and `seamless` injection modes. Use `context` unless the host app naturally accepts a config parameter or intentionally opts into seamless framework/rewrite support.
