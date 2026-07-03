@@ -18,9 +18,14 @@ BACKEND_ROUTE_FAMILIES = (
     "datasets",
     "analytics",
     "experiment-runs",
+    "experiment-groups",
     "optimization-comparisons",
+    "optimization",
     "sessions",
     "hybrid",
+    "keys",
+    "best-configs",
+    "auth",
 )
 ENDPOINT_FIX_MENU = (
     "  fix one : (a) refresh tests/data/backend_routes_snapshot.json from TraigentBackend\n"

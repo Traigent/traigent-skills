@@ -117,6 +117,36 @@ GET /sessions/123/results
     )
 
 
+def test_extractor_detects_newer_backend_url_families(tmp_path: Path) -> None:
+    path = tmp_path / "SKILL.md"
+    path.write_text(
+        """# Demo
+
+Use `GET /api/v1/experiment-groups/42` and `POST /api/v1/optimization/plan`.
+
+```text
+GET /api/v1/keys
+GET /api/v1/best-configs/7
+POST /api/v1/auth/login
+GET /api/v1beta/projects/p1/prompts
+```
+
+The `/authoring/page` path is not a backend route family.
+""",
+        encoding="utf-8",
+    )
+
+    facts = collect_file("demo", path)
+    urls = {(fact.method, fact.url) for fact in facts if fact.kind == "url"}
+    assert ("GET", "/api/v1/experiment-groups/42") in urls
+    assert ("POST", "/api/v1/optimization/plan") in urls
+    assert ("GET", "/api/v1/keys") in urls
+    assert ("GET", "/api/v1/best-configs/7") in urls
+    assert ("POST", "/api/v1/auth/login") in urls
+    assert ("GET", "/api/v1beta/projects/p1/prompts") in urls
+    assert not any(url.startswith("/authoring") for _, url in urls)
+
+
 def test_extractor_honors_contract_skip(tmp_path: Path) -> None:
     path = tmp_path / "SKILL.md"
     path.write_text(
