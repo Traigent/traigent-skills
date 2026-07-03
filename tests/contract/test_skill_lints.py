@@ -509,43 +509,58 @@ def test_no_leaked_next_run_lifecycle_vocab_in_skill_markdown(repo_root: Path) -
 
 
 def test_next_run_skill_stays_service_decided_thin_client(repo_root: Path) -> None:
-    path = repo_root / "skills" / "traigent-next-run" / "SKILL.md"
+    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
     text = path.read_text(encoding="utf-8")
-    lowered = text.lower()
     rel = path.relative_to(repo_root).as_posix()
+
+    # traigent-analyze-guidance is a merged, three-mode skill (2026-07 taxonomy
+    # consolidation): Mode A (pre-run plan) and Mode B (post-run, portal-tracked)
+    # must stay a thin client that defers next-step decisions to the Traigent
+    # service — that is what this lint guards. Mode C is explicitly the
+    # offline/local-diagnosis fallback (merged in from the former
+    # traigent-iterate skill) for when there is no service payload; local
+    # heuristic vocabulary (difficulty, thresholds, symptom/action tables) is
+    # its documented purpose, so it is out of scope for this lint.
+    mode_c_match = re.search(r"(?m)^## Mode C\b.*$", text)
+    next_mode_match = re.search(r"(?m)^## See Also\b", text)
+    if mode_c_match and next_mode_match and next_mode_match.start() > mode_c_match.start():
+        scoped_text = text[: mode_c_match.start()] + text[next_mode_match.start() :]
+    else:
+        scoped_text = text
+    lowered = scoped_text.lower()
 
     violations: list[str] = []
     for banned in NEXT_RUN_IP_BANNED_SUBSTRINGS:
         if banned in lowered:
             violations.append(f"{rel}: banned local-decision term {banned!r}")
     for label, pattern in NEXT_RUN_LOCAL_DECISION_PATTERNS.items():
-        match = pattern.search(text)
+        match = pattern.search(scoped_text)
         if not match:
             continue
-        line = text.count("\n", 0, match.start()) + 1
+        line = text.count("\n", 0, text.find(match.group(0))) + 1
         violations.append(f"{rel}:{line}: banned local-decision pattern {label!r}")
 
     assert not violations, "\n".join(violations)
     assert re.search(
         r"\bfetch(?:es)?\b[\s\S]{0,160}\bTraigent service\b", text, re.IGNORECASE
-    ), "traigent-next-run must stay service-backed, not standalone"
+    ), "traigent-analyze-guidance must stay service-backed, not standalone"
     assert re.search(
         r"\bdecision comes from the Traigent service\b", text, re.IGNORECASE
-    ), "traigent-next-run must state that the next-step decision comes from the service"
+    ), "traigent-analyze-guidance must state that the next-step decision comes from the service"
     assert "posture.summary_text" in text, (
-        "traigent-next-run must present opaque posture prose"
+        "traigent-analyze-guidance must present opaque posture prose"
     )
     assert "traigent next-steps RUN_ID --json" in text, (
-        "traigent-next-run must fetch the service next-steps payload"
+        "traigent-analyze-guidance must fetch the service next-steps payload"
     )
     assert "next_steps[]" in text, (
-        "traigent-next-run must reference returned next_steps"
+        "traigent-analyze-guidance must reference returned next_steps"
     )
     assert "next_steps[].action.command_template" in text, (
-        "traigent-next-run must present the returned command template"
+        "traigent-analyze-guidance must present the returned command template"
     )
     assert re.search(r"\bRun only the command template the service returns\b", text), (
-        "traigent-next-run must execute only returned command templates"
+        "traigent-analyze-guidance must execute only returned command templates"
     )
 
 

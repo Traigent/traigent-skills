@@ -201,4 +201,4 @@ Use `TRAIGENT_BACKEND_URL` only when the client has a non-default backend endpoi
 | Generate-then-check | Use `verification_gate`; wire the verifier signal and include verifier style/model/question count knobs in the config space. |
 | Specialists | Use `moe`; each expert is a stage, with `aggregate="vote"` or `aggregate="judge"`. |
 | Primary plus backup | Use `fallback`; model no-accept or low-margin backup behavior, not provider exceptions. |
-| Iterative refine | Use `self_refine` or the `bounded_refine_loop` recipe from `traigent-composite-knobs/references/advanced-recipes.md`. |
+| Iterative refine | Use `self_refine` or the `bounded_refine_loop` recipe from `traigent-optimize-composite-knobs/references/advanced-recipes.md`. |

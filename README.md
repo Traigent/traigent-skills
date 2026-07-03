@@ -12,39 +12,57 @@ Every skill carries a shared **Traigent Interaction Policy** — a managed block
 
 ## Skills
 
-These skills guide your agent through the full Traigent optimization lifecycle, in roughly the order you'd use them:
+These 18 skills guide your agent through the full Traigent optimization lifecycle, grouped by the stage where you'd reach for them:
 
-| Skill | Description |
-| ----- | ----------- |
-| [traigent-quickstart](skills/traigent-quickstart/) | Install and set up the Traigent SDK — `pip install`, environment variables (`TRAIGENT_API_KEY`), mock mode, evaluation dataset creation in JSONL, and a first `@traigent.optimize` decorated function. |
-| [traigent-curate-dataset](skills/traigent-curate-dataset/) | Build, split, grow, and score Traigent evaluation datasets — assess existing examples, JSONL format and holdout discipline, client-side synthesis with `ExampleSynthesizer`/`optimize_with_guidance(grow_dataset=…)`, backend generation endpoints, post-run example scoring via `ExampleInsightsClient`, and the improve loop. |
-| [traigent-choose-metric](skills/traigent-choose-metric/) | Choose what to measure before optimizing — the 6-question metric interview, the measure-type vocabulary (accuracy, quality, latency, safety, efficiency, reliability, sanity_check), built-in objective names, multi-objective accuracy+cost patterns, and when a safety property belongs in a gate instead. |
-| [traigent-build-evaluator](skills/traigent-build-evaluator/) | Wire or implement an evaluator — the 5-tier wire-first ladder (`eval_dataset` → `scoring_function` → `metric_functions` → `custom_evaluator` → `BaseEvaluator`), the `ExampleResult` contract, and deterministic / LLM-judge / statistical / hybrid templates with fail-closed parse handling. |
-| [traigent-evaluator-audit](skills/traigent-evaluator-audit/) | Audit evaluator and LLM-judge reliability — gold-slice agreement, repetition stability, bias probes (position, length, self-preference), parse-failure policy, threshold calibration, and when to demote a judge to a hybrid gate. |
-| [traigent](skills/traigent/) | The end-to-end driver with a lifecycle table: dataset → metric → evaluator → optimize → iterate → gate, while keeping **dry-run validation (mock mode)** before any paid real execution. Start here when optimizing a function for the first time. |
-| [traigent-js](skills/traigent-js/) | Set up and run native JavaScript/TypeScript optimization with `@traigent/sdk` — `optimize(spec)(agentFn)`, `param.*` search spaces, evaluation blocks, trial context, budgets, injection modes, and hybrid config-space authoring. |
-| [traigent-configuration-space](skills/traigent-configuration-space/) | Define which parameters and task-level structural knobs the optimizer can tune and how — `Range`, `IntRange`, `Choices`, `LogRange` types, text2SQL/RAG/multi-hop structural knob taxonomies, factory presets like `Range.temperature()` and `Choices.model()`, inter-parameter constraints, and `ConfigSpace` bundling. |
-| [traigent-decorator-setup](skills/traigent-decorator-setup/) | Configure `@traigent.optimize()` beyond the basics — `EvaluationOptions` (datasets, custom evaluators, scoring), `InjectionOptions` (how optimized configs reach your function), `ExecutionOptions` (sync/async, timeouts, local-only), and multi-objective optimization. |
-| [traigent-run-plan](skills/traigent-run-plan/) | Fetch the Traigent service run-plan before every optimization run, present objectives/models/knobs/search/budget/offline options one by one, apply the preflight checklist and program-level optimization principles, confirm or adjust them with the user, mock dry-run first, and launch only on the user's explicit go. The plan and next-step decision come from Traigent, not local markdown logic. |
-| [traigent-run-optimization](skills/traigent-run-optimization/) | Run optimization end-to-end — async/sync execution via `func.optimize()` and `optimize_sync()`, algorithm selection (grid/random today; bayesian/optuna are roadmap, not yet executable), trial limits, cost budgets, `ParallelConfig` for concurrent trials, and `CostLimitExceeded` handling. |
-| [traigent-next-run](skills/traigent-next-run/) | After every Traigent run, fetch the server-owned posture and next-step payload with `traigent next-steps RUN_ID --json`, present the opaque prose summary plus the single returned command template and rationale, then loop back to `traigent-run-plan`. The decision comes from Traigent, not local markdown logic. |
-| [traigent-reflect-hard-examples](skills/traigent-reflect-hard-examples/) | Run the local content-reflection loop after Traigent has flagged hard or broken example IDs: fetch server-selected IDs/categories, map them to local example content with `traigent report-example-map` or `build_example_content_map`, inspect expected-vs-actual locally, classify the failure pattern, and take one server-suggested action without exposing raw content unless approved. |
-| [traigent-analyze-results](skills/traigent-analyze-results/) | Inspect `OptimizationResult` objects — best config and score, individual trial comparison, stop-reason interpretation, cost/token usage tracking, and `apply_best_config()` for production deployment. |
-| [traigent-iterate](skills/traigent-iterate/) | Decide the most promising next step after a run — read result, importance, and example-side evidence first, then a symptom→action table for flat, noisy, dominated, tied, budget-bound, or weak-example outcomes; one iteration = one hypothesis. |
-| [traigent-ci-safety-gate](skills/traigent-ci-safety-gate/) | Gate an optimized agent — candidate-vs-incumbent `PromotionGate`, TVL spec validation, planned in-run `safety_constraints` (not yet implemented), and GitHub Actions checks for safety (holdout regression) and efficiency (cost/latency budgets). |
-| [traigent-integrations](skills/traigent-integrations/) | Integrate Traigent with AI frameworks — LangChain, LiteLLM, and DSPy adapter patterns, multi-provider model testing (OpenAI + Anthropic + Google), `auto_override_frameworks`, and observability via MLflow and Weights & Biases. |
-| [traigent-debugging](skills/traigent-debugging/) | Troubleshoot optimization failures — mock mode for CI/CD without API keys, `TRAIGENT_LOG_LEVEL=DEBUG` logging, error-class reference (`CostLimitExceeded`, `ConfigurationError`, `OptimizationStateError`), and missing-dependency diagnosis. |
-| [traigent-text2sql-optimize](skills/traigent-text2sql-optimize/) | End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 66.7% -> 90% on the cheap model. |
-| [traigent-composite-knobs](skills/traigent-composite-knobs/) | Declare and run Traigent composite knobs — cascades, routers, ensembles, self-consistency, best-of-n, self-refine, self-debug, ReAct tool loops, verification gates, mixture-of-experts, and fallback patterns, with StageRunner wiring, telemetry-to-measures merging, and honest calibration-backed claim scope. |
-| [traigent-boost-agent](skills/traigent-boost-agent/) | 12-step lifecycle orchestrator for adding Traigent to an existing client agent codebase end-to-end — analyze code, curate the evaluation dataset, choose metrics, wire or audit evaluators, select TVARs and composites, instrument minimally, validate in mock mode, run approved real optimization, inspect configuration and example insights, iterate, and recommend safety/CI gates. |
-| [show-significant-tuned-variables](skills/show-significant-tuned-variables/) | Rank which tuned variables actually drove observed optimization gains — per-value objective spread, variance-decomposition share, bootstrap confidence intervals, honest `significant` vs `directional` labels, and a one-glance SVG summary card. |
+| Stage | Skill | Description |
+| ----- | ----- | ----------- |
+| Front door | [traigent-boost-agent](skills/traigent-boost-agent/) | 12-step lifecycle orchestrator for adding Traigent to an existing client agent codebase end-to-end — analyze code, curate the evaluation dataset, choose metrics, wire or audit evaluators, select TVARs and composites, instrument minimally, validate in mock mode, run approved real optimization, inspect configuration and example insights, iterate, and recommend safety/CI gates. Start here when optimizing a function for the first time. |
+| Setup | [traigent-setup-quickstart](skills/traigent-setup-quickstart/) | Install and set up the Traigent SDK — `pip install`, environment variables (`TRAIGENT_API_KEY`), mock mode, evaluation dataset creation in JSONL, and a first `@traigent.optimize` decorated function. |
+| Setup | [traigent-setup-decorator](skills/traigent-setup-decorator/) | Configure `@traigent.optimize()` beyond the basics — `EvaluationOptions` (datasets, custom evaluators, scoring), `InjectionOptions` (how optimized configs reach your function), `ExecutionOptions` (sync/async, timeouts, local-only), and multi-objective optimization. |
+| Setup | [traigent-setup-integrations](skills/traigent-setup-integrations/) | Integrate Traigent with AI frameworks — LangChain, LiteLLM, and DSPy adapter patterns, multi-provider model testing (OpenAI + Anthropic + Google), `auto_override_frameworks`, and observability via MLflow and Weights & Biases. |
+| Dataset | [traigent-dataset-curate](skills/traigent-dataset-curate/) | Build, split, grow, and score Traigent evaluation datasets — assess existing examples, JSONL format and holdout discipline, client-side synthesis with `ExampleSynthesizer`/`optimize_with_guidance(grow_dataset=…)`, backend generation endpoints, post-run example scoring via `ExampleInsightsClient`, and the local content-reflection loop after Traigent flags hard or broken example IDs. |
+| Evaluation | [traigent-eval-choose-metric](skills/traigent-eval-choose-metric/) | Choose what to measure before optimizing — the 6-question metric interview, the measure-type vocabulary (accuracy, quality, latency, safety, efficiency, reliability, sanity_check), built-in objective names, multi-objective accuracy+cost patterns, and when a safety property belongs in a gate instead. |
+| Evaluation | [traigent-eval-build](skills/traigent-eval-build/) | Wire or implement an evaluator — the 5-tier wire-first ladder (`eval_dataset` → `scoring_function` → `metric_functions` → `custom_evaluator` → `BaseEvaluator`), the `ExampleResult` contract, and deterministic / LLM-judge / statistical / hybrid templates with fail-closed parse handling. |
+| Evaluation | [traigent-eval-audit](skills/traigent-eval-audit/) | Audit evaluator and LLM-judge reliability — gold-slice agreement, repetition stability, bias probes (position, length, self-preference), parse-failure policy, threshold calibration, and when to demote a judge to a hybrid gate. |
+| Optimize | [traigent-optimize-config-space](skills/traigent-optimize-config-space/) | Define which parameters and task-level structural knobs the optimizer can tune and how — `Range`, `IntRange`, `Choices`, `LogRange` types, text2SQL/RAG/multi-hop structural knob taxonomies, factory presets like `Range.temperature()` and `Choices.model()`, inter-parameter constraints, and `ConfigSpace` bundling. |
+| Optimize | [traigent-optimize-composite-knobs](skills/traigent-optimize-composite-knobs/) | Declare and run Traigent composite knobs — cascades, routers, ensembles, self-consistency, best-of-n, self-refine, self-debug, ReAct tool loops, verification gates, mixture-of-experts, and fallback patterns, with StageRunner wiring, telemetry-to-measures merging, and honest calibration-backed claim scope. |
+| Optimize | [traigent-optimize-run](skills/traigent-optimize-run/) | Run optimization end-to-end — async/sync execution via `func.optimize()` and `optimize_sync()`, algorithm selection (grid/random today; bayesian/optuna are roadmap, not yet executable), trial limits, cost budgets, `ParallelConfig` for concurrent trials, and `CostLimitExceeded` handling. |
+| Analyze | [traigent-analyze-guidance](skills/traigent-analyze-guidance/) | What should this run be, and what next? Three modes in one skill: (A) pre-run — fetch the service run-plan and present objectives/models/knobs/search/budget/offline options, apply preflight, mock dry-run first, launch only on explicit go; (B) post-run, portal-tracked — fetch `traigent next-steps RUN_ID --json` and present the returned posture/command template; (C) offline/local fallback — diagnose flat/noisy/negative results and form the next iteration hypothesis when there's no service payload. Portal-tracked decisions come from Traigent, never local markdown logic. |
+| Analyze | [traigent-analyze-results](skills/traigent-analyze-results/) | Inspect `OptimizationResult` objects — best config and score, individual trial comparison, stop-reason interpretation, cost/token usage tracking, and `apply_best_config()` for production deployment. |
+| Analyze | [traigent-analyze-variable-importance](skills/traigent-analyze-variable-importance/) | Rank which tuned variables actually drove observed optimization gains — per-value objective spread, variance-decomposition share, bootstrap confidence intervals, honest `significant` vs `directional` labels, and a one-glance SVG summary card. |
+| Gate & Debug | [traigent-ci-safety-gate](skills/traigent-ci-safety-gate/) | Gate an optimized agent — candidate-vs-incumbent `PromotionGate`, TVL spec validation, planned in-run `safety_constraints` (not yet implemented), and GitHub Actions checks for safety (holdout regression) and efficiency (cost/latency budgets). |
+| Gate & Debug | [traigent-debugging](skills/traigent-debugging/) | Troubleshoot optimization failures — mock mode for CI/CD without API keys, `TRAIGENT_LOG_LEVEL=DEBUG` logging, error-class reference (`CostLimitExceeded`, `ConfigurationError`, `OptimizationStateError`), and missing-dependency diagnosis. |
+| JS/TS | [traigent-js](skills/traigent-js/) | Set up and run native JavaScript/TypeScript optimization with `@traigent/sdk` — `optimize(spec)(agentFn)`, `param.*` search spaces, evaluation blocks, trial context, budgets, injection modes, and hybrid config-space authoring. |
+| Recipes | [traigent-recipe-text2sql](skills/traigent-recipe-text2sql/) | End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 66.7% -> 90% on the cheap model. |
+
+### Renamed in the 2026-07 consolidation (pre-release)
+
+These skills were renamed or merged as part of a taxonomy consolidation. No prior stable release shipped the old names, so this is a straight rename/merge with no deprecation period:
+
+| Old name(s) | New name |
+| ----------- | -------- |
+| `traigent-quickstart` | `traigent-setup-quickstart` |
+| `traigent-decorator-setup` | `traigent-setup-decorator` |
+| `traigent-integrations` | `traigent-setup-integrations` |
+| `traigent-curate-dataset` | `traigent-dataset-curate` |
+| `traigent-choose-metric` | `traigent-eval-choose-metric` |
+| `traigent-build-evaluator` | `traigent-eval-build` |
+| `traigent-evaluator-audit` | `traigent-eval-audit` |
+| `traigent-configuration-space` | `traigent-optimize-config-space` |
+| `traigent-composite-knobs` | `traigent-optimize-composite-knobs` |
+| `traigent-run-optimization` | `traigent-optimize-run` |
+| `show-significant-tuned-variables` | `traigent-analyze-variable-importance` |
+| `traigent-text2sql-optimize` | `traigent-recipe-text2sql` |
+| `traigent` | `traigent-boost-agent` (merged) |
+| `traigent-run-plan` + `traigent-next-run` + `traigent-iterate` | `traigent-analyze-guidance` (merged) |
+| `traigent-reflect-hard-examples` | `traigent-dataset-curate` (merged) |
 
 ## Install
 
 ### As a plugin (recommended — one step, stays in sync)
 
 This repo is a plugin marketplace for Claude Code, OpenAI Codex, and GitHub
-Copilot CLI. Installing the `traigent` plugin gives you all 22 skills at once,
+Copilot CLI. Installing the `traigent` plugin gives you all 18 skills at once,
 namespaced as `traigent:<skill-name>`, with updates delivered through your
 agent's normal plugin-update flow.
 
@@ -69,11 +87,11 @@ copilot plugin install traigent@traigent
 npx skills add Traigent/traigent-skills --list
 
 # Install a specific skill
-npx skills add Traigent/traigent-skills --skill traigent-quickstart
+npx skills add Traigent/traigent-skills --skill traigent-setup-quickstart
 
 # Install several
 npx skills add Traigent/traigent-skills \
-  --skill traigent-quickstart --skill traigent-js --skill traigent-run-optimization
+  --skill traigent-setup-quickstart --skill traigent-js --skill traigent-optimize-run
 
 # Install all of them
 npx skills add Traigent/traigent-skills --skill '*'
@@ -92,7 +110,7 @@ Clone this repo and copy the skills you want into the folder your agent scans.
 git clone https://github.com/Traigent/traigent-skills.git
 
 # Cross-agent standard path
-cp -r traigent-skills/skills/traigent-quickstart .agents/skills/
+cp -r traigent-skills/skills/traigent-setup-quickstart .agents/skills/
 
 # Claude Code specific path (auto-discovered on startup)
 cp -r traigent-skills/skills/* ~/.claude/skills/
@@ -142,7 +160,7 @@ The skills *teach your agent to drive the Traigent SDKs*, so to actually run an 
 
 Skill updates use protected regions, per-skill provenance, and versioned, score-gated changes. `SKILL.md` frontmatter is implicitly protected because YAML must remain first; invariant claim-scope, caveat, and safety constraints are wrapped with `<!-- PROTECTED -->` markers, and each skill has a `provenance.json` document hash.
 
-Optimizer-proposed edits are accepted only through reviewed PRs that pass a strictly-greater held-out baseline. Marker and provenance adoption keeps existing `metadata.version: "1.0"` values; the version bump discipline starts with the next instructional content change. See [skill-evals/README.md](skill-evals/README.md).
+Optimizer-proposed edits are accepted only through reviewed PRs that pass a strictly-greater held-out baseline. Marker and provenance adoption keeps existing `metadata.version: "1.0"` values; the version bump discipline starts with the next instructional content change. See [eval-artifacts/README.md](eval-artifacts/README.md).
 
 ## License
 
