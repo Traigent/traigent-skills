@@ -4,7 +4,7 @@ description: "Configure the @traigent.optimize() decorator with evaluation, inje
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Traigent Decorator Setup
@@ -274,6 +274,8 @@ def my_func(query: str) -> str:
         messages=[{"role": "user", "content": query}],
     )
 ```
+
+> **Mock does not intercept this example.** Mock mode covers LiteLLM/LangChain calls only — a raw `openai` client like the one above makes **real, billable calls even during a "keyless" mock dry-run**. For a genuinely free dry-run of a seamless-mode function, use `litellm.completion` in the body or run fully offline (`offline=True`, no keys).
 
 ## Execution Options
 

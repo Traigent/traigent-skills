@@ -4,7 +4,7 @@ description: "Guide users through Traigent optimization: setup, dry-run validati
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.3"
+  version: "1.1.4"
 ---
 
 # Traigent: Dry-Run First, Real When Ready
@@ -170,6 +170,8 @@ This discovers `@traigent.optimize` decorated functions and validates that datas
 ## Step 3: Run Mock Optimization
 
 Enable mock mode in code, then run the full optimization pipeline at zero cost. This tests everything — decorator wiring, config sampling, dataset loading, trial execution, scoring — end to end. Mock mode is hard-blocked when `ENVIRONMENT=production`, so this cannot accidentally swap real LLM calls for canned text in a deployed system.
+
+> **Mock is free of LLM spend, not free of everything:** mock/offline dry-runs still consume the plan's `optimization_samples` quota; execution-match/exact-match scorers return a uniform 0.0 under mock (every call returns the same canned text) — an all-zeros accuracy table here is expected, not broken; and mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry.
 
 > **Scope note:** `enable_mock_mode_for_quickstart()` flips a *runtime* flag — the LLM interceptors honor it from the moment it's called. It runs AFTER `import traigent`, so any *import-time* behavior of the SDK's optional dependencies (e.g., LiteLLM's model-cost-map fetch) has already executed. For fully hermetic startup (CI, air-gapped runs), set the equivalent env vars BEFORE Python imports anything: `TRAIGENT_MOCK_LLM=true`, `TRAIGENT_OFFLINE_MODE=true`, `LITELLM_LOCAL_MODEL_COST_MAP=True`. The bundled `traigent quickstart` command does this for you.
 

@@ -4,7 +4,7 @@ description: "End-to-end 12-step lifecycle playbook for adding Traigent to an ex
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.0.3"
+  version: "2.0.4"
 ---
 
 # Traigent Boost Agent
@@ -130,6 +130,7 @@ CONFIGURATION_SPACE = {
    - Cross-reference `traigent-quickstart` and `traigent-debugging` for mock/offline setup.
    - Use `from traigent.testing import enable_mock_mode_for_quickstart` plus `TRAIGENT_OFFLINE_MODE=true` for keyless development.
    - Confirm dataset loading, config sampling, stage wiring, tuple-return unpacking, and zero failed trials before real provider calls.
+   - Mock reality: mock still consumes `optimization_samples` quota; exact/execution-match scorers read uniform 0.0 under mock (expected, not broken); raw `openai`/`anthropic` clients are not intercepted and still bill.
    - DELEGATE: `traigent-quickstart` owns first-run setup; `traigent-debugging` owns mock/offline failure diagnosis.
 
 9. OPTIMIZE for real only with cost limits and explicit approval.
