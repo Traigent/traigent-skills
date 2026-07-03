@@ -4,7 +4,7 @@ description: "After every portal-tracked Traigent run, fetch the server-owned po
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.5.1"
+  version: "1.5.2"
 ---
 
 # Traigent Next Run Thin Client
@@ -54,7 +54,7 @@ fresh recommendation.
 > pointing to the cloud/dev endpoint, the command fails with a connection-refused error.
 >
 > ```bash
-> export TRAIGENT_BACKEND_URL="https://api.traigent.ai"   # or pass --backend-url <url>
+> export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"   # or pass --backend-url <url>
 > export TRAIGENT_API_KEY="uk_..."
 > ```
 

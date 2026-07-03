@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.8"
+  version: "1.0.9"
 ---
 
 # Traigent Quickstart
@@ -149,15 +149,18 @@ export TRAIGENT_API_KEY="sk_..."
 
 For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero egress is required.
 
-> **Prereq for real (non-offline) runs: set `TRAIGENT_API_KEY`, and set `TRAIGENT_BACKEND_URL` explicitly for dev/cloud to avoid the localhost fallback.**
-> The SDK and CLI default to `http://localhost:5000`; omitting `TRAIGENT_BACKEND_URL` causes a
-> connection-refused error on any non-offline `.optimize()` call or `traigent` CLI command.
-> The `traigent next-steps` CLI also accepts `--backend-url` as a flag to override the env var.
+> **Prereq for real (non-offline) runs: set `TRAIGENT_API_KEY`.**
+> The SDK defaults to the cloud backend (`https://portal.traigent.ai`) when
+> `TRAIGENT_BACKEND_URL` is unset — no env var is needed for the standard cloud path.
+> Set `TRAIGENT_BACKEND_URL` only to target a dev or self-hosted backend
+> (e.g. `http://localhost:5000`). Exception: the `traigent next-steps` and `traigent plan`
+> CLI commands default their `--backend-url` flag to `http://localhost:5000`, so for cloud
+> use pass the flag or set the env var explicitly.
 > Portal-issued API keys use the `uk_...` prefix.
 >
 > ```bash
-> export TRAIGENT_API_KEY="uk_..."                           # portal-issued key
-> export TRAIGENT_BACKEND_URL="https://api.traigent.ai"     # cloud or dev endpoint
+> export TRAIGENT_API_KEY="uk_..."                              # portal-issued key
+> export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"     # optional: cloud is already the default
 > ```
 
 ## Environment Setup
