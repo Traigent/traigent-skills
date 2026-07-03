@@ -27,10 +27,22 @@ import os
 import sys
 import json
 import time
+import ipaddress
+import urllib.parse
 
 # Default IOC feed URL (GitHub raw from repo-forensics releases)
 IOC_FEED_URL = (
     "https://raw.githubusercontent.com/alexgreensh/repo-forensics/main/iocs/latest.json"
+)
+IOC_FEED_ALLOWED_HOSTS_ENV = "REPO_FORENSICS_ALLOWED_IOC_FEED_HOSTS"
+_DEFAULT_IOC_FEED_HOSTS = frozenset({"raw.githubusercontent.com"})
+_UNSAFE_IOC_FEED_HOSTS = frozenset(
+    {
+        "localhost",
+        "metadata",
+        "metadata.google.internal",
+        "metadata.aws.internal",
+    }
 )
 
 CACHE_FILENAME = ".forensics-iocs.json"
@@ -139,6 +151,7 @@ def fetch_remote_iocs(feed_url=None):
         import urllib.request
         import urllib.error
 
+        url = _validate_ioc_feed_url(url)
         req = urllib.request.Request(url, headers={"User-Agent": "repo-forensics/v2"})
         with urllib.request.urlopen(req, timeout=10) as resp:
             data = json.loads(resp.read(5_000_000).decode("utf-8"))  # 5MB max
@@ -149,6 +162,70 @@ def fetch_remote_iocs(feed_url=None):
     except Exception as e:
         print(f"[!] IOC update failed ({url}): {e}", file=sys.stderr)
         return None
+
+
+def _validate_ioc_feed_url(feed_url):
+    """Normalize and validate the remote IOC feed URL before any network call."""
+    parsed = urllib.parse.urlsplit(str(feed_url).strip())
+    if parsed.scheme != "https":
+        raise ValueError("IOC feed URL must use https")
+    if parsed.username or parsed.password:
+        raise ValueError("IOC feed URL must not include credentials")
+    if parsed.fragment:
+        raise ValueError("IOC feed URL must not include a fragment")
+
+    host = (parsed.hostname or "").lower().rstrip(".")
+    if not host:
+        raise ValueError("IOC feed URL must include a host")
+    if _is_unsafe_ioc_feed_host(host):
+        raise ValueError(f"unsafe IOC feed host: {host}")
+    if host not in _allowed_ioc_feed_hosts():
+        raise ValueError(
+            f"IOC feed host {host!r} is not allowed; add it to "
+            f"{IOC_FEED_ALLOWED_HOSTS_ENV} only for an approved feed endpoint"
+        )
+
+    return urllib.parse.urlunsplit(
+        (
+            "https",
+            _netloc_for_host(host, parsed.port),
+            parsed.path or "/",
+            parsed.query,
+            "",
+        )
+    )
+
+
+def _allowed_ioc_feed_hosts():
+    configured = {
+        item.strip().lower().rstrip(".")
+        for item in os.environ.get(IOC_FEED_ALLOWED_HOSTS_ENV, "").split(",")
+        if item.strip()
+    }
+    return frozenset(_DEFAULT_IOC_FEED_HOSTS | configured)
+
+
+def _is_unsafe_ioc_feed_host(host):
+    if host in _UNSAFE_IOC_FEED_HOSTS or host.endswith(".localhost"):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return (
+        ip.is_private
+        or ip.is_loopback
+        or ip.is_link_local
+        or ip.is_multicast
+        or ip.is_reserved
+        or ip.is_unspecified
+    )
+
+
+def _netloc_for_host(host, port):
+    if port is None:
+        return f"[{host}]" if ":" in host else host
+    return f"[{host}]:{port}" if ":" in host else f"{host}:{port}"
 
 
 def update_iocs(feed_url=None, cache_dir=None):

@@ -58,7 +58,12 @@ knobs). Give it a **self-describing, unique name** encoding
 who/weights/problem-space/**permutations**/date
 (e.g. `Amir_ACL_80_15_05_txt2sql_216perms_20260620`). Record the permutation
 count both in the name and as its own field, keep the filled plan with the run,
-and add a **carry-forward** note of what won/lost to seed the next run.
+and add a **carry-forward** note of what won/lost to seed the next run. Seed the
+carry-forward from data, not memory: before planning the next run, read the cohort
+table for this agent+dataset (`analytics_list_experiment_group_configuration_runs`;
+if your SDK build doesn't expose the experiment-group tools yet, use the prior
+run's recorded results alone) and the prior run's ranked results, so what won/lost
+is copied from recorded measures rather than recalled.
 
 ## Supporting principles
 
@@ -99,6 +104,11 @@ After a run, verify the experiment appears in the portal **with its trials**. If
 a run doesn't show up, it seems there may be a temporary connectivity issue -- we
 recommend retrying the run and confirming the `View` link populates. See
 `references/preflight.md`.
+
+The portal may group related runs that share the same agent and canonical
+dataset, but that grouped view is only a browsing aid. Keep analytics and
+promotion decisions tied to exact source run/configuration ids, not to the
+group label.
 
 ### P13 -- Decide from the Pareto frontier, not just the single winner
 

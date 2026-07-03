@@ -14,8 +14,14 @@ IMPORT_LINE_RE = re.compile(r"^\s*(from|import)\s+traigent[\w.]*")
 INLINE_CODE_RE = re.compile(r"`([^`]+)`")
 URL_RE = re.compile(
     r"(?:(?P<method>GET|POST|PUT|PATCH|DELETE)\s+)?"
-    r"(?P<url>/(?:api/v1/)?(?:datasets|analytics|experiment-runs|optimization-comparisons|sessions|hybrid)"
-    r"[^\s`\"\)]*)"
+    r"(?P<url>"
+    r"/api/v1beta/[^\s`\"\)]+"  # any v1beta route (explicit prefix required)
+    r"|/(?:api/v1/)?"
+    r"(?:datasets|analytics|experiment-runs|experiment-groups|optimization-comparisons"
+    r"|optimization/plan|sessions|hybrid|keys|best-configs|auth)"
+    r"(?![\w-])"  # family must end here (no /authoring, /keyset, ...)
+    r"[^\s`\"\)]*"
+    r")"
 )
 # Named imports from the JS SDK: `import { a, b as c } from '@traigent/sdk[/sub]'`.
 JS_IMPORT_RE = re.compile(
