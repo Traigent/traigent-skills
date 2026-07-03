@@ -4,7 +4,7 @@ description: "Debug and troubleshoot Traigent optimization issues. Use when enco
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -353,6 +353,8 @@ pip install traigent[dev]             # Development tools
 <!-- PROTECTED -->
 Test your optimization setup without making real API calls or connecting to the backend. The recommended activation is in-code (production-blocked, visible in code review); the env-var path below remains as a legacy fallback that works in non-production.
 <!-- /PROTECTED -->
+
+> **Mock is free of LLM spend, not free of quota:** mock/offline runs still consume `optimization_samples` (see the quota-exhaustion entry above). And exact/execution-match scorers read a uniform 0.0 under mock — see "Scores are all 0.0" below before concluding the pipeline is broken.
 
 **Recommended (in-code):**
 

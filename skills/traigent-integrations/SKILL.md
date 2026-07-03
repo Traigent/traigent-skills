@@ -4,7 +4,7 @@ description: "Integrate Traigent with LangChain, LiteLLM, DSPy, and other AI fra
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent Framework Integrations
@@ -108,6 +108,7 @@ For finer control, use `framework_targets` to specify exactly which classes to o
     },
     objectives=["accuracy"],
     max_trials=8,
+    auto_override_frameworks=True,  # required — framework_targets alone is silently skipped
     framework_targets=["langchain_openai.ChatOpenAI"],
 )
 def my_chain(input_text):
