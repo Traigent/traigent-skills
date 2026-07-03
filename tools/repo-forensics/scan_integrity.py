@@ -59,11 +59,36 @@ def _get_or_create_signing_key(repo_path):
     return key
 
 
-def sha256_file(filepath):
-    """Compute SHA256 hash of a file."""
+def _skip_out_of_root_finding(display_path, filepath, reason):
+    return core.Finding(
+        scanner=SCANNER_NAME,
+        severity="high",
+        title=f"Skipped out-of-root critical path: {display_path}",
+        description=(
+            "Critical file candidate resolves outside repo root and was excluded "
+            "from integrity scanning"
+        ),
+        file=display_path,
+        line=0,
+        snippet=f"path: {filepath} ({reason})"[:120],
+        category="integrity-containment",
+    )
+
+
+def sha256_file(filepath, repo_path):
+    """Compute SHA256 hash of a file inside the repo root."""
+    try:
+        resolved_path = core.resolve_path_within_root(repo_path, filepath)
+    except ValueError as e:
+        print(
+            f"[!] {SCANNER_NAME}: Skipping out-of-root file {filepath}: {e}",
+            file=sys.stderr,
+        )
+        return None
+
     h = hashlib.sha256()
     try:
-        with open(filepath, "rb") as f:
+        with open(resolved_path, "rb") as f:
             for chunk in iter(lambda: f.read(8192), b""):
                 h.update(chunk)
         return h.hexdigest()
@@ -75,19 +100,43 @@ def find_critical_files(repo_path):
     """Find critical config files and hook scripts in the repo.
     Intentionally scoped to security-critical paths only, not all of .claude/."""
     found = {}
+    findings = []
 
     for rel in CRITICAL_FILES:
         full_path = os.path.join(repo_path, rel)
-        if os.path.isfile(full_path):
-            found[rel] = full_path
-        elif os.path.isdir(full_path):
+        try:
+            resolved_path = core.resolve_path_within_root(repo_path, full_path)
+        except ValueError as e:
+            print(
+                f"[!] {SCANNER_NAME}: Skipping out-of-root file {full_path}: {e}",
+                file=sys.stderr,
+            )
+            findings.append(_skip_out_of_root_finding(rel, full_path, str(e)))
+            continue
+
+        if os.path.isfile(resolved_path):
+            found[rel] = resolved_path
+        elif os.path.isdir(resolved_path):
             # Scan directory contents (e.g., .claude/commands/) - one level only
             try:
-                for f in os.listdir(full_path):
-                    fp = os.path.join(full_path, f)
-                    if os.path.isfile(fp):
-                        rp = os.path.relpath(fp, repo_path)
-                        found[rp] = fp
+                for f in os.listdir(resolved_path):
+                    fp = os.path.join(resolved_path, f)
+                    try:
+                        resolved_child = core.resolve_path_within_root(repo_path, fp)
+                    except ValueError as e:
+                        print(
+                            f"[!] {SCANNER_NAME}: Skipping out-of-root file {fp}: {e}",
+                            file=sys.stderr,
+                        )
+                        findings.append(
+                            _skip_out_of_root_finding(
+                                os.path.relpath(fp, repo_path), fp, str(e)
+                            )
+                        )
+                        continue
+                    if os.path.isfile(resolved_child):
+                        rp = os.path.relpath(resolved_child, repo_path)
+                        found[rp] = resolved_child
             except OSError:
                 pass
 
@@ -95,8 +144,7 @@ def find_critical_files(repo_path):
     settings_path = os.path.join(repo_path, ".claude/settings.json")
     if os.path.exists(settings_path):
         try:
-            with open(settings_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            data = json.loads(core.read_text_file_within_root(repo_path, settings_path))
             for event_name, hook_list in data.get("hooks", {}).items():
                 if not isinstance(hook_list, list):
                     continue
@@ -110,22 +158,44 @@ def find_critical_files(repo_path):
                                 if not os.path.isabs(token)
                                 else token
                             )
-                            if os.path.isfile(script_path):
-                                rp = os.path.relpath(script_path, repo_path)
-                                found[rp] = script_path
+                            try:
+                                resolved_script = core.resolve_path_within_root(
+                                    repo_path, script_path
+                                )
+                            except ValueError as e:
+                                print(
+                                    f"[!] {SCANNER_NAME}: Skipping out-of-root file {script_path}: {e}",
+                                    file=sys.stderr,
+                                )
+                                findings.append(
+                                    _skip_out_of_root_finding(
+                                        token, script_path, str(e)
+                                    )
+                                )
+                                continue
+                            if os.path.isfile(resolved_script):
+                                rp = os.path.relpath(resolved_script, repo_path)
+                                found[rp] = resolved_script
+        except ValueError as e:
+            print(
+                f"[!] {SCANNER_NAME}: Skipping out-of-root file {settings_path}: {e}",
+                file=sys.stderr,
+            )
+            findings.append(
+                _skip_out_of_root_finding(".claude/settings.json", settings_path, str(e))
+            )
         except (json.JSONDecodeError, OSError):
             pass
 
-    return found
+    return found, findings
 
 
-def check_hooks_in_settings(filepath, rel_path):
+def check_hooks_in_settings(repo_path, filepath, rel_path):
     """Check .claude/settings.json for hooks configuration (CVE-2025-59536 vector)."""
     findings = []
     try:
-        with open(filepath, "r", encoding="utf-8") as f:
-            content = f.read()
-            data = json.loads(content)
+        content = core.read_text_file_within_root(repo_path, filepath)
+        data = json.loads(content)
 
         if "hooks" in data:
             hooks = data["hooks"]
@@ -174,7 +244,7 @@ def check_hooks_in_settings(filepath, rel_path):
                                 )
                                 break
 
-    except (json.JSONDecodeError, OSError, KeyError):
+    except (json.JSONDecodeError, OSError, KeyError, ValueError):
         pass
     return findings
 
@@ -304,7 +374,7 @@ def watch_mode(repo_path, critical_files):
 
     current_hashes = {}
     for rel_path, full_path in critical_files.items():
-        h = sha256_file(full_path)
+        h = sha256_file(full_path, repo_path)
         if h:
             current_hashes[rel_path] = h
 
@@ -395,21 +465,23 @@ def main():
 
     print(f"[*] Scanning file integrity in {repo_path}...")
 
-    critical_files = find_critical_files(repo_path)
+    critical_files, containment_findings = find_critical_files(repo_path)
 
-    if not critical_files:
+    if not critical_files and not containment_findings:
         print("[+] No critical configuration files found.")
         return
 
     print(f"[*] Found {len(critical_files)} critical file(s)")
 
-    all_findings = []
+    all_findings = list(containment_findings)
 
     # Check for hooks in settings.json
     settings_path = os.path.join(repo_path, ".claude/settings.json")
     if os.path.exists(settings_path):
         all_findings.extend(
-            check_hooks_in_settings(settings_path, ".claude/settings.json")
+            check_hooks_in_settings(
+                repo_path, settings_path, ".claude/settings.json"
+            )
         )
 
     # Check for executable config files
