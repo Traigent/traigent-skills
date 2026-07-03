@@ -209,6 +209,9 @@ To skip the interactive cost approval handshake in an already-approved pipeline:
 export TRAIGENT_COST_APPROVED=true
 ```
 
+CI note: local/offline `optimize()` runs also require `TRAIGENT_RUN_APPROVED=1`; see
+`traigent-debugging` for `OptimizationError: CI/CD Approval Required`.
+
 ### Quota & Run Sizing
 
 Cost is not the only budget. Cloud/hybrid optimization is also **metered by plan quota**,

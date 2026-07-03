@@ -93,6 +93,10 @@ SAFETY: run a holdout regression check against a pinned baseline config.
 - Pull request job: run offline/mock under `TRAIGENT_OFFLINE_MODE=true` to verify wiring, script shape, and fail-closed behavior without spending.
 - Scheduled job: run the real holdout evaluation under `TRAIGENT_RUN_COST_LIMIT` with account credentials and compare candidate vs incumbent.
 
+Any CI workflow that executes `optimize()` or `optimize_sync()` in local/offline mode, including
+mock/offline wiring checks, must set `TRAIGENT_RUN_APPROVED=1`. This is the SDK's explicit
+approval signal for approved CI runs, not a bypass; cloud-mode runs are unaffected.
+
 EFFICIENCY: assert `results.total_cost` and latency metrics remain within budget. Fail the job on cost breach, latency breach, rejected promotion, missing metrics, parse failures, or safety regression.
 
 Minimal GitHub Actions shape:
@@ -112,6 +116,7 @@ jobs:
     env:
       TRAIGENT_RUN_COST_LIMIT: "0.00"
       TRAIGENT_OFFLINE_MODE: "true"
+      TRAIGENT_RUN_APPROVED: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

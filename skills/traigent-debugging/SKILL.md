@@ -212,6 +212,22 @@ keyword on `@traigent.optimize`).
 
 The `failed_providers` attribute contains a list of `(provider, error_type)` tuples.
 
+### OptimizationError: CI/CD Approval Required
+
+**When raised**: `optimize()` or `optimize_sync()` is running in local/offline mode inside CI
+(for example, with `CI=true`) without explicit approval. This applies to mock/offline runs too:
+`TRAIGENT_MOCK_LLM` no longer bypasses the CI approval gate by design.
+
+**Fix**: set the purpose-built approval signal in the CI environment for legitimately approved
+runs:
+
+```bash
+export TRAIGENT_RUN_APPROVED=1
+```
+
+This is the required explicit approval, not a bypass. Cloud-mode runs are unaffected because the
+gate only applies to local/offline mode.
+
 ### Model 404 / Retired Provider Endpoint
 
 **Symptom**: A trial fails with a `404` / "model not found" / "no such model" error from the
