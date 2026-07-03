@@ -4,7 +4,7 @@ description: "End-to-end recipe to optimize a text2SQL agent with Traigent and r
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0"
+  version: "1.0.1"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -131,7 +131,7 @@ decorated = traigent.optimize(
 results = decorated.optimize_sync(max_trials=25, algorithm="random")  # or: await decorated.optimize(...)
 ```
 - **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. Named smart algorithms (`bayesian`/`tpe`/`optuna`) are **not yet executable** — they fail before any trial runs with a clear error (`ConfigurationError` with `offline=True` or without cloud credentials; the backend also rejects them even when connected — verified against SDK 0.18.x). Use `"grid"`/`"random"`; `offline=True` keeps everything local (zero egress), `offline=False` syncs trials to the portal.
-- **Mock first (free):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms are not yet executable).
+- **Mock first (free of LLM spend):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms are not yet executable). **Expect all-zero accuracy in mock**: this recipe scores by execution match, and every mock call returns the same canned text, so uniform 0.0 is the expected mock signature, not a broken pipeline (wiring, sampling, and scoring paths are what the mock validates). Mock also still consumes `optimization_samples` quota.
 - **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, `algorithm="random"` (or `"grid"`) — `bayesian`/`tpe`/`optuna` are roadmap names, not yet executable.
 - **Dataset path:** `eval_dataset` must live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.
 
@@ -140,7 +140,7 @@ results = decorated.optimize_sync(max_trials=25, algorithm="random")  # or: awai
 fenced Python block — it builds its own tiny SQLite DB (no external data), so it
 runs end-to-end in minutes and is the ice-breaker for the QuickStart:
 ```
-python quickstart_text2sql.py --mock     # free; validates the pipeline
+python quickstart_text2sql.py --mock     # no LLM spend; validates wiring (all-zero accuracy expected)
 python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 ```
 Swap the embedded DB + questions for the real SPIDER dev set to scale up — the wiring is identical.

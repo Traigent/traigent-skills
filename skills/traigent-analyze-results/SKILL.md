@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.6"
+  version: "1.1.7"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -63,7 +63,8 @@ If the portal shows several optimization runs together as a cohort/group, treat 
 browsing help only. The group is formed from source ids for runs that share the same agent and
 canonical dataset; it does not merge configurations, dedupe by tuned variables/objectives/config
 hashes, or create one analytics run. Analytics stay scoped to one explicit `run_id`, or to an
-explicit `run_ids` list when the user asks to compare runs.
+explicit `run_ids` list when the user asks to compare runs (see the Multi-Run View section for
+the source-preserving cohort table).
 
 ### 2. Call the analytics brief first (progressive disclosure)
 
@@ -107,12 +108,15 @@ be called directly. Pull at most **one** extra tool per turn, and only when the 
 brief clearly calls for it. Use the portal deep-link for interactive exploration or for any view
 that has no registered tool.
 
-The registered analytics tools this skill may call are:
+The analytics tools this skill may call are:
 
 - `analytics_get_run_decision_brief(project_id, run_id, intent="iterate")`
 - `analytics_get_run_report(project_id, run_id)`
 - `analytics_get_project_overview(project_id)`
 - `analytics_compare_runs(project_id, run_ids)`
+- `analytics_list_experiment_groups(project_id, agent_id=None, dataset_id=None)` — requires an SDK build that exposes the experiment-group analytics tools; if absent, fall back to `analytics_compare_runs` for explicit `run_ids` or the portal.
+- `analytics_get_experiment_group(project_id, group_id)` — same experiment-group tool gate.
+- `analytics_list_experiment_group_configuration_runs(project_id, group_id)` — same experiment-group tool gate.
 - `analytics_get_single_run_pareto(project_id, run_id, x_measure="cost", y_measure="quality", request_count=1)`
 - `analytics_get_correlation_matrix(project_id, run_id, method="pearson", min_sample=3)`
 - `analytics_get_run_leaderboard(project_id, run_id, objective="weighted", weights=None, constraints=None, request_count=1, limit=50)`
@@ -143,6 +147,34 @@ rule), see
 *next experiment* once analysis names the problem, hand off portal-tracked runs to
 `traigent-next-run` and offline/local runs to `traigent-iterate`.
 
+### 4. Multi-Run View (Cohort Table)
+
+When the user asks for multi-run, history, "across my runs", or cohort results for one
+agent+dataset, use the experiment-group view. Requires an SDK build that exposes the
+experiment-group analytics tools; if they are absent, fall back to `analytics_compare_runs` for
+explicit `run_ids` or the portal.
+
+Call the cohort tools in this order:
+
+```text
+analytics_list_experiment_groups(project_id, agent_id=None, dataset_id=None)
+analytics_get_experiment_group(project_id, group_id)
+analytics_list_experiment_group_configuration_runs(project_id, group_id)
+```
+
+Present **one** aggregated table labelled:
+
+`grouped by agent+dataset — rows remain individual source runs`
+
+Rows are configuration-runs across the cohort's runs. Include these columns when present:
+`experiment_run_id`, `configuration_run_id`, `trial_number`, key configuration parameters, key
+measures such as accuracy/score, cost, and latency, `status`, and `timestamp`. Keep source ids
+visible in every row; join on ids and never deduplicate by configuration hash.
+
+This is a presentation aggregation over source rows, not a merged analytics identity. The portal
+GROUP is browsing help and never a merged analytics run. Per-run analytics still go through the
+single-run tools above.
+
 <!-- PROTECTED -->
 ### Privacy: narrate findings, not raw example values
 
@@ -161,6 +193,11 @@ Registered (SDK >= 0.18.0.dev0): `analytics_get_run_decision_brief`,
 `analytics_get_single_run_pareto`, `analytics_get_correlation_matrix`,
 `analytics_get_run_leaderboard`, `analytics_get_parameter_insights`,
 `analytics_get_example_insights`, and `analytics_render_chart`.
+
+Experiment-group tools: `analytics_list_experiment_groups`,
+`analytics_get_experiment_group`, and `analytics_list_experiment_group_configuration_runs`.
+Requires an SDK build that exposes the experiment-group analytics tools; if absent, fall back to
+`analytics_compare_runs` for explicit `run_ids` or the portal.
 
 The portal deep-link is a fallback for interactive exploration (hover / zoom / filter) or any
 view without a registered tool. Treat every tool response as authoritative; never fabricate

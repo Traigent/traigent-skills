@@ -4,7 +4,7 @@ description: "Build Traigent evaluators and scoring code. Use when wiring eval_d
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.4"
+  version: "1.0.6"
 ---
 
 # Traigent Build Evaluator
@@ -16,6 +16,7 @@ Use this skill after the metric is chosen and the user needs concrete evaluator 
 - For metric selection first, use `traigent-choose-metric`.
 - Mock/offline check before paid runs with `TRAIGENT_OFFLINE_MODE`, `enable_mock_mode_for_quickstart()`, and a tiny local dataset.
 - Ask for explicit approval and set `TRAIGENT_RUN_COST_LIMIT` before any evaluator calls paid LLMs or backend services.
+- Disjointness invariant: any slice used to tune a threshold, rubric, or metric must be disjoint from the holdout used to claim the result (see `traigent-evaluator-audit`). The example dataset paths below stand for your *tuning* slice.
 - For full templates by method, read `references/evaluator-templates.md`.
 
 ## Wire-first decision ladder
@@ -29,6 +30,12 @@ Prefer the smallest evaluator surface that measures the chosen objective.
 | 3 | `metric_functions` | `{name: (output, expected, input_data) -> float}` | Multiple named metrics or input-aware checks are needed. |
 | 4 | `custom_evaluator` | `custom_evaluator(func, config, example) -> ExampleResult` | The evaluator must call the function itself, collect timing/cost, run a judge, repeat samples, or fail closed. |
 | 5 | `BaseEvaluator` subclass | `async evaluate(self, func, config, dataset, *, sample_lease=None, progress_callback=None) -> EvaluationResult` | You need full batch control, custom concurrency, leases, progress callbacks, or a reusable evaluator class. |
+
+**No `expected_output` at all?** Tiers 1-3 assume a gold label to compare against. For
+subjective/generative tasks with no labels, skip straight to Tier 4 with the **"LLM judge with
+rubric, strict parse, and cost guardrails"** template in `references/evaluator-templates.md` —
+and treat `traigent-evaluator-audit` as mandatory, because the judge owns the whole quality
+signal (see `traigent-choose-metric` → "The no-gold track").
 
 ### Tier 2: scoring function
 

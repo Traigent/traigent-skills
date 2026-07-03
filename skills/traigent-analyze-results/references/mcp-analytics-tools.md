@@ -14,6 +14,9 @@ Use only these analytics tool names:
 | `analytics_get_run_report` | `(project_id, run_id)` | Fetch the backend analytics report payload for one run. |
 | `analytics_get_project_overview` | `(project_id)` | Fetch the project-level optimization overview. |
 | `analytics_compare_runs` | `(project_id, run_ids)` | Compare two or more runs. |
+| `analytics_list_experiment_groups` | `(project_id, agent_id=None, dataset_id=None)` | List experiment-group cohorts keyed by agent+dataset. Requires an SDK build that exposes the experiment-group analytics tools. |
+| `analytics_get_experiment_group` | `(project_id, group_id)` | Fetch one experiment-group cohort's metadata. Same SDK gate. |
+| `analytics_list_experiment_group_configuration_runs` | `(project_id, group_id)` | Fetch source-preserving configuration-run rows across the cohort's runs. Same SDK gate. |
 | `analytics_get_single_run_pareto` | `(project_id, run_id, x_measure="cost", y_measure="quality", request_count=1)` | Fetch one run's Pareto frontier (cost/quality trade-off). |
 | `analytics_get_correlation_matrix` | `(project_id, run_id, method="pearson", min_sample=3)` | Fetch one run's measure/parameter correlations. |
 | `analytics_get_run_leaderboard` | `(project_id, run_id, objective="weighted", weights=None, constraints=None, request_count=1, limit=50)` | Rank a run's configs by a weighted objective. |
@@ -80,11 +83,33 @@ They return `ok: true` plus one payload key named after the requested object:
 `run_report`, `project_overview`, or `run_comparison`. Treat those payloads as backend-owned
 open objects. Do not claim a field exists unless it is present.
 
-Portal cohort/group views are not a substitute for `analytics_compare_runs`. A cohort is a
-read-time portal/API convenience over source ids for runs sharing the same agent and canonical
-dataset. It does not dedupe configurations by tuned variables, objectives, or config hashes, and it
-does not turn multiple runs into one analytics run. For analytics, use one explicit `run_id` or pass
-the exact `run_ids` to `analytics_compare_runs`.
+## Experiment Groups and Cohort Tables
+
+Use these tools when the user asks for multi-run, history, "across my runs", or cohort results
+for one agent+dataset:
+
+```text
+analytics_list_experiment_groups(project_id = "<project id>", agent_id = "<optional agent id>", dataset_id = "<optional dataset id>")
+analytics_get_experiment_group(project_id = "<project id>", group_id = "<group id>")
+analytics_list_experiment_group_configuration_runs(project_id = "<project id>", group_id = "<group id>")
+```
+
+Requires an SDK build that exposes the experiment-group analytics tools. If unavailable, fall back
+to `analytics_compare_runs` for explicit `run_ids` or the portal.
+
+Return shape summary:
+
+- `analytics_list_experiment_groups` returns `ok: true` plus an experiment-group list, with each
+  group keyed by agent+dataset and including its `group_id` and source metadata when present.
+- `analytics_get_experiment_group` returns `ok: true` plus one experiment-group metadata object.
+- `analytics_list_experiment_group_configuration_runs` returns `ok: true` plus configuration-run
+  rows. Each row preserves source ids such as `experiment_run_id`, `configuration_run_id`, and
+  `trial_number`, plus `configuration`, `measures`, status, and timestamp fields when present.
+
+Present the configuration-run response as one table labelled `grouped by agent+dataset — rows
+remain individual source runs`. This table is a presentation aggregation over source rows, not a
+merged analytics run. Keep source ids visible in every row, join on ids, and never deduplicate or
+merge rows by configuration hash. Per-run analytics still use the single-run drilldown tools.
 
 ## Chart Rendering
 
