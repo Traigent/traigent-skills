@@ -1,10 +1,10 @@
 ---
 name: traigent-analyze-results
-description: "Analyze and report Traigent optimization results from the terminal — without opening the portal's tabs. Use when a user asks to analyze a run, 'how did my run do?', 'analyze my latest run in project X', what the winner is, or to read result fields, reports, leaderboards, Pareto trade-offs, correlations, or parameter/example insights. Decision questions route to `traigent-next-run` for portal-tracked runs and `traigent-iterate` for offline/local runs. Also covers the local OptimizationResult object: reading results.best_config, comparing trials, checking stop_reason, calling apply_best_config(), accessing total_cost or total_tokens, or understanding why optimization stopped."
+description: "Analyze and report Traigent optimization results from the terminal — without opening the portal's tabs. Use when a user asks to analyze a run, 'how did my run do?', 'analyze my latest run in project X', what the winner is, or to read result fields, reports, leaderboards, Pareto trade-offs, correlations, or parameter/example insights. Decision questions route to `traigent-analyze-guidance` for portal-tracked runs and `traigent-analyze-guidance` for offline/local runs. Also covers the local OptimizationResult object: reading results.best_config, comparing trials, checking stop_reason, calling apply_best_config(), accessing total_cost or total_tokens, or understanding why optimization stopped."
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.7"
+  version: "1.1.9"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -85,8 +85,8 @@ Use `deploy` for reading deployment-relevant result fields, `debug` for "why is 
 analysis payload without deciding the next run.
 
 Decision questions are out of scope for this read-only analysis skill. For portal-tracked runs,
-route open-ended next-step decisions to `traigent-next-run` (`traigent next-steps RUN_ID --json`);
-for offline/local runs or unavailable service payloads, route them to `traigent-iterate`.
+route open-ended next-step decisions to `traigent-analyze-guidance` (`traigent next-steps RUN_ID --json`);
+for offline/local runs or unavailable service payloads, route them to `traigent-analyze-guidance`.
 
 The tool returns an `ok` flag and a `decision_brief` object. Narrate the brief in this order:
 
@@ -132,20 +132,20 @@ If the payload is absent, use the portal deep-link instead.
 
 | Symptom / requested view | First surface (only if triggered / asked) | Reported signal / handoff |
 |---|---|---|
-| Clean winner | (none — headline is enough) | Report the winner and route promotion decisions to `traigent-next-run` or `traigent-ci-safety-gate` |
-| Expensive winner / Pareto trade-off | `analytics_get_single_run_pareto`, then `analytics_render_chart` with `kind="run_pareto"` to draw it | Report the trade-off; route operating-point decisions to `traigent-next-run` for portal runs |
-| Dominated winner / leaderboard | `analytics_get_run_leaderboard` | Report the dominating config; route the next-step decision to `traigent-next-run` |
-| Low trials | (none — state low confidence) | Report low confidence; route more-trials decisions to `traigent-next-run` or `traigent-iterate` for offline/local runs |
-| One knob dominates | `analytics_get_parameter_insights` | Report the dominant knob; route space changes to `traigent-next-run` or offline/local diagnosis to `traigent-iterate` |
-| Flat scores | `analytics_get_parameter_insights` | Report flatness; route dataset/space decisions to `traigent-next-run` or offline/local diagnosis to `traigent-iterate` |
-| Noisy examples | `analytics_get_example_insights` (safe projection) | Report the safe projection; route evaluator/data changes to `traigent-next-run` or offline/local diagnosis to `traigent-iterate` |
-| Cost blowup | `analytics_get_single_run_pareto` (+ render `kind="run_pareto"`) | Report cost evidence; route budget/guardrail decisions to `traigent-next-run` or `traigent-ci-safety-gate` |
+| Clean winner | (none — headline is enough) | Report the winner and route promotion decisions to `traigent-analyze-guidance` or `traigent-ci-safety-gate` |
+| Expensive winner / Pareto trade-off | `analytics_get_single_run_pareto`, then `analytics_render_chart` with `kind="run_pareto"` to draw it | Report the trade-off; route operating-point decisions to `traigent-analyze-guidance` for portal runs |
+| Dominated winner / leaderboard | `analytics_get_run_leaderboard` | Report the dominating config; route the next-step decision to `traigent-analyze-guidance` |
+| Low trials | (none — state low confidence) | Report low confidence; route more-trials decisions to `traigent-analyze-guidance` or `traigent-analyze-guidance` for offline/local runs |
+| One knob dominates | `analytics_get_parameter_insights` | Report the dominant knob; route space changes to `traigent-analyze-guidance` or offline/local diagnosis to `traigent-analyze-guidance` |
+| Flat scores | `analytics_get_parameter_insights` | Report flatness; route dataset/space decisions to `traigent-analyze-guidance` or offline/local diagnosis to `traigent-analyze-guidance` |
+| Noisy examples | `analytics_get_example_insights` (safe projection) | Report the safe projection; route evaluator/data changes to `traigent-analyze-guidance` or offline/local diagnosis to `traigent-analyze-guidance` |
+| Cost blowup | `analytics_get_single_run_pareto` (+ render `kind="run_pareto"`) | Report cost evidence; route budget/guardrail decisions to `traigent-analyze-guidance` or `traigent-ci-safety-gate` |
 
 For the full tool contract (every tool's arguments and response shape and the geometry-vs-words
 rule), see
 [references/mcp-analytics-tools.md](references/mcp-analytics-tools.md). For choosing the
 *next experiment* once analysis names the problem, hand off portal-tracked runs to
-`traigent-next-run` and offline/local runs to `traigent-iterate`.
+`traigent-analyze-guidance` and offline/local runs to `traigent-analyze-guidance`.
 
 ### 4. Multi-Run View (Cohort Table)
 
@@ -161,6 +161,17 @@ analytics_list_experiment_groups(project_id, agent_id=None, dataset_id=None)
 analytics_get_experiment_group(project_id, group_id)
 analytics_list_experiment_group_configuration_runs(project_id, group_id)
 ```
+
+Each cohort tool is a thin reader over a read-only backend endpoint (viewer role, paginated
+where it lists):
+
+- `analytics_list_experiment_groups` / `GET /api/v1/experiment-groups` — list cohorts,
+  optionally filtered by `agent_id` and `dataset_id` query params.
+- `analytics_get_experiment_group` / `GET /api/v1/experiment-groups/{group_id}` — one cohort's
+  summary (404 when the group is not visible in your scope).
+- `analytics_list_experiment_group_configuration_runs` /
+  `GET /api/v1/experiment-groups/{group_id}/configuration-runs` — the cohort's
+  configuration-run rows, source ids preserved.
 
 Present **one** aggregated table labelled:
 
@@ -248,7 +259,7 @@ print(results.timestamp)        # datetime when optimization completed
 > `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"`, then bare `func.__name__` only when no
 > objectives or knobs were registered. The current SDK has no `tags`/`metadata` argument.
 > To make runs easy to find later, give each one a descriptive `experiment_name` before you run it.
-> See `traigent-decorator-setup` -> "Naming and Labeling Runs".
+> See `traigent-setup-decorator` -> "Naming and Labeling Runs".
 
 `best_score` is `None` when no trial produced a valid score (e.g., all trials failed). Always check before comparing:
 
@@ -333,7 +344,7 @@ if len(sorted_trials) >= 2:
 
 Use `get_optimization_insights(results)` for a first structured pass over top configurations,
 performance summary, parameter insights, and recommendations. Treat it as analysis input; deciding
-the next experiment belongs in `traigent-next-run` for portal-tracked runs or `traigent-iterate`
+the next experiment belongs in `traigent-analyze-guidance` for portal-tracked runs or `traigent-analyze-guidance`
 for offline/local runs.
 
 ```python
@@ -482,7 +493,22 @@ classify.apply_best_config(results)
 response = classify("What category is this email?")
 ```
 
-`apply_best_config()` sets the configuration so that subsequent calls to `traigent.get_config()` inside the decorated function return the best configuration from the optimization run.
+`apply_best_config()` sets the configuration so that subsequent calls to `traigent.get_config()` inside the decorated function return the best configuration from the optimization run. The applied config is also readable from outside the function via `func.current_config` on the `OptimizedFunction` instance:
+
+```python
+classify.apply_best_config(results)
+print(classify.current_config)  # {"model": "gpt-4o", "temperature": 0.5}
+```
+
+### Config Access Lifecycle
+
+| When | API | Notes |
+|---|---|---|
+| During optimization trials | `traigent.get_config()` | Returns current trial config. Thread-safe via contextvars. |
+| During optimization trials (strict) | `traigent.get_trial_config()` | Raises `OptimizationStateError` if not in active trial. |
+| After `apply_best_config()` | `traigent.get_config()` | Returns the applied best config. |
+| From optimization results | `results.best_config` | Dict with the best configuration found. |
+| From the function object | `func.current_config` | Current config on the `OptimizedFunction` instance. |
 
 <!-- PROTECTED -->
 ### Safety Check Before Applying
@@ -607,9 +633,9 @@ else:
 
 | Skill | Use |
 |---|---|
-| `traigent-next-run` | Get the canonical next-step decision for a portal-tracked run. |
-| `traigent-iterate` | Form a local next-iteration hypothesis for offline/local runs, unavailable service payloads, or service-flagged local evidence. |
-| `show-significant-tuned-variables` | A deeper, local tuned-variable importance card when `one_knob_dominates` and you want the bootstrap-CI breakdown. |
+| `traigent-analyze-guidance` | Get the canonical next-step decision for a portal-tracked run. |
+| `traigent-analyze-guidance` | Form a local next-iteration hypothesis for offline/local runs, unavailable service payloads, or service-flagged local evidence. |
+| `traigent-analyze-variable-importance` | A deeper, local tuned-variable importance card when `one_knob_dominates` and you want the bootstrap-CI breakdown. |
 | `traigent-ci-safety-gate` | Gate a `clean_winner` (or a cost guardrail for `cost_blowup`) before promoting it to production. |
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->

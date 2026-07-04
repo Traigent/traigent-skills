@@ -29,7 +29,7 @@ for item in analyzer.get_top_parameters(importance, top_k=5):
 
 If the importance result is empty, report that as insufficient evidence. Do not infer that no variable matters unless the run had enough successful, varied trials and enough objective variance to support that read.
 
-For richer export artifacts and honest `directional` vs `significant` labels, delegate to `show-significant-tuned-variables`.
+For richer export artifacts and honest `directional` vs `significant` labels, delegate to `traigent-analyze-variable-importance`.
 
 ## Example-Side Insight
 
@@ -71,18 +71,18 @@ The `analytics_get_example_insights` MCP tool (or `GET /api/v1/analytics/runs/{r
 
 | Symptom | Next action | Owning skill |
 |---|---|---|
-| Scores are flat everywhere | Add harder or more discriminating examples, then rerun a small controlled search | `traigent-curate-dataset` |
-| Winner ties baseline but product tradeoff still feels wrong | Revisit the objective, weights, or decision threshold before changing code | `traigent-choose-metric` |
-| Evaluator flips on repetitions or judge output is noisy | Audit agreement, repetition stability, bias, parse failures, and calibration | `traigent-evaluator-audit` |
-| Evaluator cannot express the chosen metric | Wire a stronger deterministic, statistical, hybrid, or `BaseEvaluator` path | `traigent-build-evaluator` |
-| One tuned variable dominates the run | Narrow that variable's range and rerun with a focused hypothesis | `traigent-configuration-space` |
-| Scalar knobs are not enough for the agent shape | Add a composite pattern that matches the codebase shape | `traigent-composite-knobs` |
-| Search stopped because of budget or trials | Adjust algorithm, `max_trials`, parallelism, model mix, or cost limit after approval | `traigent-run-optimization` |
-| Weak examples recur across good configs | Feed weak examples into the curation loop and preserve a heldout check | `traigent-curate-dataset` |
+| Scores are flat everywhere | Add harder or more discriminating examples, then rerun a small controlled search | `traigent-dataset-curate` |
+| Winner ties baseline but product tradeoff still feels wrong | Revisit the objective, weights, or decision threshold before changing code | `traigent-eval-choose-metric` |
+| Evaluator flips on repetitions or judge output is noisy | Audit agreement, repetition stability, bias, parse failures, and calibration | `traigent-eval-audit` |
+| Evaluator cannot express the chosen metric | Wire a stronger deterministic, statistical, hybrid, or `BaseEvaluator` path | `traigent-eval-build` |
+| One tuned variable dominates the run | Narrow that variable's range and rerun with a focused hypothesis | `traigent-optimize-config-space` |
+| Scalar knobs are not enough for the agent shape | Add a composite pattern that matches the codebase shape | `traigent-optimize-composite-knobs` |
+| Search stopped because of budget or trials | Adjust algorithm, `max_trials`, parallelism, model mix, or cost limit after approval | `traigent-optimize-run` |
+| Weak examples recur across good configs | Feed weak examples into the curation loop and preserve a heldout check | `traigent-dataset-curate` |
 | Candidate looks promotable | Compare candidate vs incumbent on the same holdout and add CI checks | `traigent-ci-safety-gate` |
-| `analytics_get_example_insights` returns critical or high rows | Work in `review_priority` order; apply the flag-to-action guide below | `traigent-curate-dataset` |
+| `analytics_get_example_insights` returns critical or high rows | Work in `review_priority` order; apply the flag-to-action guide below | `traigent-dataset-curate` |
 
-Use `traigent-iterate` to choose the next single hypothesis after these facts are known.
+Use `traigent-analyze-guidance` to choose the next single hypothesis after these facts are known.
 
 ### Suspicious Flag → Next Action
 

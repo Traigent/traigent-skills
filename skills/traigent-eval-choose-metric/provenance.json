@@ -1,13 +1,13 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "833e433d3fbe83dd",
+  "doc_hash": "08420f04e0f05cf5",
   "entries": [
     {
       "edit_id": "genesis",
       "op": "genesis",
       "status": "accepted",
       "run_id": null,
-      "timestamp": "2026-06-12T00:00:00Z",
+      "timestamp": "2026-06-15T00:00:00Z",
       "note": "baseline snapshot at adoption of skill-provenance/v1",
       "source_type": "human"
     },

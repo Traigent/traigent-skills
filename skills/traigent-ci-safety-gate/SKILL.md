@@ -139,9 +139,9 @@ Gate decisions are statistical decisions on the measured evaluation dataset and 
 
 ## See Also
 
-- `traigent-run-optimization` - cost limits, algorithms, and stop reasons.
+- `traigent-optimize-run` - cost limits, algorithms, and stop reasons.
 - `traigent-analyze-results` - result fields, best config, cost, and stop-reason interpretation.
-- `traigent-iterate` - decide what to change after a failed or inconclusive gate.
+- `traigent-analyze-guidance` - decide what to change after a failed or inconclusive gate.
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

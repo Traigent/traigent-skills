@@ -86,9 +86,9 @@ Keep the current production behavior represented as a baseline value in the conf
 
 ## Build the evaluation dataset honestly
 
-Use `traigent-curate-dataset/references/dataset-recipes.md` for dataset format, splits, holdout discipline, synthesis, and quality loops.
+Use `traigent-dataset-curate/references/dataset-recipes.md` for dataset format, splits, holdout discipline, synthesis, and quality loops.
 This reference only contributes codebase-specific evidence mining: find existing labeled cases before creating new examples.
-After mining, delegate dataset creation and audit to `traigent-curate-dataset`.
+After mining, delegate dataset creation and audit to `traigent-dataset-curate`.
 
 ```bash
 rg -n "golden|fixture|expected|snapshot|approval|regression|eval|benchmark|dataset|testdata|cases" .
