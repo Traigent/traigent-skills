@@ -4,7 +4,7 @@ description: "Configure the @traigent.optimize() decorator with evaluation, inje
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.7"
+  version: "1.0.8"
 ---
 
 # Traigent Decorator Setup
@@ -284,13 +284,7 @@ See `references/execution-modes.md` for the full reference.
 
 ### Tiny Real Cost and KPI Probe
 
-After mock/dry-run validation passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check `results.total_cost`: `None` means cost tracking is unavailable, and `0.0` with real calls means the model was unpriced even though the provider may still bill. Both mean cost is not wired.
-
-Also inspect each trial's `metrics`. The declared objectives, especially an `accuracy`-labeled primary KPI by default, must be populated with non-degenerate values rather than all `0.0` or all `1.0`.
-
-If custom services, self-hosted endpoints, or unknown model ids are not picked up, fix cost tracking in this order: use a LiteLLM-priced model id or `litellm.model_alias_map`; provide `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE` with JSON like `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; or return per-trial metrics containing `total_cost`, `cost`, or `input_cost` plus `output_cost`. Custom pricing accepts `input`/`output` aliases, normalizes provider prefixes like `openai/`, requires finite non-negative floats, and resolves after LiteLLM pricing and before the built-in fallback table. Use `TRAIGENT_STRICT_COST_ACCOUNTING=true` when unpriced models should fail loudly.
-
-> **NOTE:** Before any full run, verify with a tiny real optimization call that cost and your other KPIs are actually tracked (`results.total_cost` is not None/$0 and objective metrics are populated). If not, wire them (custom model pricing env vars, or return `total_cost` in metrics) before scaling up.
+After mock/dry-run validation passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired — the provider may still bill), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, wire it before scaling up — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, `TRAIGENT_STRICT_COST_ACCOUNTING`).
 
 > **Real LLM runs require cost approval.** A real (non-mock, non-offline) optimization is
 > blocked by a cost gate. Set `TRAIGENT_COST_APPROVED=true` to confirm (the verified path);
@@ -326,39 +320,9 @@ custom evaluator; keep optimization strategy on the same `algorithm`/`offline` k
 
 ## Config Access Lifecycle
 
-| When | API | Notes |
-|---|---|---|
-| During optimization trials | `traigent.get_config()` | Returns current trial config. Thread-safe via contextvars. |
-| During optimization trials (strict) | `traigent.get_trial_config()` | Raises `OptimizationStateError` if not in active trial. |
-| After `apply_best_config()` | `traigent.get_config()` | Returns the applied best config. |
-| From optimization results | `results.best_config` | Dict with the best configuration found. |
-| From the function object | `func.current_config` | Current config on the `OptimizedFunction` instance. |
+Inside the decorated function, read the active config with `traigent.get_config()` — it returns the current trial config during optimization (thread-safe via contextvars) and, after `apply_best_config(results)`, the applied best config. Use `traigent.get_trial_config()` when you want a strict variant that raises `OptimizationStateError` outside an active trial.
 
-### Lifecycle Example
-
-```python
-@traigent.optimize(
-    eval_dataset="data.jsonl",
-    objectives=["accuracy"],
-    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
-)
-def my_func(query: str) -> str:
-    cfg = traigent.get_config()  # Works during trials AND after apply_best_config
-    return prompt_model(query, model=cfg["model"])
-
-# Run optimization
-results = await my_func.optimize(max_trials=6, algorithm="grid")
-
-# Inspect results
-print(results.best_config)   # {"model": "gpt-4o"}
-print(results.best_score)    # 0.92
-
-# Lock in the best config for production use
-my_func.apply_best_config(results)
-
-# Now calling my_func uses the best config automatically
-answer = my_func("What is Python?")
-```
+For the full lifecycle — the access table (`get_config` / `get_trial_config` / `results.best_config` / `func.current_config`), applying the winner, and the safety check before applying — see `traigent-analyze-results` → Applying Best Config.
 
 ## Complete Example
 
