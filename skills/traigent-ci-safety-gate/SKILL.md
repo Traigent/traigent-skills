@@ -4,7 +4,7 @@ description: "Add Traigent safety and promotion gates to CI. Use when users ask 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # CI Safety Gate
@@ -98,6 +98,20 @@ mock/offline wiring checks, must set `TRAIGENT_RUN_APPROVED=1`. This is the SDK'
 approval signal for approved CI runs, not a bypass; cloud-mode runs are unaffected.
 
 EFFICIENCY: assert `results.total_cost` and latency metrics remain within budget. Fail the job on cost breach, latency breach, rejected promotion, missing metrics, parse failures, or safety regression.
+
+### Key Hygiene in CI
+
+CI logs are shareable artifacts — visible to every collaborator with repo access and often
+retained for months. The same leaks apply here, at a larger blast radius:
+
+- **Never print, echo, or log a key value** in a workflow step. `echo $TRAIGENT_API_KEY`, an
+  `env`/`printenv` dump, and `set -x` wrapped around a key-touching step all write the raw secret
+  into the CI run log.
+- **Reference keys only by env-var name**, wired `${{ secrets.* }}` → job/step `env:` — never
+  inline a literal key value in the workflow YAML or a script.
+- **GitHub Actions masks only registered secrets.** It redacts values it was told about via
+  `secrets:`; a value reconstructed, echoed through an intermediate variable, or printed by
+  `set -x` before the secret is registered can bypass masking — so the rules above still apply.
 
 Minimal GitHub Actions shape:
 

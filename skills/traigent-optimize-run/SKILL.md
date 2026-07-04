@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.7"
+  version: "1.0.8"
 ---
 
 # Running Traigent Optimization
@@ -26,7 +26,14 @@ Default: at least one objective labeled `accuracy` (built-in objective or your `
 
 ## Async Execution
 
-The primary way to run optimization. Returns an `OptimizationResult`.
+The primary way to run optimization. Returns an `OptimizationResult`. Import the result type
+directly — don't guess the path:
+
+```python
+from traigent.api.types import OptimizationResult  # equivalently: traigent.OptimizationResult
+```
+
+See `traigent-analyze-results` for the full field reference.
 
 > **Dry-run first.** Before a real (paid) run, always validate in mock mode and present a cost estimate to the user. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
 >
@@ -382,6 +389,13 @@ print(len(results.failed_trials))      # 1
 ### Applying the Best Config
 
 After optimization, `func.apply_best_config(results)` locks in the winning configuration: subsequent calls to `func` use it automatically, `traigent.get_config()` inside the function returns it, and `func.current_config` exposes it from outside. Verify `results.best_score` against a threshold before applying — see `traigent-analyze-results` → Applying Best Config for the lifecycle table and the safety check.
+
+### Confirm a Portal-Tracked Run Actually Synced
+
+After a non-offline run, check `results.metadata.get("persistence_status")`: if it's `"failed"`,
+the backend finalize failed after retries and the portal session may be stuck `RUNNING` — re-check
+the portal, don't assume the run synced. Full detail: `traigent-analyze-results` → "Verify the Run
+Actually Persisted".
 
 ## Complete Example
 
