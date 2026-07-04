@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "68411a5fa6a79297",
+  "doc_hash": "70e6157794404a2f",
   "entries": [
     {
       "edit_id": "genesis",
@@ -18,6 +18,17 @@
       "run_id": null,
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "sim-findings-import-path-persistence-pointer-2026-07-04",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-04T00:00:00Z",
+      "doc_before_hash": "68411a5fa6a79297",
+      "doc_after_hash": "70e6157794404a2f",
+      "note": "teach the real OptimizationResult import path (traigent.api.types) and a short persistence_status pointer to traigent-analyze-results",
       "source_type": "human"
     }
   ]

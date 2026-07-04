@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.9"
+  version: "1.1.10"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -439,6 +439,25 @@ print(f"Portal link:       {results.cloud_url}")      # direct URL to the experi
 
 An `offline=True` run, or a non-offline run that fell back to local (no key), is **not** on the
 portal — use the dataframe read above instead.
+
+### Verify the Run Actually Persisted (`persistence_status`)
+
+A portal-tracked run (non-offline, `experiment_id` set) can finish all its trials locally but still
+fail to *finalize* on the backend — e.g. a network blip or backend 5xx during the final
+session-close call. The SDK retries that finalize call (3 attempts, exponential backoff) before
+giving up; if every attempt fails, it does not pretend the run is fine:
+
+```python
+if results.metadata.get("persistence_status") == "failed":
+    print("Backend finalize failed after retries — the portal session may be stuck RUNNING.")
+    print(results.metadata.get("persistence_error"))  # the underlying exception, if any
+```
+
+When this is `"failed"`, **do not assume the run synced** — the local `OptimizationResult` can look
+complete while the backend session is left `RUNNING` on the portal. Re-check the run on the portal
+(or run `traigent local sync`) before reporting a portal-tracked result as final. (Newer SDK builds
+— the fix merged as Traigent#1731 — also expose this as `results.persistence_failed`, a bool
+shorthand for the same check; check the metadata key directly if your installed SDK predates it.)
 
 The portal may group runs that share the same agent and canonical dataset. Use that group only to
 find related source runs. Before applying or recommending a configuration, record the exact source

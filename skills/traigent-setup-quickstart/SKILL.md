@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # Traigent Quickstart
@@ -271,6 +271,17 @@ For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offlin
 > export TRAIGENT_API_KEY="uk_..."                              # portal-issued key
 > export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"     # optional: cloud is already the default
 > ```
+
+### Key Hygiene — Reference Names, Never Values
+
+- **Never print, echo, or log a key value.** `echo $TRAIGENT_API_KEY`, a bare `env`/`printenv`
+  dump, and `set -x`/`bash -x` wrapped around any key-touching command are all leaks — each writes
+  the raw secret to stdout, which most agent harnesses capture into the visible transcript and
+  often into a log file too.
+- **Reference keys only by env-var name** (`TRAIGENT_API_KEY`, `OPENAI_API_KEY`, ...) in commands,
+  code, and chat — never paste or reconstruct the value itself.
+- **Treat transcripts and logs as shareable artifacts.** Assume anything printed to the terminal
+  or written to a log may be read, copied, or shared later; keep secrets out of both.
 
 ## Environment Setup
 

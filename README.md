@@ -125,6 +125,16 @@ for skill in traigent-skills/skills/*/SKILL.md; do
 done
 ```
 
+### Using with Codex CLI
+
+Codex CLI also does not auto-load a skills directory the way Claude Code does — it only reads
+`AGENTS.md`. If you mount these skills into a project (e.g. copied to
+`.github/skills/<name>/SKILL.md`), add a pointer line so Codex actually opens them before it acts:
+
+```text
+Operating guides for Traigent work live in .github/skills/<name>/SKILL.md — consult them before optimization tasks.
+```
+
 ## How skills work
 
 Skills follow the [Agent Skills open standard](https://agentskills.io/specification). Your AI coding agent loads skill names and descriptions at startup (~100 tokens each). When a skill is relevant to your task, the agent loads the full instructions automatically using **progressive disclosure**:
