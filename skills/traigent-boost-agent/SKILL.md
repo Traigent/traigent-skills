@@ -4,7 +4,7 @@ description: "End-to-end lifecycle playbook — from a single decorated function
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.1.0"
+  version: "2.1.1"
 ---
 
 # Traigent Boost Agent
@@ -95,7 +95,7 @@ traigent check my_script.py --dry-run                         # discovers @traig
 
 ### Step 3: Run Mock Optimization
 
-Enable mock mode in code, then run the full optimization pipeline at zero cost. This tests everything — decorator wiring, config sampling, dataset loading, trial execution, scoring — end to end. Mock mode is hard-blocked when `ENVIRONMENT=production`.
+Enable mock mode in code, then run the full optimization pipeline end to end (decorator wiring, config sampling, dataset loading, trial execution, scoring) with LLM calls intercepted. Mock mode is hard-blocked when `ENVIRONMENT=production`. For mock-mode setup mechanics and scope (what is and isn't intercepted, mock vs offline), see `traigent-setup-quickstart`.
 
 > Mock dry-runs still consume the plan's `optimization_samples` quota, and mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`).
 
@@ -136,22 +136,11 @@ Score interpretation depends on evaluator type: a config-aware scorer (reads `tr
 > constant string that no deterministic scorer can score positively. Focus on whether trials
 > ran without errors (`failed_trials == 0`), not on the 0.0 score values.
 >
-> **Non-degenerate dry-run recipe:** To get a varied score spread without real LLM calls,
-> use a config-aware scorer that reads the trial config rather than the constant mock output:
->
-> ```python
-> def mock_demo_accuracy(output, expected, config=None, **_):
->     """Config-aware scorer for mock dry-runs — scores by config, not output."""
->     cfg = config or traigent.get_config() or {}
->     base = 0.85 if cfg.get("model") == "gpt-4o" else 0.65
->     return max(0.0, base - 0.05 * float(cfg.get("temperature", 0.5)))
-> ```
->
-> Delete this scorer for your real (paid) run — on a real run, let your output-based
-> scorer evaluate actual LLM output. This mock-only scorer is purely for confirming the
-> pipeline works end to end before spending API budget.
+> For a varied score spread without real LLM calls, wire a config-aware mock-only demo
+> scorer (delete it for the real run) — see `traigent-setup-quickstart` (`mock_demo_accuracy`)
+> for the recipe.
 
-If mock fails, set `export TRAIGENT_DEBUG=1` for debug logging. Common causes: `ConfigurationError` (fix decorator args, see mistakes table above), `EvaluationError` (fix scoring function or dataset format), `OptimizationStateError` (`get_config()` called outside optimization context), `ModuleNotFoundError` (`pip install traigent[integrations]`), or all trials failed (test the function standalone with a hardcoded config first).
+If mock fails, set `export TRAIGENT_DEBUG=1` for debug logging, fix decorator args for `ConfigurationError` (see mistakes table above), and see `traigent-debugging` (`references/mock-mode.md`) for the full mock failure diagnosis (evaluation errors, `get_config()` outside optimization context, missing integrations extra, all-trials-failed).
 
 <!-- PROTECTED -->
 **Do not proceed to real mode until mock passes cleanly.**
@@ -184,22 +173,7 @@ For a `custom_evaluator` / `BaseEvaluator`, call `.evaluate([good_example])` and
 
 ### Step 3.6: Tiny Real Cost and KPI Probe
 
-After mock mode and the evaluator sanity gate pass, run one tiny **real** optimization before any full run: 1-2 dataset examples, minimal trials, and the cheapest candidate model. This is paid, but should cost pennies, and it proves the billing and objective plumbing before scaling up.
-
-Check both surfaces:
-
-- `results.total_cost` is `float | None`. `None` means cost tracking is unavailable. `0.0` with real calls means the model was unpriced, so the provider may bill while Traigent reports zero. Treat both as cost **not wired**.
-- Each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with real non-degenerate values. If all objective values are `0.0` or all are `1.0`, fix the evaluator/KPI wiring before the full run.
-
-If cost or other KPIs are not picked up for custom services, self-hosted endpoints, or unknown models, fix in this order:
-
-1. Use a model id LiteLLM can price, or map an alias with `litellm.model_alias_map`.
-2. Supply custom per-token pricing with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`. The JSON shape is `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; `input`/`output` aliases are accepted, provider prefixes like `openai/` are normalized, and values must be finite non-negative floats. Pricing resolves in this order: LiteLLM, custom pricing, built-in fallback table, then `UnknownModelError`.
-3. Report cost directly from the optimized function's per-trial metrics using `total_cost`, `cost`, or `input_cost` plus `output_cost`. This bypasses pricing tables and is the primary path for fully custom services.
-
-Set `TRAIGENT_STRICT_COST_ACCOUNTING=true` when an unpriced model should fail loudly instead of reporting zero.
-
-> **NOTE:** Before any full run, verify with a tiny real optimization call that cost and your other KPIs are actually tracked (`results.total_cost` is not None/$0 and objective metrics are populated). If not, wire them (custom model pricing env vars, or return `total_cost` in metrics) before scaling up.
+After mock mode and the evaluator sanity gate pass, run one tiny **real** optimization before any full run: 1-2 dataset examples, minimal trials, and the cheapest candidate model (pennies, not dollars). Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, wire it before scaling up — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, strict accounting).
 
 ### Step 4: Report and Estimate Costs
 

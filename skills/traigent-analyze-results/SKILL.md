@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.7"
+  version: "1.1.8"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -482,7 +482,22 @@ classify.apply_best_config(results)
 response = classify("What category is this email?")
 ```
 
-`apply_best_config()` sets the configuration so that subsequent calls to `traigent.get_config()` inside the decorated function return the best configuration from the optimization run.
+`apply_best_config()` sets the configuration so that subsequent calls to `traigent.get_config()` inside the decorated function return the best configuration from the optimization run. The applied config is also readable from outside the function via `func.current_config` on the `OptimizedFunction` instance:
+
+```python
+classify.apply_best_config(results)
+print(classify.current_config)  # {"model": "gpt-4o", "temperature": 0.5}
+```
+
+### Config Access Lifecycle
+
+| When | API | Notes |
+|---|---|---|
+| During optimization trials | `traigent.get_config()` | Returns current trial config. Thread-safe via contextvars. |
+| During optimization trials (strict) | `traigent.get_trial_config()` | Raises `OptimizationStateError` if not in active trial. |
+| After `apply_best_config()` | `traigent.get_config()` | Returns the applied best config. |
+| From optimization results | `results.best_config` | Dict with the best configuration found. |
+| From the function object | `func.current_config` | Current config on the `OptimizedFunction` instance. |
 
 <!-- PROTECTED -->
 ### Safety Check Before Applying

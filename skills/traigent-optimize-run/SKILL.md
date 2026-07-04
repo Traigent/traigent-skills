@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Running Traigent Optimization
@@ -167,9 +167,18 @@ Traigent tracks LLM API costs in real time and enforces budgets to prevent runaw
 
 ### Cost Wiring Probe
 
-Before any full paid run, do a tiny real optimization after mock validation: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Verify `results.total_cost` is neither `None` nor `0.0` for real calls, and verify each trial's `metrics` contains the declared objectives with populated, non-degenerate values.
+Before any full paid run, do a tiny real optimization after mock validation: 1-2 dataset examples, minimal trials, and the cheapest candidate model. This is paid but should cost pennies, and it proves the billing and objective plumbing before scaling up. Check **both surfaces**:
 
-If cost is missing for custom services or unknown models, use a LiteLLM-priced model id or `litellm.model_alias_map`, provide `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`, or return `total_cost`, `cost`, or `input_cost` plus `output_cost` in per-trial metrics. Use `TRAIGENT_STRICT_COST_ACCOUNTING=true` when unpriced models should fail loudly.
+- `results.total_cost` is `float | None`. `None` means cost tracking is unavailable. `0.0` with real calls means the model was unpriced, so the provider may bill while Traigent reports zero. Treat both as cost **not wired**.
+- Each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with real non-degenerate values. If all objective values are `0.0` or all are `1.0`, fix the evaluator/KPI wiring before the full run.
+
+If cost or other KPIs are not picked up for custom services, self-hosted endpoints, or unknown models, fix in this order:
+
+1. Use a model id LiteLLM can price, or map an alias with `litellm.model_alias_map`.
+2. Supply custom per-token pricing with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`. The JSON shape is `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; `input`/`output` aliases are accepted, provider prefixes like `openai/` are normalized, and values must be finite non-negative floats. Pricing resolves in this order: LiteLLM, custom pricing, built-in fallback table, then `UnknownModelError`.
+3. Report cost directly from the optimized function's per-trial metrics using `total_cost`, `cost`, or `input_cost` plus `output_cost`. This bypasses pricing tables and is the primary path for fully custom services.
+
+Set `TRAIGENT_STRICT_COST_ACCOUNTING=true` when an unpriced model should fail loudly instead of reporting zero (see Strict Cost Accounting below). Full pricing details: `references/cost-management.md`.
 
 ### Setting a Cost Limit
 
@@ -370,19 +379,7 @@ print(len(results.failed_trials))      # 1
 
 ### Applying the Best Config
 
-After optimization, lock in the best configuration for production use:
-
-```python
-results = await func.optimize(max_trials=10, algorithm="grid")
-func.apply_best_config(results)
-
-# Now calling func uses the best config automatically
-answer = func("What is Python?")
-
-# The config is accessible via get_config() inside the function
-# and via func.current_config from outside
-print(func.current_config)  # {"model": "gpt-4o", "temperature": 0.5}
-```
+After optimization, `func.apply_best_config(results)` locks in the winning configuration: subsequent calls to `func` use it automatically, `traigent.get_config()` inside the function returns it, and `func.current_config` exposes it from outside. Verify `results.best_score` against a threshold before applying — see `traigent-analyze-results` → Applying Best Config for the lifecycle table and the safety check.
 
 ## Complete Example
 
