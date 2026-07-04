@@ -11,7 +11,7 @@ LiteLLM provides a unified `completion()` API that works across 100+ LLM provide
 ## Installation
 
 ```bash
-pip install traigent litellm
+pip install "traigent>=0.19" litellm
 ```
 
 Set API keys for each provider you want to test:

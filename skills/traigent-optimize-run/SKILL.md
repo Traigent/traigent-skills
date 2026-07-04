@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.6"
+  version: "1.0.7"
 ---
 
 # Running Traigent Optimization
@@ -50,7 +50,7 @@ The primary way to run optimization. Returns an `OptimizationResult`.
 
 ```python
 import traigent
-import litellm  # pip install traigent[integrations] — the canonical runnable LLM call
+import litellm  # pip install "traigent>=0.19" — the canonical runnable LLM call
 
 @traigent.optimize(
     eval_dataset="qa_test.jsonl",
@@ -312,7 +312,7 @@ from traigent.api.decorators import ExecutionOptions
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
-    import litellm  # pip install traigent[integrations]
+    import litellm  # pip install "traigent>=0.19"
     cfg = traigent.get_config()
     resp = litellm.completion(model=cfg["model"], messages=[{"role": "user", "content": query}])
     return resp.choices[0].message.content
@@ -331,13 +331,15 @@ results = await my_func.optimize(max_trials=10, algorithm="random")
 
 ## Displaying Results
 
-Always call `print_results_table()` after `func.optimize()` to show a green-highlighted
-trial results table with per-config scores. Skip only if the user explicitly says no.
+In SDK >=0.19, awaited `func.optimize()` and `func.optimize_sync()` already auto-print
+the ranked trial table. Call `print_results_table()` only when you need to re-print
+later, or when you need custom `objectives` / `config_space` display arguments.
 
 ```python
-from traigent.utils.results_table import print_results_table
+results = await func.optimize(max_trials=10, algorithm="grid")  # auto-prints the ranked table
 
-results = await func.optimize(max_trials=10, algorithm="grid")
+# Optional: re-print later, or override the display metadata.
+from traigent.utils.results_table import print_results_table
 
 print_results_table(
     results,
@@ -390,7 +392,6 @@ import traigent
 from traigent.api.decorators import EvaluationOptions, ExecutionOptions
 from traigent.config.parallel import ParallelConfig
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
-from traigent.utils.results_table import print_results_table
 
 def exact_match(output: str, expected: str) -> float:
     return 1.0 if output.strip() == expected.strip() else 0.0
@@ -414,7 +415,7 @@ def exact_match(output: str, expected: str) -> float:
     },
 )
 def answer_question(question: str) -> str:
-    import litellm  # pip install traigent[integrations]
+    import litellm  # pip install "traigent>=0.19"
     cfg = traigent.get_config()
     resp = litellm.completion(
         model=cfg["model"],
@@ -447,12 +448,7 @@ async def main():
               "Inspect the failed trials before spending more.")
         return
 
-    print_results_table(
-        results,
-        config_space=answer_question.configuration_space,
-        objectives=["accuracy"],
-    )
-
+    # SDK >=0.19 auto-prints the ranked results table for awaited optimize().
     print(f"Best config: {results.best_config}")
     print(f"Best score:  {results.best_score}")
     print(f"Stop reason: {results.stop_reason}")

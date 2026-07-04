@@ -56,7 +56,7 @@ def exact_match_score(output, expected) -> float:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    import litellm  # pip install traigent[integrations]
+    import litellm  # pip install "traigent[integrations]>=0.19"
     resp = litellm.completion(model=cfg.get("model", "gpt-4o-mini"), temperature=cfg["temperature"],
                               messages=[{"role": "user", "content": question}])
     return resp.choices[0].message.content
@@ -99,7 +99,7 @@ def expected_field_metric(output, expected, input_data) -> float:
 )
 def extract(text: str) -> str:
     cfg = traigent.get_config()
-    import litellm  # pip install traigent[integrations]
+    import litellm  # pip install "traigent[integrations]>=0.19"
     resp = litellm.completion(model=cfg.get("model", "gpt-4o-mini"), temperature=cfg["temperature"],
                               messages=[{"role": "user", "content": text}])
     return resp.choices[0].message.content
@@ -184,7 +184,7 @@ def evaluate_answer(func, config, example) -> ExampleResult:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    import litellm  # pip install traigent[integrations]
+    import litellm  # pip install "traigent[integrations]>=0.19"
     resp = litellm.completion(model=cfg.get("model", "gpt-4o-mini"), temperature=cfg["temperature"],
                               messages=[{"role": "user", "content": question}])
     return resp.choices[0].message.content

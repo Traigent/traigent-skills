@@ -4,7 +4,7 @@ description: "End-to-end lifecycle playbook — from a single decorated function
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.1.1"
+  version: "2.1.2"
 ---
 
 # Traigent Boost Agent
@@ -51,7 +51,7 @@ The user's function needs four things: dataset, objectives, config space, and th
 
 ```python
 import traigent
-import litellm  # pip install traigent[integrations] — the canonical runnable LLM call
+import litellm  # pip install "traigent[integrations]>=0.19" — the canonical runnable LLM call
 from traigent import Choices, Range
 
 @traigent.optimize(
@@ -387,6 +387,8 @@ CONFIGURATION_SPACE = {
    - Cross-reference `traigent-setup-quickstart` and `traigent-debugging` for mock/offline setup.
    - Use `from traigent.testing import enable_mock_mode_for_quickstart` plus `TRAIGENT_OFFLINE_MODE=true` for keyless development.
    - Confirm dataset loading, config sampling, stage wiring, tuple-return unpacking, and zero failed trials before real provider calls.
+   - Machine-checkable success contract — assert this instead of eyeballing the table:
+     `assert results.trials, "no trials ran"` · `assert not getattr(results, "failed_trials", []), f"failed trials: {results.failed_trials}"` · `assert results.best_config is not None, "no best config selected"`.
    - Mock reality: mock still consumes `optimization_samples` quota; exact/execution-match scorers read uniform 0.0 under mock (expected, not broken); raw `openai`/`anthropic` clients are not intercepted and still bill.
    - DELEGATE: `traigent-setup-quickstart` owns first-run setup; `traigent-debugging` owns mock/offline failure diagnosis.
 

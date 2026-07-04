@@ -9,7 +9,7 @@ Traigent provides the `DSPyPromptOptimizer` adapter for integrating DSPy's autom
 ## Installation
 
 ```bash
-pip install traigent dspy
+pip install "traigent>=0.19" dspy
 ```
 
 ## DSPyPromptOptimizer

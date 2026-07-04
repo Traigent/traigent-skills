@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.11"
+  version: "1.0.12"
 ---
 
 # Traigent Quickstart
@@ -72,25 +72,129 @@ advanced playbooks during cold start.
 
 ### Basic Install
 
-```bash
-# Recommended — includes integrations, analytics, and common extras
-pip install "traigent[recommended]"
+The fast path is the core floored install — sufficient for the entire keyless mock
+quickstart because `litellm` ships in core. Install optional extras only after the mock
+run succeeds.
 
-# Minimal, no extras
-pip install traigent
+```bash
+pip install "traigent>=0.19"
+python - <<'PY'
+import importlib.metadata as md
+import traigent
+v = md.version("traigent")
+if v == "0.0.1" or not hasattr(traigent, "optimize"):
+    raise SystemExit(
+        f"Bad Traigent install: traigent {v}. "
+        'You likely got the PyPI placeholder — reinstall with: python -m pip install --upgrade "traigent>=0.19"'
+    )
+print(f"traigent {v} OK")
+PY
 ```
 
-### Use a virtual environment (do this first)
+> **Warning:** pip printing `traigent 0.0.1 does not provide the extra ...` is **FATAL** — you installed the placeholder package; reinstall with `python -m pip install --upgrade "traigent>=0.19"`.
+
+### Literal First Run (execution-only agents)
+
+Run this entire block in the foreground and wait for it to finish. Do not split it,
+background it, or continue after a failed command. The final expected line is
+`TRAIGENT-DRY-RUN-OK`.
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+python -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade --timeout 60 --retries 5 "traigent>=0.19"
+python - <<'PY'
+import importlib.metadata as md
+import traigent
+v = md.version("traigent")
+if v == "0.0.1" or not hasattr(traigent, "optimize"):
+    raise SystemExit(
+        f"Bad Traigent install: traigent {v}. "
+        'You likely got the PyPI placeholder — reinstall with: python -m pip install --upgrade "traigent>=0.19"'
+    )
+print(f"traigent {v} OK")
+PY
+
+cat > ticket_eval.jsonl <<'JSONL'
+{"input": "I was charged twice for my subscription", "output": "billing"}
+{"input": "Please update the email address on my account", "output": "account"}
+{"input": "The API returns a 500 error on POST requests", "output": "technical"}
+{"input": "What are your business hours?", "output": "general"}
+{"input": "My invoice has the wrong tax ID", "output": "billing"}
+{"input": "I cannot reset my password", "output": "account"}
+JSONL
+
+cat > ticket_classifier.py <<'PY'
+import traigent, litellm
+from traigent.testing import enable_mock_mode_for_quickstart
+
+enable_mock_mode_for_quickstart()
+
+
+def mock_demo_accuracy(output, expected, config=None, **_):
+    # Mock-only demo scorer; delete this for real runs.
+    cfg = config or traigent.get_config() or {}
+    base = 0.88 if cfg.get("model") == "gpt-4o" else 0.68
+    return max(0.0, base - 0.04 * float(cfg.get("temperature", 0.0)))
+
+
+@traigent.optimize(
+    eval_dataset="ticket_eval.jsonl",
+    objectives=["accuracy"],
+    configuration_space={
+        "model": ["gpt-4o-mini", "gpt-4o"],
+        "temperature": [0.0, 0.7],
+    },
+    metric_functions={"accuracy": mock_demo_accuracy},
+    offline=True,
+)
+def classify_ticket(query: str) -> str:
+    config = traigent.get_config()
+    response = litellm.completion(
+        model=config["model"],
+        temperature=config["temperature"],
+        messages=[
+            {"role": "system", "content": "Classify the ticket as: billing, technical, account, or general."},
+            {"role": "user", "content": query},
+        ],
+    )
+    return response.choices[0].message.content
+
+
+results = classify_ticket.optimize_sync(max_trials=4, algorithm="grid")
+print(f"Stop reason: {getattr(results, 'stop_reason', None)}")
+print(f"Best config: {results.best_config}")
+assert results.trials, "no trials ran"
+assert not getattr(results, "failed_trials", []), f"failed trials: {results.failed_trials}"
+assert results.best_config is not None, "no best config selected"
+print("TRAIGENT-DRY-RUN-OK")
+PY
+
+export TRAIGENT_OFFLINE_MODE=true
+export LITELLM_LOCAL_MODEL_COST_MAP=True
+# Mock/offline env is set in bash, BEFORE python imports anything.
+export TRAIGENT_OFFLINE_MODE=true
+export LITELLM_LOCAL_MODEL_COST_MAP=True
+python ticket_classifier.py
+```
+
+This block is generated from `references/literal-quickstart.sh` — edit that file, not the block.
+
+### Use a virtual environment (recommended)
 
 Install into a project virtualenv — it's standard Python practice and it's the friction-free
 path here. A **fresh** venv is enough; you do **not** need `--system-site-packages`.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install "traigent[recommended]"
+python -m pip install --upgrade "traigent>=0.19"
 ```
 
-`pip install traigent` resolves from PyPI and pulls `litellm` (a **core dependency**) along with
+`pip install "traigent>=0.19"` resolves from PyPI and pulls `litellm` (a **core dependency**) along with
 it, so the keyless mock path — which intercepts `litellm.completion(...)` — works immediately,
 with no extra install. Only the LangChain / OpenAI / Anthropic *adapter* clients live in the
 `integrations` extra (below).
@@ -101,18 +205,23 @@ with no extra install. Only the LangChain / OpenAI / Anthropic *adapter* clients
 
 ### With Optional Extras
 
+Install these after the keyless mock run succeeds.
+
 ```bash
+# Recommended extras after the mock run succeeds
+pip install "traigent[recommended]>=0.19"
+
 # Framework integrations (LangChain, OpenAI, Anthropic, MLflow, W&B)
-pip install 'traigent[integrations]'
+pip install "traigent[integrations]>=0.19"
 
 # Analytics (numpy, pandas, matplotlib)
-pip install 'traigent[analytics]'
+pip install "traigent[analytics]>=0.19"
 
 # All optional features
-pip install 'traigent[all]'
+pip install "traigent[all]>=0.19"
 
 # Enterprise bundle (all production features)
-pip install 'traigent[enterprise]'
+pip install "traigent[enterprise]>=0.19"
 ```
 
 See `references/installation-extras.md` for the full table of extras and their contents.
@@ -179,7 +288,7 @@ enable_mock_mode_for_quickstart()
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
-- **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install traigent` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install 'traigent[integrations]'`.)
+- **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.19"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.19"`.)
 - **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` (or run with no key). `enable_mock_mode_for_quickstart()` alone does **not** make a run local.
 - **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer).
 
@@ -294,7 +403,7 @@ from pathlib import Path
 os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
-import litellm  # pip install traigent[integrations]
+import litellm  # pip install "traigent>=0.19"
 import traigent
 from traigent import Choices
 from traigent.testing import enable_mock_mode_for_quickstart

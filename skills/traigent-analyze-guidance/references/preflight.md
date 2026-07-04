@@ -74,7 +74,7 @@ run.
 
 ## Checklist
 
-1. Python 3.11/3.12 venv; `pip install traigent litellm scikit-learn scipy`.
+1. Python 3.11/3.12 venv; `pip install "traigent>=0.19" litellm scikit-learn scipy`.
 2. String-encode discrete knobs; `int()` at the call site.
 3. Custom pricing for gateway models; emit real accuracy/cost/latency metrics.
 4. `ExecutionOptions(offline=False)` (DEFAULT = online/cloud; `offline=True` local-only if chosen) + `algorithm` arg; cost cap set.

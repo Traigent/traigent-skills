@@ -4,7 +4,7 @@ description: "Debug and troubleshoot Traigent optimization issues. Use when enco
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -326,7 +326,7 @@ The backend's canonical signal is HTTP **429** with `error_code: "quota_exceeded
 
 ```
 traigent.utils.exceptions.FeatureNotAvailableError: Feature 'LangChain integration' is not available.
-  Requires the 'traigent-langchain' plugin. Install with: pip install traigent[integrations]
+  Requires the 'traigent-langchain' plugin. Install with: pip install "traigent[integrations]>=0.19"
 ```
 
 **Fix**: Install the indicated package.
@@ -343,9 +343,9 @@ ModuleNotFoundError: No module named 'langchain_openai'
 
 ```bash
 # Install with specific extras
-pip install traigent[integrations]    # LangChain, LiteLLM support
-pip install traigent[all]             # Everything
-pip install traigent[dev]             # Development tools
+pip install "traigent[integrations]>=0.19"    # LangChain, LiteLLM support
+pip install "traigent[all]>=0.19"             # Everything
+pip install "traigent[dev]>=0.19"             # Development tools
 ```
 
 ## Mock Mode
