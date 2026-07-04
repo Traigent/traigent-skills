@@ -4,7 +4,7 @@ description: "Audit evaluator reliability before trusting Traigent optimization 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.3"
+  version: "1.1.4"
 ---
 
 # Evaluator Audit
@@ -26,6 +26,8 @@ optimization run**, not an optional check: without it you may be optimizing judg
 ## Service-Side Evaluator Audit (ACET)
 
 Traigent's server-side ACET evaluator audit is available when your deployment is IP-allowlisted for the read-only backend endpoint. The platform assesses the evaluators used in a run **read-only**, computed from the optimizer's persisted config×example×evaluator tensor and anchored to a separate verifiable signal — such as execution-match, unit-test pass, or MCQ exact-match correctness — without requiring new gold-label collection. It surfaces as an evaluator-audit next-step action when the allowlisted endpoint is available (server-side; no local re-scoring). Do not recreate ACET math client-side.
+
+The audit verdict is read through `GET /api/v1/analytics/runs/{run_id}/evaluator-quality` (viewer role): an IP-safe, hard-allowlisted projection of the internal audit — coarse verdict, opaque evaluator fingerprints, and a capped confidence interval. The methodology-bearing report (axes, vetoes, bias battery, tensor internals) is never returned; do not try to reconstruct it.
 
 **Fail-closed honest confidence.** If no verifiable anchor exists for the run, the service audit abstains: no leaderboard is emitted and no promote gate passes. A proxy anchor (another model or heuristic) is accepted but capped at ≤0.30 confidence and cannot be upgraded to verifiable-level confidence. Do not treat an abstain result as a pass, and do not interpret a proxy-anchor result as equivalent to a verifiable-anchor result.
 
@@ -184,6 +186,13 @@ If the service emits `improve_evaluator`, present the returned action verbatim a
 Audit results hold only for the audited evaluation dataset distribution, judge model version, judge prompt, output schema, sampling settings, and threshold. Re-audit on any model, prompt, schema, rubric, or dataset-distribution change.
 
 For service-side ACET audits: confidence ceiling is a hard cap, not a display hint. A proxy-anchor result cannot be cited as verifiable-level evidence. Promotion gate requires ACET gate evidence (verifiable-anchor verdict, confidence ceiling) — manual gold-slice calibration alone is not sufficient for promotion.
+
+The promotion gate itself is served by two advisory, anchor-gated endpoints over one optimization run:
+
+- `POST /api/v1/analytics/runs/{run_id}/evaluator-promotion/evaluate` (editor role) — computes and **persists** an advisory challenger-vs-incumbent promotion decision from evaluator fingerprints (`challenger_fingerprint` required, optional `incumbent_fingerprint`, `delta`, `min_pairs`). It never mutates experiments, sessions, evaluator configs, or optimization state — the decision record is advisory.
+- `GET /api/v1/analytics/runs/{run_id}/evaluator-promotion` (viewer role) — lists the run's persisted advisory promotion decisions, newest first (`limit` up to 100).
+
+Treat the returned decision as the promotion-gate evidence; do not recompute or overrule it locally.
 
 ## See Also
 

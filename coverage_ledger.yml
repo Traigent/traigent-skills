@@ -23,803 +23,788 @@
 schema: coverage-ledger/v1
 waivers:
   # Backend snapshot refresh 2026-07-04 (v1beta tree + routes added on BE develop
-  # since the previous pin). Waived as one block pending a per-route "teach it in
-  # a skill?" decision; remove a waiver when a skill starts teaching that route.
+  # since the previous pin). Per-route decisions made in consolidation Phase 6
+  # (2026-07-04): user-relevant routes are taught in skills (experiment-groups
+  # cohort table -> traigent-analyze-results; ACET evaluator-quality/promotion ->
+  # traigent-eval-audit) and their waivers removed; each remaining waiver carries
+  # its own honest reason. Remove a waiver when a skill starts teaching that route.
   "be:DELETE /api/v1beta/observability/traces/<trace_id>/comments/<comment_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/observability/traces/<trace_id>/feedback":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/projects/<string:project_id>/measures/<string:measure_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments/<comment_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/feedback":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/projects/<string:project_id>/trials/<trial_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:DELETE /api/v1beta/prompts/<path:prompt_name>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
-    owner: nimrodbusany
-  "be:GET /api/v1/analytics/runs/<string:run_id>/evaluator-promotion":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
-    owner: nimrodbusany
-  "be:GET /api/v1/analytics/runs/<string:run_id>/evaluator-quality":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1/auth/me/interaction-policy":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
-    owner: nimrodbusany
-  "be:GET /api/v1/experiment-groups":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
-    owner: nimrodbusany
-  "be:GET /api/v1/experiment-groups/<group_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
-    owner: nimrodbusany
-  "be:GET /api/v1/experiment-groups/<group_id>/configuration-runs":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: taught via client.get_interaction_policy() snippet in every skill's synced interaction-policy block; URL-fact kind not applicable
     owner: nimrodbusany
   "be:GET /api/v1/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: corrected per-configuration status/detail routes consumed by the portal run view; skills teach the run-level report surface instead
     owner: nimrodbusany
   "be:GET /api/v1/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>/status":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: corrected per-configuration status/detail routes consumed by the portal run view; skills teach the run-level report surface instead
     owner: nimrodbusany
   "be:GET /api/v1beta/admin/tenants":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/admin/tenants/<string:tenant_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/admin/tenants/<string:tenant_id>/memberships":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/admin/tenants/<string:tenant_id>/sso":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/dashboards/evaluator-quality":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/dashboards/observability-summary":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/dashboards/optimization-overview":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/dashboards/project-usage":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/distributions/measures/<string:measure_key>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/export-jobs":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/export-jobs/<string:job_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/exports/fine-tuning.manifest":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/pricing-catalog":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/runs/<string:run_id>/correlations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/runs/<string:run_id>/decision-payload":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/runs/<string:run_id>/evaluator-quality":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/runs/<string:run_id>/example-insights":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/runs/<string:run_id>/leaderboard":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/runs/<string:run_id>/parameter-insights":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/runs/<string:run_id>/pareto":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/runs/<string:run_id>/report":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/summary":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/analytics/trends/run-volume":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/annotation-queues":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/annotation-queues/<string:queue_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/annotation-queues/<string:queue_id>/items":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/annotation-queues/<string:queue_id>/next":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/core-exports/fine-tuning.jsonl":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/core-metrics/experiments/<string:experiment_id>/trend":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/core-metrics/overview":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/evaluator-runs":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/evaluator-runs/<string:run_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/evaluators":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/evaluators/<string:evaluator_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/observations/<observation_id>/score-summary":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/sessions":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/sessions/<session_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/sessions/<session_id>/stream":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/sessions/stream":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/traces":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/traces/<trace_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/traces/<trace_id>/comments":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/traces/<trace_id>/observations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/traces/<trace_id>/score-summary":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/traces/<trace_id>/stream":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/traces/stream":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/observability/users/<user_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/agents":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/check-deletion":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/experiments":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/export":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/model-parameters":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/agents/admin/stats":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/agents/agent-types":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/agents/optimization-summaries":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/dashboards/evaluator-quality":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/dashboards/observability-summary":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/dashboards/optimization-overview":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/dashboards/project-usage":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/distributions/measures/<string:measure_key>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/export-jobs":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/export-jobs/<string:job_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/exports/fine-tuning.manifest":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/pricing-catalog":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/correlations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/decision-payload":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/evaluator-quality":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/example-insights":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/leaderboard":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/parameter-insights":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/pareto":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/report":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/summary":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/analytics/trends/run-volume":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/annotation-queues":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>/items":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>/next":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/configuration-runs/runs/<experiment_run_id>/configurations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/core-exports/fine-tuning.jsonl":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/core-metrics/experiments/<string:experiment_id>/trend":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/core-metrics/overview":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/evaluator-runs":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/evaluator-runs/<string:run_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/evaluators":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/<experiment_id>/runs":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/configurations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>/status":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/report-payload":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/results":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/status":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/traces":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiments":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>/export":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/experiments/admin/stats":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/features/report-module-status":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/measures":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/measures/<string:measure_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/memberships":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/observations/<observation_id>/score-summary":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/sessions":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/sessions/<session_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/sessions/<session_id>/stream":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/sessions/stream":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/traces":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/observations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/score-summary":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/stream":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/stream":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/observability/users/<user_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/planner/drafts":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/sections/<section>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/planner/example-drafts":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/planner/status/<draft_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/policies/export":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/policies/rate-limits":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/policies/retention":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/prompts":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/analytics":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/resolve":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/versions/<int:version>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/scores":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/scores/<string:score_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/trials/<trial_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/projects/<string:project_id>/trials/runs/<experiment_run_id>/configurations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/prompts":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/prompts/<path:prompt_name>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/prompts/<path:prompt_name>/analytics":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/prompts/<path:prompt_name>/resolve":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/prompts/<path:prompt_name>/versions/<int:version>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/scores":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:GET /api/v1beta/scores/<string:score_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:HEAD /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/traces":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1/experiments/<experiment_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: portal-internal experiment metadata edit (rename/status); SDK creates experiments via runs, skills have no edit surface
     owner: nimrodbusany
   "be:PATCH /api/v1beta/admin/tenants/<string:tenant_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/admin/tenants/<string:tenant_id>/memberships/<string:membership_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/annotation-queues/<string:queue_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/annotation-queues/items/<string:item_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/evaluators/<string:evaluator_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/observability/traces/<trace_id>/collaboration":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/annotation-queues/items/<string:item_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/memberships/<string:membership_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/collaboration":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/policies/export":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/policies/rate-limits":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/policies/retention":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/labels":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PATCH /api/v1beta/prompts/<path:prompt_name>/labels":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1/analytics/experiments/<experiment_run_id>/fit-irt":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
-    owner: nimrodbusany
-  "be:POST /api/v1/analytics/runs/<string:run_id>/evaluator-promotion/evaluate":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: experimental IRT fitting; portal-first, no SDK/CLI surface yet
     owner: nimrodbusany
   "be:POST /api/v1/auth/invites/accept":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: portal-internal invite-acceptance flow; no SDK/skill surface
     owner: nimrodbusany
   "be:POST /api/v1/sessions/<session_id>/trace-reflection-plan":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: trace-lessons lanes in active development (2026-07); teach when the ingest API stabilizes
     owner: nimrodbusany
   "be:POST /api/v1/sessions/<session_id>/trace-reflections":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: trace-lessons lanes in active development (2026-07); teach when the ingest API stabilizes
     owner: nimrodbusany
   "be:POST /api/v1beta/admin/tenants":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/admin/tenants/<string:tenant_id>/invites":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/admin/tenants/<string:tenant_id>/memberships":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/annotation-queues":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/annotation-queues/<string:queue_id>/items":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/annotation-queues/items/<string:item_id>/complete":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/evaluation-datasets/<evaluation_dataset_id>/examples/from-trace":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/evaluator-runs/<string:run_id>/retry":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/evaluators":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/evaluators/<string:evaluator_id>/backfill":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/evaluators/<string:evaluator_id>/execute":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/observability/ingest":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/observability/traces/<trace_id>/comments":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/observability/traces/<trace_id>/evaluation-dataset-example-candidate":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/agents":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/archive":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/example-sets":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/model-parameters":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/retrieval-configs":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/unarchive":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/agents/import":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/annotation-queues":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>/items":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/annotation-queues/items/<string:item_id>/complete":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/cancel":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/configuration-runs/runs/<experiment_run_id>/configurations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/evaluation-datasets/<evaluation_dataset_id>/examples/from-trace":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/evaluator-runs/<string:run_id>/retry":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/evaluators":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/backfill":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/execute":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/experiment-runs/<experiment_id>/runs":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/experiment-runs/check-completion":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/experiment-runs/fix-naming":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<experiment_run_id>/configurations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/experiments":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/experiments/bulk-update-status":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/measures":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/measures/default":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/memberships":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/observability/ingest":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/evaluation-dataset-example-candidate":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/cancel":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/finalize":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/planner/generate":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/prompts":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/playground/run":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/versions":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/scores":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/projects/<string:project_id>/trials/runs/<experiment_run_id>/configurations":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/prompts":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/prompts/<path:prompt_name>/playground/run":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/prompts/<path:prompt_name>/versions":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:POST /api/v1beta/scores":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/admin/tenants/<string:tenant_id>/sso":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/observability/traces/<trace_id>/feedback":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/model-parameters/<string:param_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/measures":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/status":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/summary-stats":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/workflow-metadata":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/status":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/measures/<string:measure_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/feedback":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/sections/<section>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>/measures":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>/status":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>/summary-stats":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
   "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>/workflow-metadata":
-    reason: pending skills coverage decision (consolidation Phase 6, 2026-07-04)
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany

@@ -64,6 +64,8 @@ skills:
       - traigent/config/parallel.py
 
   traigent-analyze-results:
+    backend_prefixes:
+      - /api/v1/experiment-groups
     modules:
       - traigent.api.types
       - traigent.core.optimized_function
@@ -192,6 +194,8 @@ skills:
       - traigent/evaluators/hybrid_api.py
 
   traigent-eval-audit:
+    backend_prefixes:
+      - /api/v1/analytics/runs
     modules:
       - traigent.api.decorators
       - traigent.api.types

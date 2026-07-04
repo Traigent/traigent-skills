@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.8"
+  version: "1.1.9"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -161,6 +161,17 @@ analytics_list_experiment_groups(project_id, agent_id=None, dataset_id=None)
 analytics_get_experiment_group(project_id, group_id)
 analytics_list_experiment_group_configuration_runs(project_id, group_id)
 ```
+
+Each cohort tool is a thin reader over a read-only backend endpoint (viewer role, paginated
+where it lists):
+
+- `analytics_list_experiment_groups` / `GET /api/v1/experiment-groups` — list cohorts,
+  optionally filtered by `agent_id` and `dataset_id` query params.
+- `analytics_get_experiment_group` / `GET /api/v1/experiment-groups/{group_id}` — one cohort's
+  summary (404 when the group is not visible in your scope).
+- `analytics_list_experiment_group_configuration_runs` /
+  `GET /api/v1/experiment-groups/{group_id}/configuration-runs` — the cohort's
+  configuration-run rows, source ids preserved.
 
 Present **one** aggregated table labelled:
 
