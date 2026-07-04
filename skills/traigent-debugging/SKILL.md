@@ -4,7 +4,7 @@ description: "Debug and troubleshoot Traigent optimization issues. Use when enco
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -254,8 +254,8 @@ curl -s https://openrouter.ai/api/v1/models | grep -o '"id":"[^"]*"' | sort
 
 Prefer a specific versioned ID (e.g. `claude-3-haiku-20240307`) over a moving `-latest` alias —
 versioned IDs price reliably; an alias can resolve to a model whose pricing isn't recognized yet,
-leaving cost untracked. The `traigent-integrations` skill's
-[Verifying model availability](../traigent-integrations/references/litellm.md#verifying-model-availability)
+leaving cost untracked. The `traigent-setup-integrations` skill's
+[Verifying model availability](../traigent-setup-integrations/references/litellm.md#verifying-model-availability)
 section has the full per-provider check list.
 
 ### InvocationError
@@ -306,7 +306,7 @@ The backend's canonical signal is HTTP **429** with `error_code: "quota_exceeded
 - Check your remaining quota and the reset date on the portal billing/usage page (or your
   plan's usage summary) before retrying.
 - Size the next run to fit: lower `max_trials`, use a smaller eval dataset, or wait for the
-  monthly reset. See the `traigent-run-optimization` skill ("Quota & Run Sizing").
+  monthly reset. See the `traigent-optimize-run` skill ("Quota & Run Sizing").
 - Upgrade the plan if you consistently need more `optimization_samples` headroom.
 
 **Current SDK behavior (as of SDK 0.16.0 — may change):**
@@ -326,7 +326,7 @@ The backend's canonical signal is HTTP **429** with `error_code: "quota_exceeded
 
 ```
 traigent.utils.exceptions.FeatureNotAvailableError: Feature 'LangChain integration' is not available.
-  Requires the 'traigent-langchain' plugin. Install with: pip install traigent[integrations]
+  Requires the 'traigent-langchain' plugin. Install with: pip install "traigent[integrations]>=0.19"
 ```
 
 **Fix**: Install the indicated package.
@@ -343,9 +343,9 @@ ModuleNotFoundError: No module named 'langchain_openai'
 
 ```bash
 # Install with specific extras
-pip install traigent[integrations]    # LangChain, LiteLLM support
-pip install traigent[all]             # Everything
-pip install traigent[dev]             # Development tools
+pip install "traigent[integrations]>=0.19"    # LangChain, LiteLLM support
+pip install "traigent[all]>=0.19"             # Everything
+pip install "traigent[dev]>=0.19"             # Development tools
 ```
 
 ## Mock Mode

@@ -188,7 +188,7 @@ Base class for validation-related errors. Subclasses include:
 | `plugin_name` | `str \| None` | Required plugin name. |
 | `install_hint` | `str \| None` | pip install command to fix. |
 
-**Resolution**: Run the `install_hint` command (e.g., `pip install traigent[integrations]`).
+**Resolution**: Run the `install_hint` command (e.g., `pip install "traigent[integrations]>=0.19"`).
 
 ### DataIntegrityError
 

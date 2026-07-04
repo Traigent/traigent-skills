@@ -39,6 +39,11 @@ class Registration:
     parent_key: tuple[str, str]
     child_key: tuple[str, str]
     url_prefix: str | None
+    # A prefix template whose "{child_prefix}" placeholder is substituted with the
+    # child blueprint's own url_prefix at mount time. Used for helper functions
+    # like api_v1beta's _register_project_scoped(), which compute
+    # f"/projects/<string:project_id>{blueprint.url_prefix or ''}" dynamically.
+    url_prefix_template: str | None = None
 
 
 @dataclass(slots=True)
@@ -175,6 +180,15 @@ def _parse_source(*, repo: Path, ref: str, source_file: str) -> ModuleFacts:
             )
             if registration is not None:
                 registrations.append(registration)
+
+    registrations.extend(
+        _registrations_via_local_helpers(
+            tree,
+            source_file=source_file,
+            imports=imports,
+            blueprints=blueprints,
+        )
+    )
 
     return ModuleFacts(
         source_file=source_file,
@@ -341,6 +355,230 @@ def _registration_from_call(
     )
 
 
+CHILD_PREFIX_PLACEHOLDER = "{child_prefix}"
+_MAX_HELPER_DEPTH = 8
+
+
+def _registrations_via_local_helpers(
+    tree: ast.Module,
+    *,
+    source_file: str,
+    imports: dict[str, tuple[str, str]],
+    blueprints: dict[tuple[str, str], BlueprintInfo],
+) -> list[Registration]:
+    """Follow module-local wrapper functions around register_blueprint.
+
+    The plain registration pass only sees ``X.register_blueprint(Y)`` calls whose
+    names resolve directly to blueprints. Modules like src/routes/api_v1beta.py
+    instead route registrations through local helper functions
+    (``register_v1beta_blueprints(parent)`` -> ``_register_project_scoped(parent,
+    bp, name)``) whose parameters hide the real blueprints. This pass inlines
+    calls to module-local functions, binding parameters to the blueprints passed
+    at each call site, so those registrations (and their dynamically computed
+    url prefixes) are captured.
+    """
+    local_funcs: dict[str, ast.FunctionDef | ast.AsyncFunctionDef] = {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    if not local_funcs:
+        return []
+
+    registrations: list[Registration] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Name):
+            continue
+        func_def = local_funcs.get(node.func.id)
+        if func_def is None:
+            continue
+        env = _bind_call_env(
+            func_def, node, env={}, imports=imports, blueprints=blueprints
+        )
+        _inline_function_body(
+            func_def,
+            env=env,
+            local_funcs=local_funcs,
+            depth=0,
+            source_file=source_file,
+            imports=imports,
+            blueprints=blueprints,
+            registrations=registrations,
+        )
+    return registrations
+
+
+def _bind_call_env(
+    func_def: ast.FunctionDef | ast.AsyncFunctionDef,
+    call: ast.Call,
+    *,
+    env: dict[str, tuple[str, str]],
+    imports: dict[str, tuple[str, str]],
+    blueprints: dict[tuple[str, str], BlueprintInfo],
+) -> dict[str, tuple[str, str]]:
+    """Map the callee's parameter names to blueprint keys resolved at the call site."""
+    params = [arg.arg for arg in (*func_def.args.posonlyargs, *func_def.args.args)]
+    bound: dict[str, tuple[str, str]] = {}
+    for param, arg in zip(params, call.args):
+        resolved = _resolve_blueprint_expr(arg, env, imports, blueprints)
+        if resolved is not None:
+            bound[param] = resolved
+    for keyword in call.keywords:
+        if keyword.arg is None or keyword.arg not in params:
+            continue
+        resolved = _resolve_blueprint_expr(keyword.value, env, imports, blueprints)
+        if resolved is not None:
+            bound[keyword.arg] = resolved
+    return bound
+
+
+def _resolve_blueprint_expr(
+    node: ast.AST,
+    env: dict[str, tuple[str, str]],
+    imports: dict[str, tuple[str, str]],
+    blueprints: dict[tuple[str, str], BlueprintInfo],
+) -> tuple[str, str] | None:
+    name = _name_from_expr(node)
+    if name is None:
+        return None
+    if name in env:
+        return env[name]
+    if name in imports:
+        return imports[name]
+    for key in blueprints:
+        if key[1] == name:
+            return key
+    return None
+
+
+def _inline_function_body(
+    func_def: ast.FunctionDef | ast.AsyncFunctionDef,
+    *,
+    env: dict[str, tuple[str, str]],
+    local_funcs: dict[str, ast.FunctionDef | ast.AsyncFunctionDef],
+    depth: int,
+    source_file: str,
+    imports: dict[str, tuple[str, str]],
+    blueprints: dict[tuple[str, str], BlueprintInfo],
+    registrations: list[Registration],
+) -> None:
+    if depth > _MAX_HELPER_DEPTH:
+        return
+    assignments: dict[str, ast.expr] = {}
+    for node in ast.walk(func_def):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name):
+                assignments[target.id] = node.value
+
+    for node in ast.walk(func_def):
+        if not isinstance(node, ast.Call):
+            continue
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr == "register_blueprint"
+            and node.args
+        ):
+            parent_key = _resolve_blueprint_expr(
+                node.func.value, env, imports, blueprints
+            )
+            child_key = _resolve_blueprint_expr(node.args[0], env, imports, blueprints)
+            if parent_key is None or child_key is None:
+                continue
+            child_name = _name_from_expr(node.args[0])
+            url_prefix: str | None = None
+            url_prefix_template: str | None = None
+            prefix_expr = _keyword_expr(node, "url_prefix")
+            if prefix_expr is not None:
+                template = _prefix_template(prefix_expr, child_name, assignments)
+                if template is None:
+                    continue  # dynamic prefix we cannot evaluate; skip, don't guess
+                if CHILD_PREFIX_PLACEHOLDER in template:
+                    url_prefix_template = template
+                else:
+                    url_prefix = template
+            registrations.append(
+                Registration(
+                    parent_key=parent_key,
+                    child_key=child_key,
+                    url_prefix=url_prefix,
+                    url_prefix_template=url_prefix_template,
+                )
+            )
+        elif isinstance(node.func, ast.Name) and node.func.id in local_funcs:
+            callee = local_funcs[node.func.id]
+            if callee is func_def:
+                continue
+            child_env = _bind_call_env(
+                callee, node, env=env, imports=imports, blueprints=blueprints
+            )
+            _inline_function_body(
+                callee,
+                env=child_env,
+                local_funcs=local_funcs,
+                depth=depth + 1,
+                source_file=source_file,
+                imports=imports,
+                blueprints=blueprints,
+                registrations=registrations,
+            )
+
+
+def _prefix_template(
+    node: ast.expr,
+    child_name: str | None,
+    assignments: dict[str, ast.expr],
+    _depth: int = 0,
+) -> str | None:
+    """Statically evaluate a url_prefix expression to a string template.
+
+    References to the registered child blueprint's own ``.url_prefix`` become the
+    CHILD_PREFIX_PLACEHOLDER, substituted per-child at mount time.
+    """
+    if _depth > _MAX_HELPER_DEPTH:
+        return None
+    if isinstance(node, ast.Constant) and isinstance(node.value, str):
+        return node.value
+    if isinstance(node, ast.Name):
+        value = assignments.get(node.id)
+        if value is None:
+            return None
+        return _prefix_template(value, child_name, assignments, _depth + 1)
+    if isinstance(node, ast.JoinedStr):
+        parts: list[str] = []
+        for part in node.values:
+            if isinstance(part, ast.Constant) and isinstance(part.value, str):
+                parts.append(part.value)
+            elif isinstance(part, ast.FormattedValue):
+                evaluated = _prefix_template(
+                    part.value, child_name, assignments, _depth + 1
+                )
+                if evaluated is None:
+                    return None
+                parts.append(evaluated)
+            else:
+                return None
+        return "".join(parts)
+    if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or) and node.values:
+        # `blueprint.url_prefix or ""` — the placeholder substitution already
+        # treats a missing child prefix as "", so the first operand suffices.
+        return _prefix_template(node.values[0], child_name, assignments, _depth + 1)
+    if (
+        isinstance(node, ast.Attribute)
+        and node.attr == "url_prefix"
+        and _name_from_expr(node.value) == child_name
+    ):
+        return CHILD_PREFIX_PLACEHOLDER
+    return None
+
+
+def _keyword_expr(call: ast.Call, name: str) -> ast.expr | None:
+    for keyword in call.keywords:
+        if keyword.arg == name:
+            return keyword.value
+    return None
+
+
 def _resolve_blueprint_name(
     name: str,
     source_file: str,
@@ -374,11 +612,14 @@ def _mount_prefixes(
             child = blueprints.get(registration.child_key)
             if child is None:
                 continue
-            child_segment = (
-                registration.url_prefix
-                if registration.url_prefix is not None
-                else child.url_prefix
-            )
+            if registration.url_prefix_template is not None:
+                child_segment = registration.url_prefix_template.replace(
+                    CHILD_PREFIX_PLACEHOLDER, child.url_prefix or ""
+                )
+            elif registration.url_prefix is not None:
+                child_segment = registration.url_prefix
+            else:
+                child_segment = child.url_prefix
             for parent_prefix in discovered.get(parent_key, ()):
                 mount = _join_paths(parent_prefix, child_segment)
                 known = discovered.setdefault(registration.child_key, set())

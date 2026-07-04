@@ -1,6 +1,6 @@
 {
   "generated_from": {
-    "commit_sha": "6c0c97c7076d1dace6c442cc717a4ddd6b3aceaf",
+    "commit_sha": "3aeb71ec2eb0c51f753690a1613f9c6e33d9135d",
     "ref": "origin/develop",
     "repo": "Traigent/TraigentBackend"
   },
@@ -124,6 +124,78 @@
       "method": "DELETE",
       "path_template": "/api/v1/trials/<trial_id>",
       "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/comments/<comment_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/feedback",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiments/<experiment_id>",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/measures/<string:measure_id>",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments/<comment_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/feedback",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "trial",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/trials/<trial_id>",
+      "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/prompts/<path:prompt_name>",
+      "source_file": "src/routes/prompt_management_routes.py"
     },
     {
       "blueprint": "prompt_management",
@@ -378,6 +450,18 @@
       "source_file": "src/routes/analytics_routes.py"
     },
     {
+      "blueprint": "evaluator_promotion",
+      "method": "GET",
+      "path_template": "/api/v1/analytics/runs/<string:run_id>/evaluator-promotion",
+      "source_file": "src/routes/evaluator_promotion_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1/analytics/runs/<string:run_id>/evaluator-quality",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
       "blueprint": "analytics_runs",
       "method": "GET",
       "path_template": "/api/v1/analytics/runs/<string:run_id>/example-insights",
@@ -489,6 +573,12 @@
       "blueprint": "auth",
       "method": "GET",
       "path_template": "/api/v1/auth/me",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "GET",
+      "path_template": "/api/v1/auth/me/interaction-policy",
       "source_file": "src/routes/auth_routes.py"
     },
     {
@@ -828,21 +918,27 @@
       "source_file": "src/routes/expense_routes.py"
     },
     {
+      "blueprint": "experiment_group",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-groups",
+      "source_file": "src/routes/experiment_group_routes.py"
+    },
+    {
+      "blueprint": "experiment_group",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-groups/<group_id>",
+      "source_file": "src/routes/experiment_group_routes.py"
+    },
+    {
+      "blueprint": "experiment_group",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-groups/<group_id>/configuration-runs",
+      "source_file": "src/routes/experiment_group_routes.py"
+    },
+    {
       "blueprint": "experiment_run",
       "method": "GET",
       "path_template": "/api/v1/experiment-runs/<experiment_id>/runs",
-      "source_file": "src/routes/experiment_run_routes.py"
-    },
-    {
-      "blueprint": "experiment_run",
-      "method": "GET",
-      "path_template": "/api/v1/experiment-runs/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>",
-      "source_file": "src/routes/experiment_run_routes.py"
-    },
-    {
-      "blueprint": "experiment_run",
-      "method": "GET",
-      "path_template": "/api/v1/experiment-runs/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>/status",
       "source_file": "src/routes/experiment_run_routes.py"
     },
     {
@@ -855,6 +951,18 @@
       "blueprint": "experiment_run",
       "method": "GET",
       "path_template": "/api/v1/experiment-runs/runs/<run_id>/configurations",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>/status",
       "source_file": "src/routes/experiment_run_routes.py"
     },
     {
@@ -1236,6 +1344,870 @@
       "source_file": "src/routes/trial_routes.py"
     },
     {
+      "blueprint": "enterprise_admin",
+      "method": "GET",
+      "path_template": "/api/v1beta/admin/tenants",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "enterprise_admin",
+      "method": "GET",
+      "path_template": "/api/v1beta/admin/tenants/<string:tenant_id>",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "enterprise_admin",
+      "method": "GET",
+      "path_template": "/api/v1beta/admin/tenants/<string:tenant_id>/memberships",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "enterprise_admin",
+      "method": "GET",
+      "path_template": "/api/v1beta/admin/tenants/<string:tenant_id>/sso",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/dashboards/evaluator-quality",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/dashboards/observability-summary",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/dashboards/optimization-overview",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/dashboards/project-usage",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/distributions/measures/<string:measure_key>",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/export-jobs",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/export-jobs/<string:job_id>",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/exports/fine-tuning.manifest",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/pricing-catalog",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/runs/<string:run_id>/correlations",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/runs/<string:run_id>/decision-payload",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/runs/<string:run_id>/evaluator-quality",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/runs/<string:run_id>/example-insights",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/runs/<string:run_id>/leaderboard",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/runs/<string:run_id>/parameter-insights",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/runs/<string:run_id>/pareto",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/runs/<string:run_id>/report",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/summary",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/trends/run-volume",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "GET",
+      "path_template": "/api/v1beta/annotation-queues",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "GET",
+      "path_template": "/api/v1beta/annotation-queues/<string:queue_id>",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "GET",
+      "path_template": "/api/v1beta/annotation-queues/<string:queue_id>/items",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "GET",
+      "path_template": "/api/v1beta/annotation-queues/<string:queue_id>/next",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "core_exports",
+      "method": "GET",
+      "path_template": "/api/v1beta/core-exports/fine-tuning.jsonl",
+      "source_file": "src/routes/core_metrics_routes.py"
+    },
+    {
+      "blueprint": "core_metrics",
+      "method": "GET",
+      "path_template": "/api/v1beta/core-metrics/experiments/<string:experiment_id>/trend",
+      "source_file": "src/routes/core_metrics_routes.py"
+    },
+    {
+      "blueprint": "core_metrics",
+      "method": "GET",
+      "path_template": "/api/v1beta/core-metrics/overview",
+      "source_file": "src/routes/core_metrics_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/evaluator-runs",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/evaluator-runs/<string:run_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/evaluators",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/evaluators/<string:evaluator_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/observations/<observation_id>/score-summary",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/sessions",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/sessions/<session_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/sessions/<session_id>/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/sessions/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/traces",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/comments",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/observations",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/score-summary",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/traces/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/users/<user_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/check-deletion",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/experiments",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/export",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/model-parameters",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/admin/stats",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/agent-types",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/optimization-summaries",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/dashboards/evaluator-quality",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/dashboards/observability-summary",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/dashboards/optimization-overview",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/dashboards/project-usage",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/distributions/measures/<string:measure_key>",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/export-jobs",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/export-jobs/<string:job_id>",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/exports/fine-tuning.manifest",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/pricing-catalog",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/correlations",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/decision-payload",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/evaluator-quality",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/example-insights",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/leaderboard",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/parameter-insights",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/pareto",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/report",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/summary",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "analytics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/trends/run-volume",
+      "source_file": "src/routes/analytics_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/annotation-queues",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>/items",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>/next",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/runs/<experiment_run_id>/configurations",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "core_exports",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/core-exports/fine-tuning.jsonl",
+      "source_file": "src/routes/core_metrics_routes.py"
+    },
+    {
+      "blueprint": "core_metrics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/core-metrics/experiments/<string:experiment_id>/trend",
+      "source_file": "src/routes/core_metrics_routes.py"
+    },
+    {
+      "blueprint": "core_metrics",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/core-metrics/overview",
+      "source_file": "src/routes/core_metrics_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluator-runs",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluator-runs/<string:run_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluators",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/<experiment_id>/runs",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/configurations",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>/status",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "report",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/report-payload",
+      "source_file": "src/routes/report_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/results",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/status",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/traces",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiments",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiments/<experiment_id>",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiments/<experiment_id>/export",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiments/admin/stats",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "report",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/features/report-module-status",
+      "source_file": "src/routes/report_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/measures",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/measures/<string:measure_id>",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/memberships",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/observations/<observation_id>/score-summary",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions/<session_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions/<session_id>/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/observations",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/score-summary",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/users/<user_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/drafts",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/sections/<section>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/example-drafts",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/status/<draft_id>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/policies/export",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/policies/rate-limits",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/policies/retention",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/analytics",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/resolve",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/versions/<int:version>",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/scores",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/scores/<string:score_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "trial",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/trials/<trial_id>",
+      "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "trial",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/trials/runs/<experiment_run_id>/configurations",
+      "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/prompts",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/prompts/<path:prompt_name>",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/prompts/<path:prompt_name>/analytics",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/prompts/<path:prompt_name>/resolve",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "GET",
+      "path_template": "/api/v1beta/prompts/<path:prompt_name>/versions/<int:version>",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/scores",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/scores/<string:score_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
       "blueprint": "app",
       "method": "GET",
       "path_template": "/health",
@@ -1290,6 +2262,12 @@
       "source_file": "src/routes/experiment_run_routes.py"
     },
     {
+      "blueprint": "experiment_run",
+      "method": "HEAD",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/traces",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
       "blueprint": "admin",
       "method": "PATCH",
       "path_template": "/api/v1/admin/access-codes/<code_id>",
@@ -1306,6 +2284,120 @@
       "method": "PATCH",
       "path_template": "/api/v1/billing/spend-policy",
       "source_file": "src/routes/billing_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "PATCH",
+      "path_template": "/api/v1/experiments/<experiment_id>",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "enterprise_admin",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/admin/tenants/<string:tenant_id>",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "enterprise_admin",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/admin/tenants/<string:tenant_id>/memberships/<string:membership_id>",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/annotation-queues/<string:queue_id>",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/annotation-queues/items/<string:item_id>",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/evaluators/<string:evaluator_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/collaboration",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/annotation-queues/items/<string:item_id>",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiments/<experiment_id>",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/memberships/<string:membership_id>",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/collaboration",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/policies/export",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/policies/rate-limits",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/policies/retention",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/labels",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/prompts/<path:prompt_name>/labels",
+      "source_file": "src/routes/prompt_management_routes.py"
     },
     {
       "blueprint": "prompt_management",
@@ -1422,6 +2514,18 @@
       "source_file": "src/routes/example_scoring_routes.py"
     },
     {
+      "blueprint": "next_steps",
+      "method": "POST",
+      "path_template": "/api/v1/analytics/experiments/<experiment_run_id>/fit-irt",
+      "source_file": "src/routes/next_steps_routes.py"
+    },
+    {
+      "blueprint": "evaluator_promotion",
+      "method": "POST",
+      "path_template": "/api/v1/analytics/runs/<string:run_id>/evaluator-promotion/evaluate",
+      "source_file": "src/routes/evaluator_promotion_routes.py"
+    },
+    {
       "blueprint": "audit",
       "method": "POST",
       "path_template": "/api/v1/audit/logs/export",
@@ -1461,6 +2565,12 @@
       "blueprint": "auth",
       "method": "POST",
       "path_template": "/api/v1/auth/forgot-password",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "POST",
+      "path_template": "/api/v1/auth/invites/accept",
       "source_file": "src/routes/auth_routes.py"
     },
     {
@@ -2028,6 +3138,18 @@
       "source_file": "src/routes/traigent_session_routes.py"
     },
     {
+      "blueprint": "trace_reflection",
+      "method": "POST",
+      "path_template": "/api/v1/sessions/<session_id>/trace-reflection-plan",
+      "source_file": "src/routes/trace_reflection_routes.py"
+    },
+    {
+      "blueprint": "trace_reflection",
+      "method": "POST",
+      "path_template": "/api/v1/sessions/<session_id>/trace-reflections",
+      "source_file": "src/routes/trace_reflection_routes.py"
+    },
+    {
       "blueprint": "traigent_session",
       "method": "POST",
       "path_template": "/api/v1/sessions/optimize",
@@ -2044,6 +3166,342 @@
       "method": "POST",
       "path_template": "/api/v1/trials/runs/<experiment_run_id>/configurations",
       "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "enterprise_admin",
+      "method": "POST",
+      "path_template": "/api/v1beta/admin/tenants",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "enterprise_admin",
+      "method": "POST",
+      "path_template": "/api/v1beta/admin/tenants/<string:tenant_id>/invites",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "enterprise_admin",
+      "method": "POST",
+      "path_template": "/api/v1beta/admin/tenants/<string:tenant_id>/memberships",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "POST",
+      "path_template": "/api/v1beta/annotation-queues",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "POST",
+      "path_template": "/api/v1beta/annotation-queues/<string:queue_id>/items",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "POST",
+      "path_template": "/api/v1beta/annotation-queues/items/<string:item_id>/complete",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "trace_dataset",
+      "method": "POST",
+      "path_template": "/api/v1beta/evaluation-datasets/<evaluation_dataset_id>/examples/from-trace",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/evaluator-runs/<string:run_id>/retry",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/evaluators",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/evaluators/<string:evaluator_id>/backfill",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/evaluators/<string:evaluator_id>/execute",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "POST",
+      "path_template": "/api/v1beta/observability/ingest",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "POST",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/comments",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "POST",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/evaluation-dataset-example-candidate",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/archive",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/example-sets",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/model-parameters",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/retrieval-configs",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/unarchive",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/import",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/annotation-queues",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>/items",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "annotation_queues",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/annotation-queues/items/<string:item_id>/complete",
+      "source_file": "src/routes/annotation_queue_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/cancel",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/runs/<experiment_run_id>/configurations",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "trace_dataset",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluation-datasets/<evaluation_dataset_id>/examples/from-trace",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluator-runs/<string:run_id>/retry",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluators",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/backfill",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/execute",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/<experiment_id>/runs",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/check-completion",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/fix-naming",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<experiment_run_id>/configurations",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiments",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiments/bulk-update-status",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/measures",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/measures/default",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/memberships",
+      "source_file": "src/routes/project_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/ingest",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/evaluation-dataset-example-candidate",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/cancel",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/finalize",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/generate",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/playground/run",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/versions",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/scores",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "trial",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/trials/runs/<experiment_run_id>/configurations",
+      "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "POST",
+      "path_template": "/api/v1beta/prompts",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "POST",
+      "path_template": "/api/v1beta/prompts/<path:prompt_name>/playground/run",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "prompt_management",
+      "method": "POST",
+      "path_template": "/api/v1beta/prompts/<path:prompt_name>/versions",
+      "source_file": "src/routes/prompt_management_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/scores",
+      "source_file": "src/routes/evaluation_routes.py"
     },
     {
       "blueprint": "prompt_management",
@@ -2229,6 +3687,132 @@
       "blueprint": "trial",
       "method": "PUT",
       "path_template": "/api/v1/trials/<trial_id>/workflow-metadata",
+      "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "enterprise_admin",
+      "method": "PUT",
+      "path_template": "/api/v1beta/admin/tenants/<string:tenant_id>/sso",
+      "source_file": "src/routes/enterprise_admin_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "PUT",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>/feedback",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "agent",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/model-parameters/<string:param_id>",
+      "source_file": "src/routes/agent_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/measures",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/status",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/summary-stats",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "configuration_run",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/workflow-metadata",
+      "source_file": "src/routes/configuration_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment_run",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/status",
+      "source_file": "src/routes/experiment_run_routes.py"
+    },
+    {
+      "blueprint": "experiment",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/experiments/<experiment_id>",
+      "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "measure",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/measures/<string:measure_id>",
+      "source_file": "src/routes/measure_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/feedback",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "planner",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/sections/<section>",
+      "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "trial",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/trials/<trial_id>",
+      "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "trial",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/trials/<trial_id>/measures",
+      "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "trial",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/trials/<trial_id>/status",
+      "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "trial",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/trials/<trial_id>/summary-stats",
+      "source_file": "src/routes/trial_routes.py"
+    },
+    {
+      "blueprint": "trial",
+      "method": "PUT",
+      "path_template": "/api/v1beta/projects/<string:project_id>/trials/<trial_id>/workflow-metadata",
       "source_file": "src/routes/trial_routes.py"
     }
   ]

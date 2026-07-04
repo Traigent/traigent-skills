@@ -173,7 +173,7 @@ jobs:
 	      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install traigent[dev]
+      - run: pip install "traigent[dev]>=0.19"
       - run: pytest tests/
 ```
 

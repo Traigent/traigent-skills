@@ -21,4 +21,790 @@
 #       reason: internal/advanced kwarg, not user-facing
 #       owner: <github-handle>
 schema: coverage-ledger/v1
-waivers: {}
+waivers:
+  # Backend snapshot refresh 2026-07-04 (v1beta tree + routes added on BE develop
+  # since the previous pin). Per-route decisions made in consolidation Phase 6
+  # (2026-07-04): user-relevant routes are taught in skills (experiment-groups
+  # cohort table -> traigent-analyze-results; ACET evaluator-quality/promotion ->
+  # traigent-eval-audit) and their waivers removed; each remaining waiver carries
+  # its own honest reason. Remove a waiver when a skill starts teaching that route.
+  "be:DELETE /api/v1beta/observability/traces/<trace_id>/comments/<comment_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/observability/traces/<trace_id>/feedback":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/projects/<string:project_id>/measures/<string:measure_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments/<comment_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/feedback":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/projects/<string:project_id>/trials/<trial_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:DELETE /api/v1beta/prompts/<path:prompt_name>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1/auth/me/interaction-policy":
+    reason: taught via client.get_interaction_policy() snippet in every skill's synced interaction-policy block; URL-fact kind not applicable
+    owner: nimrodbusany
+  "be:GET /api/v1/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>":
+    reason: corrected per-configuration status/detail routes consumed by the portal run view; skills teach the run-level report surface instead
+    owner: nimrodbusany
+  "be:GET /api/v1/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>/status":
+    reason: corrected per-configuration status/detail routes consumed by the portal run view; skills teach the run-level report surface instead
+    owner: nimrodbusany
+  "be:GET /api/v1beta/admin/tenants":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/admin/tenants/<string:tenant_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/admin/tenants/<string:tenant_id>/memberships":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/admin/tenants/<string:tenant_id>/sso":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/dashboards/evaluator-quality":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/dashboards/observability-summary":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/dashboards/optimization-overview":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/dashboards/project-usage":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/distributions/measures/<string:measure_key>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/export-jobs":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/export-jobs/<string:job_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/exports/fine-tuning.manifest":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/pricing-catalog":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/runs/<string:run_id>/correlations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/runs/<string:run_id>/decision-payload":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/runs/<string:run_id>/evaluator-quality":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/runs/<string:run_id>/example-insights":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/runs/<string:run_id>/leaderboard":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/runs/<string:run_id>/parameter-insights":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/runs/<string:run_id>/pareto":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/runs/<string:run_id>/report":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/summary":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/trends/run-volume":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/annotation-queues":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/annotation-queues/<string:queue_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/annotation-queues/<string:queue_id>/items":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/annotation-queues/<string:queue_id>/next":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/core-exports/fine-tuning.jsonl":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/core-metrics/experiments/<string:experiment_id>/trend":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/core-metrics/overview":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/evaluator-runs":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/evaluator-runs/<string:run_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/evaluators":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/evaluators/<string:evaluator_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/observations/<observation_id>/score-summary":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/sessions":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/sessions/<session_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/sessions/<session_id>/stream":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/sessions/stream":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces/<trace_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces/<trace_id>/comments":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces/<trace_id>/observations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces/<trace_id>/score-summary":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces/<trace_id>/stream":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces/stream":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/users/<user_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agents":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/check-deletion":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/experiments":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/export":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/model-parameters":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agents/admin/stats":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agents/agent-types":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agents/optimization-summaries":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/dashboards/evaluator-quality":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/dashboards/observability-summary":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/dashboards/optimization-overview":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/dashboards/project-usage":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/distributions/measures/<string:measure_key>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/export-jobs":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/export-jobs/<string:job_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/exports/fine-tuning.manifest":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/pricing-catalog":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/correlations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/decision-payload":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/evaluator-quality":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/example-insights":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/leaderboard":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/parameter-insights":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/pareto":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/report":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/summary":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/trends/run-volume":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/annotation-queues":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>/items":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>/next":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/configuration-runs/runs/<experiment_run_id>/configurations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/core-exports/fine-tuning.jsonl":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/core-metrics/experiments/<string:experiment_id>/trend":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/core-metrics/overview":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/evaluator-runs":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/evaluator-runs/<string:run_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/evaluators":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/<experiment_id>/runs":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/configurations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/configurations/<configuration_run_id>/status":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/report-payload":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/results":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/status":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/traces":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiments":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>/export":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/experiments/admin/stats":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/features/report-module-status":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/measures":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/measures/<string:measure_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/memberships":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/observations/<observation_id>/score-summary":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/sessions":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/sessions/<session_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/sessions/<session_id>/stream":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/sessions/stream":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/observations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/score-summary":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/stream":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/stream":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/users/<user_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/planner/drafts":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/sections/<section>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/planner/example-drafts":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/planner/status/<draft_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/policies/export":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/policies/rate-limits":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/policies/retention":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/prompts":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/analytics":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/resolve":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/versions/<int:version>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/scores":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/scores/<string:score_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/trials/<trial_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/trials/runs/<experiment_run_id>/configurations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/prompts":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/prompts/<path:prompt_name>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/prompts/<path:prompt_name>/analytics":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/prompts/<path:prompt_name>/resolve":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/prompts/<path:prompt_name>/versions/<int:version>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/scores":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/scores/<string:score_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:HEAD /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/traces":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1/experiments/<experiment_id>":
+    reason: portal-internal experiment metadata edit (rename/status); SDK creates experiments via runs, skills have no edit surface
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/admin/tenants/<string:tenant_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/admin/tenants/<string:tenant_id>/memberships/<string:membership_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/annotation-queues/<string:queue_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/annotation-queues/items/<string:item_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/evaluators/<string:evaluator_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/observability/traces/<trace_id>/collaboration":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/annotation-queues/items/<string:item_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/memberships/<string:membership_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/collaboration":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/policies/export":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/policies/rate-limits":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/policies/retention":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/labels":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/prompts/<path:prompt_name>/labels":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1/analytics/experiments/<experiment_run_id>/fit-irt":
+    reason: experimental IRT fitting; portal-first, no SDK/CLI surface yet
+    owner: nimrodbusany
+  "be:POST /api/v1/auth/invites/accept":
+    reason: portal-internal invite-acceptance flow; no SDK/skill surface
+    owner: nimrodbusany
+  "be:POST /api/v1/sessions/<session_id>/trace-reflection-plan":
+    reason: trace-lessons lanes in active development (2026-07); teach when the ingest API stabilizes
+    owner: nimrodbusany
+  "be:POST /api/v1/sessions/<session_id>/trace-reflections":
+    reason: trace-lessons lanes in active development (2026-07); teach when the ingest API stabilizes
+    owner: nimrodbusany
+  "be:POST /api/v1beta/admin/tenants":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/admin/tenants/<string:tenant_id>/invites":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/admin/tenants/<string:tenant_id>/memberships":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/annotation-queues":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/annotation-queues/<string:queue_id>/items":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/annotation-queues/items/<string:item_id>/complete":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/evaluation-datasets/<evaluation_dataset_id>/examples/from-trace":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/evaluator-runs/<string:run_id>/retry":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/evaluators":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/evaluators/<string:evaluator_id>/backfill":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/evaluators/<string:evaluator_id>/execute":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/observability/ingest":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/observability/traces/<trace_id>/comments":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/observability/traces/<trace_id>/evaluation-dataset-example-candidate":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/agents":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/archive":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/example-sets":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/model-parameters":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/retrieval-configs":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/unarchive":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/agents/import":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/annotation-queues":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/annotation-queues/<string:queue_id>/items":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/annotation-queues/items/<string:item_id>/complete":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/cancel":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/configuration-runs/runs/<experiment_run_id>/configurations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/evaluation-datasets/<evaluation_dataset_id>/examples/from-trace":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/evaluator-runs/<string:run_id>/retry":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/evaluators":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/backfill":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/execute":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/experiment-runs/<experiment_id>/runs":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/experiment-runs/check-completion":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/experiment-runs/fix-naming":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<experiment_run_id>/configurations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/experiments":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/experiments/bulk-update-status":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/measures":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/measures/default":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/memberships":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/observability/ingest":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/evaluation-dataset-example-candidate":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/cancel":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/finalize":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/planner/generate":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/prompts":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/playground/run":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/prompts/<path:prompt_name>/versions":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/scores":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/trials/runs/<experiment_run_id>/configurations":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/prompts":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/prompts/<path:prompt_name>/playground/run":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/prompts/<path:prompt_name>/versions":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/scores":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/admin/tenants/<string:tenant_id>/sso":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/observability/traces/<trace_id>/feedback":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/agents/<path:agent_id>/model-parameters/<string:param_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/measures":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/status":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/summary-stats":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/configuration-runs/<config_run_id>/workflow-metadata":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/experiment-runs/runs/<run_id>/status":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/experiments/<experiment_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/measures/<string:measure_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/feedback":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/sections/<section>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>/measures":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>/status":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>/summary-stats":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>/workflow-metadata":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
