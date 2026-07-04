@@ -17,7 +17,7 @@ it runs end-to-end with only a Traigent key + an LLM key, in minutes.
     python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 
 Env (from .env): TRAIGENT_API_KEY, and an LLM key (OPENROUTER_API_KEY is easiest).
-Requires: pip install -U traigent litellm  (Python 3.12).
+Requires: pip install -U "traigent>=0.19" litellm  (Python 3.12).
 
 To scale up: swap the embedded DB + questions for the real SPIDER dev set (each
 example carries a db_id; resolve schema/connection per db_id) — the wiring below

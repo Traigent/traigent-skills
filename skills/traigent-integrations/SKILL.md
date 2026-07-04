@@ -4,7 +4,7 @@ description: "Integrate Traigent with LangChain, LiteLLM, DSPy, and other AI fra
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Traigent Framework Integrations
@@ -25,12 +25,12 @@ Install Traigent with framework integration support:
 
 ```bash
 # All integrations
-pip install traigent[integrations]
+pip install "traigent[integrations]>=0.19"
 
 # Or install individual frameworks alongside Traigent
-pip install traigent langchain-openai langchain-anthropic
-pip install traigent litellm
-pip install traigent dspy
+pip install "traigent>=0.19" langchain-openai langchain-anthropic
+pip install "traigent>=0.19" litellm
+pip install "traigent>=0.19" dspy
 ```
 
 > **Dry-run first.** Before any paid optimization run, activate mock mode (`enable_mock_mode_for_quickstart()`), run with your chosen config, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers.

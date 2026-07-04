@@ -129,7 +129,7 @@ These skills are **pure Markdown** — no executable scripts, no network calls, 
 The skills *teach your agent to drive the Traigent SDKs*, so to actually run an optimization you'll need the relevant SDK in your own project:
 
 - Python 3.11–3.13
-- Traigent SDK — `pip install traigent`
+- Traigent SDK — `pip install "traigent>=0.19"` (the floor avoids the PyPI placeholder 0.0.1)
 - Node.js 18, 20, or 22
 - Traigent JS SDK — not published on public npm yet; use the source/link flow in
   `skills/traigent-js` until Traigent/traigent-js#165 lands.

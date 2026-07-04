@@ -35,7 +35,7 @@ from pathlib import Path
 os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
-import litellm  # pip install traigent[integrations]
+import litellm  # pip install "traigent>=0.19"
 import traigent
 from traigent import Choices
 from traigent.testing import enable_mock_mode_for_quickstart

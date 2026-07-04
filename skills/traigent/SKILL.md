@@ -4,7 +4,7 @@ description: "Guide users through Traigent optimization: setup, dry-run validati
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.4"
+  version: "1.1.5"
 ---
 
 # Traigent: Dry-Run First, Real When Ready
@@ -47,7 +47,7 @@ The user's function needs four things:
 
 ```python
 import traigent
-import litellm  # pip install traigent[integrations] — the canonical runnable LLM call
+import litellm  # pip install "traigent>=0.19" — the canonical runnable LLM call
 from traigent import Choices, Range
 
 @traigent.optimize(
@@ -180,7 +180,7 @@ import os
 os.environ["TRAIGENT_OFFLINE_MODE"] = "true"   # Skip Traigent backend calls
 
 import traigent
-import litellm  # pip install traigent[integrations]
+import litellm  # pip install "traigent>=0.19"
 from traigent import Choices, Range
 from traigent.testing import enable_mock_mode_for_quickstart
 
@@ -209,6 +209,15 @@ print(f"Failed trials: {len(results.failed_trials)}")
 print(f"Stop reason:   {results.stop_reason}")
 print(f"Best config:   {results.best_config}")
 print(f"Best score:    {results.best_score}")
+```
+
+Machine-checkable success contract — assert this instead of eyeballing the table:
+
+```python
+assert results.trials, "no trials ran"
+assert not getattr(results, "failed_trials", []), f"failed trials: {results.failed_trials}"
+assert results.best_config is not None, "no best config selected"
+print("TRAIGENT-DRY-RUN-OK")
 ```
 
 ### Interpret Mock Results
@@ -265,7 +274,7 @@ Common failures:
 - `ConfigurationError` — Fix decorator arguments (see setup mistakes table)
 - `EvaluationError` — Fix scoring function or dataset format
 - `OptimizationStateError` — `get_config()` called outside optimization context
-- `ModuleNotFoundError` — `pip install traigent[integrations]`
+- `ModuleNotFoundError` — `python -m pip install --upgrade "traigent>=0.19"`
 - All trials failed — Test the function standalone with a hardcoded config first
 
 <!-- PROTECTED -->

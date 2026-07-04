@@ -52,6 +52,15 @@ DATASET_ON_OPTIMIZE_RE = re.compile(r"\.optimize(?:_sync)?\s*\(\s*dataset\s*=")
 # reps_per_trial=<int> with a literal value other than 1
 REPS_PER_TRIAL_RE = re.compile(r"\breps_per_trial\s*=\s*(\d+)")
 VALIDATE_PROVIDERS_RE = re.compile(r"\bvalidate_providers\s*=")
+# Match installs of the `traigent` package itself (bare, quoted, with extras,
+# or with a version spec) — but NOT sibling packages like `traigent-analytics`.
+PIP_INSTALL_TRAIGENT_RE = re.compile(
+    r"\bpip\s+install\b[^#`]*[\s\"']traigent(?![\w.-])(?:\[[^\]]*\])?", re.IGNORECASE
+)
+LITERAL_FIRST_RUN_HEADING_RE = re.compile(
+    r"(?m)^### Literal First Run \(execution-only agents\)\s*$"
+)
+FENCED_BASH_BLOCK_RE = re.compile(r"(?ms)^```bash\n(.*?)\n```")
 NEXT_RUN_IP_BANNED_SUBSTRINGS = (
     "difficulty",
     "informativeness",
@@ -168,6 +177,22 @@ def _skill_markdown_files(repo_root: Path) -> list[tuple[str, Path]]:
     return out
 
 
+def _skill_doc_files(repo_root: Path) -> list[tuple[str, Path]]:
+    out: list[tuple[str, Path]] = []
+    skills_root = repo_root / "skills"
+    for skill_dir in sorted(p for p in skills_root.iterdir() if p.is_dir()):
+        skill_file = skill_dir / "SKILL.md"
+        if skill_file.is_file():
+            out.append((skill_dir.name, skill_file))
+        references = skill_dir / "references"
+        if references.is_dir():
+            out.extend(
+                (skill_dir.name, ref)
+                for ref in sorted(p for p in references.iterdir() if p.is_file())
+            )
+    return out
+
+
 def _token_re(token: str) -> re.Pattern[str]:
     """Match a public vocabulary token without catching longer script/file names."""
     return re.compile(
@@ -178,6 +203,24 @@ def _token_re(token: str) -> re.Pattern[str]:
 
 def _line_for_offset(text: str, offset: int) -> int:
     return text.count("\n", 0, offset) + 1
+
+
+def _contract_skip_fence_lines(text: str) -> set[int]:
+    skipped: set[int] = set()
+    for block in _iter_fenced_blocks(text.splitlines()):
+        if block.lines and block.lines[0].strip() == "# contract: skip":
+            skipped.update(range(block.start_line, block.start_line + len(block.lines)))
+    return skipped
+
+
+def _literal_first_run_bash_block(text: str) -> str | None:
+    heading = LITERAL_FIRST_RUN_HEADING_RE.search(text)
+    if not heading:
+        return None
+    match = FENCED_BASH_BLOCK_RE.search(text, heading.end())
+    if not match:
+        return None
+    return match.group(1)
 
 
 def _scan_lifecycle_vocab_leaks(
@@ -405,6 +448,30 @@ def _scan_validate_providers(
     return violations
 
 
+def _scan_unfloored_pip_installs(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
+    violations: list[str] = []
+    skipped_lines = _contract_skip_fence_lines(text)
+    for lineno, line in enumerate(text.splitlines(), start=1):
+        if lineno in skipped_lines:
+            continue
+        if not PIP_INSTALL_TRAIGENT_RE.search(line):
+            continue
+        if re.search(r"[<>=!]=", line):
+            continue
+        rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
+        violations.append(
+            f"DEAD TEACHING  {rel}:{lineno}\n"
+            f"  teaches : {line.strip()}\n"
+            f"  problem : pip can resolve the PyPI placeholder package unless Traigent "
+            f"installs carry an explicit >= floor.\n"
+            f"  fix     : use `pip install \"traigent>=0.19\"` or "
+            f"`pip install \"traigent[recommended]>=0.19\"`."
+        )
+    return violations
+
+
 def _scan_scoring_first_param(
     name: str, path: Path, text: str, repo_root: Path
 ) -> list[str]:
@@ -485,6 +552,38 @@ def test_no_validate_providers_kwarg(repo_root: Path) -> None:
             )
         )
     assert not violations, "\n\n".join(["", *violations, ""])
+
+
+def test_traigent_pip_installs_are_version_floored(repo_root: Path) -> None:
+    violations: list[str] = []
+    for name, path in _skill_doc_files(repo_root):
+        violations.extend(
+            _scan_unfloored_pip_installs(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
+    assert not violations, "\n\n".join(["", *violations, ""])
+
+
+def test_literal_quickstart_block_matches_canonical_script(repo_root: Path) -> None:
+    skill_path = repo_root / "skills" / "traigent-quickstart" / "SKILL.md"
+    script_path = (
+        repo_root
+        / "skills"
+        / "traigent-quickstart"
+        / "references"
+        / "literal-quickstart.sh"
+    )
+    skill_rel = skill_path.relative_to(repo_root).as_posix()
+    script_rel = script_path.relative_to(repo_root).as_posix()
+
+    block = _literal_first_run_bash_block(skill_path.read_text(encoding="utf-8"))
+    assert block is not None, f"{skill_rel}: missing Literal First Run bash block"
+
+    expected = script_path.read_text(encoding="utf-8").rstrip("\n")
+    assert block == expected, (
+        f"Literal First Run block in {skill_rel} must be byte-identical to {script_rel}"
+    )
 
 
 def test_optimize_method_calls_are_awaited_or_sync(repo_root: Path) -> None:
@@ -621,6 +720,46 @@ def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
     assert not _scan_scoring_first_param("good", good, good.read_text(), tmp_path), (
         "scoring first-param false-positive"
     )
+
+
+def test_install_contract_lints_have_teeth(tmp_path: Path) -> None:
+    bad = tmp_path / "skills" / "bad" / "SKILL.md"
+    bad.parent.mkdir(parents=True)
+    bad.write_text(
+        "```bash\n"
+        "pip install 'traigent[integrations]'\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    assert _scan_unfloored_pip_installs("bad", bad, bad.read_text(), tmp_path), (
+        "unfloored pip install lint missed a violation"
+    )
+
+    skipped = tmp_path / "skills" / "skipped" / "SKILL.md"
+    skipped.parent.mkdir(parents=True)
+    skipped.write_text(
+        "```bash\n"
+        "# contract: skip\n"
+        "pip install traigent\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    assert not _scan_unfloored_pip_installs(
+        "skipped", skipped, skipped.read_text(), tmp_path
+    ), "unfloored pip install lint ignored # contract: skip"
+
+    good = tmp_path / "skills" / "good_install" / "SKILL.md"
+    good.parent.mkdir(parents=True)
+    good.write_text(
+        "```bash\n"
+        "pip install 'traigent[recommended]>=0.19'\n"
+        "python -m pip install --upgrade \"traigent>=0.19\"\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    assert not _scan_unfloored_pip_installs(
+        "good_install", good, good.read_text(), tmp_path
+    ), "unfloored pip install lint false-positive"
 
 
 def test_lifecycle_vocab_lint_has_teeth(tmp_path: Path) -> None:
