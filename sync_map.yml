@@ -7,7 +7,7 @@ default_min_sdk_version: "0.15.0"
 # per-PR released-contracts. Do not resolve PyPI live in PR CI.
 current_released_sdk_version: "0.18.0"
 skills:
-  traigent-quickstart:
+  traigent-setup-quickstart:
     env_version_floors:
       # TRAIGENT_LOG_LEVEL ships in traigent>=0.13.0; the reference table row
       # carries the version note in prose.
@@ -21,18 +21,6 @@ skills:
       - pyproject.toml
       - examples/quickstart/
 
-  traigent:
-    modules:
-      - traigent.api.decorators
-      - traigent.utils.env_config
-      - traigent.core.optimized_function
-    sdk_paths:
-      - traigent/api/decorators.py
-      - traigent/utils/env_config.py
-      - traigent/core/optimized_function.py
-      - traigent/utils/cost_calculator.py
-      - traigent/core/cost_estimator.py
-
   traigent-js:
     js: true
     docs:
@@ -44,7 +32,7 @@ skills:
       - traigent-js/README.md
       - traigent-js/docs/*
 
-  traigent-configuration-space:
+  traigent-optimize-config-space:
     modules:
       - traigent.api.parameter_ranges
       - traigent.api.constraint_builders
@@ -54,7 +42,7 @@ skills:
     docs:
       - docs/user-guide/tuned_variables.md
 
-  traigent-decorator-setup:
+  traigent-setup-decorator:
     modules:
       - traigent.api.decorators
     sdk_paths:
@@ -65,7 +53,7 @@ skills:
       - docs/user-guide/injection_modes.md
       - docs/features/safety-gates.md
 
-  traigent-run-optimization:
+  traigent-optimize-run:
     modules:
       - traigent.core.optimized_function
       - traigent.core.orchestrator
@@ -83,7 +71,7 @@ skills:
       - traigent/api/types.py
       - traigent/core/optimized_function.py
 
-  traigent-integrations:
+  traigent-setup-integrations:
     sdk_paths:
       - traigent/integrations/*
     docs:
@@ -101,7 +89,7 @@ skills:
       - traigent/utils/exceptions.py
       - traigent/utils/env_config.py
 
-  traigent-composite-knobs:
+  traigent-optimize-composite-knobs:
     min_sdk_version: "0.15.0"
     modules:
       - traigent.knobs.patterns
@@ -115,6 +103,8 @@ skills:
       - examples/advanced/composite-knobs/*
       - docs/traceability/concepts/composite-knobs.md
 
+  # Union of the former traigent-boost-agent entry and the retired bare
+  # `traigent` key (folded in during the 2026-07 taxonomy consolidation).
   traigent-boost-agent:
     min_sdk_version: "0.15.0"
     backend_prefixes:
@@ -128,6 +118,7 @@ skills:
       - traigent.knobs.telemetry
       - traigent.utils.insights
       - traigent.utils.importance
+      - traigent.utils.env_config
       - traigent.analytics
     sdk_paths:
       - traigent/config_generator/recommendations.py
@@ -139,10 +130,13 @@ skills:
       - traigent/knobs/telemetry.py
       - traigent/utils/insights.py
       - traigent/utils/importance.py
+      - traigent/utils/env_config.py
+      - traigent/utils/cost_calculator.py
+      - traigent/core/cost_estimator.py
       - traigent/analytics/example_insights.py
       - traigent/testing/*
 
-  show-significant-tuned-variables:
+  traigent-analyze-variable-importance:
     modules:
       - traigent.utils.importance
       - traigent.utils.insights
@@ -151,10 +145,16 @@ skills:
       - traigent/utils/insights.py
     docs:
       - optimization trial artifact schema
-  traigent-curate-dataset:
+
+  # Union of the two dataset-curation entries this skill was merged from
+  # (curate-dataset, plus the reflect-on-hard-examples skill), folded in
+  # during the 2026-07 taxonomy consolidation.
+  traigent-dataset-curate:
+    min_sdk_version: "0.16.0"
     backend_prefixes:
       - /api/v1/datasets
       - /api/v1/analytics/example-scoring
+      - /api/v1/analytics/experiments
       - /api/v1/analytics/runs
     modules:
       - traigent.generation
@@ -162,6 +162,7 @@ skills:
       - traigent.evaluators
       - traigent.api.decorators
       - traigent.testing
+      - traigent.core.optimized_function
     sdk_paths:
       - traigent/generation/*
       - traigent/analytics/example_insights.py
@@ -169,13 +170,15 @@ skills:
       - traigent/api/decorators.py
       - traigent/core/optimized_function.py
       - traigent/testing/*
-  traigent-choose-metric:
+
+  traigent-eval-choose-metric:
     modules:
       - traigent.api.decorators
     sdk_paths:
       - traigent/api/decorators.py
       - traigent/core/optimized_function.py
-  traigent-build-evaluator:
+
+  traigent-eval-build:
     modules:
       - traigent.api.decorators
       - traigent.api.types
@@ -187,31 +190,15 @@ skills:
       - traigent/evaluators/base.py
       - traigent/evaluators/local.py
       - traigent/evaluators/hybrid_api.py
-  traigent-evaluator-audit:
+
+  traigent-eval-audit:
     modules:
       - traigent.api.decorators
       - traigent.api.types
     sdk_paths:
       - traigent/api/decorators.py
       - traigent/api/types.py
-  traigent-iterate:
-    backend_prefixes:
-      - /api/v1/experiment-runs
-      - /api/v1/optimization-comparisons
-      - /api/v1/analytics/example-scoring
-      - /api/v1/analytics/runs
-    modules:
-      - traigent.utils.insights
-      - traigent.utils.importance
-      - traigent.analytics
-      - traigent.core.optimized_function
-      - traigent.api.types
-    sdk_paths:
-      - traigent/utils/insights.py
-      - traigent/utils/importance.py
-      - traigent/analytics/example_insights.py
-      - traigent/core/optimized_function.py
-      - traigent/api/types.py
+
   traigent-ci-safety-gate:
     modules:
       - traigent.api.decorators
@@ -225,42 +212,32 @@ skills:
       - traigent/tvl/models.py
       - traigent/tvl/__main__.py
 
-  traigent-run-plan:
+  # Union of the three guidance-flow entries this skill was merged from
+  # (run-plan, next-run, iterate), folded in during the 2026-07 taxonomy
+  # consolidation.
+  traigent-analyze-guidance:
     min_sdk_version: "0.16.0"
+    backend_prefixes:
+      - /api/v1/experiment-runs
+      - /api/v1/optimization-comparisons
+      - /api/v1/analytics/example-scoring
+      - /api/v1/analytics/runs
     modules:
       - traigent.api.decorators
+      - traigent.core.optimized_function
+      - traigent.api.types
+      - traigent.utils.insights
+      - traigent.utils.importance
+      - traigent.analytics
     sdk_paths:
       - traigent/api/decorators.py
       - traigent/core/optimized_function.py
-
-  traigent-next-run:
-    min_sdk_version: "0.16.0"
-    modules:
-      - traigent.core.optimized_function
-      - traigent.api.types
-    sdk_paths:
-      - traigent/core/optimized_function.py
       - traigent/api/types.py
-
-  traigent-reflect-hard-examples:
-    min_sdk_version: "0.16.0"
-    backend_prefixes:
-      - /api/v1/analytics/example-scoring
-      - /api/v1/analytics/experiments
-    modules:
-      - traigent.generation
-      - traigent.analytics
-      - traigent.evaluators
-      - traigent.core.optimized_function
-      - traigent.testing
-    sdk_paths:
-      - traigent/generation/*
+      - traigent/utils/insights.py
+      - traigent/utils/importance.py
       - traigent/analytics/example_insights.py
-      - traigent/evaluators/base.py
-      - traigent/core/optimized_function.py
-      - traigent/testing/*
 
-  traigent-text2sql-optimize:
+  traigent-recipe-text2sql:
     min_sdk_version: "0.16.0"
     modules:
       - traigent

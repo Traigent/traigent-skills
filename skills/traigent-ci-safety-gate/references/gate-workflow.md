@@ -57,8 +57,8 @@ jobs:
 
   # Set TRAIGENT_API_KEY in your repository's CI secrets.
   # See: https://github.com/your-org/your-repo/settings/secrets/actions
-  # For how to obtain the key, see the traigent-quickstart skill:
-  #   skills/traigent-quickstart/SKILL.md#get-your-traigent-api-key
+  # For how to obtain the key, see the traigent-setup-quickstart skill:
+  #   skills/traigent-setup-quickstart/SKILL.md#get-your-traigent-api-key
   nightly-real-holdout:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest

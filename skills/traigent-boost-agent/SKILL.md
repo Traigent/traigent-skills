@@ -1,13 +1,28 @@
 ---
 name: traigent-boost-agent
-description: "End-to-end 12-step lifecycle playbook for adding Traigent to an existing client agent codebase and measurably boosting accuracy, cost, latency, or reliability. Use when asked to add Traigent to this agent, onboard this agent to Traigent end-to-end, run a full agent-build lifecycle, wire an evaluator and optimize, boost accuracy/cost of an existing agent codebase, select TVARs with recommend_configuration_space(), choose composite knobs by agent shape, instrument @traigent.optimize minimally, validate in mock mode, run real optimization with budgets, inspect results, iterate, or gate a promoted config."
+description: "End-to-end lifecycle playbook — from a single decorated function to a full 12-step codebase onboarding — for adding Traigent to an existing client agent codebase and measurably boosting accuracy, cost, latency, or reliability. Use when asked to add Traigent to this agent, onboard this agent to Traigent end-to-end, run a full agent-build lifecycle, wire an evaluator and optimize, boost accuracy/cost of an existing agent codebase, select TVARs with recommend_configuration_space(), choose composite knobs by agent shape, instrument @traigent.optimize minimally, validate in mock mode, run real optimization with budgets, inspect results, iterate, gate a promoted config, optimize a function with @traigent.optimize, run an optimization, or set up Traigent optimization. ALWAYS start with dry-run (mock mode) to validate the full pipeline, then switch to real execution only when the user explicitly requests it."
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.0.4"
+  version: "2.1.0"
 ---
 
 # Traigent Boost Agent
+
+<!-- PROTECTED -->
+## Your Role
+
+When a user asks you to optimize a function or agent with Traigent, **always start with a dry run**. Real optimization costs real tokens and money. Never run real optimization until the user explicitly asks.
+Present a cost estimate and get the user's explicit approval before any paid run.
+
+**Workflow:**
+
+1. Set up the decorated function (for a single function, see the Fast Path below; for a whole codebase, Steps 1-7 of the 12-Step Lifecycle Playbook)
+2. Validate dataset, config space, and providers
+3. Dry-run in mock mode — verify the full pipeline end-to-end at zero cost
+4. Report what the dry run found, estimate real costs
+5. **Wait** for the user to say "run it for real"
+<!-- /PROTECTED -->
 
 ## When to Use
 
@@ -26,6 +41,274 @@ Use this skill when the user asks you to:
 
 For detailed grep patterns and evidence-mining heuristics, read `references/codebase-analysis.md`. For a minimal before/after implementation recipe, read `references/instrument-recipe.md`. For insight and iteration code, read `references/insights-and-iteration.md`.
 
+## Fast Path: Optimize a Single Function
+
+For a single decorated function (rather than a whole codebase), run this condensed dry-run-first sequence; the 12-Step Lifecycle Playbook below is the full-codebase version.
+
+### Step 1: Set Up the Decorator
+
+The user's function needs four things: dataset, objectives, config space, and the function itself.
+
+```python
+import traigent
+import litellm  # pip install traigent[integrations] — the canonical runnable LLM call
+from traigent import Choices, Range
+
+@traigent.optimize(
+    eval_dataset="eval_data.jsonl",                    # 1. Dataset
+    objectives=["accuracy"],                           # 2. What to optimize
+    model=Choices(["gpt-4o-mini", "gpt-4o"]),          # 3. Config space (inline)
+    temperature=Range(0.0, 1.0),
+)
+def my_function(query: str) -> str:                    # 4. The function
+    config = traigent.get_config()
+    resp = litellm.completion(
+        model=config["model"],
+        temperature=config["temperature"],
+        messages=[{"role": "user", "content": query}],
+    )
+    return resp.choices[0].message.content
+```
+
+> **One runnable body, reused everywhere.** The `litellm.completion(...)` → `resp.choices[0].message.content` body above is the canonical, copy-paste-runnable function used across these skills. Reuse it verbatim wherever an example shows `my_function`/agent body — it runs keyless under mock mode (LiteLLM is intercepted) and unchanged for a real run. **Optimize accuracy *and* cost?** `cost` and `latency` are built-in objectives auto-derived from token accounting, so use `objectives=["accuracy", "cost"]` — no extra evaluator needed. See `traigent-setup-quickstart` for the full copy-paste example, `traigent-optimize-config-space` for `Range`/`Choices`/`IntRange`/`LogRange`/constraints, and `traigent-setup-decorator` for `EvaluationOptions`/`InjectionOptions`/`ExecutionOptions`.
+
+#### Setup Mistakes to Catch
+
+| Mistake | SDK catches? | Fix |
+|---|---|---|
+| Config values as bare strings (`model="gpt-4"`) | Yes — `TypeError` | Must be list or Range/Choices (`model=Choices(["gpt-4"])`) |
+| `get_config()` called outside the function | Yes — `OptimizationStateError` | Must be inside the decorated function body |
+| Dataset file doesn't exist | Yes — `ValidationError` | Create it or fix the path |
+| **Empty objectives list** | **No — silently defaults** | Verify `objectives` has at least one entry before running |
+| **Function doesn't return a value** | **No — `None` scored silently** | Assert your function returns the prediction; `None` produces meaningless scores |
+
+### Step 2: Validate Before Running
+
+Use the SDK's built-in validation tools before any optimization:
+
+```bash
+traigent validate eval_data.jsonl --objectives accuracy -v   # dataset: valid JSON, `input` field (+ `output` for accuracy-like metrics); 5+ examples, 10-20+ recommended
+traigent info                                                 # SDK version, Python version, enabled features
+traigent algorithms                                           # Available algorithms with descriptions and best-use cases
+traigent check my_script.py --dry-run                         # discovers @traigent.optimize functions; validates decorator wiring only, not dataset contents
+```
+
+### Step 3: Run Mock Optimization
+
+Enable mock mode in code, then run the full optimization pipeline at zero cost. This tests everything — decorator wiring, config sampling, dataset loading, trial execution, scoring — end to end. Mock mode is hard-blocked when `ENVIRONMENT=production`.
+
+> Mock dry-runs still consume the plan's `optimization_samples` quota, and mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`).
+
+```python
+import os
+os.environ["TRAIGENT_OFFLINE_MODE"] = "true"   # Skip Traigent backend calls
+
+import traigent
+from traigent.testing import enable_mock_mode_for_quickstart
+
+enable_mock_mode_for_quickstart()              # Mock LLM responses (dev-only)
+
+# Same @traigent.optimize-decorated my_function as Step 1 —
+# its litellm.completion(...) call is intercepted automatically in mock mode.
+results = my_function.optimize_sync(max_trials=4, algorithm="random")
+
+print(f"Trials ran:    {len(results.trials)}")
+print(f"Failed trials: {len(results.failed_trials)}")
+print(f"Stop reason:   {results.stop_reason}")
+print(f"Best config:   {results.best_config}")
+print(f"Best score:    {results.best_score}")
+```
+
+#### Interpret Mock Results
+
+| Check | Pass | Fail |
+|---|---|---|
+| Trials ran | `len(results.trials) > 0` | No trials = config space or dataset error |
+| No failures | `len(results.failed_trials) == 0` | Failures = function or evaluator bug |
+| Stop reason | `"max_trials_reached"` or `"optimizer"` | `"error"` = something broke |
+| Config keys | Expected keys in `best_config` | Missing keys = config space mismatch |
+
+Score interpretation depends on evaluator type: a config-aware scorer (reads `traigent.get_config()`) produces meaningful varied scores even in mock mode; an output-based/deterministic scorer (exact-match, JSON-schema, execution accuracy) sees the mock LLM's constant response and scores uniformly 0.0.
+
+> **WARNING — uniform 0.0 under mock is plumbing-OK, not a failure:**
+> If your scorer is output-based (exact-match, SQL execution accuracy, JSON-schema, etc.)
+> and all mock scores are 0.0, that is the correct expected result: the mock returns a
+> constant string that no deterministic scorer can score positively. Focus on whether trials
+> ran without errors (`failed_trials == 0`), not on the 0.0 score values.
+>
+> **Non-degenerate dry-run recipe:** To get a varied score spread without real LLM calls,
+> use a config-aware scorer that reads the trial config rather than the constant mock output:
+>
+> ```python
+> def mock_demo_accuracy(output, expected, config=None, **_):
+>     """Config-aware scorer for mock dry-runs — scores by config, not output."""
+>     cfg = config or traigent.get_config() or {}
+>     base = 0.85 if cfg.get("model") == "gpt-4o" else 0.65
+>     return max(0.0, base - 0.05 * float(cfg.get("temperature", 0.5)))
+> ```
+>
+> Delete this scorer for your real (paid) run — on a real run, let your output-based
+> scorer evaluate actual LLM output. This mock-only scorer is purely for confirming the
+> pipeline works end to end before spending API budget.
+
+If mock fails, set `export TRAIGENT_DEBUG=1` for debug logging. Common causes: `ConfigurationError` (fix decorator args, see mistakes table above), `EvaluationError` (fix scoring function or dataset format), `OptimizationStateError` (`get_config()` called outside optimization context), `ModuleNotFoundError` (`pip install traigent[integrations]`), or all trials failed (test the function standalone with a hardcoded config first).
+
+<!-- PROTECTED -->
+**Do not proceed to real mode until mock passes cleanly.**
+<!-- /PROTECTED -->
+
+### Step 3.5: Evaluator Sanity Gate
+
+Before the first paid run, verify the metric actually separates a correct output from a wrong one. This costs nothing — no LLM calls — but catches the single most expensive silent failure mode: an evaluation metric that swallows exceptions or silently returns 0.0 for every config (making the agent look broken when the metric is broken).
+
+```python
+# `my_metric` is the scoring_function / metric you pass to @traigent.optimize.
+# Use literal good/bad examples for YOUR task — no LLM call needed (that's the point).
+expected_output = "the expected answer for one example"   # your gold label
+known_good      = "a known-correct output for that example"  # e.g. the gold answer itself
+known_bad       = "obviously wrong or empty output"
+
+assert my_metric(known_good, expected_output) >= 0.9, (
+    "metric does not reward a correct output — fix before running real optimization"
+)
+assert my_metric(known_bad, expected_output) <= 0.1, (
+    "metric does not penalize a wrong output — fix before running real optimization"
+)
+```
+
+For a `custom_evaluator` / `BaseEvaluator`, call `.evaluate([good_example])` and `.evaluate([bad_example])` directly and assert the returned `metrics` separate. Use **one known-good + one known-bad example only** — this is a smoke gate, not a full audit.
+
+> **If both assertions pass:** the metric wires correctly — proceed to Step 4.
+>
+> **If either fails:** fix the metric before spending tokens. Common causes: wrong field name in the result, inverted logic (`>` vs `<`), exception swallowed to `0.0`. See [traigent-eval-build](../traigent-eval-build/SKILL.md) for diagnostic steps. For LLM-judge metrics, see [traigent-eval-audit](../traigent-eval-audit/SKILL.md) for the full reliability protocol.
+
+### Step 3.6: Tiny Real Cost and KPI Probe
+
+After mock mode and the evaluator sanity gate pass, run one tiny **real** optimization before any full run: 1-2 dataset examples, minimal trials, and the cheapest candidate model. This is paid, but should cost pennies, and it proves the billing and objective plumbing before scaling up.
+
+Check both surfaces:
+
+- `results.total_cost` is `float | None`. `None` means cost tracking is unavailable. `0.0` with real calls means the model was unpriced, so the provider may bill while Traigent reports zero. Treat both as cost **not wired**.
+- Each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with real non-degenerate values. If all objective values are `0.0` or all are `1.0`, fix the evaluator/KPI wiring before the full run.
+
+If cost or other KPIs are not picked up for custom services, self-hosted endpoints, or unknown models, fix in this order:
+
+1. Use a model id LiteLLM can price, or map an alias with `litellm.model_alias_map`.
+2. Supply custom per-token pricing with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`. The JSON shape is `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; `input`/`output` aliases are accepted, provider prefixes like `openai/` are normalized, and values must be finite non-negative floats. Pricing resolves in this order: LiteLLM, custom pricing, built-in fallback table, then `UnknownModelError`.
+3. Report cost directly from the optimized function's per-trial metrics using `total_cost`, `cost`, or `input_cost` plus `output_cost`. This bypasses pricing tables and is the primary path for fully custom services.
+
+Set `TRAIGENT_STRICT_COST_ACCOUNTING=true` when an unpriced model should fail loudly instead of reporting zero.
+
+> **NOTE:** Before any full run, verify with a tiny real optimization call that cost and your other KPIs are actually tracked (`results.total_cost` is not None/$0 and objective metrics are populated). If not, wire them (custom model pricing env vars, or return `total_cost` in metrics) before scaling up.
+
+### Step 4: Report and Estimate Costs
+
+After a successful mock run, tell the user:
+
+1. **Pipeline validated** — trials, config space, dataset all working
+2. **Config space size** — how many unique configurations
+3. **Estimated LLM calls** — `max_trials x dataset_size` (upper bound)
+4. **Cost limit** — default $2.00 USD per run (`TRAIGENT_RUN_COST_LIMIT`)
+5. **Ask for go/no-go**
+
+Example:
+
+> Mock run passed: 4/4 trials, 0 failures, pipeline is valid.
+>
+> Config space: 2 models x continuous temperature. With `max_trials=10` and 15 dataset examples, that's up to 150 LLM calls.
+>
+> Default cost limit is $2.00 USD. Want me to run it for real? This will use your API keys and cost real tokens.
+
+### Step 5: Run Real Optimization (Only When Asked)
+
+<!-- PROTECTED -->
+When the user explicitly says to proceed:
+<!-- /PROTECTED -->
+
+Verify API keys first — models in the config space need corresponding provider keys, and Traigent auto-validates them before starting, raising `ProviderValidationError` with details if validation fails:
+
+```bash
+export OPENAI_API_KEY="sk-..."         # For gpt-* models
+export ANTHROPIC_API_KEY="sk-ant-..."  # For claude-* models
+export GEMINI_API_KEY="..."            # For gemini-* models
+```
+
+Then skip the mock-mode activation and set cost controls:
+```python
+import os
+
+# Just don't call enable_mock_mode_for_quickstart() this run.
+# Mock mode is process-local — start a fresh interpreter for the
+# real run if the previous one had it on.
+os.environ.pop("TRAIGENT_OFFLINE_MODE", None)
+
+# Cost limit — default $2.00 USD per run
+os.environ["TRAIGENT_RUN_COST_LIMIT"] = "2.00"
+
+# Real runs are blocked by the cost-approval gate until this is set.
+# Set it ONLY after the user has seen the cost estimate and explicitly
+# approved the spend — never set it preemptively on the user's behalf.
+os.environ["TRAIGENT_COST_APPROVED"] = "true"
+```
+
+> **Smart algorithms are not yet executable.** `bayesian` (and the rest of the Optuna/Bayesian
+> family, incl. `tpe`/`cmaes`/`nsga2`) validate as known names but fail before any trial runs —
+> without `TRAIGENT_API_KEY` the run raises `ConfigurationError` (*"Cloud execution is required,
+> but backend session creation failed"*), and even when connected to the Traigent cloud the
+> current backend session dispatcher only executes `grid`/`random` (verified against SDK
+> 0.18.x). For a real run today, use `algorithm="grid"` or `algorithm="random"`.
+
+```python
+from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
+
+try:
+    # Use "grid"/"random" — smart algorithms like "bayesian" are roadmap and
+    # fail before any trial runs, whether or not TRAIGENT_API_KEY is set.
+    results = my_function.optimize_sync(max_trials=10, algorithm="random")
+except CostLimitExceeded as e:
+    print(f"Budget hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
+    print("Increase TRAIGENT_RUN_COST_LIMIT to allow more spending.")
+    raise
+except OptimizationError as e:
+    print(f"Optimization could not run: {e}")
+    raise
+
+print(f"Best config:  {results.best_config}")
+print(f"Best score:   {results.best_score}")
+if results.total_cost:
+    print(f"Total cost:   ${results.total_cost:.2f}")
+else:
+    # None or 0.0 after real calls = cost is NOT wired (see Step 3.6) —
+    # say so loudly instead of hiding the row.
+    print("Total cost:   NOT TRACKED — wire cost before the next run (Step 3.6)")
+print(f"Duration:     {results.duration:.1f}s")
+print(f"Stop reason:  {results.stop_reason}")
+```
+
+For algorithm choices, parallel execution, and further cost-limit controls, cross-reference `traigent-optimize-run`; for interpreting `OptimizationResult` beyond this snippet, cross-reference `traigent-analyze-results`. Do not promote the winner straight into production: export it as a candidate, check it on a held-out slice (see `traigent-ci-safety-gate` for the promotion gate and CI checks), and apply only after the gate and the user's explicit approval:
+
+```python
+# Export the winning config as a CANDIDATE artifact for review/gating
+my_function.export_config("candidate_config.json")
+
+# After the holdout/promotion gate passes and the user approves:
+my_function.apply_best_config(results)
+answer = my_function("What is Python?")
+```
+
+### Quick Reference
+
+| | Mock (Dry Run) | Real |
+|---|---|---|
+| Activation | `traigent.testing.enable_mock_mode_for_quickstart()` | (don't call it) |
+| `TRAIGENT_OFFLINE_MODE` | `true` | unset |
+| API keys needed | No | Yes |
+| LLM calls | Mocked | Real |
+| Cost | $0 | Real tokens |
+| Scores meaningful | Custom scorer recommended (built-in mock returns generic text) | Yes |
+| Production-safe | Hard-blocked when `ENVIRONMENT=production` | — |
+| Use when | Always first | After mock passes |
+
 ## The 12-Step Lifecycle Playbook
 
 1. ANALYZE the client codebase before writing code.
@@ -40,20 +323,20 @@ For detailed grep patterns and evidence-mining heuristics, read `references/code
    - Keep tuning and holdout slices separate, stratify by known input classes, and report sample count, source, label quality, and exclusions.
    - Use JSONL with scoreable `input` and `output` fields when a built-in evaluator can score the task.
    - Mock/offline-check a tiny slice before any backend generation or paid provider work.
-   - DELEGATE: `traigent-curate-dataset` owns dataset recipes, growth, example scoring, and quality loops.
+   - DELEGATE: `traigent-dataset-curate` owns dataset recipes, growth, example scoring, and quality loops.
 
 3. CHOOSE the metric.
    - Decide what "good" means before writing optimizer code: task success, correctness, cost, latency, safety, reliability, or a measured combination.
    - Prefer built-in objective names when they match the product decision; use custom metric functions only when domain logic is checkable and necessary.
    - Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept and note why accuracy was skipped.
    - Treat must-not-violate behavior as a safety constraint or promotion gate, not as an ordinary objective to trade away.
-   - DELEGATE: `traigent-choose-metric` owns the metric interview and objective vocabulary.
+   - DELEGATE: `traigent-eval-choose-metric` owns the metric interview and objective vocabulary.
 
 4. WIRE OR BUILD the evaluator.
    - Use the wire-first ladder: `eval_dataset` -> `scoring_function` -> `metric_functions` -> `custom_evaluator` -> `BaseEvaluator`.
    - Start deterministic when the task has ground truth or checkable domain logic; use LLM judges only when deterministic scoring cannot express the quality target.
    - Audit any LLM judge before trusting it to drive optimization.
-   - DELEGATE: `traigent-build-evaluator` owns evaluator code; `traigent-evaluator-audit` owns judge reliability checks.
+   - DELEGATE: `traigent-eval-build` owns evaluator code; `traigent-eval-audit` owns judge reliability checks.
 
 5. SELECT TVARS from the public recommendation catalog.
    - Use only the real SDK helpers:
@@ -81,7 +364,7 @@ print(recommendations["caveat"] or RECOMMENDATION_CAVEAT)
    <!-- /PROTECTED -->
    - For coding agents, `recommend_configuration_space("code_gen")` includes the `agent_computer_interface` knob pack: `repo_context_strategy`, `file_view_window`, `edit_granularity`, `test_selection_strategy`, and `patch_review_mode`. Its CVAR vocabulary and manual runtime guidance live in each row's `apply_guidance`.
    - For long-context/RAG agents, `recommend_configuration_space("rag")` includes `retrieval_k` plus the `context_budget` knob pack: `context_selection_policy`, `context_order`, `summary_style`, `compression_ratio`, and `citation_policy`. Its CVAR vocabulary and manual runtime guidance also live in `apply_guidance`.
-   - For range syntax, constraints, and typed parameters, cross-reference `traigent-configuration-space` instead of duplicating it.
+   - For range syntax, constraints, and typed parameters, cross-reference `traigent-optimize-config-space` instead of duplicating it.
    - **Catalog fallback**: if the client's agent shape matches no catalog type
      (e.g. a single-call classifier — neither `code_gen` nor `rag`), drive the
      configuration space from the client's REAL knobs (prompt/style variants,
@@ -102,8 +385,8 @@ print(recommendations["caveat"] or RECOMMENDATION_CAVEAT)
 | Primary plus backup | `fallback` | Try a primary path, then backup arms on no-accept or low margin. |
 | Iterative draft improvement | `self_refine` / `bounded_refine_loop` | Improve a threaded draft until an acceptance signal passes or a literal iteration cap is hit. |
 
-   - For exact factory signatures, `StageRunner`/`LoopBodyRunner` wiring, `execute_composite`, and telemetry, cross-reference `traigent-composite-knobs`; do not duplicate its catalog.
-   - DELEGATE: `traigent-composite-knobs` owns composite factory details and runtime wiring.
+   - For exact factory signatures, `StageRunner`/`LoopBodyRunner` wiring, `execute_composite`, and telemetry, cross-reference `traigent-optimize-composite-knobs`; do not duplicate its catalog.
+   - DELEGATE: `traigent-optimize-composite-knobs` owns composite factory details and runtime wiring.
 
 7. INSTRUMENT minimally and preserve behavior.
    - Wrap the chosen scoreable function with `@traigent.optimize`.
@@ -127,24 +410,24 @@ CONFIGURATION_SPACE = {
    - Use `references/instrument-recipe.md` for the smallest before/after code diff.
 
 8. VALIDATE in mock mode FIRST.
-   - Cross-reference `traigent-quickstart` and `traigent-debugging` for mock/offline setup.
+   - Cross-reference `traigent-setup-quickstart` and `traigent-debugging` for mock/offline setup.
    - Use `from traigent.testing import enable_mock_mode_for_quickstart` plus `TRAIGENT_OFFLINE_MODE=true` for keyless development.
    - Confirm dataset loading, config sampling, stage wiring, tuple-return unpacking, and zero failed trials before real provider calls.
    - Mock reality: mock still consumes `optimization_samples` quota; exact/execution-match scorers read uniform 0.0 under mock (expected, not broken); raw `openai`/`anthropic` clients are not intercepted and still bill.
-   - DELEGATE: `traigent-quickstart` owns first-run setup; `traigent-debugging` owns mock/offline failure diagnosis.
+   - DELEGATE: `traigent-setup-quickstart` owns first-run setup; `traigent-debugging` owns mock/offline failure diagnosis.
 
 9. OPTIMIZE for real only with cost limits and explicit approval.
-   - Cross-reference `traigent-run-optimization` for `func.optimize()`, `optimize_sync()`, algorithms, `max_trials`, parallelism, and `CostLimitExceeded`.
-   - Set an explicit `TRAIGENT_RUN_COST_LIMIT` and verify provider keys before the real run. If a Traigent backend is used, set `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL` as appropriate for the client environment. See [Getting your Traigent API key](../traigent-quickstart/SKILL.md#get-your-traigent-api-key) if you have not yet obtained `TRAIGENT_API_KEY`.
+   - Cross-reference `traigent-optimize-run` for `func.optimize()`, `optimize_sync()`, algorithms, `max_trials`, parallelism, and `CostLimitExceeded`.
+   - Set an explicit `TRAIGENT_RUN_COST_LIMIT` and verify provider keys before the real run. If a Traigent backend is used, set `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL` as appropriate for the client environment. See [Getting your Traigent API key](../traigent-setup-quickstart/SKILL.md#get-your-traigent-api-key) if you have not yet obtained `TRAIGENT_API_KEY`.
    - Present a cost estimate and get the user's explicit approval before any paid run. The approval signal depends on context: interactive real runs are gated by `TRAIGENT_COST_APPROVED=true` (set only after the user approves the estimate); CI/offline runs (including mock wiring checks under `CI=true`) require `TRAIGENT_RUN_APPROVED=1` instead — see `traigent-ci-safety-gate`.
    - Start with a bounded trial budget, keep the current production baseline in the search space, and save results artifacts for audit.
-   - DELEGATE: `traigent-run-optimization` owns algorithms, budgets, and execution controls.
+   - DELEGATE: `traigent-optimize-run` owns algorithms, budgets, and execution controls.
 
 10. INSIGHT: configurations AND examples.
-   - Configuration side: start with `get_optimization_insights(results)`, then use `show-significant-tuned-variables` for importance-backed knob ranking.
+   - Configuration side: start with `get_optimization_insights(results)`, then use `traigent-analyze-variable-importance` for importance-backed knob ranking.
    - Example side: use `ExampleInsightsClient` to compute example scores, read scores, and read dataset-quality metadata. Its reportable scope is non-signal metadata; do not claim hidden difficulty, informativeness, ambiguity, or causal signal values.
    - Report baseline vs `results.best_config` delta for the agreed metrics, cost, token use, trial count, failed trials, and `results.stop_reason`.
-   - Use `traigent-analyze-results` for `OptimizationResult` inspection and `show-significant-tuned-variables` to explain which knobs mattered.
+   - Use `traigent-analyze-results` for `OptimizationResult` inspection and `traigent-analyze-variable-importance` to explain which knobs mattered.
    <!-- PROTECTED -->
    - If results are flat, noisy, failed, or negative, call it a no-boost result. Do not hide it or promote a winner that does not beat the baseline on the evaluation dataset.
    <!-- /PROTECTED -->
@@ -155,13 +438,13 @@ CONFIGURATION_SPACE = {
      that aggregate `results.total_cost` can be `None` even when per-trial
      cost measures are `0.0`.
    - Full code lives in `references/insights-and-iteration.md`.
-   - DELEGATE: `traigent-analyze-results` owns result-object depth; `show-significant-tuned-variables` owns richer TVAR importance reporting.
+   - DELEGATE: `traigent-analyze-results` owns result-object depth; `traigent-analyze-variable-importance` owns richer TVAR importance reporting.
 
 11. RECOMMEND the most promising next steps.
    - Point at the symptom-to-action table in `references/insights-and-iteration.md` and choose one next hypothesis, not a bundle of unrelated changes.
    - Use example-side findings only as evidence for targeted curation or heldout checks.
    - Planned: a backend next-steps endpoint may eventually package these recommendations; until then, use the manual symptom-to-action table.
-   - DELEGATE: `traigent-iterate` owns post-run next-action selection.
+   - DELEGATE: `traigent-analyze-guidance` owns post-run next-action selection.
 
 12. COMPLETE: recommend the safety gate and CI checks.
    - In-run `safety_constraints` is planned but not yet implemented (raises `NotImplementedError` at decoration time — see `traigent-ci-safety-gate`); do not teach it as usable today.

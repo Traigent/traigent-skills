@@ -1,0 +1,531 @@
+---
+name: traigent-optimize-run
+description: "Run Traigent optimization: async/sync execution, algorithm selection, cost limits, stop conditions, and parallel trials. Use when calling func.optimize() or optimize_sync(), choosing algorithms (auto/grid/random today; bayesian/optuna are roadmap, not yet executable), setting max_trials or cost_limit, configuring parallel execution, or handling CostLimitExceeded."
+license: Apache-2.0
+metadata:
+  author: Nimrod
+  version: "1.0.5"
+---
+
+# Running Traigent Optimization
+
+## When to Use
+
+Use this skill after you have decorated a function with `@traigent.optimize()` and need to:
+
+- Run optimization (async or sync)
+- Choose an algorithm (`auto`, `grid`, `random` today — `bayesian`/`optuna`/`tpe`/`cmaes`/`nsga2` are roadmap names, not yet executable locally or in the cloud)
+- Set trial limits, timeouts, or cost budgets
+- Configure parallel trial execution
+- Handle cost limit exceptions
+- Interpret stop reasons and results
+
+## Objective Naming Rule
+
+Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
+
+## Async Execution
+
+The primary way to run optimization. Returns an `OptimizationResult`.
+
+> **Dry-run first.** Before a real (paid) run, always validate in mock mode and present a cost estimate to the user. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+>
+> ```python
+> from traigent.testing import enable_mock_mode_for_quickstart
+> enable_mock_mode_for_quickstart()
+> results = await answer.optimize(max_trials=10, algorithm="grid")  # mock, no cost
+> print(f"Mock pipeline OK: {len(results.trials)} trials, {len(results.failed_trials)} failed")
+> # Estimate the REAL run's cost before approving. There is no `results.estimated_cost_usd`
+> # accessor — the upper bound is (max_trials x dataset_size) LLM calls; price that against
+> # your model's $/token, or set TRAIGENT_RUN_COST_LIMIT and let the run abort if it exceeds.
+> max_trials, dataset_size = 10, 15        # your run's values
+> print(f"Real run: up to {max_trials * dataset_size} LLM calls")
+> ```
+> Only proceed to the real run below after the user explicitly approves the cost.
+>
+> **Verify model IDs are live first.** Catalogs change — a delisted/renamed ID causes a 404 or a
+> degraded, unpriced trial that wastes the run. Preflight with
+> `traigent models --provider <p> --check <id>` (or the provider's live catalog endpoint). See
+> the `traigent-setup-integrations` skill for multi-provider verification.
+
+```python
+import traigent
+import litellm  # pip install traigent[integrations] — the canonical runnable LLM call
+
+@traigent.optimize(
+    eval_dataset="qa_test.jsonl",
+    objectives=["accuracy"],
+    configuration_space={
+        # Verify these IDs are live + priced before a real run (catalogs change).
+        "model": ["gpt-4o-mini", "gpt-4o"],
+        "temperature": [0.1, 0.5, 0.9],
+    },
+)
+def answer(question: str) -> str:
+    cfg = traigent.get_config()
+    resp = litellm.completion(
+        model=cfg["model"],
+        temperature=cfg["temperature"],
+        messages=[{"role": "user", "content": question}],
+    )
+    return resp.choices[0].message.content
+
+# Run optimization (real — only after dry-run approval)
+results = await answer.optimize(max_trials=10)  # default algorithm="auto"
+```
+
+### optimize() Parameters
+
+| Parameter | Type | Description |
+|---|---|---|
+| `algorithm` | `str \| None` | Algorithm: `"auto"` (default cloud smart optimizer), `"grid"`/`"random"` (local search). Named smart algorithms such as `"bayesian"`/`"optuna"` validate but are not yet executable — see below. Falls back to decorator setting. |
+| `max_trials` | `int \| None` | Maximum number of trials to run. |
+| `timeout` | `float \| None` | Maximum wall-clock time in seconds. |
+| `save_to` | `str \| None` | Path to save results to disk. |
+| `custom_evaluator` | `Callable \| None` | Override evaluator for this run. |
+| `callbacks` | `list[Callable] \| None` | Progress tracking callbacks. |
+| `configuration_space` | `dict \| None` | Override config space for this run. |
+| `objectives` | `list[str] \| ObjectiveSchema \| None` | Override objectives for this run. |
+| `warm_start_from` | `str \| None` | Identifier of a prior experiment run. Cloud sessions only: the SDK forwards it to backend session metadata, and the backend can reuse the referenced run's results to seed the search. No local/offline effect. |
+| `cost_limit` | `float \| None` | Per-run cost cap in USD. Overrides `TRAIGENT_RUN_COST_LIMIT` for this call. A pre-run estimate over the limit raises `OptimizationError`; a mid-run budget hit returns partial results with `stop_reason="cost_limit"` (see cost handling below). |
+| `**algorithm_kwargs` | `Any` | Algorithm-specific parameters (e.g., `parameter_order` for grid). |
+
+To continue from a prior run, see the post-run flow (`traigent-analyze-guidance`).
+
+## Sync Execution
+
+For scripts or notebooks where you do not want to manage an async event loop.
+
+```python
+# Option 1: optimize_sync() convenience method
+results = answer.optimize_sync(max_trials=10, algorithm="grid")
+
+# Option 2: asyncio.run() wrapper
+import asyncio
+results = asyncio.run(answer.optimize(max_trials=10, algorithm="grid"))
+```
+
+`optimize_sync()` accepts the same parameters as `optimize()`. It creates and manages the event loop internally.
+
+## Algorithm Selection
+
+### Grid Search
+
+Exhaustive search over all configurations in the config space. Deterministic and complete.
+
+```python
+results = await func.optimize(max_trials=24, algorithm="grid")
+
+# Control iteration order with parameter_order
+results = await func.optimize(
+    algorithm="grid",
+    parameter_order={"model": 0, "temperature": 1},  # model varies slowest
+)
+```
+
+**Best for**: Small config spaces (under 50 combinations) where you want to test everything.
+
+### Random Search
+
+Samples configurations randomly from the config space. Good for large spaces where exhaustive search is impractical.
+
+```python
+results = await func.optimize(max_trials=20, algorithm="random")
+```
+
+**Best for**: Large config spaces, quick exploration, when you have a limited trial budget.
+
+### Smart Algorithms (Bayesian / Optuna / TPE / CMA-ES / NSGA-II) — Not Yet Executable
+
+> **Not currently executable, locally or in the cloud** (verified against SDK 0.18.x). `algorithm="bayesian"`, `"optuna"`, `"tpe"`, `"cmaes"`, `"nsga2"`, and the other Optuna-family names validate as known names but do not run trials today — every path fails before any trial starts, with a clear error. With `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*); online without cloud credentials the run raises `ConfigurationError` (*"Cloud execution is required, but backend session creation failed"*); and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). Connecting to the Traigent cloud does not unlock them either — the backend's current session dispatcher also only executes `grid`/`random` and rejects the rest. Treat these names as roadmap, not selectable values.
+
+```python
+# Do NOT teach this as runnable — fails before any trial runs
+# (ConfigurationError/OptimizationError depending on path):
+# results = await func.optimize(max_trials=30, algorithm="bayesian")
+
+# Use local search instead:
+results = await func.optimize(max_trials=30, algorithm="random")
+```
+
+### Quick Comparison
+
+| Algorithm | Strategy | Config Space Size | Trial Budget | Where search runs |
+|---|---|---|---|---|
+| `"auto"` | Cloud smart default | Any | Any | Traigent cloud |
+| `"grid"` | Exhaustive | Small (< 50) | Matches space size | Local SDK search |
+| `"random"` | Sampling | Any | Limited | Local SDK search |
+| `"bayesian"` / `"optuna"` / `"tpe"` / `"cmaes"` / `"nsga2"` | — | — | — | **Not executable today** (roadmap name; fails before any trial runs — see above) |
+
+Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero-egress path and does not sync results.
+
+<!-- PROTECTED -->
+## Cost Controls
+
+Traigent tracks LLM API costs in real time and enforces budgets to prevent runaway spending.
+<!-- /PROTECTED -->
+
+### Cost Wiring Probe
+
+Before any full paid run, do a tiny real optimization after mock validation: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Verify `results.total_cost` is neither `None` nor `0.0` for real calls, and verify each trial's `metrics` contains the declared objectives with populated, non-degenerate values.
+
+If cost is missing for custom services or unknown models, use a LiteLLM-priced model id or `litellm.model_alias_map`, provide `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`, or return `total_cost`, `cost`, or `input_cost` plus `output_cost` in per-trial metrics. Use `TRAIGENT_STRICT_COST_ACCOUNTING=true` when unpriced models should fail loudly.
+
+### Setting a Cost Limit
+
+Set the `TRAIGENT_RUN_COST_LIMIT` environment variable (in USD):
+
+```bash
+export TRAIGENT_RUN_COST_LIMIT=5.00  # $5 max per optimization run
+```
+
+The default limit is $2.00 per run.
+
+### Handling a Cost Limit
+
+**A cost limit does *not* surface through one exception — handle all of the paths below.** A common mistake is to catch only `CostLimitExceeded`; in the current SDK that handler never fires (see the note after the table).
+
+| Surface | When it happens | How to handle |
+|---|---|---|
+| `OptimizationError` (**raised, pre-run**) | the *estimated* cost already exceeds the limit and the run wasn't pre-approved — raised **before any trial runs** | `except OptimizationError` — raise the limit, shrink the run, or set `TRAIGENT_COST_APPROVED=true` |
+| `results.stop_reason == "cost_limit"` (**returned**) | the run hits the budget **mid-run**, stops, and **returns** partial results (no exception) | check `stop_reason` after a normal return |
+| `CostLimitExceeded` (**not currently raised**) | exported & documented as the budget handler, but the current SDK never raises it (the mid-run stop returns `stop_reason="cost_limit"` instead) | keep in your `except` for forward-compatibility; do **not** rely on it as your only guard |
+
+```python
+from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
+
+try:
+    results = await func.optimize(max_trials=100, algorithm="random")
+except CostLimitExceeded as e:          # kept for forward-compat; not raised today
+    print(f"Cost limit hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
+except OptimizationError as e:           # the pre-run "estimate > limit" decline
+    print(f"Run declined before starting: {e}")
+else:
+    if getattr(results, "stop_reason", None) == "cost_limit":
+        print("Budget reached mid-run; partial results returned.")
+```
+
+Notes:
+- The pre-run decline's underlying exception is `OptimizationAborted`, which the SDK wraps into `OptimizationError` at the `optimize()` boundary — so `except OptimizationError` catches it there. Inside framework integrations (LangChain/LiteLLM) it may instead propagate **raw** as `OptimizationAborted`.
+- The exact exception/return contract is being standardized upstream — see **Traigent/Traigent#1490**. Catching `OptimizationError` **and** `CostLimitExceeded`, **and** checking `results.stop_reason`, is robust across whichever way it resolves.
+
+### Pre-Approving Costs
+
+The `traigent` lifecycle skill mandates: **dry-run in mock mode first, present the cost estimate, then get explicit user approval before the real run.** Only pre-approve costs in automated pipelines where a human has already reviewed and approved the dry-run estimate. Never bypass this gate on a user's first run or when the config space has changed.
+
+To skip the interactive cost approval handshake in an already-approved pipeline:
+
+```bash
+export TRAIGENT_COST_APPROVED=true
+```
+
+CI note: local/offline `optimize()` runs also require `TRAIGENT_RUN_APPROVED=1`; see
+`traigent-debugging` for `OptimizationError: CI/CD Approval Required`.
+
+### Quota & Run Sizing
+
+Cost is not the only budget. Cloud/hybrid optimization is also **metered by plan quota**,
+independent of dollars spent. Two dimensions are tracked per billing period (they reset
+monthly):
+
+- **`optimization_samples`** — examples evaluated across all sessions. This is the dimension
+  that usually binds first. A run reserves roughly `max_trials × dataset_size` samples.
+- **`optimization_trials`** — one optimization session counts as one trial.
+
+A run is **admitted only when both dimensions have headroom**: it is rejected at
+session-create if `current_usage + (max_trials × dataset_size)` would exceed the
+`optimization_samples` limit (or if you are out of `optimization_trials`). On the free/hobby
+tier the sample ceiling is small (500), so a few medium runs can exhaust it, after which new
+runs are blocked (0 trials) until the monthly reset.
+
+Before a large run:
+
+1. **Check your current usage** on the portal billing/usage page (or your plan's usage
+   summary) so you know how much of the `optimization_samples` budget remains.
+2. **Size the run to fit**: pick `max_trials × dataset_size` so it lands under the remaining
+   headroom. Shrink `max_trials`, use a smaller eval dataset, or split the run across periods
+   if it would not fit. A blocked session-create can look like an input error — see the
+   `traigent-debugging` skill ("session-create fails with quota") to recognize it.
+
+> Quota is separate from the per-run dollar `cost_limit` above: staying under `cost_limit`
+> does not guarantee you are under `optimization_samples`, and vice versa.
+
+### Strict Cost Accounting
+
+Fail fast if cost tracking cannot extract costs from LLM responses:
+
+```bash
+export TRAIGENT_STRICT_COST_ACCOUNTING=true
+```
+
+## Stop Conditions
+
+Optimization can stop for several reasons. Check `results.stop_reason`:
+
+| Stop Reason | Trigger |
+|---|---|
+| `"max_trials_reached"` | Hit the configured `max_trials` limit. |
+| `"max_samples_reached"` | Hit the `max_total_examples` limit across all trials. |
+| `"timeout"` | Exceeded the `timeout` duration. |
+| `"cost_limit"` | Hit the `TRAIGENT_RUN_COST_LIMIT` budget. |
+| `"optimizer"` | Algorithm exhausted the search space (e.g., grid search finished). |
+| `"plateau"` | No improvement detected over recent trials. |
+| `"user_cancelled"` | User cancelled or declined cost approval. |
+| `"condition"` | A generic stop condition was triggered. |
+| `"error"` | Optimization failed due to an exception. |
+
+```python
+results = await func.optimize(max_trials=20, algorithm="grid")
+
+print(f"Stop reason: {results.stop_reason}")
+print(f"Trials completed: {len(results.trials)}")
+print(f"Best score: {results.best_score}")
+```
+
+## Parallel Execution
+
+Run trials and/or examples concurrently using `ParallelConfig`.
+
+```python
+from traigent.config.parallel import ParallelConfig
+from traigent.api.decorators import ExecutionOptions
+
+@traigent.optimize(
+    execution=ExecutionOptions(
+        parallel_config=ParallelConfig(
+            mode="parallel",
+            trial_concurrency=2,    # Run 2 trials at the same time
+            example_concurrency=4,  # Evaluate 4 examples concurrently per trial
+        ),
+    ),
+    eval_dataset="large_dataset.jsonl",
+    objectives=["accuracy"],
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
+)
+def my_func(query: str) -> str:
+    import litellm  # pip install traigent[integrations]
+    cfg = traigent.get_config()
+    resp = litellm.completion(model=cfg["model"], messages=[{"role": "user", "content": query}])
+    return resp.choices[0].message.content
+
+results = await my_func.optimize(max_trials=10, algorithm="random")
+```
+
+### ParallelConfig Fields
+
+| Field | Type | Default | Description |
+|---|---|---|---|
+| `mode` | `"auto" \| "sequential" \| "parallel"` | `None` | Execution mode. `None` inherits from global config. |
+| `trial_concurrency` | `int \| None` | `None` | Max concurrent trials. |
+| `example_concurrency` | `int \| None` | `None` | Max concurrent examples per trial. |
+| `thread_workers` | `int \| None` | `None` | Thread pool size. |
+
+## Displaying Results
+
+Always call `print_results_table()` after `func.optimize()` to show a green-highlighted
+trial results table with per-config scores. Skip only if the user explicitly says no.
+
+```python
+from traigent.utils.results_table import print_results_table
+
+results = await func.optimize(max_trials=10, algorithm="grid")
+
+print_results_table(
+    results,
+    config_space=func.configuration_space,
+    objectives=["accuracy"],   # match your objectives list
+)
+```
+
+The table highlights the best trial with ★ and colors the best metric value per column.
+`func.configuration_space` always reflects the decorator's current config space.
+
+## Working with Results
+
+`OptimizationResult` contains everything from the optimization run:
+
+```python
+results = await func.optimize(max_trials=10, algorithm="grid")
+
+# Best configuration and score
+print(results.best_config)     # {"model": "gpt-4o", "temperature": 0.5}
+print(results.best_score)      # 0.92
+
+# Run metadata
+print(results.algorithm)       # "grid"
+print(results.duration)        # 45.2 (seconds)
+print(results.stop_reason)     # "max_trials_reached"
+print(results.total_cost)      # 0.34 (USD, if tracked)
+print(results.optimization_id) # "opt_abc123"
+
+# Trial details (per-trial scores/costs live in trial.metrics, not on the trial)
+for trial in results.trials:
+    print(f"Config: {trial.config}, Score: {trial.metrics.get('score')}")
+
+# Derived properties
+print(results.success_rate)       # 0.9 (fraction of successful trials)
+print(len(results.successful_trials))  # 9
+print(len(results.failed_trials))      # 1
+```
+
+### Applying the Best Config
+
+After optimization, lock in the best configuration for production use:
+
+```python
+results = await func.optimize(max_trials=10, algorithm="grid")
+func.apply_best_config(results)
+
+# Now calling func uses the best config automatically
+answer = func("What is Python?")
+
+# The config is accessible via get_config() inside the function
+# and via func.current_config from outside
+print(func.current_config)  # {"model": "gpt-4o", "temperature": 0.5}
+```
+
+## Complete Example
+
+End-to-end optimization from import to results:
+
+```python
+import traigent
+from traigent.api.decorators import EvaluationOptions, ExecutionOptions
+from traigent.config.parallel import ParallelConfig
+from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
+from traigent.utils.results_table import print_results_table
+
+def exact_match(output: str, expected: str) -> float:
+    return 1.0 if output.strip() == expected.strip() else 0.0
+
+@traigent.optimize(
+    evaluation=EvaluationOptions(
+        eval_dataset="qa_test.jsonl",
+        scoring_function=exact_match,
+    ),
+    execution=ExecutionOptions(
+        parallel_config=ParallelConfig(
+            mode="parallel",
+            trial_concurrency=2,
+            example_concurrency=4,
+        ),
+    ),
+    objectives=["accuracy"],
+    configuration_space={
+        "model": ["gpt-4o-mini", "gpt-4o"],
+        "temperature": [0.0, 0.3, 0.7],
+    },
+)
+def answer_question(question: str) -> str:
+    import litellm  # pip install traigent[integrations]
+    cfg = traigent.get_config()
+    resp = litellm.completion(
+        model=cfg["model"],
+        temperature=cfg["temperature"],
+        messages=[{"role": "user", "content": question}],
+    )
+    return resp.choices[0].message.content
+
+async def main():
+    # All three cost/failure surfaces from "Handling Cost Limit Exceptions" above.
+    try:
+        results = await answer_question.optimize(
+            max_trials=6,
+            algorithm="grid",
+            timeout=300.0,
+        )
+    except CostLimitExceeded as e:  # kept for forward-compat; not raised today
+        print(f"Budget exceeded: ${e.accumulated:.2f} / ${e.limit:.2f}")
+        return
+    except OptimizationError as e:  # pre-run "estimate > limit" decline, and run errors
+        print(f"Run declined or failed: {e}")
+        return
+
+    if results.stop_reason == "cost_limit":
+        print("Budget reached mid-run; results below are partial.")
+
+    if results.best_score is None:
+        # No successful trials — do NOT apply anything; report and stop.
+        print(f"No trial succeeded (stop reason: {results.stop_reason}). "
+              "Inspect the failed trials before spending more.")
+        return
+
+    print_results_table(
+        results,
+        config_space=answer_question.configuration_space,
+        objectives=["accuracy"],
+    )
+
+    print(f"Best config: {results.best_config}")
+    print(f"Best score:  {results.best_score}")
+    print(f"Stop reason: {results.stop_reason}")
+    print(f"Duration:    {results.duration:.1f}s")
+    if results.total_cost:
+        print(f"Total cost:  ${results.total_cost:.2f}")
+    else:
+        print("Total cost:  NOT TRACKED — wire cost before the next run (see Cost Wiring Probe)")
+
+    # Apply and use in production
+    answer_question.apply_best_config(results)
+    answer = answer_question("What is the capital of France?")
+    print(f"Answer: {answer}")
+
+import asyncio
+asyncio.run(main())
+```
+
+## See Also
+
+- `references/algorithms.md` - Detailed algorithm comparison
+- `references/parallel-config.md` - Full ParallelConfig reference
+- `references/cost-management.md` - Cost enforcement details
+- `traigent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
+- `traigent-setup-quickstart` - Installation and first optimization with mock mode
+- `traigent-setup-decorator` - Full `@traigent.optimize()` parameter reference
+- `traigent-analyze-results` - **Next step:** read `best_config`/`best_score`, compare trials, extract the quality/cost/latency trade-off, and apply the best config after `optimize()` returns
+
+<!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
+<!-- SLOW_UPDATE -->
+<!-- /SLOW_UPDATE -->
+
+<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
+## Traigent Interaction Policy
+Track an interaction profile and adapt to it. Persona (stable): control=`delegate|guided|inspect`,
+expertise=`se|ds|unknown`. Mood (this session): pace=`execute|balanced|explore`. Default when
+unknown: `guided,se,balanced`. Infer from explicit user statements first, then recent behavior;
+an explicit correction wins immediately. Never store or send this profile anywhere by default.
+
+### Fetch the live profile (when available)
+At session or skill start, if a configured Traigent client is available, seed the profile from the
+backend with the skill name:
+
+```python
+policy = None
+try: policy = await client.get_interaction_policy(skill="<this skill>")
+except Exception: pass
+```
+
+Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
+`question_budget`, `options_max`, and `jargon_level` replace the static defaults below. Explicit user
+corrections in-conversation ALWAYS override the seed. If the call is unavailable or
+`fallback_policy="static_v1"`, simply use the static defaults below; the SDK already fails soft.
+
+- Always be concise.
+- Match terminology to expertise. For `se`: plain engineering words; define each Traigent or
+  statistics term once in plain language (no Bayesian / variance-decomposition / Pareto jargon
+  unless asked). For `ds`: compact optimization and statistical terms are fine.
+- Presenting options: show at most 3, mark exactly one **Recommended**, and give one short
+  persona-appropriate trade-off per option.
+- Autonomy. For `delegate` or `execute`: pick the recommended reversible action and proceed, asking
+  only at hard gates. For `guided`: offer options with a recommendation at the key decisions. For
+  `inspect` or `explore`: give brief rationale or evidence before asking, and ask before branch
+  choices.
+- Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
+  private content off the machine, destructive edits, decisions the Traigent service is meant to
+  return, and any missing fact the step truly requires.
+- Always end by recommending the next Traigent skill or action to take.
+- Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
+  or before any data leaves the machine; treat service-returned plans and next steps as
+  authoritative. Never put the persona profile or any private content into telemetry, run metadata,
+  experiment names, logs, or provenance files.
+<!-- /INTERACTION_POLICY v1 -->

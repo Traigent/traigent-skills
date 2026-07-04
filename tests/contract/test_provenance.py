@@ -1,6 +1,6 @@
 """Contract test: provenance.json doc_hash must match the current SKILL.md bytes.
 
-Spec: skill-evals/README.md, "Provenance v1" — doc_hash is the first 16 hex
+Spec: eval-artifacts/README.md, "Provenance v1" — doc_hash is the first 16 hex
 characters of the SHA-256 hash of the corresponding SKILL.md bytes.
 """
 
@@ -77,7 +77,7 @@ def test_provenance_doc_hash_matches_skill_md(skill_dir: Path) -> None:
 def test_skill_without_provenance_is_skipped(skill_dir: Path) -> None:
     pytest.skip(
         f"{skill_dir.name}: no provenance.json yet — genesis entries are owned by "
-        "the private evaluation harness (skill-evals/README.md, Provenance v1)"
+        "the private evaluation harness (eval-artifacts/README.md, Provenance v1)"
     )
 
 
