@@ -300,10 +300,13 @@ async def compute_example_scores(run_id: str) -> dict:
         backend_url="https://traigent.example",
         api_key="uk_...",
     ) as client:
-        job = await client.compute_scores(run_id)
-        status = await client.get_job_status(job["job_id"])
-        scores = await client.get_example_scores(run_id, example_ids=["ex_001", "ex_002"])
-        quality = await client.get_dataset_quality(run_id)
+        job = await client.compute_scores(experiment_run_id=run_id)
+        status = await client.get_job_status(job_id=job["job_id"])
+        scores = await client.get_example_scores(
+            experiment_run_id=run_id,
+            example_ids=["ex_001", "ex_002"],
+        )
+        quality = await client.get_dataset_quality(experiment_run_id=run_id)
         return {"status": status, "scores": scores, "quality": quality}
 ```
 
