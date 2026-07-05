@@ -4,7 +4,7 @@ description: "End-to-end recipe to optimize a text2SQL agent with Traigent and r
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -72,15 +72,53 @@ the optimizer is searching.
 
 ## 1. Objective scoring (non-negotiable for SQL)
 Score by **execution match**, not string match: run the predicted SQL and the
-gold SQL against the question's own SQLite DB and compare result sets
-(order-insensitive). SPIDER is multi-DB — each example carries a `db_id`; resolve
-schema + connection per `db_id`.
+gold SQL against the question's own SQLite DB and compare result sets. SPIDER is
+multi-DB — each example carries a `db_id`; resolve schema + connection per `db_id`.
+
+**Decide and document BOTH order policies — "order-insensitive" alone is ambiguous:**
+
+- **Row order:** significant only when the gold query has `ORDER BY`; otherwise
+  compare rows as a multiset (`collections.Counter`), never a plain `==` on lists.
+- **Column order:** NOT significant. SPIDER gold projection order is arbitrary
+  (gold `SELECT Population, Region` for *"What are the region and population…?"*);
+  an agent answering in question order is semantically right. Both official Spider
+  scorers forgive column order — the original `evaluation.py::eval_exec_match`
+  matches columns by parsed column identity, and the official test-suite eval
+  ([taoyds/test-suite-sql-eval](https://github.com/taoyds/test-suite-sql-eval);
+  Zhong, Yu & Klein, EMNLP 2020) tries every column permutation. If your comparator
+  is positional, arbitrary gold order silently caps accuracy for EVERY config — a
+  constant offset optimization cannot remove (measured on a 30-example Spider-lite
+  set: 2 examples failed on column order alone in 100% of 16 tested configurations,
+  a de-facto 93% ceiling).
+- **Column count still must match:** SPIDER gold sometimes projects extra columns
+  (`SELECT CountryCode, max(Percentage)` when only codes were asked). The
+  convention forgives column *order*, never missing/extra columns.
 
 ```python
+from collections import Counter
+from itertools import permutations
+
+def result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
+    if len(pred_rows) != len(gold_rows):
+        return False
+    if not gold_rows:
+        return True
+    n = len(gold_rows[0])
+    if len(pred_rows[0]) != n:
+        return False
+    for perm in permutations(range(n)):        # forgive arbitrary column order
+        p = [tuple(r[i] for i in perm) for r in pred_rows]
+        if (p == gold_rows) if gold_has_order_by else (Counter(p) == Counter(gold_rows)):
+            return True
+    return False
+
 def exec_match(db_id, pred_sql, gold_sql) -> float:
-    p = run(db_id, pred_sql); g = run(db_id, gold_sql)
-    return 1.0 if (p_ok and g_ok and p == g) else 0.0
+    p_ok, p = run(db_id, pred_sql); g_ok, g = run(db_id, gold_sql)
+    return 1.0 if (p_ok and g_ok and result_eq(p, g, "order by" in gold_sql.lower())) else 0.0
 ```
+SPIDER projections are 1–4 columns, so brute-force permutation is fine; for wide
+results constrain the permutation space per-column as test-suite eval's
+`get_constraint_permutation` does.
 
 ## 2. Multi-field inputs (db_id + gold)
 Traigent maps only `input`/`output` dataset fields. Put the gold SQL under

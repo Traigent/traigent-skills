@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6fd342afccd9bc47",
+  "doc_hash": "d78e5d3088f19e7c",
   "entries": [
     {
       "edit_id": "genesis",
@@ -18,6 +18,15 @@
       "run_id": null,
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "order-policy-2026-07-05",
+      "op": "replace",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-05T00:00:00Z",
+      "note": "objective-scoring section: explicit two-axis order policy (row order per gold ORDER BY, column order forgiven via permutations) replacing ambiguous 'order-insensitive' prose and positional comparator; aligned with taoyds test-suite eval",
       "source_type": "human"
     }
   ]

@@ -119,15 +119,39 @@ def _run(sql: str):
         con = sqlite3.connect(DB_PATH)
         rows = con.execute(sql).fetchall()
         con.close()
-        return True, sorted(map(str, rows))   # order-insensitive compare
+        return True, rows
     except Exception:
         return False, None
+
+
+def _result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
+    # The Spider convention, both order axes made explicit: rows compare as a
+    # multiset UNLESS gold has ORDER BY (then row order is significant), and
+    # column order is never significant (gold projection order is arbitrary) —
+    # try column permutations. Column COUNT must still match.
+    from collections import Counter
+    from itertools import permutations
+
+    if len(pred_rows) != len(gold_rows):
+        return False
+    if not gold_rows:
+        return True
+    n = len(gold_rows[0])
+    if len(pred_rows[0]) != n:
+        return False
+    for perm in permutations(range(n)):
+        p = [tuple(r[i] for i in perm) for r in pred_rows]
+        if (p == gold_rows) if gold_has_order_by else (Counter(p) == Counter(gold_rows)):
+            return True
+    return False
 
 
 def exec_match(pred_sql: str, gold_sql: str) -> float:
     p_ok, p = _run(pred_sql)
     g_ok, g = _run(gold_sql)
-    return 1.0 if (p_ok and g_ok and p == g) else 0.0
+    return 1.0 if (
+        p_ok and g_ok and _result_eq(p, g, "order by" in gold_sql.lower())
+    ) else 0.0
 
 
 # --------------------------------------------------------------------------- #

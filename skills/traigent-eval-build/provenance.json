@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7a4e8ed27df97f18",
+  "doc_hash": "31f571e1827f5f48",
   "entries": [
     {
       "edit_id": "genesis",
@@ -18,6 +18,15 @@
       "run_id": null,
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "order-policy-2026-07-05",
+      "op": "insert_after",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-05T00:00:00Z",
+      "note": "add 'Known pitfall: arbitrary gold ordering caps accuracy' section (order policy for structured comparisons; 100%-failure audit signal)",
       "source_type": "human"
     }
   ]
