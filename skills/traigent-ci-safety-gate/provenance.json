@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ba9213a25dcca5f1",
+  "doc_hash": "d3580521a5750678",
   "entries": [
     {
       "edit_id": "genesis",
@@ -18,6 +18,28 @@
       "run_id": null,
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "sim-findings-key-hygiene-ci-2026-07-04",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-04T00:00:00Z",
+      "doc_before_hash": "ba9213a25dcca5f1",
+      "doc_after_hash": "029724692aa90219",
+      "note": "add key-hygiene bullets for CI logs (never print/echo/log key values in workflow steps; reference via secrets/env; note GitHub Actions masking only covers registered secrets)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "sim-findings-key-hygiene-universal-2026-07-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-05T00:00:00Z",
+      "doc_before_hash": "029724692aa90219",
+      "doc_after_hash": "d3580521a5750678",
+      "note": "sharpen key-hygiene intro: leaks observed across multiple coding-agent CLI families (Codex, Claude, Gemini), not one tool's quirk (round 2 of sim-testbed findings, 20-cell wave)",
       "source_type": "human"
     }
   ]

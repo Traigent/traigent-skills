@@ -150,6 +150,71 @@ LIFECYCLE_CONTEXT_RE = re.compile(
     r")\b",
     re.IGNORECASE,
 )
+ALGORITHM_GUIDANCE_RESTAMP_FILES = (
+    "skills/traigent-boost-agent/SKILL.md",
+    "skills/traigent-recipe-text2sql/SKILL.md",
+    "skills/traigent-recipe-text2sql/references/quickstart_text2sql.md",
+    "skills/traigent-optimize-run/SKILL.md",
+    "skills/traigent-optimize-run/references/algorithms.md",
+    "skills/traigent-setup-decorator/SKILL.md",
+    "skills/traigent-setup-decorator/references/execution-modes.md",
+    "skills/traigent-setup-quickstart/SKILL.md",
+    "skills/traigent-setup-quickstart/references/installation-extras.md",
+    "skills/traigent-analyze-guidance/references/preflight.md",
+    "skills/traigent-optimize-config-space/references/structural-spine.md",
+)
+ALGORITHM_GUIDANCE_BANNED_SNIPPETS = (
+    ("stale SDK 0.18 algorithm stamp", "verified against SDK 0.18.x"),
+    ("stale SDK 0.19 algorithm stamp", "verified against SDK 0.19.x"),
+    (
+        "stale no-credentials error",
+        "Cloud execution is required, but backend session creation failed",
+    ),
+    ("stale smart-algorithm error route", "without cloud credentials"),
+    (
+        "connected real runs must not be steered to local search",
+        'For a real run today, use `algorithm="grid"` or `algorithm="random"`',
+    ),
+    (
+        "connected text2SQL runs must not default to random",
+        'Real run (`algorithm="random"`',
+    ),
+    (
+        "connected text2SQL runs must not default to random",
+        'offline=False`, `algorithm="random"`',
+    ),
+    (
+        "quickstart real path must not default to random",
+        'offline, algorithm = False, "random"',
+    ),
+    (
+        "auto is an executable connected path",
+        "only `grid` and `random` are executable today",
+    ),
+    (
+        "smart selector failure chain must mention SDK #1752, not just dispatcher rejection",
+        "backend session dispatcher also only executes `grid`/`random`",
+    ),
+    (
+        "smart selector failure chain must mention SDK #1752, not just dispatcher rejection",
+        "backend session dispatcher only executes `grid`/`random`",
+    ),
+    (
+        "smart selector failure chain must mention SDK #1752, not just dispatcher rejection",
+        "backend also rejects them even when connected",
+    ),
+)
+ALGORITHM_GUIDANCE_REQUIRED_SNIPPETS = {
+    "skills/traigent-boost-agent/SKILL.md": (
+        'For connected real runs, omit `algorithm` or use `algorithm="auto"`.'
+    ),
+    "skills/traigent-recipe-text2sql/SKILL.md": (
+        '`offline=False`, omit `algorithm` or use `algorithm="auto"`'
+    ),
+    "skills/traigent-recipe-text2sql/references/quickstart_text2sql.md": (
+        'offline, algorithm = False, "auto"'
+    ),
+}
 
 # Fields of the INSTALLED ExecutionOptions (extra="forbid" → any other kwarg is invalid).
 # None if the symbol can't be imported, in which case rule 3 no-ops for this run.
@@ -607,6 +672,28 @@ def test_no_leaked_next_run_lifecycle_vocab_in_skill_markdown(repo_root: Path) -
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
+def test_algorithm_guidance_matches_sdk_020(repo_root: Path) -> None:
+    violations: list[str] = []
+    for rel in ALGORITHM_GUIDANCE_RESTAMP_FILES:
+        path = repo_root / rel
+        text = path.read_text(encoding="utf-8")
+        for label, snippet in ALGORITHM_GUIDANCE_BANNED_SNIPPETS:
+            offset = text.find(snippet)
+            if offset == -1:
+                continue
+            violations.append(
+                f"{rel}:{_line_for_offset(text, offset)}: {label}: {snippet!r}"
+            )
+
+    for rel, snippet in ALGORITHM_GUIDANCE_REQUIRED_SNIPPETS.items():
+        path = repo_root / rel
+        text = path.read_text(encoding="utf-8")
+        if snippet not in text:
+            violations.append(f"{rel}: missing required SDK 0.20.0 guidance {snippet!r}")
+
+    assert not violations, "\n".join(violations)
+
+
 def test_next_run_skill_stays_service_decided_thin_client(repo_root: Path) -> None:
     path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
     text = path.read_text(encoding="utf-8")
@@ -660,6 +747,58 @@ def test_next_run_skill_stays_service_decided_thin_client(repo_root: Path) -> No
     )
     assert re.search(r"\bRun only the command template the service returns\b", text), (
         "traigent-analyze-guidance must execute only returned command templates"
+    )
+
+
+def test_next_steps_protocol_uses_portable_backend_url_flag(repo_root: Path) -> None:
+    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    rel = path.relative_to(repo_root).as_posix()
+
+    assert "traigent next-steps RUN_ID --backend-url <url> --json" in text, (
+        f"{rel}: Mode B must show the backend URL flag on the next-steps command"
+    )
+    assert "`TRAIGENT_BACKEND_URL` must be set" not in text, (
+        f"{rel}: next-steps docs must not teach env-var-only setup as mandatory"
+    )
+    assert "if `TRAIGENT_BACKEND_URL` is not set" not in text, (
+        f"{rel}: --backend-url is not just a fallback for unset env vars"
+    )
+    assert "connection-refused" not in text.lower(), (
+        f"{rel}: do not predict the old default failure mode"
+    )
+
+
+def test_dataset_example_insights_snippet_uses_async_sdk_contract(
+    repo_root: Path,
+) -> None:
+    path = repo_root / "skills" / "traigent-dataset-curate" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    rel = path.relative_to(repo_root).as_posix()
+
+    assert "async with ExampleInsightsClient(" in text, (
+        f"{rel}: ExampleInsightsClient snippet must use the async context manager"
+    )
+    assert "job = await client.compute_scores(experiment_run_id=run_id)" in text, (
+        f"{rel}: compute_scores must be awaited with the SDK parameter name"
+    )
+    assert "status = await client.get_job_status(job_id=job[\"job_id\"])" in text, (
+        f"{rel}: get_job_status must be awaited with the SDK parameter name"
+    )
+    assert re.search(
+        r"scores = await client\.get_example_scores\(\s*"
+        r"experiment_run_id=run_id,\s*"
+        r"example_ids=\[\"ex_001\", \"ex_002\"\],\s*\)",
+        text,
+    ), f"{rel}: get_example_scores must be awaited with the SDK parameter names"
+    assert "quality = await client.get_dataset_quality(experiment_run_id=run_id)" in text, (
+        f"{rel}: get_dataset_quality must be awaited with the SDK parameter name"
+    )
+    assert not re.search(r"(?m)^\s*job = client\.compute_scores\(", text), (
+        f"{rel}: do not teach the old sync compute_scores call"
+    )
+    assert "client.close()" not in text, (
+        f"{rel}: async context manager should close ExampleInsightsClient"
     )
 
 

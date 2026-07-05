@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.15"
 ---
 
 # Traigent Quickstart
@@ -272,6 +272,20 @@ For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offlin
 > export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"     # optional: cloud is already the default
 > ```
 
+### Key Hygiene — Reference Names, Never Values
+
+Observed across multiple coding-agent CLI families (Codex, Claude, Gemini), not one tool's quirk —
+treat every rule below as universal regardless of which agent is driving the session.
+
+- **Never print, echo, or log a key value.** `echo $TRAIGENT_API_KEY`, a bare `env`/`printenv`
+  dump, and `set -x`/`bash -x` wrapped around any key-touching command are all leaks — each writes
+  the raw secret to stdout, which most agent harnesses capture into the visible transcript and
+  often into a log file too.
+- **Reference keys only by env-var name** (`TRAIGENT_API_KEY`, `OPENAI_API_KEY`, ...) in commands,
+  code, and chat — never paste or reconstruct the value itself.
+- **Treat transcripts and logs as shareable artifacts.** Assume anything printed to the terminal
+  or written to a log may be read, copied, or shared later; keep secrets out of both.
+
 ## Environment Setup
 
 ### Development Mode (Recommended for Getting Started)
@@ -517,7 +531,7 @@ results = classify_query.optimize_sync(max_trials=6)  # uses the offline random 
 3. **`func.optimize(max_trials=N)`** -- Run the optimization loop asynchronously. Returns an `OptimizationResult`.
 4. **`func.apply_best_config(results)`** -- Lock in the best configuration found so that subsequent calls use it.
 
-> **You've run your first optimization — now make it robust.** The decorator above is intentionally a *local dry-run* recipe: a small `model` + `temperature` space, `algorithm="random"`, and `offline=True`. For a real optimization, graduate to the more robust **`traigent-setup-decorator`** skill — custom evaluators / `metric_functions`, injection mode, execution policy, and weighted objectives — then launch with **`traigent-optimize-run`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`"grid"`/`"random"` today — named smart algorithms like `bayesian`/`optuna` are roadmap, not yet executable), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
+> **You've run your first optimization — now make it robust.** The decorator above is intentionally a *local dry-run* recipe: a small `model` + `temperature` space, `algorithm="random"`, and `offline=True`. For a real optimization, graduate to the more robust **`traigent-setup-decorator`** skill — custom evaluators / `metric_functions`, injection mode, execution policy, and weighted objectives — then launch with **`traigent-optimize-run`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`"auto"` for connected real runs; `"grid"`/`"random"` for explicit local/offline search; named smart selectors like `bayesian`/`optuna` are roadmap, not executable end-to-end), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
 
 ## Dataset Format
 
@@ -602,7 +616,7 @@ traigent onboard         # guided first-run setup wizard
 - **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
 - **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-optimize-run` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-optimize-config-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
-- **Choose an optimization algorithm** -- Run `traigent algorithms` to see available options. `"grid"` and `"random"` run locally today; `"bayesian"` and `"optuna"` validate as known names but are not yet executable, locally or in the Traigent cloud.
+- **Choose an optimization algorithm** -- For connected real runs, omit `algorithm` or use `"auto"`; use `"grid"`/`"random"` for explicit local/offline search. `traigent algorithms` on SDK 0.20.0 lists local/runtime registry names and may omit `auto` and named smart selectors (Traigent/Traigent#1751), so do not treat that CLI output as the complete public selector contract. `"bayesian"` and `"optuna"` validate as known names but are not executable end-to-end as selector names yet (Traigent/Traigent#1752).
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.
 - **Use framework integrations** -- Install `traigent[integrations]` for LangChain, OpenAI, and Anthropic adapters.
 - **Verify model IDs before a real run** -- Catalogs change; run `traigent models --provider <p> --check <id>` (or query the provider's live catalog) so a delisted/renamed ID doesn't cause a 404 or a degraded, unpriced trial. See `traigent-setup-integrations`.

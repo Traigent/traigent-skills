@@ -4,7 +4,7 @@ description: "Build Traigent evaluators and scoring code. Use when wiring eval_d
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.7"
+  version: "1.0.8"
 ---
 
 # Traigent Build Evaluator
@@ -309,6 +309,10 @@ If the optimized function returns `(output, metrics)`, make sure the custom scor
 - Keep the production function returning the plain output, and collect extra metrics inside `custom_evaluator`.
 - If returning `(output, metrics)`, unwrap before string comparison, JSON parsing, or label matching.
 - Do not reuse a metric name for both tuple-returned metrics and evaluator-computed metrics.
+
+## Known pitfall: arbitrary gold ordering caps accuracy
+
+When a deterministic scorer compares structured outputs against a gold whose internal ordering is arbitrary (SQL projection columns, JSON object keys, set-valued answers), decide the order policy explicitly and write it in the evaluator docstring. If the gold's ordering is arbitrary and the comparator is positional, correct answers score 0 and impose a hard accuracy ceiling that no configuration can cross — the optimizer then ranks knobs by their accidental effect on ordering. Policy for SQL execution match (the Spider test-suite convention): row order significant only when gold has `ORDER BY`; column order never significant (compare under column permutations); column count must match. Audit signal: an example that fails in 100% of trials across all configs is a metric-artifact suspect — re-check its gold and your order policy before blaming the model.
 
 ## Claim scope
 

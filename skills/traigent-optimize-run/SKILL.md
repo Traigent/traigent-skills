@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.7"
+  version: "1.0.10"
 ---
 
 # Running Traigent Optimization
@@ -14,7 +14,7 @@ metadata:
 Use this skill after you have decorated a function with `@traigent.optimize()` and need to:
 
 - Run optimization (async or sync)
-- Choose an algorithm (`auto`, `grid`, `random` today — `bayesian`/`optuna`/`tpe`/`cmaes`/`nsga2` are roadmap names, not yet executable locally or in the cloud)
+- Choose an algorithm (`auto` for connected real runs; `grid`/`random` for explicit local/offline search; `bayesian`/`optuna`/`tpe`/`cmaes`/`nsga2` are roadmap names, not executable end-to-end as named selectors)
 - Set trial limits, timeouts, or cost budgets
 - Configure parallel trial execution
 - Handle cost limit exceptions
@@ -26,7 +26,14 @@ Default: at least one objective labeled `accuracy` (built-in objective or your `
 
 ## Async Execution
 
-The primary way to run optimization. Returns an `OptimizationResult`.
+The primary way to run optimization. Returns an `OptimizationResult`. Import the result type
+directly — don't guess the path:
+
+```python
+from traigent.api.types import OptimizationResult  # equivalently: traigent.OptimizationResult
+```
+
+See `traigent-analyze-results` for the full field reference.
 
 > **Dry-run first.** Before a real (paid) run, always validate in mock mode and present a cost estimate to the user. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
 >
@@ -47,6 +54,24 @@ The primary way to run optimization. Returns an `OptimizationResult`.
 > degraded, unpriced trial that wastes the run. Preflight with
 > `traigent models --provider <p> --check <id>` (or the provider's live catalog endpoint). See
 > the `traigent-setup-integrations` skill for multi-provider verification.
+
+<!-- PROTECTED -->
+> **Never mock the real run.** Mock/offline mode (`enable_mock_mode_for_quickstart()`,
+> `TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`) is for the DRY RUN only — never the run you're
+> about to bill, score, or report as real. The mock LLM returns a constant response and near-zero
+> cost, and that signature silently produces garbage scores if it leaks into what was supposed to
+> be a real paid run. Before treating any run as real, verify it actually was:
+>
+> - `results.total_cost` must be a positive number. Mock runs cost ~0.
+> - Per-trial outputs must vary. A constant mock response collapses every trial to the same,
+>   uniform score.
+>
+> If a "real" run shows this signature (cost ~0, constant outputs, uniform scores), it was **not**
+> real — do not report those numbers. Check that mock mode wasn't left enabled
+> (`enable_mock_mode_for_quickstart()` sets process-local state that survives inside a long-lived
+> interpreter/notebook — start a fresh interpreter for the real run) and that `TRAIGENT_MOCK_LLM` /
+> `TRAIGENT_OFFLINE_MODE` are unset in the environment, then rerun.
+<!-- /PROTECTED -->
 
 ```python
 import traigent
@@ -137,15 +162,15 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 ### Smart Algorithms (Bayesian / Optuna / TPE / CMA-ES / NSGA-II) — Not Yet Executable
 
-> **Not currently executable, locally or in the cloud** (verified against SDK 0.18.x). `algorithm="bayesian"`, `"optuna"`, `"tpe"`, `"cmaes"`, `"nsga2"`, and the other Optuna-family names validate as known names but do not run trials today — every path fails before any trial starts, with a clear error. With `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*); online without cloud credentials the run raises `ConfigurationError` (*"Cloud execution is required, but backend session creation failed"*); and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). Connecting to the Traigent cloud does not unlock them either — the backend's current session dispatcher also only executes `grid`/`random` and rejects the rest. Treat these names as roadmap, not selectable values.
+> **Named smart selectors are not currently executable end-to-end** (restamped against SDK 0.20.0). `algorithm="bayesian"`, `"optuna"`, `"tpe"`, `"cmaes"`, `"nsga2"`, and the other Optuna-family names validate as known names but do not run trials today. With `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*), and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). In connected typed-session runs, the SDK does not execute or transmit the named selector before it self-aborts ahead of backend guidance (Traigent/Traigent#1752); the backend would reject the name if it arrived. The connected smart path that does run real cloud Optuna TPE is `algorithm="auto"` (the default). Treat the named selectors as roadmap, not selectable values.
 
 ```python
 # Do NOT teach this as runnable — fails before any trial runs
 # (ConfigurationError/OptimizationError depending on path):
 # results = await func.optimize(max_trials=30, algorithm="bayesian")
 
-# Use local search instead:
-results = await func.optimize(max_trials=30, algorithm="random")
+# Use the connected smart path instead:
+results = await func.optimize(max_trials=30, algorithm="auto")
 ```
 
 ### Quick Comparison
@@ -382,6 +407,13 @@ print(len(results.failed_trials))      # 1
 ### Applying the Best Config
 
 After optimization, `func.apply_best_config(results)` locks in the winning configuration: subsequent calls to `func` use it automatically, `traigent.get_config()` inside the function returns it, and `func.current_config` exposes it from outside. Verify `results.best_score` against a threshold before applying — see `traigent-analyze-results` → Applying Best Config for the lifecycle table and the safety check.
+
+### Confirm a Portal-Tracked Run Actually Synced
+
+After a non-offline run, check `results.metadata.get("persistence_status")`: if it's `"failed"`,
+the backend finalize failed after retries and the portal session may be stuck `RUNNING` — re-check
+the portal, don't assume the run synced. Full detail: `traigent-analyze-results` → "Verify the Run
+Actually Persisted".
 
 ## Complete Example
 
