@@ -663,6 +663,58 @@ def test_next_run_skill_stays_service_decided_thin_client(repo_root: Path) -> No
     )
 
 
+def test_next_steps_protocol_uses_portable_backend_url_flag(repo_root: Path) -> None:
+    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    rel = path.relative_to(repo_root).as_posix()
+
+    assert "traigent next-steps RUN_ID --backend-url <url> --json" in text, (
+        f"{rel}: Mode B must show the backend URL flag on the next-steps command"
+    )
+    assert "`TRAIGENT_BACKEND_URL` must be set" not in text, (
+        f"{rel}: next-steps docs must not teach env-var-only setup as mandatory"
+    )
+    assert "if `TRAIGENT_BACKEND_URL` is not set" not in text, (
+        f"{rel}: --backend-url is not just a fallback for unset env vars"
+    )
+    assert "connection-refused" not in text.lower(), (
+        f"{rel}: do not predict the old default failure mode"
+    )
+
+
+def test_dataset_example_insights_snippet_uses_async_sdk_contract(
+    repo_root: Path,
+) -> None:
+    path = repo_root / "skills" / "traigent-dataset-curate" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    rel = path.relative_to(repo_root).as_posix()
+
+    assert "async with ExampleInsightsClient(" in text, (
+        f"{rel}: ExampleInsightsClient snippet must use the async context manager"
+    )
+    assert "job = await client.compute_scores(experiment_run_id=run_id)" in text, (
+        f"{rel}: compute_scores must be awaited with the SDK parameter name"
+    )
+    assert "status = await client.get_job_status(job_id=job[\"job_id\"])" in text, (
+        f"{rel}: get_job_status must be awaited with the SDK parameter name"
+    )
+    assert re.search(
+        r"scores = await client\.get_example_scores\(\s*"
+        r"experiment_run_id=run_id,\s*"
+        r"example_ids=\[\"ex_001\", \"ex_002\"\],\s*\)",
+        text,
+    ), f"{rel}: get_example_scores must be awaited with the SDK parameter names"
+    assert "quality = await client.get_dataset_quality(experiment_run_id=run_id)" in text, (
+        f"{rel}: get_dataset_quality must be awaited with the SDK parameter name"
+    )
+    assert not re.search(r"(?m)^\s*job = client\.compute_scores\(", text), (
+        f"{rel}: do not teach the old sync compute_scores call"
+    )
+    assert "client.close()" not in text, (
+        f"{rel}: async context manager should close ExampleInsightsClient"
+    )
+
+
 def test_optimize_lints_have_teeth(tmp_path: Path) -> None:
     """Self-test: the lints must flag known-bad teaching and pass known-good."""
     bad = tmp_path / "skills" / "bad" / "SKILL.md"

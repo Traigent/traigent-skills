@@ -175,13 +175,16 @@ fresh recommendation.
 
 ### Protocol
 
-> **`TRAIGENT_BACKEND_URL` must be set before any `traigent next-steps` call.** The CLI
-> defaults to `http://localhost:5000`; without the env var or the `--backend-url` flag
-> pointing to the cloud/dev endpoint, the command fails with a connection-refused error.
+> For the most portable `traigent next-steps` invocation, pass the backend URL on
+> the command itself. Older `next-steps` CLI builds ignored `TRAIGENT_BACKEND_URL`;
+> newer builds also read `TRAIGENT_BACKEND_URL` / `TRAIGENT_API_URL` and stored
+> CLI credentials, but `--backend-url` works across both paths. Without a cloud/dev
+> backend, the command falls back to `http://localhost:5000` and fails before it
+> can fetch a service payload.
 >
 > ```bash
-> export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"   # or pass --backend-url <url>
 > export TRAIGENT_API_KEY="uk_..."
+> traigent next-steps RUN_ID --backend-url "https://portal.traigent.ai" --json
 > ```
 
 1. Collect the completed run id and the portal `View` link.
@@ -192,8 +195,10 @@ fresh recommendation.
    results = await my_func.optimize(max_trials=10)
    run_id = results.experiment_run_id   # available directly; pass this to next-steps
    ```
-2. Fetch next steps with `traigent next-steps RUN_ID --json` (add `--backend-url <url>`
-   if `TRAIGENT_BACKEND_URL` is not set).
+2. Fetch next steps with `traigent next-steps RUN_ID --backend-url <url> --json`.
+   If `traigent next-steps --help` lists `(env: TRAIGENT_BACKEND_URL / TRAIGENT_API_URL)`,
+   an env-var-only call is also valid for that SDK, but keep the explicit flag in
+   portable docs and scripts.
 3. Present the returned payload without re-ranking it:
    - `posture.summary_text`, when present (show this first),
    - `posture.generated_at`, when present,
