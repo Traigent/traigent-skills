@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "833e433d3fbe83dd",
+  "doc_hash": "4d7e0e3498961979",
   "entries": [
     {
       "edit_id": "genesis",
@@ -18,6 +18,17 @@
       "run_id": null,
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "sim-findings-never-mock-pointer-2026-07-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-05T00:00:00Z",
+      "doc_before_hash": "833e433d3fbe83dd",
+      "doc_after_hash": "4d7e0e3498961979",
+      "note": "add a short Fast Path Step 5 pointer to traigent-optimize-run's never-mock-the-real-run doctrine (round 2 of sim-testbed findings, 20-cell wave)",
       "source_type": "human"
     }
   ]

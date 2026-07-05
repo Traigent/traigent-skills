@@ -128,12 +128,12 @@ done
 ### Using with Codex CLI
 
 Codex CLI also does not auto-load a skills directory the way Claude Code does — it only reads
-`AGENTS.md`. If you mount these skills into a project (e.g. copied to
-`.github/skills/<name>/SKILL.md`), add a pointer line so Codex actually opens them before it acts:
-
-```text
-Operating guides for Traigent work live in .github/skills/<name>/SKILL.md — consult them before optimization tasks.
-```
+`AGENTS.md`. In a 20-cell simulation wave, 7 of 7 Codex agents ignored mounted skills for exactly
+this reason. If you mount these skills into a project (e.g. copied to
+`.github/skills/<name>/SKILL.md`), copy the ready-made stanza from
+[`templates/AGENTS.md.example`](templates/AGENTS.md.example) into your project's `AGENTS.md` — it
+points Codex at the mounted skill files and states the two most load-bearing rules (dry-run first
+with offline mode; never mock the real run) inline, so they hold even before Codex opens a skill.
 
 ## How skills work
 

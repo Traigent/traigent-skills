@@ -4,7 +4,7 @@ description: "Add Traigent safety and promotion gates to CI. Use when users ask 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # CI Safety Gate
@@ -102,7 +102,9 @@ EFFICIENCY: assert `results.total_cost` and latency metrics remain within budget
 ### Key Hygiene in CI
 
 CI logs are shareable artifacts — visible to every collaborator with repo access and often
-retained for months. The same leaks apply here, at a larger blast radius:
+retained for months. The same leaks apply here, at a larger blast radius, and have been observed
+across multiple coding-agent CLI families (Codex, Claude, Gemini) authoring the workflow — this is
+a universal agent failure mode, not one CLI's quirk:
 
 - **Never print, echo, or log a key value** in a workflow step. `echo $TRAIGENT_API_KEY`, an
   `env`/`printenv` dump, and `set -x` wrapped around a key-touching step all write the raw secret

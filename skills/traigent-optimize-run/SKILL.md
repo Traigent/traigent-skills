@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.8"
+  version: "1.0.9"
 ---
 
 # Running Traigent Optimization
@@ -54,6 +54,24 @@ See `traigent-analyze-results` for the full field reference.
 > degraded, unpriced trial that wastes the run. Preflight with
 > `traigent models --provider <p> --check <id>` (or the provider's live catalog endpoint). See
 > the `traigent-setup-integrations` skill for multi-provider verification.
+
+<!-- PROTECTED -->
+> **Never mock the real run.** Mock/offline mode (`enable_mock_mode_for_quickstart()`,
+> `TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`) is for the DRY RUN only — never the run you're
+> about to bill, score, or report as real. The mock LLM returns a constant response and near-zero
+> cost, and that signature silently produces garbage scores if it leaks into what was supposed to
+> be a real paid run. Before treating any run as real, verify it actually was:
+>
+> - `results.total_cost` must be a positive number. Mock runs cost ~0.
+> - Per-trial outputs must vary. A constant mock response collapses every trial to the same,
+>   uniform score.
+>
+> If a "real" run shows this signature (cost ~0, constant outputs, uniform scores), it was **not**
+> real — do not report those numbers. Check that mock mode wasn't left enabled
+> (`enable_mock_mode_for_quickstart()` sets process-local state that survives inside a long-lived
+> interpreter/notebook — start a fresh interpreter for the real run) and that `TRAIGENT_MOCK_LLM` /
+> `TRAIGENT_OFFLINE_MODE` are unset in the environment, then rerun.
+<!-- /PROTECTED -->
 
 ```python
 import traigent
