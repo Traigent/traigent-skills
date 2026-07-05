@@ -4,7 +4,7 @@ description: "End-to-end lifecycle playbook — from a single decorated function
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.1.3"
+  version: "2.1.4"
 ---
 
 # Traigent Boost Agent
@@ -225,20 +225,25 @@ os.environ["TRAIGENT_RUN_COST_LIMIT"] = "2.00"
 os.environ["TRAIGENT_COST_APPROVED"] = "true"
 ```
 
-> **Smart algorithms are not yet executable.** `bayesian` (and the rest of the Optuna/Bayesian
-> family, incl. `tpe`/`cmaes`/`nsga2`) validate as known names but fail before any trial runs —
-> without `TRAIGENT_API_KEY` the run raises `ConfigurationError` (*"Cloud execution is required,
-> but backend session creation failed"*), and even when connected to the Traigent cloud the
-> current backend session dispatcher only executes `grid`/`random` (verified against SDK
-> 0.18.x). For a real run today, use `algorithm="grid"` or `algorithm="random"`.
+> **Algorithm selector.** For connected real runs, omit `algorithm` or use `algorithm="auto"`.
+> In SDK 0.20.0, `auto` is the reliable connected path to real cloud Optuna TPE. Use
+> `algorithm="grid"` / `"random"` only for explicit local/offline search.
+>
+> **Named smart selectors are not yet executable end-to-end.** `bayesian` (and the rest of
+> the Optuna/Bayesian family, incl. `tpe`/`cmaes`/`nsga2`) validate as known names but fail
+> before any trial runs. With `offline=True`, the decorator raises `ConfigurationError`;
+> the local optimizer registry raises `OptimizationError`. In connected SDK 0.20.0 runs,
+> the SDK does not execute or transmit the named selector on the default typed path and
+> self-aborts before backend guidance (Traigent/Traigent#1752); the backend would reject
+> the name if it arrived. Use `auto` for connected smart optimization.
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    # Use "grid"/"random" — smart algorithms like "bayesian" are roadmap and
-    # fail before any trial runs, whether or not TRAIGENT_API_KEY is set.
-    results = my_function.optimize_sync(max_trials=10, algorithm="random")
+    # Connected real run: omit algorithm or use "auto". Smart selector names
+    # like "bayesian" are roadmap and fail before any trial runs.
+    results = my_function.optimize_sync(max_trials=10, algorithm="auto")
 except CostLimitExceeded as e:
     print(f"Budget hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
     print("Increase TRAIGENT_RUN_COST_LIMIT to allow more spending.")

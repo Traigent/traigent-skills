@@ -4,7 +4,7 @@ description: "Configure the @traigent.optimize() decorator with evaluation, inje
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.8"
+  version: "1.0.9"
 ---
 
 # Traigent Decorator Setup
@@ -310,7 +310,7 @@ def my_func(query: str) -> str:
 |---|---|
 | `algorithm="auto"` (default) | Traigent cloud smart optimizer proposes trials; your agent/LLM calls run in your environment. Results sync to the portal. |
 | `algorithm="grid"` / `"random"` | Local search in the SDK. Results still sync to the portal unless `offline=True`. |
-| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/`"cmaes"`/`"nsga2"` | **Not yet executable** — roadmap names. They validate but fail before any trial runs: `ConfigurationError` with `offline=True` or without cloud credentials, and the current backend session dispatcher rejects them too (verified against SDK 0.18.x). Use `"grid"` or `"random"` today. |
+| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/`"cmaes"`/`"nsga2"` | **Not yet executable end-to-end** — roadmap names. They validate but fail before any trial runs: `ConfigurationError` with `offline=True`, `OptimizationError` from the local registry, and connected typed-session self-abort before backend guidance because the SDK does not execute/transmit the named selector (Traigent/Traigent#1752). Use `"auto"` for connected smart optimization; use `"grid"`/`"random"` only for explicit local/offline search. |
 | `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
 
 The synced path sends configuration IDs and numeric metrics for portal result history, not
