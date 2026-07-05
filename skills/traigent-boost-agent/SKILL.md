@@ -4,7 +4,7 @@ description: "End-to-end lifecycle playbook — from a single decorated function
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.1.2"
+  version: "2.1.3"
 ---
 
 # Traigent Boost Agent
@@ -258,6 +258,11 @@ else:
 print(f"Duration:     {results.duration:.1f}s")
 print(f"Stop reason:  {results.stop_reason}")
 ```
+
+> **Never mock the real run.** Before reporting these numbers, confirm this wasn't a mock/offline
+> run in disguise — `total_cost` should be positive and per-trial outputs should vary, not the
+> mock's constant response / uniform scores. See `traigent-optimize-run` → "Never mock the real
+> run" for the full check and recovery steps.
 
 For algorithm choices, parallel execution, and further cost-limit controls, cross-reference `traigent-optimize-run`; for interpreting `OptimizationResult` beyond this snippet, cross-reference `traigent-analyze-results`. Do not promote the winner straight into production: export it as a candidate, check it on a held-out slice (see `traigent-ci-safety-gate` for the promotion gate and CI checks), and apply only after the gate and the user's explicit approval:
 

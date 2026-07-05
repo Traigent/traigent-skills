@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.13"
+  version: "1.0.14"
 ---
 
 # Traigent Quickstart
@@ -273,6 +273,9 @@ For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offlin
 > ```
 
 ### Key Hygiene — Reference Names, Never Values
+
+Observed across multiple coding-agent CLI families (Codex, Claude, Gemini), not one tool's quirk —
+treat every rule below as universal regardless of which agent is driving the session.
 
 - **Never print, echo, or log a key value.** `echo $TRAIGENT_API_KEY`, a bare `env`/`printenv`
   dump, and `set -x`/`bash -x` wrapped around any key-touching command are all leaks — each writes

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "70e6157794404a2f",
+  "doc_hash": "aecaeb37a7a929f5",
   "entries": [
     {
       "edit_id": "genesis",
@@ -29,6 +29,17 @@
       "doc_before_hash": "68411a5fa6a79297",
       "doc_after_hash": "70e6157794404a2f",
       "note": "teach the real OptimizationResult import path (traigent.api.types) and a short persistence_status pointer to traigent-analyze-results",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "sim-findings-never-mock-real-run-2026-07-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-05T00:00:00Z",
+      "doc_before_hash": "70e6157794404a2f",
+      "doc_after_hash": "aecaeb37a7a929f5",
+      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) — 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
       "source_type": "human"
     }
   ]

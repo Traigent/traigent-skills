@@ -1,0 +1,27 @@
+# Traigent (Codex CLI)
+
+Codex CLI does not auto-discover a skills directory the way Claude Code does — it only reads
+`AGENTS.md`. Copy the stanza below into your project's `AGENTS.md` (append if the file already
+exists) after mounting the skills at `.github/skills/<name>/SKILL.md`, so Codex actually opens
+them before it acts on any Traigent task.
+
+---
+
+## Traigent
+
+Operating guides for Traigent work live in `.github/skills/<name>/SKILL.md` — consult the
+relevant one before any optimization task (setup, dataset curation, running an optimization,
+analyzing results, gating a promotion, etc.).
+
+Two rules are load-bearing and apply even if you don't open a skill file first:
+
+1. **Dry-run first, offline.** Before any paid run, validate the full pipeline in mock mode
+   (`enable_mock_mode_for_quickstart()`, optionally with `TRAIGENT_OFFLINE_MODE=true` for a fully
+   local check) and get explicit user approval on the cost estimate before running for real. See
+   `.github/skills/traigent-setup-quickstart/SKILL.md`.
+2. **Never mock the real run.** Mock mode is process-local and can survive into what should be a
+   real run. Before treating any run as real, verify `results.total_cost` is positive and
+   per-trial outputs vary — a mock run costs ~0 and returns a constant response (uniform scores).
+   If you see that signature, the run was not real: start a fresh interpreter, unset
+   `TRAIGENT_MOCK_LLM`/`TRAIGENT_OFFLINE_MODE`, and rerun. See
+   `.github/skills/traigent-optimize-run/SKILL.md` → "Never mock the real run".
