@@ -280,10 +280,11 @@ def main() -> int:
         # showing the permutation count + budget and getting an explicit go.
         os.environ["TRAIGENT_COST_APPROVED"] = "true"
         os.environ["TRAIGENT_OFFLINE_MODE"] = "false"
-        # offline=False -> online/cloud, portal-tracked. "bayesian"/"tpe"/"optuna"
-        # validate as known names but fail before any trial runs (clear SDK
-        # error, verified against SDK 0.18.x) — use "random".
-        offline, algorithm = False, "random"
+        # offline=False -> online/cloud, portal-tracked. Omit algorithm or use
+        # "auto"; in SDK 0.20.0 this is the reliable connected path to real
+        # cloud Optuna TPE. "bayesian"/"tpe"/"optuna" validate as known names
+        # but do not execute end-to-end yet (Traigent/Traigent#1752).
+        offline, algorithm = False, "auto"
 
     decorated = traigent.optimize(
         configuration_space=CONFIG_SPACE,

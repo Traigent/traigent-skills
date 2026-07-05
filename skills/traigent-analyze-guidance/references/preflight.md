@@ -26,22 +26,25 @@ alongside the composite score.
 ## Algorithm prerequisites
 
 Named smart algorithms (`algorithm="bayesian"`/`"tpe"`/`"optuna"`/`"cmaes"`/`"nsga2"`)
-are **not yet executable** -- they validate as known names but fail before any
-trial runs (the SDK raises a clear error), and the current backend session
-dispatcher also only executes `grid`/`random` and rejects the rest (verified
-against SDK 0.18.x). Use `algorithm="grid"` or `algorithm="random"` today; a
-clean Python 3.11/3.12 environment is still recommended either way.
+are **not yet executable end-to-end** as named selectors (SDK 0.20.0). They
+validate as known names but fail before any trial runs: `offline=True` raises
+`ConfigurationError`, the local registry raises `OptimizationError`, and
+connected typed runs self-abort before backend guidance because the SDK does
+not execute/transmit the named selector (Traigent/Traigent#1752). Use
+`algorithm="auto"` for connected real runs; use `algorithm="grid"` or
+`algorithm="random"` only for explicit local/offline search. A clean Python
+3.11/3.12 environment is still recommended either way.
 
 ## Execution selector and portal tracking
 
 **Current SDK contract:** the selector is `ExecutionOptions(offline=...)` + the
-`algorithm` arg. Legacy selector names are gone. Default to
-**`offline=False`** (online) with `algorithm="grid"`/`"random"`/`"auto"`: trials
+`algorithm` arg. Legacy selector names are gone. Default connected real runs to
+**`offline=False`** (online) with `algorithm="auto"` (or omit `algorithm`): trials
 run with portal tracking while the agent and data stay local (only configs +
 numeric scores leave the machine). Named smart algorithms (`bayesian`/`tpe`/`optuna`)
-do **not** currently run -- do not select them expecting cloud execution. Use
-**`offline=True`** for a local, zero-egress run (grid/random only) ONLY when
-explicitly chosen; never switch silently. After a run, **confirm the experiment
+do **not** currently run as selector names -- do not select them expecting cloud
+execution. Use **`offline=True`** for a local, zero-egress run (grid/random only)
+ONLY when explicitly chosen; never switch silently. After a run, **confirm the experiment
 appears in the portal with its trials**. If it doesn't show up, it's likely a
 temporary connectivity issue -- **retry the run** and confirm the printed `View`
 link populates. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
