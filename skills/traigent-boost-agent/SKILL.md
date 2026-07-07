@@ -4,7 +4,7 @@ description: "End-to-end lifecycle playbook — from a single decorated function
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.1.4"
+  version: "2.1.5"
 ---
 
 # Traigent Boost Agent
@@ -304,6 +304,7 @@ answer = my_function("What is Python?")
 
 2. CURATE the evaluation dataset.
    - Start from existing fixtures, golden sets, accepted traces, support tickets, or redacted logs before synthesizing new examples.
+   - Reserve the holdout slice BEFORE the first optimization run and record the partition (tuning slice / optional exemplar bank / holdout slice); if none exists yet, create one before any result counts as promotion-ready.
    - Keep tuning and holdout slices separate, stratify by known input classes, and report sample count, source, label quality, and exclusions.
    - Use JSONL with scoreable `input` and `output` fields when a built-in evaluator can score the task.
    - Mock/offline-check a tiny slice before any backend generation or paid provider work.

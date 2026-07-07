@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.15"
+  version: "1.0.16"
 ---
 
 # Traigent Quickstart
@@ -563,6 +563,7 @@ You can include additional fields for metadata, but `input` and `output` are req
 - Include at least 10-20 examples for meaningful optimization.
 - Cover edge cases and diverse inputs.
 - Ensure ground-truth `output` values are consistent and well-defined.
+- Reserve a holdout slice before tuning; never tune and validate on the same rows.
 - For evaluation dataset creation beyond this minimal JSONL, use `traigent-dataset-curate`.
 
 ## Verify Installation

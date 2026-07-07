@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.10"
+  version: "1.1.11"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -545,6 +545,8 @@ else:
     print(f"Score {results.best_score} below threshold, not applying")
     # Use a known-good default instead
 ```
+
+This threshold check runs on the optimization/search slice — it gates whether to apply, not whether to promote. Promotion is a separate decision that requires candidate-vs-incumbent evaluation on the holdout slice (see `traigent-ci-safety-gate`).
 
 ## Optimization History
 

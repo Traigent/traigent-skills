@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.10"
+  version: "1.0.11"
 ---
 
 # Running Traigent Optimization
@@ -406,7 +406,7 @@ print(len(results.failed_trials))      # 1
 
 ### Applying the Best Config
 
-After optimization, `func.apply_best_config(results)` locks in the winning configuration: subsequent calls to `func` use it automatically, `traigent.get_config()` inside the function returns it, and `func.current_config` exposes it from outside. Verify `results.best_score` against a threshold before applying — see `traigent-analyze-results` → Applying Best Config for the lifecycle table and the safety check.
+After optimization, `func.apply_best_config(results)` locks in the winning configuration: subsequent calls to `func` use it automatically, `traigent.get_config()` inside the function returns it, and `func.current_config` exposes it from outside. Verify `results.best_score` against a threshold before applying — see `traigent-analyze-results` → Applying Best Config for the lifecycle table and the safety check. Applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (see `traigent-ci-safety-gate`).
 
 ### Confirm a Portal-Tracked Run Actually Synced
 

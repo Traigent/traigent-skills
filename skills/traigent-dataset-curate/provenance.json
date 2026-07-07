@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0ad5c6a7036490e6",
+  "doc_hash": "f5481ef2791c45ef",
   "entries": [
     {
       "edit_id": "genesis",
@@ -18,6 +18,17 @@
       "run_id": null,
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "holdout-partition-promotion-guidance-2026-07-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-07T00:00:00Z",
+      "doc_before_hash": "0ad5c6a7036490e6",
+      "doc_after_hash": "f5481ef2791c45ef",
+      "note": "add partition-record requirement to Holdout rules (reserve before first run; create one if none exists; preserve split across rounds) (Traigent/traigent-smartopt#88, #89)",
       "source_type": "human"
     }
   ]
