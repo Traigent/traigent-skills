@@ -72,7 +72,10 @@ is copied from recorded measures rather than recalled.
 Use the **same** representative eval set across compared runs (a fixed, seeded
 sample), so differences reflect the config, not the data. Draw few-shot exemplars
 from **outside** the testbed. Flag datasets under ~30-50 examples as
-low-confidence.
+low-confidence. Reserve a holdout slice **before** optimization begins and record
+the partition (tuning/search slice, optional exemplar/few-shot bank, holdout
+slice); if none exists, create one before treating any result as promotion-ready,
+and preserve the same split across iteration rounds.
 
 ### P8 -- Score objectively; meter cost and latency for real
 
@@ -113,4 +116,7 @@ group label.
 ### P13 -- Decide from the Pareto frontier, not just the single winner
 
 Pick the frontier point that fits your budget and latency SLA; the "best overall"
-score is one choice among several efficient ones.
+score is one choice among several efficient ones. Search/optimization evidence is
+not promotion evidence: promotion requires evaluating the chosen candidate against
+the incumbent on the holdout slice, not on the search slice the winner was picked
+from.

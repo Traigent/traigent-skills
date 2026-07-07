@@ -4,7 +4,7 @@ description: "What should this Traigent optimization run be, and what next? Thre
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Traigent Analyze Guidance
@@ -72,7 +72,7 @@ Do not embed local planning intelligence in this skill:
 
 1. Gather a short summary from the user or project files:
    - task description and agent entrypoint,
-   - dataset size and holdout split,
+   - dataset size and holdout split — confirm a holdout slice is reserved and disjoint from the tuning slice; if none exists, the plan must say so and create one before optimization begins,
    - objectives the user cares about,
    - budget or maximum spend for the run.
 2. Fetch the plan from the Traigent service:
@@ -242,6 +242,11 @@ fresh recommendation.
   posture summary in this payload. Do not synthesize one from local files.
 - Keep raw examples, traces, and private content local unless the user explicitly
   approves egress.
+- Traigent recommendations (including "compare with baseline before promotion") are
+  advisory, not promotion authorizations. Promotion requires candidate-vs-incumbent
+  evaluation on the holdout slice. If the repo already has a holdout mechanism, present
+  it as that repo's implementation of this general rule, not as something Traigent
+  mandated in that exact form.
 
 ### Handoff Reference
 

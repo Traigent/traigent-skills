@@ -9,6 +9,7 @@ confirmations. It is a capture format, not a source of recommended settings.
 - Agent entrypoint:
 - Dataset size:
 - Holdout split:
+- Dataset partition (tuning slice / optional exemplar bank / holdout slice):
 - Objectives:
 - Budget:
 - Prior run id or portal context:
