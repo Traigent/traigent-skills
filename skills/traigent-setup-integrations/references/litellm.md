@@ -103,7 +103,7 @@ import litellm
             "gemini/gemini-3-flash",
         ],
         "temperature": [0.0, 0.3, 0.7],
-        "max_tokens": [256, 512],
+        "max_tokens": [256, 512, 1024],  # 1024 = reasoning-model headroom (gemini-3-flash) — see note above
     },
     objectives=["accuracy"],
     max_trials=15,

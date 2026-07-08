@@ -4,7 +4,7 @@ description: "Integrate Traigent with LangChain, LiteLLM, DSPy, and other AI fra
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Traigent Framework Integrations
