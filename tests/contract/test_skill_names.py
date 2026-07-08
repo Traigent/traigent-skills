@@ -25,6 +25,10 @@ ALLOWLIST = {
     "traigent-langchain",
     # Sibling repo (traigent-smartopt), referenced by name/URL, not a skill dir.
     "traigent-smartopt",
+    # Sibling repo (Traigent/traigent-first-run, the beginner onboarding
+    # funnel), referenced by name as the field-test source of the OpenRouter
+    # credit preflight; not a skill dir.
+    "traigent-first-run",
     # wandb project string used in traigent-setup-integrations references, not
     # a skill dir.
     "traigent-optimization",

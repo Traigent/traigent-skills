@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.18"
+  version: "1.0.19"
 ---
 
 # Traigent Quickstart
@@ -319,10 +319,20 @@ The previous quickstart docs taught `export TRAIGENT_MOCK_LLM=true`. That env va
 Traigent supports `.env` files via `python-dotenv` (included in the `integrations` extra). Create a `.env` file in your project root:
 
 ```
-TRAIGENT_API_KEY=uk_...   # portal key; use your sk_... key here if you used the CLI device flow
+# Portal key; use your sk_... key here if you used the CLI device flow.
+TRAIGENT_API_KEY=uk_...
 OPENAI_API_KEY=sk-...
 TRAIGENT_DEBUG=1
 ```
+
+> **Keep hints as full-line comments — an *unfilled* key with an inline hint parses as a
+> garbage value.** `python-dotenv` strips a whitespace-separated `# comment` after a real
+> value (`KEY=uk_abc  # hint` → `uk_abc`), but on a **blank** value the stripper never fires:
+> `KEY=   # gpt-* hint` parses to the non-empty string `'# gpt-* hint'`. Every unfilled
+> placeholder line written that way then looks like a *configured* vendor — key-presence
+> detection miscounts, and the SDK/LiteLLM can attempt auth with the garbage value. Leave
+> unfilled keys bare (`KEY=`) and put hints on their own `#` line (as above and in step 1
+> below). Verified against `python-dotenv` 1.2.2.
 
 #### Recommended: have the user paste keys into `.env`, never into the chat
 

@@ -91,3 +91,8 @@ TRAIGENT_API_KEY=sk_...
 OPENAI_API_KEY=sk-...
 TRAIGENT_LOG_LEVEL=DEBUG
 ```
+
+Keep hints as full-line `#` comments. `python-dotenv` strips a whitespace-separated inline
+comment only after a real value; on a blank value (`KEY=   # hint`) the line parses to the
+non-empty string `'# hint'`, so an unfilled placeholder written that way reads as a
+*configured* key and can be sent as a (garbage) credential. Leave unfilled keys bare (`KEY=`).

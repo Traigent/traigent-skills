@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b9ed4f4e52c073c4",
+  "doc_hash": "65f9df98b6701773",
   "reference_hashes": {
     "references/algorithms.md": "be8602fab22668a1",
     "references/cost-management.md": "e298761487ffa598",
@@ -67,6 +67,17 @@
       "doc_before_hash": "2455d55a5f7ca49c",
       "doc_after_hash": "b9ed4f4e52c073c4",
       "note": "warn that local SDK default_config consumes a max_trials slot for grid, random, and auto when it resolves local; connected backend-guided auto does not run it as a baseline today; N-point grids need max_trials >= N+1 unless default_config is omitted",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "interrupted-run-traigent-sync-recovery-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "b9ed4f4e52c073c4",
+      "doc_after_hash": "65f9df98b6701773",
+      "note": "run paid optimizations detached; killed runs keep completed trials in ~/.traigent/sessions/<id>.json and `traigent sync <session_id>` uploads the partial session (killed sessions have no stop_reason so sync --all skips them); field-tested in Traigent/traigent-first-run (GUIDE Step 9), CLI verified in SDK sync_commands.py",
       "source_type": "human"
     }
   ]

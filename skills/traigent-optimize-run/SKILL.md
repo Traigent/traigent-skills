@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # Running Traigent Optimization
@@ -324,6 +324,22 @@ print(f"Stop reason: {results.stop_reason}")
 print(f"Trials completed: {len(results.trials)}")
 print(f"Best score: {results.best_score}")
 ```
+
+### Interrupted runs: completed trials survive — recover with `traigent sync`
+
+A real run can outlive the command timeout of the shell/harness that launched it (ten trials
+× a 25-example dataset with a multi-call knob is easily 5–10+ minutes of sequential LLM
+latency), and killing `optimize_sync` mid-run does not roll back its spend. Run paid
+optimizations as a **detached/background process writing to a log file**, then poll the log —
+never inside a foreground command that can time out.
+
+If a run is killed anyway (verified on SDK 0.20.x): each completed trial was already written
+to `~/.traigent/sessions/<session_id>.json` as it finished, and
+`traigent sync <session_id>` uploads that partial session to the portal after the fact. What
+is actually lost: the in-flight trial's spend, and any example-level logs still buffered
+(flushed every 10 trials). One trap — a killed session gets **no `stop_reason`**, so
+`traigent sync --all` and status listings skip it; pass the explicit `<session_id>` to
+recover it.
 
 ## Parallel Execution
 

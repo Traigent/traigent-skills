@@ -4,7 +4,7 @@ description: "Build Traigent evaluators and scoring code. Use when wiring eval_d
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.8"
+  version: "1.0.9"
 ---
 
 # Traigent Build Evaluator
@@ -309,6 +309,10 @@ If the optimized function returns `(output, metrics)`, make sure the custom scor
 - Keep the production function returning the plain output, and collect extra metrics inside `custom_evaluator`.
 - If returning `(output, metrics)`, unwrap before string comparison, JSON parsing, or label matching.
 - Do not reuse a metric name for both tuple-returned metrics and evaluator-computed metrics.
+
+## Known pitfall: an over-strict metric passes the good/bad gate
+
+A scorer that returns ≈1.0 on the exact gold and ≈0.0 on garbage can still be silently broken: too strict, so a **semantically-correct-but-differently-phrased** answer scores 0. That both caps the reachable accuracy and adds noise (the same right answer scores 0 or 1 depending on surface form), leaving the optimizer no reliable signal — the run then reports "no improvement" for a reason that has nothing to do with the agent. So beyond the known-good/known-bad sanity gate, **probe semantic equivalence before any paid run**: feed the scorer a correct answer written differently from the gold and assert it still scores ≈1.0. Use the equivalence class that fits the output type — SQL / execution match: the same rows with columns in a different order, plus whitespace / casing / quoting variants; labels / text: casing, punctuation, or key-order variants. If any of these scores 0, fix the metric before spending — the ordering pitfall below is the most common concrete instance.
 
 ## Known pitfall: arbitrary gold ordering caps accuracy
 

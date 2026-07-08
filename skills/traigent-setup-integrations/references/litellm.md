@@ -84,6 +84,22 @@ curl -s https://openrouter.ai/api/v1/models | grep -o '"id":"[^"]*"' | sort
 If an ID is missing from the live list, swap it for one that is — do not assume an ID that
 worked last month still resolves today.
 
+**OpenRouter: also check the account has credit — a valid, unfunded key passes every other
+preflight and then fails mid-run.** OpenRouter returns **HTTP 402** on paid models when the
+account balance is $0 (or a free-tier key is used), and each failed trial just scores 0 — the
+run "completes" with the spend silently refused. Before a run, read the key's balance with an
+authenticated GET of the key-info endpoint (a metadata read, never a completion — costs
+nothing):
+
+```bash
+curl -s https://openrouter.ai/api/v1/key -H "Authorization: Bearer $OPENROUTER_API_KEY"
+# 401 → key invalid; "limit_remaining": 0 (with a limit set) or 402s on use → fund the
+# account at https://openrouter.ai/credits; pay-as-you-go keys report "limit": null — fine.
+```
+
+Field-verified in the `traigent-first-run` preflight (check C10): this is the one failure the
+key-presence, model-liveness, and pricing checks all miss.
+
 ## Basic Multi-Provider Example
 
 ```python
