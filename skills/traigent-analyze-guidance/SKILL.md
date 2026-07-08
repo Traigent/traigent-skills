@@ -4,7 +4,7 @@ description: "What should this Traigent optimization run be, and what next? Thre
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Traigent Analyze Guidance
@@ -177,8 +177,9 @@ fresh recommendation.
 
 > For the most portable `traigent next-steps` invocation, pass the backend URL on
 > the command itself. Older `next-steps` CLI builds ignored `TRAIGENT_BACKEND_URL`;
-> newer builds also read `TRAIGENT_BACKEND_URL` / `TRAIGENT_API_URL` and stored
-> CLI credentials, but `--backend-url` works across both paths. Without a cloud/dev
+> current builds read `TRAIGENT_BACKEND_URL` / `TRAIGENT_API_URL`, and since SDK 0.20.0
+> (Traigent/Traigent#1721) they also resolve the URL stored by `traigent auth login`
+> before the localhost fallback — but `--backend-url` works across all paths. Without a cloud/dev
 > backend, the command falls back to `http://localhost:5000` and fails before it
 > can fetch a service payload.
 >

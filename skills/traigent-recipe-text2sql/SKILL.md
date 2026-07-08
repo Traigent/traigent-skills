@@ -4,7 +4,7 @@ description: "End-to-end recipe to optimize a text2SQL agent with Traigent and r
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -168,9 +168,9 @@ decorated = traigent.optimize(
 )(run_agent)
 results = decorated.optimize_sync(max_trials=25, algorithm="auto")  # or: await decorated.optimize(...)
 ```
-- **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. With `offline=False`, omit `algorithm` or use `algorithm="auto"` for the SDK 0.20.0 connected path to real cloud Optuna TPE. Use `"grid"`/`"random"` only for explicit local/offline search; `offline=True` keeps everything local (zero egress), `offline=False` syncs trials to the portal. Named smart selectors (`bayesian`/`tpe`/`optuna`) are **not yet executable end-to-end**: `offline=True` raises `ConfigurationError`, the local registry raises `OptimizationError`, and connected typed runs self-abort before backend guidance because the SDK does not execute/transmit the named selector (Traigent/Traigent#1752).
-- **Mock first (free of LLM spend):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms are not yet executable). **Expect all-zero accuracy in mock**: this recipe scores by execution match, and every mock call returns the same canned text, so uniform 0.0 is the expected mock signature, not a broken pipeline (wiring, sampling, and scoring paths are what the mock validates). Mock also still consumes `optimization_samples` quota.
-- **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, omit `algorithm` or use `algorithm="auto"`; `bayesian`/`tpe`/`optuna` are roadmap names, not selectable real-run values.
+- **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. With `offline=False`, omit `algorithm` or use `algorithm="auto"` for the connected path to real cloud Optuna TPE. Use `"grid"`/`"random"` only for explicit local/offline search; `offline=True` keeps everything local (zero egress), `offline=False` syncs trials to the portal. Named smart selectors: on SDK >= 0.20.1, `bayesian`/`tpe`/`optuna` (and `optuna_tpe`/`optuna_random`) bind to the typed backend Optuna strategy in connected runs (SDK CHANGELOG `[0.20.1]`; Traigent/Traigent#1752/#1758); they never run locally — `offline=True` raises `ConfigurationError` and the local registry raises `OptimizationError` (live-verified on 0.21.0).
+- **Mock first (free of LLM spend):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms never run locally/offline). **Expect all-zero accuracy in mock**: this recipe scores by execution match, and every mock call returns the same canned text, so uniform 0.0 is the expected mock signature, not a broken pipeline (wiring, sampling, and scoring paths are what the mock validates). Mock also still consumes `optimization_samples` quota.
+- **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, omit `algorithm` or use `algorithm="auto"`; on SDK >= 0.20.1 connected runs you may also select `bayesian`/`tpe`/`optuna` by name.
 - **Dataset path:** `eval_dataset` must live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.
 
 ## Runnable example (copy-paste, self-contained)

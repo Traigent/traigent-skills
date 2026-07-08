@@ -4,7 +4,7 @@
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
     "references/parameter-types.md": "6a488987a503401b",
-    "references/structural-spine.md": "9792d63628ceef85"
+    "references/structural-spine.md": "627646bb1e5a6a19"
   },
   "entries": [
     {
@@ -23,6 +23,15 @@
       "run_id": null,
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "smart-selector-restamp-0.20.1-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "note": "restamp references/structural-spine.md operational-checklist item 1 to the SDK 0.20.1+ smart-selector contract (supported names bind to the typed backend Optuna strategy in connected runs; nsga2/cmaes fail fast — Traigent/Traigent#1752/#1758); local-only facts unchanged. reference_hashes updated in the same pass; SKILL.md untouched. Implements skills#190.",
       "source_type": "human"
     }
   ]

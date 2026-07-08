@@ -69,7 +69,7 @@ declares them.
 
 - Requires Python >= 3.11.
 - `faiss-cpu` (in `integrations`) is not available on Windows.
-- Algorithm selection is controlled by `algorithm`, not by extras: omit it or use `auto` for the default connected cloud smart optimizer, or use `grid`/`random` for explicit local search. Named smart selectors such as `bayesian`/`optuna` validate as known names but are **not yet executable end-to-end** in SDK 0.20.0 (Traigent/Traigent#1752) — the `bayesian`/`ml` extras install their dependencies ahead of that roadmap work, not a usable selector today.
+- Algorithm selection is controlled by `algorithm`, not by extras: omit it or use `auto` for the default connected cloud smart optimizer, or use `grid`/`random` for explicit local search. Named smart selectors such as `bayesian`/`optuna` bind to the typed backend Optuna strategy in authenticated connected runs since SDK 0.20.1 (Traigent/Traigent#1752/#1758); they never run locally, so the `bayesian`/`ml` extras install supporting dependencies — they do not enable a local selector.
 - `all` includes user-facing runtime extras only — it does **not** include `dev`, `docs`, `dspy`, `ml`, or `cloud`. Use `enterprise` for ml+cloud, or `recommended` as the primary install.
 - `enterprise` includes `ml` and `cloud` on top of the runtime extras; `dev` and `docs` remain opt-in.
 - The difference between `all` and `enterprise`: `enterprise` adds `ml` and `cloud`; `all` does not include `bayesian` as a top-level extra (it's pulled in transitively by `ml`).

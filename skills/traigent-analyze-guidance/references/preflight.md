@@ -25,14 +25,16 @@ alongside the composite score.
 
 ## Algorithm prerequisites
 
-Named smart algorithms (`algorithm="bayesian"`/`"tpe"`/`"optuna"`/`"cmaes"`/`"nsga2"`)
-are **not yet executable end-to-end** as named selectors (SDK 0.20.0). They
-validate as known names but fail before any trial runs: `offline=True` raises
-`ConfigurationError`, the local registry raises `OptimizationError`, and
-connected typed runs self-abort before backend guidance because the SDK does
-not execute/transmit the named selector (Traigent/Traigent#1752). Use
-`algorithm="auto"` for connected real runs; use `algorithm="grid"` or
-`algorithm="random"` only for explicit local/offline search. A clean Python
+Named smart algorithms are connected-only. On SDK >= 0.20.1,
+`algorithm="bayesian"`/`"tpe"`/`"optuna"`/`"optuna_tpe"`/`"optuna_random"`
+bind to the typed backend Optuna strategy in authenticated connected runs,
+while `"nsga2"`/`"cmaes"` and other family aliases fail fast with a capability
+message (SDK CHANGELOG `[0.20.1]`; Traigent/Traigent#1752/#1758 — on 0.20.0 no
+smart name executed end-to-end). They never run locally: `offline=True` raises
+`ConfigurationError` and the local registry raises `OptimizationError`
+(live-verified on 0.21.0). `algorithm="auto"` remains the zero-config connected
+default; use `algorithm="grid"` or `algorithm="random"` only for explicit
+local/offline search. A clean Python
 3.11/3.12 environment is still recommended either way.
 
 ## Execution selector and portal tracking

@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b9ed4f4e52c073c4",
+  "doc_hash": "ffef8fefc04fb3cb",
   "reference_hashes": {
-    "references/algorithms.md": "be8602fab22668a1",
+    "references/algorithms.md": "fe7cacb83b58f1e8",
     "references/cost-management.md": "e298761487ffa598",
     "references/parallel-config.md": "f0979cbb952b3cf3"
   },
@@ -68,6 +68,16 @@
       "doc_after_hash": "b9ed4f4e52c073c4",
       "note": "warn that local SDK default_config consumes a max_trials slot for grid, random, and auto when it resolves local; connected backend-guided auto does not run it as a baseline today; N-point grids need max_trials >= N+1 unless default_config is omitted",
       "source_type": "human"
+    },
+    {
+      "edit_id": "smart-selector-restamp-0.20.1-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "b9ed4f4e52c073c4",
+      "doc_after_hash": "ffef8fefc04fb3cb",
+      "note": "restamp smart-selector contract against SDK 0.21.0: since 0.20.1 (SDK CHANGELOG [0.20.1], Traigent/Traigent#1752/#1758) bayesian/tpe/optuna/optuna_tpe/optuna_random bind to the typed backend Optuna strategy in authenticated connected runs and nsga2/cmaes fail fast with a capability message; offline ConfigurationError + local-registry OptimizationError unchanged (live-verified on 0.21.0). Updated frontmatter description, When-to-Use bullet, optimize() param table, Smart Algorithms section, and Quick Comparison rows; references/algorithms.md restamped in the same pass. Implements skills#190."
     }
   ]
 }

@@ -4,7 +4,7 @@ description: "End-to-end lifecycle playbook — from a single decorated function
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.1.6"
+  version: "2.1.7"
 ---
 
 # Traigent Boost Agent
@@ -226,23 +226,23 @@ os.environ["TRAIGENT_COST_APPROVED"] = "true"
 ```
 
 > **Algorithm selector.** For connected real runs, omit `algorithm` or use `algorithm="auto"`.
-> In SDK 0.20.0, `auto` is the reliable connected path to real cloud Optuna TPE. Use
+> `auto` is the zero-config connected path to real cloud Optuna TPE. Use
 > `algorithm="grid"` / `"random"` only for explicit local/offline search.
 >
-> **Named smart selectors are not yet executable end-to-end.** `bayesian` (and the rest of
-> the Optuna/Bayesian family, incl. `tpe`/`cmaes`/`nsga2`) validate as known names but fail
-> before any trial runs. With `offline=True`, the decorator raises `ConfigurationError`;
-> the local optimizer registry raises `OptimizationError`. In connected SDK 0.20.0 runs,
-> the SDK does not execute or transmit the named selector on the default typed path and
-> self-aborts before backend guidance (Traigent/Traigent#1752); the backend would reject
-> the name if it arrived. Use `auto` for connected smart optimization.
+> **Named smart selectors bind server-side since SDK 0.20.1.** In authenticated connected
+> runs, `bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random` bind to the typed backend
+> Optuna strategy, while unsupported family aliases such as `nsga2`/`cmaes` fail fast with
+> a capability message (SDK CHANGELOG `[0.20.1]`; Traigent/Traigent#1752/#1758 — on 0.20.0
+> no smart name executed end-to-end). They never run locally: with `offline=True` the
+> decorator raises `ConfigurationError`; the local optimizer registry raises
+> `OptimizationError` (live-verified on 0.21.0). `auto` remains the default smart path.
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    # Connected real run: omit algorithm or use "auto". Smart selector names
-    # like "bayesian" are roadmap and fail before any trial runs.
+    # Connected real run: omit algorithm or use "auto". Named smart selectors
+    # like "bayesian" bind server-side on SDK >= 0.20.1 (never locally/offline).
     results = my_function.optimize_sync(max_trials=10, algorithm="auto")
 except CostLimitExceeded as e:
     print(f"Budget hit: ${e.accumulated:.2f} / ${e.limit:.2f}")

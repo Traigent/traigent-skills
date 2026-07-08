@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f2ba4b00cb917204",
+  "doc_hash": "e5a5e82adfd5ebd3",
   "reference_hashes": {
     "references/evaluation-options.md": "27b7078c7d2d7239",
-    "references/execution-modes.md": "84c441edc91031c1",
+    "references/execution-modes.md": "4d66250fe648970b",
     "references/injection-modes.md": "30b94bf570e66954"
   },
   "entries": [
@@ -24,6 +24,16 @@
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
       "source_type": "human"
+    },
+    {
+      "edit_id": "smart-selector-restamp-0.20.1-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "f2ba4b00cb917204",
+      "doc_after_hash": "e5a5e82adfd5ebd3",
+      "note": "restamp the algorithm row of the execution table: supported smart names bind server-side since SDK 0.20.1 (Traigent/Traigent#1752/#1758), unsupported aliases fail fast; offline/local failure modes unchanged (live-verified on 0.21.0); references/execution-modes.md restamped in the same pass. Implements skills#190."
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Algorithm Reference
 
-Traigent uses `algorithm="auto"` by default for connected real runs and also supports explicit local search algorithms (`"grid"`, `"random"`). Named smart selectors (`"bayesian"`, `"optuna"`, `"tpe"`, `"cmaes"`, `"nsga2"`) validate as known names but are **not yet executable end-to-end** as named selectors (restamped against SDK 0.20.0; see the note below the comparison table). Pass the algorithm name as a string to `optimize()` or `optimize_sync()`.
+Traigent uses `algorithm="auto"` by default for connected real runs and also supports explicit local search algorithms (`"grid"`, `"random"`). On SDK >= 0.20.1, the supported named smart selectors (`"bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"`) **bind to the typed backend Optuna strategy in authenticated connected runs**, while unsupported smart names (`"nsga2"`, `"cmaes"`, and other family aliases) fail fast with a capability message (restamped against SDK 0.21.0; see the note below the comparison table). Pass the algorithm name as a string to `optimize()` or `optimize_sync()`.
 
 ```python
 results = await func.optimize(max_trials=10)  # default algorithm="auto"
@@ -13,10 +13,10 @@ results = await func.optimize(max_trials=10)  # default algorithm="auto"
 | `"auto"` | Traigent cloud smart default | Any | Any | No | **Cloud** | Most users, portal-tracked optimization |
 | `"grid"` | Exhaustive enumeration | Small (< 50 combos) | Must cover full space | Yes | Local SDK search | Complete coverage, reproducibility |
 | `"random"` | Uniform random sampling | Any | Limited (10-50) | No | Local SDK search | Large spaces, quick exploration |
-| `"bayesian"` | Surrogate model guided | — | — | — | **Not executable today** | Roadmap only |
-| `"optuna"` | Advanced TPE sampling | — | — | — | **Not executable today** | Roadmap only |
+| `"bayesian"` | Surrogate model guided (typed backend bind) | Any | Any | No | **Cloud** — connected runs, SDK >= 0.20.1 | Smart search without local tooling |
+| `"optuna"` | Advanced TPE sampling (typed backend bind) | Any | Any | No | **Cloud** — connected runs, SDK >= 0.20.1 | Optuna-style smart search |
 
-> **`"bayesian"`, `"optuna"`, and the other named smart selectors do not execute end-to-end today** (SDK 0.20.0). With `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*), and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). In connected typed-session runs, the SDK does not execute or transmit the named selector before it self-aborts ahead of backend guidance (Traigent/Traigent#1752); the backend would reject the name if it arrived. Use `algorithm="auto"` (or omit `algorithm`) for connected smart optimization; use `"grid"` or `"random"` only for explicit local search. Results sync to the portal for every non-offline run, including local search; `offline=True` is the zero-egress path and does not sync results.
+> **Named smart selectors bind server-side since SDK 0.20.1** (restamped against SDK 0.21.0; connected behavior per SDK CHANGELOG `[0.20.1]`, Traigent/Traigent#1752/#1758 — on 0.20.0 and earlier no smart name executed end-to-end). In an authenticated connected run, the supported names `algorithm="bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, and `"optuna_random"` bind to the typed backend Optuna strategy and are serialized on session creation; unsupported smart names such as `"nsga2"` and `"cmaes"` (and the other family aliases) fail fast before session creation with a capability message. What has NOT changed (live-verified on 0.21.0): with `offline=True` every smart name still raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*), and the SDK's local optimizer registry still executes only `grid`/`random` (`OptimizationError`: *"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). `algorithm="auto"` (the default) remains the zero-config connected smart path; name a selector only when you specifically need that strategy. Results sync to the portal for every non-offline run, including local search; `offline=True` is the zero-egress path and does not sync results.
 
 ## Grid Search
 
@@ -64,7 +64,7 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 - Large configuration spaces where exhaustive search is impractical
 - You have a fixed trial budget and want broad coverage
-- Early exploration phase before a larger `"random"`/`"grid"` budget (smart algorithms are roadmap, not an available next step today)
+- Early exploration phase before a larger `"random"`/`"grid"` budget (or, on SDK >= 0.20.1 connected runs, before graduating to a named smart selector)
 - Parameters have similar importance (no strong interactions)
 
 ### Behavior
@@ -73,9 +73,9 @@ results = await func.optimize(max_trials=20, algorithm="random")
 - Stops when `max_trials` is reached
 - Provides good coverage of high-dimensional spaces with fewer trials than grid
 
-## Bayesian Optimization — Roadmap, Not Yet Executable
+## Bayesian Optimization — Connected Runs on SDK >= 0.20.1
 
-Intended design: a probabilistic surrogate model predicts which configurations are likely to perform well and focuses trials on the most promising regions, with the planner running in the Traigent cloud while your decorated function and LLM calls run in your environment. **The named `algorithm="bayesian"` selector is not available today.** It fails before any trial runs (`ConfigurationError` with `offline=True`; `OptimizationError` from the local optimizer registry). In connected typed-session runs the SDK self-aborts before backend guidance instead of executing or transmitting the selector (Traigent/Traigent#1752). For connected smart optimization, use `algorithm="auto"`.
+Intended design: a probabilistic surrogate model predicts which configurations are likely to perform well and focuses trials on the most promising regions, with the planner running in the Traigent cloud while your decorated function and LLM calls run in your environment. **Since SDK 0.20.1, `algorithm="bayesian"` binds to the typed backend Optuna strategy in authenticated connected runs** (SDK CHANGELOG `[0.20.1]`; Traigent/Traigent#1752/#1758 — on 0.20.0 it self-aborted before backend guidance). It still never runs locally or offline: `ConfigurationError` with `offline=True`; `OptimizationError` from the local optimizer registry (live-verified on 0.21.0). `algorithm="auto"` (the default) remains the zero-config connected smart path.
 
 ```python
 # Do NOT teach this as runnable — fails before any trial runs (clear SDK error):
@@ -87,9 +87,9 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 
 Use `"auto"` for connected real runs over expensive, continuous-parameter spaces; use `"random"` only when you explicitly want local search. Revisit this section once the named smart selectors ship.
 
-## Optuna (Advanced) — Roadmap, Not Yet Executable
+## Optuna (Advanced) — Connected Runs on SDK >= 0.20.1
 
-Intended design: advanced Optuna-style optimization, including pruning, multi-objective optimization, and custom samplers, dispatched to the Traigent cloud. **The named `algorithm="optuna"` decorator/`optimize()` kwarg documented by this skill is not available today.** It fails before any trial runs (`ConfigurationError` with `offline=True`; `OptimizationError` from the local optimizer registry), and connected typed-session runs self-abort before backend guidance instead of executing or transmitting the selector (Traigent/Traigent#1752). The working connected Optuna TPE route is `algorithm="auto"` (the default), which maps to the backend's typed smart path.
+Intended design: advanced Optuna-style optimization, including pruning, multi-objective optimization, and custom samplers, dispatched to the Traigent cloud. **Since SDK 0.20.1, `algorithm="optuna"` (and `"optuna_tpe"`/`"optuna_random"`) binds to the typed backend Optuna strategy in authenticated connected runs** (SDK CHANGELOG `[0.20.1]`; Traigent/Traigent#1752/#1758). It still never runs locally or offline (`ConfigurationError` with `offline=True`; `OptimizationError` from the local registry — live-verified on 0.21.0). `algorithm="auto"` (the default) remains the zero-config connected route to the backend's Optuna TPE path; `"optuna_grid"`/`"optuna_cmaes"`/`"optuna_nsga2"` and `"nsga2"`/`"cmaes"` are unsupported and fail fast with a capability message.
 
 ```python
 # Do NOT teach this as runnable — fails before any trial runs (clear SDK error):
@@ -102,7 +102,7 @@ Intended design: advanced Optuna-style optimization, including pruning, multi-ob
 
 1. **No special constraint?** Omit `algorithm` and use the default `"auto"` cloud smart optimizer.
 2. **Need deterministic local coverage?** Use `"grid"`.
-3. **Need local search with a fixed budget, including large or expensive-trial spaces?** Use `"random"`. (`"bayesian"`/`"optuna"` are roadmap names — not yet executable, see above.)
+3. **Need local search with a fixed budget, including large or expensive-trial spaces?** Use `"random"`. (In a connected run on SDK >= 0.20.1 you can also name `"bayesian"`/`"optuna"` directly — see above.)
 
 ### Budget Guidelines
 
@@ -135,7 +135,7 @@ def my_func(query: str) -> str:
     cfg = traigent.get_config()
     return prompt_model(query, model=cfg["model"])
 
-# Override at runtime — stick to "auto"/"grid"/"random"; named smart
-# algorithms (e.g. "bayesian") are roadmap and fail before any trial runs.
+# Override at runtime — "auto"/"grid"/"random" run anywhere; named smart
+# algorithms (e.g. "bayesian") need a connected run on SDK >= 0.20.1.
 results = await my_func.optimize(algorithm="random", max_trials=20)
 ```

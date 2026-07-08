@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.18"
+  version: "1.0.19"
 ---
 
 # Traigent Quickstart
@@ -536,7 +536,7 @@ results = classify_query.optimize_sync(max_trials=6)  # uses the offline random 
 3. **`func.optimize(max_trials=N)`** -- Run the optimization loop asynchronously. Returns an `OptimizationResult`.
 4. **`func.apply_best_config(results)`** -- Lock in the best configuration found so that subsequent calls use it.
 
-> **You've run your first optimization — now make it robust.** The decorator above is intentionally a *local dry-run* recipe: a small `model` + `temperature` space, `algorithm="random"`, and `offline=True`. For a real optimization, graduate to the more robust **`traigent-setup-decorator`** skill — custom evaluators / `metric_functions`, injection mode, execution policy, and weighted objectives — then launch with **`traigent-optimize-run`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`"auto"` for connected real runs; `"grid"`/`"random"` for explicit local/offline search; named smart selectors like `bayesian`/`optuna` are roadmap, not executable end-to-end), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
+> **You've run your first optimization — now make it robust.** The decorator above is intentionally a *local dry-run* recipe: a small `model` + `temperature` space, `algorithm="random"`, and `offline=True`. For a real optimization, graduate to the more robust **`traigent-setup-decorator`** skill — custom evaluators / `metric_functions`, injection mode, execution policy, and weighted objectives — then launch with **`traigent-optimize-run`**, which adds what a *real* run needs beyond the basic `.optimize()` call: **cost limits** (cap a paid sweep before it overruns), **algorithm choice** (`"auto"` for connected real runs; `"grid"`/`"random"` for explicit local/offline search; on SDK >= 0.20.1, named smart selectors like `bayesian`/`optuna` bind server-side in connected runs), **parallel trials**, and **quota-aware run sizing**. That `decorator-setup` → `run-optimization` pair is the recommended path from "first run" to a production optimization.
 
 ## Dataset Format
 

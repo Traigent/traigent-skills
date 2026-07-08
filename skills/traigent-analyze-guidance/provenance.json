@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1ed3001d67c1b714",
+  "doc_hash": "ef8b02dee3fd2ff9",
   "reference_hashes": {
     "references/iteration-log-template.md": "9a20df1f1a95e563",
     "references/optimization-principles.md": "2c9b62d815e7fbc9",
-    "references/preflight.md": "6b6bab72a08699af",
+    "references/preflight.md": "0a3d410981993654",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -39,6 +39,16 @@
       "doc_after_hash": "1ed3001d67c1b714",
       "note": "add model-capability lever + genuine difficulty/annotation-ceiling causes to the Mode C flat/negative-score diagnosis (Traigent/traigent-skills#181)",
       "source_type": "human"
+    },
+    {
+      "edit_id": "smart-selector-restamp-0.20.1-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "1ed3001d67c1b714",
+      "doc_after_hash": "ef8b02dee3fd2ff9",
+      "note": "restamp references/preflight.md smart-selector paragraph to the 0.20.1+ contract (Traigent/Traigent#1752/#1758), and scope the next-steps backend-url note precisely: #1721 (fixed in SDK 0.20.0) added stored auth-login URL resolution before the localhost fallback; env-var reading is stated without release attribution (its history is skills#134). Implements skills#190."
     }
   ]
 }

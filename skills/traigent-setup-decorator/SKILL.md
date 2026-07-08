@@ -4,7 +4,7 @@ description: "Configure the @traigent.optimize() decorator with evaluation, inje
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.9"
+  version: "1.0.10"
 ---
 
 # Traigent Decorator Setup
@@ -310,7 +310,7 @@ def my_func(query: str) -> str:
 |---|---|
 | `algorithm="auto"` (default) | Traigent cloud smart optimizer proposes trials; your agent/LLM calls run in your environment. Results sync to the portal. |
 | `algorithm="grid"` / `"random"` | Local search in the SDK. Results still sync to the portal unless `offline=True`. |
-| `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/`"cmaes"`/`"nsga2"` | **Not yet executable end-to-end** — roadmap names. They validate but fail before any trial runs: `ConfigurationError` with `offline=True`, `OptimizationError` from the local registry, and connected typed-session self-abort before backend guidance because the SDK does not execute/transmit the named selector (Traigent/Traigent#1752). Use `"auto"` for connected smart optimization; use `"grid"`/`"random"` only for explicit local/offline search. |
+| `algorithm="bayesian"`/`"tpe"`/`"optuna"`/`"optuna_tpe"`/`"optuna_random"` | **Bind server-side since SDK 0.20.1** in authenticated connected runs (typed backend Optuna strategy, serialized on session creation; SDK CHANGELOG `[0.20.1]`, Traigent/Traigent#1752/#1758 — on 0.20.0 they failed before any trial). Never local/offline: `ConfigurationError` with `offline=True`, `OptimizationError` from the local registry (live-verified on 0.21.0). Unsupported family aliases (`"nsga2"`, `"cmaes"`, `"optuna_grid"`, `"optuna_cmaes"`, `"optuna_nsga2"`, `"nsgaii"`, `"nsga_ii"`, `"cma_es"`) fail fast with a capability message. `"auto"` remains the default connected smart path. |
 | `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
 
 The synced path sends configuration IDs and numeric metrics for portal result history, not
