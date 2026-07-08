@@ -129,6 +129,16 @@ LiteLLM provides a unified `completion()` interface across 100+ LLM providers (O
 > endpoint — e.g. `curl -s https://openrouter.ai/api/v1/models` for OpenRouter). Prefer specific
 > versioned IDs over `-latest` aliases. See [LiteLLM reference](references/litellm.md#verifying-model-availability) and the `traigent-debugging` skill's "Model 404 / retired endpoint" entry.
 
+> **⚠️ Give reasoning models enough `max_tokens` headroom.** Reasoning models (`gemini-2.5`/`3.x`,
+> `gpt-5`, the `o`-series) spend hidden reasoning tokens that count against `max_tokens` *before*
+> any answer text is emitted. A cap sized for a normal model — the `256`/`512` in the sweep below —
+> can be fully consumed by reasoning, truncating the answer mid-output (`finish_reason=length`), so
+> the more capable model silently scores *far below* a cheap non-reasoning one purely as a
+> measurement artifact — not a real quality gap. Give reasoning models ample output headroom
+> (**≥1024–2048**). Field-observed: `gemini-2.5-pro` at `max_tokens=256` spent 241 tokens on
+> reasoning and emitted a truncated query (~23% of the expected output); at `1536` it completed
+> correctly.
+
 ```python
 import traigent
 import litellm
