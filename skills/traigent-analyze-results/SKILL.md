@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.10"
+  version: "1.1.12"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -385,6 +385,13 @@ print(f"Best metrics: {results.best_metrics}")
 # {"accuracy": 0.92, "latency": 0.8}
 ```
 
+> **`None` means *not tracked*, not *local*.** `results.total_cost` / `total_tokens` are
+> aggregated locally from per-trial metrics and read `None` only when no positive cost was captured
+> (mock/offline runs, unpriced custom models — see `traigent-optimize-run` → Cost Wiring Probe).
+> A real paid run — local or portal-tracked — should show a positive `total_cost`; treat
+> `None`/`0.0` with real calls as cost not wired, never as "expected for a local run".
+> Per-trial: `trial.get_metric("total_cost")` is the trial total (`"cost"` is the per-example mean).
+
 ## The Quality / Cost / Latency Trade-off (multi-objective)
 
 After a multi-objective run (`objectives=["accuracy", "cost"]`), the single `best_score` no longer
@@ -545,6 +552,8 @@ else:
     print(f"Score {results.best_score} below threshold, not applying")
     # Use a known-good default instead
 ```
+
+This threshold check runs on the optimization/search slice — it gates whether to apply, not whether to promote. Promotion is a separate decision that requires candidate-vs-incumbent evaluation on the holdout slice (see `traigent-ci-safety-gate`).
 
 ## Optimization History
 

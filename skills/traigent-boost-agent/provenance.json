@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "389fa849ed70b81e",
+  "doc_hash": "3f0f4cc4a8be4e45",
   "entries": [
     {
       "edit_id": "genesis",
@@ -29,6 +29,28 @@
       "doc_before_hash": "833e433d3fbe83dd",
       "doc_after_hash": "4d7e0e3498961979",
       "note": "add a short Fast Path Step 5 pointer to traigent-optimize-run's never-mock-the-real-run doctrine (round 2 of sim-testbed findings, 20-cell wave)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "holdout-partition-promotion-guidance-2026-07-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-07T00:00:00Z",
+      "doc_before_hash": "389fa849ed70b81e",
+      "doc_after_hash": "d383427cef704ca1",
+      "note": "CURATE step: reserve the holdout slice before the first optimization run and record the partition (Traigent/traigent-smartopt#88, #89)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "example-insights-deprecation-import-note-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "d383427cef704ca1",
+      "doc_after_hash": "3f0f4cc4a8be4e45",
+      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class — keep core import or deep-import traigent.analytics.example_insights when plugin installed",
       "source_type": "human"
     }
   ]

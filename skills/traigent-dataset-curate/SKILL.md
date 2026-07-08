@@ -4,7 +4,7 @@ description: "Create and improve a Traigent evaluation dataset / JSONL eval set.
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 
 # Traigent Curate Dataset
@@ -85,11 +85,13 @@ the judge's calibration examples must stay out of the holdout.
 
 Holdout rules:
 
+- Reserve the holdout slice before the first optimization run, and record how the dataset is partitioned: tuning/search slice, optional exemplar/few-shot bank, and holdout slice.
 - Split by stable example id, customer, document, repository, or time window when near-duplicates exist.
 - Stratify by task type, difficulty, language, tenant, tool path, and known failure class.
 - Keep synthetic examples out of the holdout unless a human reviews and labels them independently.
 - Rebuild the tuning slice freely; touch the holdout only to add newly sourced, independently reviewed examples.
 - Report tune-slice movement and holdout movement separately.
+- If no holdout exists yet, say so explicitly and create one before treating any result as promotion-ready; preserve the same split across iteration rounds — never recreate or contaminate it after a run.
 
 ## Synthesize examples client-side with no backend egress
 

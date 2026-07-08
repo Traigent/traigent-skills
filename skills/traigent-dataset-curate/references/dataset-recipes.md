@@ -1,6 +1,6 @@
 # Dataset Recipes
 
-Use these recipes when shaping an evaluation dataset for a specific agent pattern. Keep all rows in JSONL, keep `metadata.split` explicit, and keep holdout examples isolated from tuning.
+Use these recipes when shaping an evaluation dataset for a specific agent pattern. Keep all rows in JSONL, keep `metadata.split` explicit, and keep holdout examples isolated from tuning. Record the partition (tuning slice, optional exemplar/few-shot bank, holdout slice) before the first optimization run.
 
 ## RAG question answering
 

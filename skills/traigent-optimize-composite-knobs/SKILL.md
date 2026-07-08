@@ -4,7 +4,7 @@ description: "Declare and run Traigent composite knobs: cascades, routers, ensem
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Traigent Composite Knobs
@@ -134,6 +134,19 @@ assert GATE in answer.configuration_space or GATE in calibrated_values
 | `moe` | Committee of distinct experts, aggregated by vote or judge. | Per-expert tuned params and optional judge params; any `.members`. | Optional vote `accept_threshold`. |
 | `router` | Pre-dispatch to exactly one arm using left-to-right adequacy signals. | Per-arm `tuned_params`; signal input declarations; any `.members`. | One threshold per signal gate. |
 | `fallback` | Ordered post-cascade fallback on `no_accept` or low margin. | Per-arm `tuned_params`; any `.members`. | One margin threshold per non-terminal arm. |
+
+The table above keys off agent **shape**. Before wiring a knob, also check the **failure mode** it fixes — shape tells you which pattern is expressible, failure mode tells you whether it helps:
+
+- **repair** → erroring/malformed outputs
+- **self-consistency / best-of-n** → output instability
+- **retrieval / similar-fewshot** → unseen patterns / missing examples
+- **chain-of-thought / plan** → multi-step reasoning
+
+Here, repair = `self_debug`/`self_refine` in the table above; retrieval, similar-fewshot, chain-of-thought, and plan are structural knobs (`retriever`, `fewshot_selector`, `prompting_strategy`, `generation_path`) — see `traigent-optimize-config-space` and its `references/structural-spine.md`.
+
+A knob wired in blind adds cost and can lower the score.
+
+**⚠️ Stochastic knobs vs. exact-match metrics**: `temperature>0` and self-consistency trade determinism for exploration; on a frail exact-match/case-sensitive scorer they can turn a correct deterministic answer wrong. Pin `temperature=0` there — provider APIs default to a nonzero temperature (typically `1.0`) when it is unset, so unset ≠ deterministic — and open it up only when the scorer tolerates surface variation (a validated semantic/execution-match equivalence class).
 
 ## Members and the Configuration Space
 

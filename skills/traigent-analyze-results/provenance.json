@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "838feefd1437899f",
+  "doc_hash": "0f5541aff757d0dd",
   "entries": [
     {
       "edit_id": "genesis",
@@ -40,6 +40,28 @@
       "doc_before_hash": "340a0a2fcbcad0a8",
       "doc_after_hash": "838feefd1437899f",
       "note": "teach results.metadata persistence_status/persistence_failed check (SDK PR Traigent#1731) so a portal-tracked run isn't assumed synced when backend finalize failed",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "holdout-partition-promotion-guidance-2026-07-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-07T00:00:00Z",
+      "doc_before_hash": "838feefd1437899f",
+      "doc_after_hash": "77ffaa88b34926ab",
+      "note": "note that the apply threshold check runs on the search slice, not a promotion decision — promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "total-cost-none-means-not-tracked-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "77ffaa88b34926ab",
+      "doc_after_hash": "0f5541aff757d0dd",
+      "note": "clarify results.total_cost/total_tokens semantics: aggregated locally, None means no positive cost was captured (mock/offline/unpriced), never expected for a real local run; per-trial total via get_metric('total_cost')",
       "source_type": "human"
     }
   ]
