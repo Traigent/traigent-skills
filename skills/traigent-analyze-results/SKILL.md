@@ -385,6 +385,10 @@ print(f"Best metrics: {results.best_metrics}")
 # {"accuracy": 0.92, "latency": 0.8}
 ```
 
+> **Local-run caveat.** `results.total_cost` / `total_tokens` read `None` on a purely **local**
+> run (they're populated on backend/portal runs); read per-trial cost locally via
+> `trials[*].get_metric("cost")`.
+
 ## The Quality / Cost / Latency Trade-off (multi-objective)
 
 After a multi-objective run (`objectives=["accuracy", "cost"]`), the single `best_score` no longer

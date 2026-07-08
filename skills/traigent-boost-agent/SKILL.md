@@ -413,6 +413,7 @@ CONFIGURATION_SPACE = {
 10. INSIGHT: configurations AND examples.
    - Configuration side: start with `get_optimization_insights(results)`, then use `traigent-analyze-variable-importance` for importance-backed knob ranking.
    - Example side: use `ExampleInsightsClient` to compute example scores, read scores, and read dataset-quality metadata. Its reportable scope is non-signal metadata; do not claim hidden difficulty, informativeness, ambiguity, or causal signal values.
+   - On 0.21.0, `ExampleInsightsClient` (core `traigent.analytics`) emits a DeprecationWarning pointing to the `traigent-analytics` plugin; prefer the plugin path where installed.
    - Report baseline vs `results.best_config` delta for the agreed metrics, cost, token use, trial count, failed trials, and `results.stop_reason`.
    - Use `traigent-analyze-results` for `OptimizationResult` inspection and `traigent-analyze-variable-importance` to explain which knobs mattered.
    <!-- PROTECTED -->

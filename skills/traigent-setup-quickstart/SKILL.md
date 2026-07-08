@@ -558,6 +558,10 @@ You can include additional fields for metadata, but `input` and `output` are req
 > for the full contract and `traigent-eval-build` for an execution-scored recipe that reads a
 > `metadata` field.
 
+> **Dataset path sandbox.** The SDK enforces a `TRAIGENT_DATASET_ROOT` / CWD sandbox — an
+> eval-dataset path OUTSIDE the project root is rejected with a `ValidationError`. Keep the
+> JSONL under the project root, or set `TRAIGENT_DATASET_ROOT`.
+
 ### Tips for Good Datasets
 
 - Include at least 10-20 examples for meaningful optimization.
