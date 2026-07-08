@@ -184,7 +184,7 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 
 > ⚠️ **`default_config` consumes a `max_trials` slot.** A supplied `default_config` runs as an
 > extra baseline trial *before* the enumerated grid points and counts against `max_trials`. The
-> slot is consumed under every algorithm (`random`/`auto` too); the coverage consequence just
+> slot is consumed under every runnable algorithm (`grid`, `random`, `auto`); the coverage consequence just
 > bites hardest on `grid`: to cover an N-point grid you need `max_trials ≥ N + 1` when
 > `default_config` is set; with `max_trials = N` the last grid point is silently dropped.
 > (Field-observed on 0.21.0: a 2-point grid + `default_config` + `max_trials=2` evaluated only

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7eb1979feb3d80b4",
+  "doc_hash": "bd595bc7dee24432",
   "entries": [
     {
       "edit_id": "genesis",
@@ -60,7 +60,7 @@
       "run_id": null,
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "2455d55a5f7ca49c",
-      "doc_after_hash": "7eb1979feb3d80b4",
+      "doc_after_hash": "bd595bc7dee24432",
       "note": "warn that default_config consumes a max_trials slot as a baseline trial under every algorithm — an N-point grid needs max_trials >= N+1 (field-observed on 0.21.0)",
       "source_type": "human"
     }
