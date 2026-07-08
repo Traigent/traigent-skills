@@ -4,7 +4,7 @@ description: "End-to-end recipe to optimize a text2SQL agent with Traigent and r
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -142,6 +142,13 @@ CONFIG_SPACE = {
 > Encode discrete/integer knobs as **strings** (`"0"/"2"/"4"`) and `int()` them at
 > the call site — the most robust, portable encoding for fixed-set knobs.
 > See `traigent-analyze-guidance/references/preflight.md`.
+
+> **Starting from a vanilla single-call agent?** The knobs above are the EXAMPLE's STRUCTURAL
+> levers; a plain one-LLM-call agent implements none of them yet. Implement each knob in your
+> agent (and read it at the call site) BEFORE you declare it — an unread knob is a silent no-op.
+> If your agent is still vanilla, first optimize the real knobs it DOES have (`model`,
+> `temperature`, `prompt_style`, schema on/off), then add structural knobs as you build each
+> behavior — see `traigent-boost-agent` Step 5 (catalog-fallback).
 
 ## 4. Weighted objectives (ACL)
 ```python

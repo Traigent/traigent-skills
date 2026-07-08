@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3f0f4cc4a8be4e45",
+  "doc_hash": "f4eb0590c28f775f",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/insights-and-iteration.md": "60a5b223a71c0e4f",
@@ -55,7 +55,18 @@
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "d383427cef704ca1",
       "doc_after_hash": "3f0f4cc4a8be4e45",
-      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class \u2014 keep core import or deep-import traigent.analytics.example_insights when plugin installed",
+      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class — keep core import or deep-import traigent.analytics.example_insights when plugin installed",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "cli-dataset-root-note-2026-07-08",
+      "op": "insert_after",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "3f0f4cc4a8be4e45",
+      "doc_after_hash": "f4eb0590c28f775f",
+      "note": "Step 2 (Validate Before Running): note that the traigent validate/check CLIs run as separate processes and reject out-of-CWD datasets unless TRAIGENT_DATASET_ROOT is exported",
       "source_type": "human"
     }
   ]

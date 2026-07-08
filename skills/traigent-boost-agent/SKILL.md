@@ -4,7 +4,7 @@ description: "End-to-end lifecycle playbook — from a single decorated function
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.1.6"
+  version: "2.1.7"
 ---
 
 # Traigent Boost Agent
@@ -92,6 +92,10 @@ traigent info                                                 # SDK version, Pyt
 traigent algorithms                                           # Available algorithms with descriptions and best-use cases
 traigent check my_script.py --dry-run                         # discovers @traigent.optimize functions; validates decorator wiring only, not dataset contents
 ```
+
+> If your dataset lives outside the current directory, export `TRAIGENT_DATASET_ROOT=<dir>`
+> first so these CLIs (each a separate process) can resolve it — otherwise `traigent validate`
+> rejects the path as outside the dataset sandbox.
 
 ### Step 3: Run Mock Optimization
 

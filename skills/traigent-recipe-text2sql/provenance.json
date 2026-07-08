@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "418baaedb8e56a96",
+  "doc_hash": "e3f2dd886d30d256",
   "reference_hashes": {
     "references/quickstart_text2sql.md": "3317e917867f3842"
   },
@@ -30,6 +30,17 @@
       "run_id": null,
       "timestamp": "2026-07-05T00:00:00Z",
       "note": "objective-scoring section: explicit two-axis order policy (row order per gold ORDER BY, column order forgiven via permutations) replacing ambiguous 'order-insensitive' prose and positional comparator; aligned with taoyds test-suite eval",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "vanilla-agent-bridge-2026-07-08",
+      "op": "insert_after",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "418baaedb8e56a96",
+      "doc_after_hash": "e3f2dd886d30d256",
+      "note": "config-space section (§3): add a 'starting from a vanilla single-call agent' bridge — structural knobs must be implemented/read at the call site before being declared (else silent no-op); if the agent is still vanilla, optimize its real knobs first and cross-link traigent-boost-agent Step 5 catalog-fallback",
       "source_type": "human"
     }
   ]
