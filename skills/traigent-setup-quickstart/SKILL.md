@@ -560,7 +560,7 @@ You can include additional fields for metadata, but `input` and `output` are req
 
 > **Dataset path sandbox.** The SDK enforces a `TRAIGENT_DATASET_ROOT` / CWD sandbox — an
 > eval-dataset path outside the sandbox root (default: the **current working directory**) is
-> rejected with the SDK's `ValidationError`. Keep the JSONL under the directory you run from,
+> rejected at load with a `ConfigurationError` ("Dataset path must reside under …"). Keep the JSONL under the directory you run from,
 > or set `TRAIGENT_DATASET_ROOT` to the directory containing your datasets.
 
 ### Tips for Good Datasets
