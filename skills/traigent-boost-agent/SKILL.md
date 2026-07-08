@@ -4,7 +4,7 @@ description: "End-to-end lifecycle playbook — from a single decorated function
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "2.1.5"
+  version: "2.1.6"
 ---
 
 # Traigent Boost Agent
@@ -413,7 +413,7 @@ CONFIGURATION_SPACE = {
 10. INSIGHT: configurations AND examples.
    - Configuration side: start with `get_optimization_insights(results)`, then use `traigent-analyze-variable-importance` for importance-backed knob ranking.
    - Example side: use `ExampleInsightsClient` to compute example scores, read scores, and read dataset-quality metadata. Its reportable scope is non-signal metadata; do not claim hidden difficulty, informativeness, ambiguity, or causal signal values.
-   - On 0.21.0, `ExampleInsightsClient` (core `traigent.analytics`) emits a DeprecationWarning pointing to the `traigent-analytics` plugin; prefer the plugin path where installed.
+   - As of 0.21.0 (present since 0.13.x), importing `ExampleInsightsClient` from core `traigent.analytics` emits a `DeprecationWarning` pointing at the `traigent-analytics` plugin — but the plugin does not export this class, so keep the core import and ignore the warning for this class. If the plugin IS installed, the core shim stops exposing the class; use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (see the verified import note in `traigent-dataset-curate`).
    - Report baseline vs `results.best_config` delta for the agreed metrics, cost, token use, trial count, failed trials, and `results.stop_reason`.
    - Use `traigent-analyze-results` for `OptimizationResult` inspection and `traigent-analyze-variable-importance` to explain which knobs mattered.
    <!-- PROTECTED -->

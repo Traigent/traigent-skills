@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d21842f3174c05d5",
+  "doc_hash": "f6336fba47553633",
   "entries": [
     {
       "edit_id": "genesis",
@@ -51,6 +51,17 @@
       "doc_before_hash": "037e101120aa673d",
       "doc_after_hash": "d21842f3174c05d5",
       "note": "add a Tips-for-Good-Datasets bullet: reserve a holdout slice before tuning; never tune and validate on the same rows (Traigent/traigent-smartopt#88, #89)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "dataset-sandbox-cwd-note-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "d21842f3174c05d5",
+      "doc_after_hash": "f6336fba47553633",
+      "note": "document the TRAIGENT_DATASET_ROOT / CWD dataset sandbox: default root is the current working directory; outside paths raise the SDK's ValidationError",
       "source_type": "human"
     }
   ]

@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.16"
+  version: "1.0.17"
 ---
 
 # Traigent Quickstart
@@ -559,8 +559,9 @@ You can include additional fields for metadata, but `input` and `output` are req
 > `metadata` field.
 
 > **Dataset path sandbox.** The SDK enforces a `TRAIGENT_DATASET_ROOT` / CWD sandbox — an
-> eval-dataset path OUTSIDE the project root is rejected with a `ValidationError`. Keep the
-> JSONL under the project root, or set `TRAIGENT_DATASET_ROOT`.
+> eval-dataset path outside the sandbox root (default: the **current working directory**) is
+> rejected with the SDK's `ValidationError`. Keep the JSONL under the directory you run from,
+> or set `TRAIGENT_DATASET_ROOT` to the directory containing your datasets.
 
 ### Tips for Good Datasets
 

@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.11"
+  version: "1.1.12"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -385,9 +385,12 @@ print(f"Best metrics: {results.best_metrics}")
 # {"accuracy": 0.92, "latency": 0.8}
 ```
 
-> **Local-run caveat.** `results.total_cost` / `total_tokens` read `None` on a purely **local**
-> run (they're populated on backend/portal runs); read per-trial cost locally via
-> `trials[*].get_metric("cost")`.
+> **`None` means *not tracked*, not *local*.** `results.total_cost` / `total_tokens` are
+> aggregated locally from per-trial metrics and read `None` only when nothing was captured
+> (mock/offline runs, unpriced custom models — see `traigent-optimize-run` → Cost Wiring Probe).
+> A real paid run — local or portal-tracked — should show a positive `total_cost`; treat
+> `None`/`0.0` with real calls as cost not wired, never as "expected for a local run".
+> Per-trial: `trial.get_metric("total_cost")` is the trial total (`"cost"` is the per-example mean).
 
 ## The Quality / Cost / Latency Trade-off (multi-objective)
 
