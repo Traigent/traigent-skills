@@ -32,7 +32,8 @@ The default limit is $2.00 per optimization run. This applies per call to `optim
 ## Cost-Limit Handling
 
 Do not rely on one exception for every budget outcome. In the current SDK, a
-pre-run estimate above the limit raises `CostLimitExceeded` directly, while a
+pre-run estimate above the limit (unless the run is pre-approved) raises
+`CostLimitExceeded` directly, while a
 mid-run budget stop can return partial results with
 `results.stop_reason == "cost_limit"`. `CostLimitExceeded` subclasses
 `OptimizationError`, so catch it first when you want a budget-specific branch

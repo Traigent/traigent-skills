@@ -111,7 +111,7 @@ results = await answer.optimize(max_trials=10)  # default algorithm="auto"
 | `callbacks` | `list[Callable] \| None` | Progress tracking callbacks. |
 | `configuration_space` | `dict \| None` | Override config space for this run. |
 | `objectives` | `list[str] \| ObjectiveSchema \| None` | Override objectives for this run. |
-| `cost_limit` | `float \| None` | Per-run cost cap in USD. Overrides `TRAIGENT_RUN_COST_LIMIT` for this call. A pre-run estimate over the limit raises `CostLimitExceeded` (an `OptimizationError` subclass); a mid-run budget hit can return partial results with `stop_reason="cost_limit"` (see cost handling below). |
+| `cost_limit` | `float \| None` | Per-run cost cap in USD. Overrides `TRAIGENT_RUN_COST_LIMIT` for this call. An unapproved pre-run estimate over the limit raises `CostLimitExceeded` (an `OptimizationError` subclass); a mid-run budget hit can return partial results with `stop_reason="cost_limit"` (see cost handling below). |
 | `**algorithm_kwargs` | `Any` | Algorithm-specific parameters (e.g., `parameter_order` for grid). |
 
 `warm_start_from` is a **decorator-only** argument (`@traigent.optimize(...)`); passing it to

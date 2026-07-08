@@ -145,8 +145,9 @@ time; only `"hybrid"` / `"standard"` / `"local"` still warn-and-remap.
 > **No-egress is `offline=True`, not any string mode value.** Keep `"privacy"` out of new code;
 > use `offline=True` explicitly for zero Traigent backend traffic.
 >
-> (Verified against `_FAIL_CLOSED_LEGACY_EXECUTION_MODES = {"privacy", "cloud"}` and legacy-mode
-> handling in `traigent/api/decorators.py`, SDK 0.21.0.)
+> (Verified against `_FAIL_CLOSED_LEGACY_EXECUTION_MODES = {"privacy", "cloud"}` and the
+> fail-closed handling in `traigent/config/types.py`, reached via the legacy-option capture in
+> `traigent/api/decorators.py`, SDK 0.21.0.)
 
 If you encounter these string values in legacy code, replace them with the `algorithm` and
 `offline` equivalents from the table above.
