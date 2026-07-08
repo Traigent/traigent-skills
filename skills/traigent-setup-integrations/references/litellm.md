@@ -97,8 +97,8 @@ curl -s https://openrouter.ai/api/v1/key -H "Authorization: Bearer $OPENROUTER_A
 # account at https://openrouter.ai/credits; pay-as-you-go keys report "limit": null — fine.
 ```
 
-Field-verified in the `traigent-first-run` preflight (check C10): this is the one failure the
-key-presence, model-liveness, and pricing checks all miss.
+Field-verified: this is the one failure that key-presence, model-liveness, and pricing checks
+all miss — every trial simply scores 0 while the account refuses the spend.
 
 ## Basic Multi-Provider Example
 
