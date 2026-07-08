@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.12"
+  version: "1.1.13"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -484,6 +484,9 @@ The `stop_reason` field tells you why optimization ended. This is critical for d
 | `"cost_limit"` | Hit the cost budget limit | Increase `cost_limit` or use cheaper models |
 | `"optimizer"` | Optimizer decided to stop (search space exhausted) | Config space fully explored; results are final |
 | `"plateau"` | No improvement detected | Results have converged; more trials unlikely to help |
+| `"metric_limit"` | A configured target metric threshold was reached | Treat as goal reached; tighten/raise the target if needed |
+| `"semantic_saturation"` | Semantic gain flattened under saturation heuristics | Widen config space or accept diminishing returns |
+| `"convergence"` | Convergence criteria triggered | Usually indicates additional trials are low-yield |
 | `"user_cancelled"` | User cancelled or declined cost approval | Review cost estimates, re-run if needed |
 | `"condition"` | A generic stop condition triggered | Check convergence_info for details |
 | `"error"` | Optimization failed due to an exception | Check failed trials for error messages |

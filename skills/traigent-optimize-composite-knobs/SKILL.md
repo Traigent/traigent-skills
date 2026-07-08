@@ -4,7 +4,7 @@ description: "Declare and run Traigent composite knobs: cascades, routers, ensem
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.6"
+  version: "1.0.7"
 ---
 
 # Traigent Composite Knobs
@@ -73,7 +73,7 @@ def _stage(outputs: list[str]) -> StageRunner:
 
 @traigent.optimize(
     eval_dataset="eval/composite_demo.jsonl",
-    objectives=["accuracy"],
+    objectives=["exact_match_score"],
     configuration_space={
         "variant": ["cheap", "strong"],
         # Declare the threshold as a tuned variable so params[GATE] resolves.
@@ -93,7 +93,7 @@ def answer(text: str) -> tuple[str, dict[str, float]]:
         calibrated_values={GATE: params[GATE]},
     )
     # The composite_* keys become per-trial measures on the wire.
-    metrics = {"accuracy": 1.0 if str(run.output) == _EXPECTED else 0.0}
+    metrics = {"exact_match_score": 1.0 if str(run.output) == _EXPECTED else 0.0}
     merge_composite_measures(metrics, run)
     return str(run.output), metrics
 ```
@@ -103,13 +103,17 @@ The evaluator recognizes exactly a two-item tuple `(output, metrics)` where `met
 With the tuple return, use the BUILT-IN evaluator (expected outputs in
 `eval_dataset`, no custom `scoring_function`): a custom `scoring_function` or
 3-arg `metric_functions` is currently NOT invoked with the unpacked prediction
-on this path, and every trial silently scores `accuracy=0.0` (known SDK
+on this path, and every trial silently reports built-in `accuracy=0.0` (known SDK
 issue). Uniform zero accuracy next to a sane built-in `score` means scoring
 wiring, not a bad agent. **Escape hatch:** if you need custom scoring on this
 path, compute the metric inside the function and return it in the tuple's
-metrics dict (as the Quick Start's `accuracy` does) — do not wire a
-`scoring_function` and wonder why it never fires. If neither works for your
-case, stop and surface the SDK limitation to the user rather than iterating.
+metrics dict under a **non-reserved key** (as the Quick Start's
+`exact_match_score` does) and set `objectives` to that key. Do not use reserved
+metric names such as `accuracy`, `cost`, `latency`, `score`, `success`, or
+`total_cost` on this path — those keys are SDK-reserved and your returned value
+is dropped at merge. Do not wire a `scoring_function` and wonder why it never
+fires. If neither works for your case, stop and surface the SDK limitation to
+the user rather than iterating.
 
 Before any paid run, assert the gate CVAR is actually resolvable — an
 undeclared threshold is a per-trial `KeyError` after money is spent:

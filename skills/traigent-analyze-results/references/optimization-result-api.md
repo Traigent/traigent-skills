@@ -9,12 +9,12 @@ The `OptimizationResult` dataclass is returned by `func.optimize()` and contains
 | Field | Type | Description |
 |---|---|---|
 | `trials` | `list[TrialResult]` | All trial results from the optimization run, in execution order. |
-| `best_config` | `dict[str, Any]` | The configuration that achieved the best objective score. Empty dict if no trial succeeded. |
+| `best_config` | `dict[str, Any] \| None` | The configuration that achieved the best objective score. `None` if no trial succeeded. |
 | `best_score` | `float \| None` | The best objective score achieved. `None` when no trial produced a valid, rankable score. |
 | `optimization_id` | `str` | Unique identifier for this optimization run. |
 | `duration` | `float` | Total wall-clock time in seconds for the entire optimization. |
 | `convergence_info` | `dict[str, Any]` | Dictionary with convergence statistics (see convergence-patterns.md for fields). |
-| `status` | `OptimizationStatus` | Final status of the optimization. One of: `NOT_STARTED`, `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`. |
+| `status` | `OptimizationStatus` | Final status of the optimization. One of: `NOT_STARTED`, `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `UNKNOWN`. |
 | `objectives` | `list[str]` | List of objective metric names being optimized (e.g., `["accuracy"]`). |
 | `algorithm` | `str` | Name of the optimization algorithm used. |
 | `timestamp` | `datetime` | When the optimization completed. |
@@ -79,7 +79,7 @@ The `TrialResult` dataclass represents the outcome of a single optimization tria
 | `trial_id` | `str` | Unique identifier for this trial. |
 | `config` | `dict[str, Any]` | The configuration used for this trial (e.g., `{"model": "gpt-4o", "temperature": 0.5}`). |
 | `metrics` | `dict[str, float]` | Metric values produced by this trial (e.g., `{"accuracy": 0.85, "latency": 1.2}`). |
-| `status` | `TrialStatus` | Status of this trial. One of: `NOT_STARTED`, `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `PRUNED`. |
+| `status` | `TrialStatus` | Status of this trial. One of: `NOT_STARTED`, `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `PRUNED`, `UNKNOWN`. |
 | `duration` | `float` | Wall-clock execution time for this trial in seconds. |
 | `timestamp` | `datetime` | When this trial was executed. |
 | `error_message` | `str \| None` | Error message if the trial failed. `None` for successful trials. |
@@ -132,6 +132,9 @@ for trial in results.trials:
 | `"cost_limit"` | The accumulated cost exceeded the configured budget. |
 | `"optimizer"` | The optimizer decided to stop (e.g., configuration space exhausted). |
 | `"plateau"` | A plateau was detected (no improvement over recent trials). |
+| `"metric_limit"` | A configured metric threshold was reached. |
+| `"semantic_saturation"` | Semantic gains saturated under stop heuristics. |
+| `"convergence"` | Convergence criteria were met. |
 | `"user_cancelled"` | The user cancelled the optimization or declined a cost approval prompt. |
 | `"condition"` | A generic stop condition was triggered. |
 | `"error"` | The optimization failed due to an unrecoverable exception. |
@@ -151,6 +154,7 @@ OptimizationStatus.RUNNING       # "running"
 OptimizationStatus.COMPLETED     # "completed"
 OptimizationStatus.FAILED        # "failed"
 OptimizationStatus.CANCELLED     # "cancelled"
+OptimizationStatus.UNKNOWN       # "unknown"
 ```
 
 ## TrialStatus Enum
@@ -165,6 +169,7 @@ TrialStatus.COMPLETED    # "completed"
 TrialStatus.FAILED       # "failed"
 TrialStatus.CANCELLED    # "cancelled"
 TrialStatus.PRUNED       # "pruned"
+TrialStatus.UNKNOWN      # "unknown"
 ```
 
 ---

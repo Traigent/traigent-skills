@@ -127,27 +127,26 @@ def my_func(query: str) -> str:
 
 Earlier SDK versions accepted a string mode selector as an additional keyword argument
 to `@traigent.optimize` or `ExecutionOptions`. That parameter is deprecated as of
-SDK v0.14.2 — every value now emits a `DeprecationWarning` and remaps to the
-`algorithm`/`offline` equivalents:
+SDK v0.14.2. On current SDKs, `"cloud"` and `"privacy"` fail closed at decoration
+time; only `"hybrid"` / `"standard"` / `"local"` still warn-and-remap.
 
 | Old string value | Behavior on current SDK | Modern equivalent |
 |---|---|---|
-| `"cloud"` | DeprecationWarning → cloud-first (semantic flip — no longer means local) | `algorithm="auto"` |
-| `"privacy"` | DeprecationWarning → cloud-first, **no no-egress guarantee** | `algorithm="auto", offline=True` for no egress |
+| `"cloud"` | `ConfigurationError` (fails closed at public decorator boundary) | `algorithm="auto"` |
+| `"privacy"` | `ConfigurationError` (fails closed; no remap) | `offline=True` for no egress (optionally with `algorithm="auto"` for connected smart search) |
 | `"hybrid"` / `"standard"` | DeprecationWarning → cloud-first | `algorithm="auto"` |
 | `"local"` | DeprecationWarning → local-only | `offline=True` |
 
 > **Key correction for `"cloud"` and `"privacy"`:** On the public `@traigent.optimize` path,
-> passing these string values does **not** raise an error and does **not** activate a separate
-> "full remote execution" mode — they remap to cloud-first with a warning. There is no
-> `CloudRemoteExecutionUnavailableError` on the public decorator path; that error lives on a
-> reserved cloud-client RPC surface unreachable from a decorated run.
+> these legacy values now raise `ConfigurationError` at decoration time (fail-closed policy).
+> They are not warning-only aliases and they do not activate any separate full-remote execution
+> mode.
 >
-> **No-egress is `offline=True`, not any string mode value.** The `"privacy"` value
-> previously implied no-egress, but on current SDK it maps to cloud-first and may egress.
-> Use `offline=True` explicitly for zero Traigent backend traffic.
+> **No-egress is `offline=True`, not any string mode value.** Keep `"privacy"` out of new code;
+> use `offline=True` explicitly for zero Traigent backend traffic.
 >
-> (Verified against `_warn_for_legacy_execution_options` in `traigent/api/decorators.py` (≈:650) and the mode-remap logic in `traigent/config/types.py:308-405`, SDK `origin/develop`.)
+> (Verified against `_FAIL_CLOSED_LEGACY_EXECUTION_MODES = {"privacy", "cloud"}` and legacy-mode
+> handling in `traigent/api/decorators.py`, SDK 0.21.0.)
 
 If you encounter these string values in legacy code, replace them with the `algorithm` and
 `offline` equivalents from the table above.

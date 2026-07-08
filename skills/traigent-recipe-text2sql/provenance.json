@@ -31,6 +31,17 @@
       "timestamp": "2026-07-05T00:00:00Z",
       "note": "objective-scoring section: explicit two-axis order policy (row order per gold ORDER BY, column order forgiven via permutations) replacing ambiguous 'order-insensitive' prose and positional comparator; aligned with taoyds test-suite eval",
       "source_type": "human"
+    },
+    {
+      "edit_id": "sdk-0.20.0-restamp-2026-07-06",
+      "op": "restamp",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-06T00:00:00Z",
+      "doc_before_hash": "d78e5d3088f19e7c",
+      "doc_after_hash": "418baaedb8e56a96",
+      "note": "backfill missing 56b7d22 SKILL.md restamp transition for #168 (PR #170)",
+      "source_type": "human"
     }
   ]
 }

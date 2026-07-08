@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # Running Traigent Optimization
@@ -111,9 +111,11 @@ results = await answer.optimize(max_trials=10)  # default algorithm="auto"
 | `callbacks` | `list[Callable] \| None` | Progress tracking callbacks. |
 | `configuration_space` | `dict \| None` | Override config space for this run. |
 | `objectives` | `list[str] \| ObjectiveSchema \| None` | Override objectives for this run. |
-| `warm_start_from` | `str \| None` | Identifier of a prior experiment run. Cloud sessions only: the SDK forwards it to backend session metadata, and the backend can reuse the referenced run's results to seed the search. No local/offline effect. |
-| `cost_limit` | `float \| None` | Per-run cost cap in USD. Overrides `TRAIGENT_RUN_COST_LIMIT` for this call. A pre-run estimate over the limit raises `OptimizationError`; a mid-run budget hit returns partial results with `stop_reason="cost_limit"` (see cost handling below). |
+| `cost_limit` | `float \| None` | Per-run cost cap in USD. Overrides `TRAIGENT_RUN_COST_LIMIT` for this call. A pre-run estimate over the limit raises `CostLimitExceeded` (an `OptimizationError` subclass); a mid-run budget hit can return partial results with `stop_reason="cost_limit"` (see cost handling below). |
 | `**algorithm_kwargs` | `Any` | Algorithm-specific parameters (e.g., `parameter_order` for grid). |
+
+`warm_start_from` is a **decorator-only** argument (`@traigent.optimize(...)`); passing it to
+`.optimize()` / `.optimize_sync()` raises `TypeError`.
 
 To continue from a prior run, see the post-run flow (`traigent-analyze-guidance`).
 
@@ -226,31 +228,33 @@ The default limit is $2.00 per run.
 
 ### Handling a Cost Limit
 
-**A cost limit does *not* surface through one exception — handle all of the paths below.** A common mistake is to catch only `CostLimitExceeded`; in the current SDK that handler never fires (see the note after the table).
+**A cost limit can surface as either an exception or a returned stop reason — handle both paths.**
 
 | Surface | When it happens | How to handle |
 |---|---|---|
-| `OptimizationError` (**raised, pre-run**) | the *estimated* cost already exceeds the limit and the run wasn't pre-approved — raised **before any trial runs** | `except OptimizationError` — raise the limit, shrink the run, or set `TRAIGENT_COST_APPROVED=true` |
+| `CostLimitExceeded` (**raised, pre-run**) | the *estimated* cost already exceeds the limit and the run wasn't pre-approved — raised **before any trial runs** | `except CostLimitExceeded` (or broader `except OptimizationError`) — raise the limit, shrink the run, or set `TRAIGENT_COST_APPROVED=true` |
 | `results.stop_reason == "cost_limit"` (**returned**) | the run hits the budget **mid-run**, stops, and **returns** partial results (no exception) | check `stop_reason` after a normal return |
-| `CostLimitExceeded` (**not currently raised**) | exported & documented as the budget handler, but the current SDK never raises it (the mid-run stop returns `stop_reason="cost_limit"` instead) | keep in your `except` for forward-compatibility; do **not** rely on it as your only guard |
+| `OptimizationError` (**raised**) | non-budget failures (validation, transport/service errors, other optimization failures) | `except OptimizationError` for the broad fallback path |
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
     results = await func.optimize(max_trials=100, algorithm="random")
-except CostLimitExceeded as e:          # kept for forward-compat; not raised today
+except CostLimitExceeded as e:          # pre-run approval decline / budget enforcement
     print(f"Cost limit hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
-except OptimizationError as e:           # the pre-run "estimate > limit" decline
-    print(f"Run declined before starting: {e}")
+except OptimizationError as e:           # non-budget optimization failure path
+    print(f"Optimization failed: {e}")
 else:
     if getattr(results, "stop_reason", None) == "cost_limit":
         print("Budget reached mid-run; partial results returned.")
 ```
 
 Notes:
-- The pre-run decline's underlying exception is `OptimizationAborted`, which the SDK wraps into `OptimizationError` at the `optimize()` boundary — so `except OptimizationError` catches it there. Inside framework integrations (LangChain/LiteLLM) it may instead propagate **raw** as `OptimizationAborted`.
-- The exact exception/return contract is being standardized upstream — see **Traigent/Traigent#1490**. Catching `OptimizationError` **and** `CostLimitExceeded`, **and** checking `results.stop_reason`, is robust across whichever way it resolves.
+- `CostLimitExceeded` subclasses `OptimizationError`, so a broad `except OptimizationError` still
+  catches budget declines if you do not branch on them first.
+- `OptimizationAborted` exists in the SDK but has no active raise sites in 0.21.0; do not
+  document it as the pre-run decline path.
 
 ### Pre-Approving Costs
 
@@ -397,7 +401,7 @@ print(results.best_config)     # {"model": "gpt-4o", "temperature": 0.5}
 print(results.best_score)      # 0.92
 
 # Run metadata
-print(results.algorithm)       # "grid"
+print(results.algorithm)       # "GridSearchOptimizer"
 print(results.duration)        # 45.2 (seconds)
 print(results.stop_reason)     # "max_trials_reached"
 print(results.total_cost)      # 0.34 (USD, if tracked)
@@ -473,10 +477,10 @@ async def main():
             algorithm="grid",
             timeout=300.0,
         )
-    except CostLimitExceeded as e:  # kept for forward-compat; not raised today
+    except CostLimitExceeded as e:  # pre-run approval decline / budget enforcement
         print(f"Budget exceeded: ${e.accumulated:.2f} / ${e.limit:.2f}")
         return
-    except OptimizationError as e:  # pre-run "estimate > limit" decline, and run errors
+    except OptimizationError as e:  # non-budget optimization failure path
         print(f"Run declined or failed: {e}")
         return
 

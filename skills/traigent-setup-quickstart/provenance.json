@@ -48,6 +48,17 @@
       "source_type": "human"
     },
     {
+      "edit_id": "sdk-0.20.0-restamp-2026-07-06",
+      "op": "restamp",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-06T00:00:00Z",
+      "doc_before_hash": "25de722ba6a3f7e8",
+      "doc_after_hash": "037e101120aa673d",
+      "note": "backfill missing 56b7d22 SKILL.md restamp transition for #168 (PR #170)",
+      "source_type": "human"
+    },
+    {
       "edit_id": "holdout-partition-promotion-guidance-2026-07-07",
       "op": "manual_edit",
       "status": "accepted",

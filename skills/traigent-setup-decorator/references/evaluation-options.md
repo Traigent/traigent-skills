@@ -84,7 +84,11 @@ def answer(question: str) -> str:
 
 ### Validation
 
-Traigent validates the `custom_evaluator` signature at decoration time. If your callable has parameters named `output`, `expected`, and `input_data`, Traigent will raise a `ValidationError` suggesting you use `metric_functions` instead. This catches a common mistake where a metric evaluator is passed as a custom evaluator.
+Traigent validates the `custom_evaluator` signature at decoration time. If your
+callable has parameters named `output`, `expected`, and `input_data`, Traigent
+logs a warning suggesting `metric_functions` instead and still decorates
+successfully. Hard validation failures (for example, wrong arity) still raise
+`ValidationError`.
 
 ## Scoring Function
 

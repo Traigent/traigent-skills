@@ -18,8 +18,8 @@ Exception
   |     +-- InvocationError
   |     +-- EvaluationError
   |     +-- OptimizationError
+  |     |     +-- CostLimitExceeded
   |     +-- OptimizationStateError
-  |     +-- CostLimitExceeded
   |     +-- FeatureNotAvailableError
   |     +-- DataIntegrityError
   |     |     +-- MetricExtractionError
@@ -110,6 +110,9 @@ Raised before optimization starts when provider API keys are invalid or missing.
 ### CostLimitExceeded
 
 **Budget exceeded during optimization.**
+
+| Inherited from | OptimizationError |
+|---|---|
 
 | Attribute | Type | Description |
 |---|---|---|

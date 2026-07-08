@@ -110,6 +110,41 @@ def test_provenance_reference_hashes_match_references(skill_dir: Path) -> None:
 
 
 @pytest.mark.parametrize(
+    "skill_dir", PROVENANCED_SKILLS, ids=[d.name for d in PROVENANCED_SKILLS]
+)
+def test_provenance_hash_chain_is_continuous(skill_dir: Path) -> None:
+    """Hashed provenance entries must link consecutively and end at top-level doc_hash."""
+    provenance = json.loads(
+        (skill_dir / "provenance.json").read_text(encoding="utf-8")
+    )
+    hashed_entries = [
+        entry
+        for entry in provenance.get("entries", [])
+        if entry.get("doc_before_hash") and entry.get("doc_after_hash")
+    ]
+
+    for i in range(len(hashed_entries) - 1):
+        current = hashed_entries[i]
+        nxt = hashed_entries[i + 1]
+        assert current["doc_after_hash"] == nxt["doc_before_hash"], (
+            f"{skill_dir.name}: broken provenance hash chain between "
+            f"{current.get('edit_id', f'entries[{i}]')!r} (after="
+            f"{current['doc_after_hash']!r}) and "
+            f"{nxt.get('edit_id', f'entries[{i + 1}]')!r} (before="
+            f"{nxt['doc_before_hash']!r})"
+        )
+
+    if hashed_entries:
+        last_entry = hashed_entries[-1]
+        assert last_entry["doc_after_hash"] == provenance.get("doc_hash"), (
+            f"{skill_dir.name}: last hashed entry "
+            f"{last_entry.get('edit_id', 'entries[-1]')!r} doc_after_hash "
+            f"{last_entry['doc_after_hash']!r} does not match top-level "
+            f"doc_hash {provenance.get('doc_hash')!r}"
+        )
+
+
+@pytest.mark.parametrize(
     "skill_dir", UNPROVENANCED_SKILLS, ids=[d.name for d in UNPROVENANCED_SKILLS]
 )
 def test_skill_without_provenance_is_skipped(skill_dir: Path) -> None:

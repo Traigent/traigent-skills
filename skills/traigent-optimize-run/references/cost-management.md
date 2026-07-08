@@ -32,11 +32,11 @@ The default limit is $2.00 per optimization run. This applies per call to `optim
 ## Cost-Limit Handling
 
 Do not rely on one exception for every budget outcome. In the current SDK, a
-pre-run estimate above the limit is surfaced at the `optimize()` boundary as
-`OptimizationError`, while a mid-run budget stop can return partial results with
-`results.stop_reason == "cost_limit"`. `CostLimitExceeded` is exported and may
-appear in integration or future SDK paths, so keep it in handlers for
-forward-compatibility, but do not make it your only guard.
+pre-run estimate above the limit raises `CostLimitExceeded` directly, while a
+mid-run budget stop can return partial results with
+`results.stop_reason == "cost_limit"`. `CostLimitExceeded` subclasses
+`OptimizationError`, so catch it first when you want a budget-specific branch
+and keep `OptimizationError` as the broad fallback.
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
@@ -56,14 +56,17 @@ from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
     results = await func.optimize(max_trials=100, algorithm="random")
-except CostLimitExceeded as e:          # forward-compatible budget exception
+except CostLimitExceeded as e:          # pre-run approval decline / budget enforcement
     print(f"Cost limit exceeded: ${e.accumulated:.2f} of ${e.limit:.2f} budget")
-except OptimizationError as e:           # pre-run estimate above limit, cloud/auth issue, etc.
+except OptimizationError as e:           # non-budget optimization failure path
     print(f"Optimization could not run: {e}")
 else:
     if getattr(results, "stop_reason", None) == "cost_limit":
         print(f"Stopped at cost limit. Total cost: ${results.total_cost:.2f}")
 ```
+
+`OptimizationAborted` exists in the SDK but has no active raise sites in 0.21.0,
+so do not document it as the pre-run cost-decline surface.
 
 ## Cost Tracking via LiteLLM
 

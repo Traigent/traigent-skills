@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1ebba8e6b8f2d243",
+  "doc_hash": "79e58680de3e4141",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1"
@@ -33,6 +33,17 @@
       "doc_before_hash": "2a34420ae4662263",
       "doc_after_hash": "1ebba8e6b8f2d243",
       "note": "map knobs to the failure modes they fix and warn stochastic knobs can lower exact-match scores; pin temperature=0 on frail scorers (Traigent/traigent-skills#180)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "issue-195-sdk-0.21-doc-corrections-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "1ebba8e6b8f2d243",
+      "doc_after_hash": "79e58680de3e4141",
+      "note": "fix #195 tuple-return escape-hatch guidance: avoid reserved metric keys and use a non-reserved objective key in the Quick Start example",
       "source_type": "human"
     }
   ]
