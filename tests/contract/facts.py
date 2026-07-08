@@ -19,6 +19,7 @@ class ContractFact:
     command: str | None = None
     url: str | None = None
     method: str | None = None
+    stamped_sdk_version: str | None = None
 
     def rel_path(self, repo_root: Path | None = None) -> str:
         if repo_root is not None:
@@ -46,6 +47,21 @@ class ContractFact:
             return self.url or ""
         if self.kind == "js_import":
             return f"import {{ {self.symbol} }} from '{self.module}'"
+        if self.kind == "docstamp":
+            if self.name == "literal":
+                claim = f'literal "{self.target or ""}"'
+            elif self.name == "path":
+                claim = f"path {self.target or ''}"
+            elif self.name == "raises":
+                claim = f"raises {self.target or ''}"
+            else:
+                claim = self.name or ""
+            suffix = (
+                f" @ SDK {self.stamped_sdk_version}"
+                if self.stamped_sdk_version
+                else ""
+            )
+            return f"{claim} in {self.module}{suffix}"
         return self.kind
 
     def identifier(self, repo_root: Path | None = None) -> str:

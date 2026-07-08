@@ -63,6 +63,44 @@ def verify_python_fact(
     raise AssertionError(f"unsupported python fact kind: {fact.kind}")
 
 
+def verify_docstamp_fact(
+    fact: ContractFact, *, repo_root: Path | None, sdk_version: str
+) -> None:
+    if fact.kind != "docstamp":
+        raise AssertionError(f"unsupported docstamp fact kind: {fact.kind}")
+
+    check = fact.name or ""
+    if check == "path":
+        _assert_module_source_contains(
+            fact,
+            needle=fact.target or "",
+            repo_root=repo_root,
+            sdk_version=sdk_version,
+            problem="source path string missing",
+        )
+        return
+    if check == "literal":
+        _assert_module_source_contains(
+            fact,
+            needle=fact.target or "",
+            repo_root=repo_root,
+            sdk_version=sdk_version,
+            problem="source literal missing",
+        )
+        return
+    if check == "raises":
+        exc_name = fact.target or ""
+        _assert_module_source_contains(
+            fact,
+            needle=f"raise {exc_name}",
+            repo_root=repo_root,
+            sdk_version=sdk_version,
+            problem=f"`raise {exc_name}` missing",
+        )
+        return
+    raise AssertionError(f"unsupported docstamp check: {check}")
+
+
 def _assert_imports(
     fact: ContractFact, module_name: str, *, repo_root: Path | None, sdk_version: str
 ) -> ModuleType:
@@ -86,6 +124,55 @@ def _assert_imports(
             problem=f"module import failed: {type(exc).__name__}: {exc}",
         )
         raise AssertionError(message) from exc
+
+
+def _assert_module_source_contains(
+    fact: ContractFact,
+    *,
+    needle: str,
+    repo_root: Path | None,
+    sdk_version: str,
+    problem: str,
+) -> None:
+    for path in _module_source_paths(
+        fact, fact.module or "", repo_root=repo_root, sdk_version=sdk_version
+    ):
+        if needle in path.read_text(encoding="utf-8", errors="ignore"):
+            return
+
+    raise AssertionError(
+        format_dead_teaching(
+            fact,
+            repo_root=repo_root,
+            sdk_version=sdk_version,
+            taught=fact.display(),
+            problem=problem,
+            fix_menu=(
+                "  fix one : (a) restamp the claim if the SDK source still proves it\n"
+                "                (b) update the prose to match the installed SDK\n"
+                "                (c) remove the stamp only if the prose is no longer an SDK claim"
+            ),
+        )
+    )
+
+
+def _module_source_paths(
+    fact: ContractFact, module_name: str, *, repo_root: Path | None, sdk_version: str
+) -> tuple[Path, ...]:
+    module = _assert_imports(
+        fact, module_name, repo_root=repo_root, sdk_version=sdk_version
+    )
+    package_paths = getattr(module, "__path__", None)
+    if package_paths:
+        paths: list[Path] = []
+        for package_path in package_paths:
+            paths.extend(sorted(Path(package_path).rglob("*.py")))
+        return tuple(paths)
+
+    module_file = getattr(module, "__file__", None)
+    if module_file:
+        return (Path(module_file),)
+    pytest.skip(f"{module_name} has no readable source file")
 
 
 def _assert_call_kwargs(

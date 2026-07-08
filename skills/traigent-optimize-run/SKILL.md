@@ -163,6 +163,8 @@ results = await func.optimize(max_trials=20, algorithm="random")
 ### Smart Algorithms (Bayesian / Optuna / TPE / CMA-ES / NSGA-II) — Not Yet Executable
 
 > **Named smart selectors are not currently executable end-to-end** (restamped against SDK 0.20.0). `algorithm="bayesian"`, `"optuna"`, `"tpe"`, `"cmaes"`, `"nsga2"`, and the other Optuna-family names validate as known names but do not run trials today. With `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*), and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). In connected typed-session runs, the SDK does not execute or transmit the named selector before it self-aborts ahead of backend guidance (Traigent/Traigent#1752); the backend would reject the name if it arrived. The connected smart path that does run real cloud Optuna TPE is `algorithm="auto"` (the default). Treat the named selectors as roadmap, not selectable values.
+<!-- contract: literal "requires managed optimization" in traigent.config.types @ SDK 0.21.0 -->
+<!-- contract: raises ConfigurationError in traigent.core.optimized_function @ SDK 0.21.0 -->
 
 ```python
 # Do NOT teach this as runnable — fails before any trial runs
