@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.11"
+  version: "1.0.12"
 ---
 
 # Running Traigent Optimization
@@ -183,10 +183,12 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 | `"bayesian"` / `"optuna"` / `"tpe"` / `"cmaes"` / `"nsga2"` | — | — | — | **Not executable today** (roadmap name; fails before any trial runs — see above) |
 
 > ⚠️ **`default_config` consumes a `max_trials` slot.** A supplied `default_config` runs as an
-> extra seed trial *before* the enumerated grid points and counts against `max_trials`. To cover
-> an N-point grid you need `max_trials ≥ N + 1` when `default_config` is set; with `max_trials = N`
-> the last grid point is silently dropped. (Field-observed on 0.21.0: a 2-point grid +
-> `default_config` + `max_trials=2` evaluated only `[default, point-1]`.)
+> extra baseline trial *before* the enumerated grid points and counts against `max_trials`. The
+> slot is consumed under every algorithm (`random`/`auto` too); the coverage consequence just
+> bites hardest on `grid`: to cover an N-point grid you need `max_trials ≥ N + 1` when
+> `default_config` is set; with `max_trials = N` the last grid point is silently dropped.
+> (Field-observed on 0.21.0: a 2-point grid + `default_config` + `max_trials=2` evaluated only
+> `[default, point-1]`.)
 
 Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero-egress path and does not sync results.
 
