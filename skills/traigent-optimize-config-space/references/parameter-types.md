@@ -113,6 +113,8 @@ IntRange(
 | `IntRange.few_shot_count(max_examples=5)`  | `IntRange` | [0, 5]           | --   | 3       |
 | `IntRange.batch_size()`                    | `IntRange` | [1, 64]          | --   | 16      |
 
+> **⚠️ Reasoning models need more than the default `max_tokens` range.** `IntRange.max_tokens()` defaults to `[256, 1024]`, sized for non-reasoning models. Reasoning models (`gemini-2.5`/`3.x`, `gpt-5`, the `o`-series) spend hidden reasoning tokens that count against `max_tokens` *before* any answer text, so a value from the low end of that range can be fully consumed by reasoning and truncate the answer mid-output (`finish_reason=length`) — making the capable model score *far below* a cheap non-reasoning one as a measurement artifact. When the sweep includes reasoning models, use `IntRange.max_tokens(task="long")` (`[1024, 4096]`) or otherwise give **≥1024–2048** of headroom. Field-observed: `gemini-2.5-pro` at `max_tokens=256` spent 241 tokens reasoning and emitted a truncated query (~23% of the expected output); at `1536` it completed correctly.
+
 ### to_config_value()
 
 Returns `tuple[int, int]` for simple ranges, or `dict` with `type`, `low`, `high`, `step`, `log` keys when step or log is set.
