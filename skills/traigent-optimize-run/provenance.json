@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "2455d55a5f7ca49c",
+  "doc_hash": "b9ed4f4e52c073c4",
   "entries": [
     {
       "edit_id": "genesis",
@@ -51,6 +51,17 @@
       "doc_before_hash": "8919917184a31663",
       "doc_after_hash": "2455d55a5f7ca49c",
       "note": "note that applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (Traigent/traigent-smartopt#88, #89)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "default-config-baseline-trial-budget-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "2455d55a5f7ca49c",
+      "doc_after_hash": "b9ed4f4e52c073c4",
+      "note": "warn that local SDK default_config consumes a max_trials slot for grid, random, and auto when it resolves local; connected backend-guided auto does not run it as a baseline today; N-point grids need max_trials >= N+1 unless default_config is omitted",
       "source_type": "human"
     }
   ]

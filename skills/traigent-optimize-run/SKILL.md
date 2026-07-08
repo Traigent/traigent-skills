@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.11"
+  version: "1.0.12"
 ---
 
 # Running Traigent Optimization
@@ -181,6 +181,15 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 | `"grid"` | Exhaustive | Small (< 50) | Matches space size | Local SDK search |
 | `"random"` | Sampling | Any | Limited | Local SDK search |
 | `"bayesian"` / `"optuna"` / `"tpe"` / `"cmaes"` / `"nsga2"` | — | — | — | **Not executable today** (roadmap name; fails before any trial runs — see above) |
+
+> ⚠️ **Local `default_config` consumes a `max_trials` slot.** In local SDK execution (`grid`,
+> `random`, and `auto` when it resolves to local random), a supplied `default_config` runs as an
+> extra baseline trial before optimizer suggestions and counts against `max_trials`. This bites
+> hardest on `grid`: to cover an N-point grid, either omit `default_config` and set
+> `max_trials = N`, or keep `default_config` and set `max_trials ≥ N + 1`; otherwise the last grid
+> point is silently dropped. Backend-guided connected `auto` does not run `default_config` as a
+> baseline trial today. (Field-observed on local SDK 0.21.0: a 2-point grid + `default_config` +
+> `max_trials=2` evaluated only `[default, point-1]`.)
 
 Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero-egress path and does not sync results.
 
