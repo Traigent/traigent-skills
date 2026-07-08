@@ -2,7 +2,7 @@
   "schema": "skill-provenance/v1",
   "doc_hash": "418baaedb8e56a96",
   "reference_hashes": {
-    "references/quickstart_text2sql.md": "3317e917867f3842"
+    "references/quickstart_text2sql.md": "0286c51d0658cead"
   },
   "entries": [
     {
@@ -30,6 +30,15 @@
       "run_id": null,
       "timestamp": "2026-07-05T00:00:00Z",
       "note": "objective-scoring section: explicit two-axis order policy (row order per gold ORDER BY, column order forgiven via permutations) replacing ambiguous 'order-insensitive' prose and positional comparator; aligned with taoyds test-suite eval",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "text2sql-quickstart-gates-2026-07-09",
+      "op": "replace",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-09T00:00:00Z",
+      "note": "quickstart reference: align evaluator metrics with declared objectives, add real-run cloud_url gate, and state JSON type consistency for configuration_space/default_config",
       "source_type": "human"
     }
   ]

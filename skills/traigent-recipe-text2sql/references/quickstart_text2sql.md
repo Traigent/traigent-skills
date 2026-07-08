@@ -4,6 +4,17 @@ This reference preserves the complete runnable recipe as markdown-only skill
 content. Materialize the fenced block as `quickstart_text2sql.py` outside the
 scanned `skills/` payload when you want to run it.
 
+Correctness gates for this recipe:
+
+- Evaluator `metrics` must emit exactly the declared objectives: `accuracy`,
+  `cost`, and `latency`.
+- For `--real`, the assistant/operator must verify the returned result has a
+  non-empty `cloud_url`; without it, treat the run as local-only/not
+  portal-tracked rather than a successful portal run.
+- `configuration_space` values and `default_config` must be JSON-type-consistent:
+  `int` `0` != `float` `0.0` under fail-closed type-strict validation. Discrete
+  and integer knobs are safest string-encoded, then cast at the call site.
+
 ```python
 """Turnkey text2SQL optimization example — SELF-CONTAINED, no external data.
 
@@ -222,8 +233,7 @@ def exec_eval(func, config, example) -> ExampleResult:
         input_data=inp if isinstance(inp, dict) else {"input": question},
         expected_output=gold,
         actual_output=pred,
-        metrics={"accuracy": accuracy, "cost": _COST["cost"], "latency": latency,
-                 "exec_accuracy": accuracy},
+        metrics={"accuracy": accuracy, "cost": _COST["cost"], "latency": latency},
         execution_time=latency,
         success=success,
         error_message=err,
@@ -239,6 +249,9 @@ CONFIG_SPACE = {
     "fewshot_k": ["0", "2"],                       # string-encoded; int()'d at call site
     "generation_path": ["direct", "plan_then_sql"],
 }
+# Correctness rule: default_config values must have the same JSON types as the
+# values in configuration_space. Under type-strict validation, int 0 and float
+# 0.0 are different; discrete/integer knobs are safest string-encoded.
 OBJECTIVES = ObjectiveSchema(
     objectives=[
         ObjectiveDefinition(name="accuracy", weight=0.80, orientation="maximize"),
@@ -304,7 +317,14 @@ def main() -> int:
     print("successful_trials:", getattr(result, "successful_trials", None),
           "/", getattr(result, "trials", None))
     if args.real:
-        print("Open the View link above to see your experiment in the portal.")
+        cloud_url = getattr(result, "cloud_url", None)
+        if not cloud_url:
+            print(
+                "ERROR: real run did not return result.cloud_url; "
+                "treat it as local-only/not portal-tracked."
+            )
+            return 1
+        print("Portal link:", cloud_url)
     return 0
 
 
