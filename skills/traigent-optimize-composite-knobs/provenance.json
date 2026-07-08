@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "bb99786636cd5c83",
+  "doc_hash": "1ebba8e6b8f2d243",
   "entries": [
     {
       "edit_id": "genesis",
@@ -27,7 +27,7 @@
       "run_id": null,
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "2a34420ae4662263",
-      "doc_after_hash": "bb99786636cd5c83",
+      "doc_after_hash": "1ebba8e6b8f2d243",
       "note": "map knobs to the failure modes they fix and warn stochastic knobs can lower exact-match scores; pin temperature=0 on frail scorers (Traigent/traigent-skills#180)",
       "source_type": "human"
     }

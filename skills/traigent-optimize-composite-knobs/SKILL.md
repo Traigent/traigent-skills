@@ -146,7 +146,7 @@ Here, repair = `self_debug`/`self_refine` in the table above; retrieval, similar
 
 A knob wired in blind adds cost and can lower the score.
 
-**⚠️ Stochastic knobs vs. exact-match metrics**: `temperature>0` and self-consistency trade determinism for exploration; on a frail exact-match/case-sensitive scorer they can turn a correct deterministic answer wrong. Pin `temperature=0` there — the API default is ~1.0 (random), so unset ≠ deterministic — and open it up only when the scorer tolerates surface variation (a validated semantic/execution-match equivalence class).
+**⚠️ Stochastic knobs vs. exact-match metrics**: `temperature>0` and self-consistency trade determinism for exploration; on a frail exact-match/case-sensitive scorer they can turn a correct deterministic answer wrong. Pin `temperature=0` there — provider APIs default to a nonzero temperature (typically `1.0`) when it is unset, so unset ≠ deterministic — and open it up only when the scorer tolerates surface variation (a validated semantic/execution-match equivalence class).
 
 ## Members and the Configuration Space
 
