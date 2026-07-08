@@ -168,7 +168,7 @@ The skills *teach your agent to drive the Traigent SDKs*, so to actually run an 
 
 ## Skill governance
 
-Skill updates use protected regions, per-skill provenance, and versioned, score-gated changes. `SKILL.md` frontmatter is implicitly protected because YAML must remain first; invariant claim-scope, caveat, and safety constraints are wrapped with `<!-- PROTECTED -->` markers, and each skill has a `provenance.json` document hash.
+Skill updates use protected regions, per-skill provenance, and versioned, score-gated changes. `SKILL.md` frontmatter is implicitly protected because YAML must remain first; invariant claim-scope, caveat, and safety constraints are wrapped with `<!-- PROTECTED -->` markers, and each skill has a `provenance.json` document hash. Skills with `references/*.md` files also carry `reference_hashes` in `provenance.json`, refreshed with `python tools/contract/update_reference_hashes.py <skill-dir>`.
 
 Optimizer-proposed edits are accepted only through reviewed PRs that pass a strictly-greater held-out baseline. Marker and provenance adoption keeps existing `metadata.version: "1.0"` values; the version bump discipline starts with the next instructional content change. See [eval-artifacts/README.md](eval-artifacts/README.md).
 

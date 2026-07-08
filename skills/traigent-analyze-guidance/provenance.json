@@ -1,1 +1,44 @@
-{"schema": "skill-provenance/v1", "doc_hash": "1ed3001d67c1b714", "entries": [{"edit_id": "genesis", "op": "genesis", "status": "accepted", "run_id": null, "timestamp": "2026-07-04T00:00:00Z", "note": "merged from traigent-run-plan + traigent-next-run + traigent-iterate", "source_type": "human"}, {"edit_id": "holdout-partition-promotion-guidance-2026-07-07", "op": "manual_edit", "status": "accepted", "run_id": null, "timestamp": "2026-07-07T00:00:00Z", "doc_before_hash": "902bcf60a89bab6e", "doc_after_hash": "7b9256ff96ffba2d", "note": "require confirming a reserved, disjoint holdout slice in Mode A pre-run gathering and make search-vs-promotion evidence explicit in Mode B presentation rules (Traigent/traigent-smartopt#88, #89)", "source_type": "human"}, {"edit_id": "flat-score-model-capability-data-ceiling-2026-07-08", "op": "manual_edit", "status": "accepted", "run_id": null, "timestamp": "2026-07-08T00:00:00Z", "doc_before_hash": "7b9256ff96ffba2d", "doc_after_hash": "1ed3001d67c1b714", "note": "add model-capability lever + genuine difficulty/annotation-ceiling causes to the Mode C flat/negative-score diagnosis (Traigent/traigent-skills#181)", "source_type": "human"}]}
+{
+  "schema": "skill-provenance/v1",
+  "doc_hash": "1ed3001d67c1b714",
+  "reference_hashes": {
+    "references/iteration-log-template.md": "9a20df1f1a95e563",
+    "references/optimization-principles.md": "2c9b62d815e7fbc9",
+    "references/preflight.md": "6b6bab72a08699af",
+    "references/run-plan.template.md": "435ae0f8515546ad",
+    "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
+  },
+  "entries": [
+    {
+      "edit_id": "genesis",
+      "op": "genesis",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-04T00:00:00Z",
+      "note": "merged from traigent-run-plan + traigent-next-run + traigent-iterate",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "holdout-partition-promotion-guidance-2026-07-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-07T00:00:00Z",
+      "doc_before_hash": "902bcf60a89bab6e",
+      "doc_after_hash": "7b9256ff96ffba2d",
+      "note": "require confirming a reserved, disjoint holdout slice in Mode A pre-run gathering and make search-vs-promotion evidence explicit in Mode B presentation rules (Traigent/traigent-smartopt#88, #89)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "flat-score-model-capability-data-ceiling-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "7b9256ff96ffba2d",
+      "doc_after_hash": "1ed3001d67c1b714",
+      "note": "add model-capability lever + genuine difficulty/annotation-ceiling causes to the Mode C flat/negative-score diagnosis (Traigent/traigent-skills#181)",
+      "source_type": "human"
+    }
+  ]
+}

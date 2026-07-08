@@ -1,6 +1,9 @@
 {
   "schema": "skill-provenance/v1",
   "doc_hash": "f5481ef2791c45ef",
+  "reference_hashes": {
+    "references/dataset-recipes.md": "adfa250fd96c0892"
+  },
   "entries": [
     {
       "edit_id": "genesis",
