@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3a2d8aa9dd18a6eb",
+  "doc_hash": "c136eb9cba89e3f5",
   "entries": [
     {
       "edit_id": "genesis",
@@ -27,7 +27,7 @@
       "run_id": null,
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "2bf7d398b0a7dc94",
-      "doc_after_hash": "3a2d8aa9dd18a6eb",
+      "doc_after_hash": "c136eb9cba89e3f5",
       "note": "warn that reasoning models' hidden tokens consume max_tokens before answer text — give >=1024-2048 headroom in sweeps (Traigent/traigent-skills#179)",
       "source_type": "human"
     }

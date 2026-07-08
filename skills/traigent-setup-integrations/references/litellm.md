@@ -4,7 +4,7 @@
 
 > **Verify every model ID is LIVE before a real run.** Provider catalogs change constantly — models get delisted, renamed, or quietly re-routed to a retired backend. A dead ID is not a harmless typo: it surfaces as a 404, or (worse) a *degraded run* where one trial silently fails or its cost stays unpriced ($0.00) because the ID isn't in the pricing table. Every model ID in this reference was valid when written and **must be re-checked against each provider's live catalog before you use it** — treat them as illustrative, not evergreen. See [Verifying model availability](#verifying-model-availability) below.
 
-> **Give reasoning models enough `max_tokens` headroom.** Reasoning models (`gemini-2.5`/`3.x`, `gpt-5`, the `o`-series) spend hidden reasoning tokens that count against `max_tokens` *before* any answer text is produced. A cap sized for a normal model — the `256`/`512` in the examples below — can be entirely consumed by reasoning, truncating the answer mid-output (`finish_reason=length`). The capable model then scores *far below* a cheap non-reasoning one as a pure measurement artifact, not a real quality gap. Sweep reasoning models with ample headroom (**≥1024–2048**). Field-observed: `gemini-2.5-pro` at `max_tokens=256` spent 241 tokens reasoning and emitted a truncated query (~23% of the expected output); at `1536` it completed correctly.
+> **Give reasoning models enough `max_tokens` headroom.** Reasoning models (`gemini-2.5`/`3.x`, `gpt-5`, the `o`-series) spend hidden reasoning tokens that count against `max_tokens` *before* any answer text is produced. A cap sized for a normal model (e.g. `256`/`512`) can be entirely consumed by reasoning, truncating the answer mid-output (`finish_reason=length`). The capable model then scores *far below* a cheap non-reasoning one as a pure measurement artifact, not a real quality gap. Sweep reasoning models with ample headroom (**≥1024–2048**) — the examples below use headroom-safe values because their model pools mix reasoning and non-reasoning models; sweep low caps only in a space with no reasoning models. Field-observed: `gemini-2.5-pro` at `max_tokens=256` spent 241 tokens reasoning and emitted a truncated query (~23% of the expected output); at `1536` it completed correctly.
 
 ## Overview
 
@@ -103,7 +103,7 @@ import litellm
             "gemini/gemini-3-flash",
         ],
         "temperature": [0.0, 0.3, 0.7],
-        "max_tokens": [256, 512, 1024],  # 1024 = reasoning-model headroom (gemini-3-flash) — see note above
+        "max_tokens": [1024, 2048],  # headroom-safe: the pool includes a reasoning model (see note above)
     },
     objectives=["accuracy"],
     max_trials=15,
@@ -190,7 +190,7 @@ import litellm
             "gemini/gemini-3.1-pro",
         ],
         "temperature": [0.0, 0.3, 0.5, 0.7],
-        "max_tokens": [256, 512, 1024],
+        "max_tokens": [1024, 2048],  # headroom-safe: the pool includes reasoning models (see note above)
     },
     objectives=["accuracy"],
     max_trials=20,
