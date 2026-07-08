@@ -386,7 +386,7 @@ print(f"Best metrics: {results.best_metrics}")
 ```
 
 > **`None` means *not tracked*, not *local*.** `results.total_cost` / `total_tokens` are
-> aggregated locally from per-trial metrics and read `None` only when nothing was captured
+> aggregated locally from per-trial metrics and read `None` only when no positive cost was captured
 > (mock/offline runs, unpriced custom models — see `traigent-optimize-run` → Cost Wiring Probe).
 > A real paid run — local or portal-tracked — should show a positive `total_cost`; treat
 > `None`/`0.0` with real calls as cost not wired, never as "expected for a local run".
