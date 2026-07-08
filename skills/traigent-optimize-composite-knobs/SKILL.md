@@ -135,6 +135,17 @@ assert GATE in answer.configuration_space or GATE in calibrated_values
 | `router` | Pre-dispatch to exactly one arm using left-to-right adequacy signals. | Per-arm `tuned_params`; signal input declarations; any `.members`. | One threshold per signal gate. |
 | `fallback` | Ordered post-cascade fallback on `no_accept` or low margin. | Per-arm `tuned_params`; any `.members`. | One margin threshold per non-terminal arm. |
 
+The table above keys off agent **shape**. Before wiring a knob, also check the **failure mode** it fixes — shape tells you which pattern is expressible, failure mode tells you whether it helps:
+
+- **repair** → erroring/malformed outputs
+- **self-consistency / best-of-n** → output instability
+- **retrieval / similar-fewshot** → unseen patterns / missing examples
+- **chain-of-thought / plan** → multi-step reasoning
+
+A knob wired in blind adds cost and can lower the score.
+
+**⚠️ Stochastic knobs vs. exact-match metrics**: `temperature>0` and self-consistency trade determinism for exploration; on a frail exact-match/case-sensitive scorer they can turn a correct deterministic answer wrong. Pin `temperature=0` there — the API default is ~1.0 (random), so unset ≠ deterministic — and open it up only when the scorer tolerates surface variation (a validated semantic/execution-match equivalence class).
+
 ## Members and the Configuration Space
 
 A factory returns a `CompositeKnob` declaration bundle: `.structure` is the IR root, `.members` are ordinary member `Knob` declarations, `.provenance` records the pattern name plus a canonical param hash, and `.telemetry_names` lists standard measure names.
