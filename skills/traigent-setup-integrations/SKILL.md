@@ -4,7 +4,7 @@ description: "Integrate Traigent with LangChain, LiteLLM, DSPy, and other AI fra
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Traigent Framework Integrations
@@ -129,6 +129,17 @@ LiteLLM provides a unified `completion()` interface across 100+ LLM providers (O
 > endpoint — e.g. `curl -s https://openrouter.ai/api/v1/models` for OpenRouter). Prefer specific
 > versioned IDs over `-latest` aliases. See [LiteLLM reference](references/litellm.md#verifying-model-availability) and the `traigent-debugging` skill's "Model 404 / retired endpoint" entry.
 
+> **⚠️ Give reasoning models enough `max_tokens` headroom.** Reasoning models (`gemini-2.5`/`3.x`,
+> `gpt-5`, the `o`-series) spend hidden reasoning tokens that count against `max_tokens` *before*
+> any answer text is emitted. A cap sized for a normal model (e.g. `256`/`512`) can be fully
+> consumed by reasoning, truncating the answer mid-output (`finish_reason=length`), so the more
+> capable model silently scores *far below* a cheap non-reasoning one purely as a measurement
+> artifact — not a real quality gap. Give reasoning models ample output headroom (**≥1024–2048**);
+> the sweep below uses headroom-safe values because its model pool mixes reasoning and
+> non-reasoning models — sweep low caps only in a space with no reasoning models. Field-observed:
+> `gemini-2.5-pro` at `max_tokens=256` spent 241 tokens on reasoning and emitted a truncated
+> query (~23% of the expected output); at `1536` it completed correctly.
+
 ```python
 import traigent
 import litellm
@@ -145,7 +156,7 @@ import litellm
             "gemini/gemini-3-flash",    # Google
         ],
         "temperature": [0.0, 0.3, 0.7],
-        "max_tokens": [256, 512, 1024],
+        "max_tokens": [1024, 2048],  # headroom-safe: the pool includes a reasoning model (see note above)
     },
     objectives=["accuracy"],
     max_trials=15,
