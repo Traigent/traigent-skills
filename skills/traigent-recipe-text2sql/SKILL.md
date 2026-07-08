@@ -143,12 +143,15 @@ CONFIG_SPACE = {
 > the call site — the most robust, portable encoding for fixed-set knobs.
 > See `traigent-analyze-guidance/references/preflight.md`.
 
-> **Starting from a vanilla single-call agent?** The knobs above are the EXAMPLE's STRUCTURAL
-> levers; a plain one-LLM-call agent implements none of them yet. Implement each knob in your
-> agent (and read it at the call site) BEFORE you declare it — an unread knob is a silent no-op.
-> If your agent is still vanilla, first optimize the real knobs it DOES have (`model`,
-> `temperature`, `prompt_style`, schema on/off), then add structural knobs as you build each
-> behavior — see `traigent-boost-agent` Step 5 (catalog-fallback).
+> **Starting from a vanilla single-call agent?** The `fewshot_*`, `generation_path`, and
+> `repair` knobs above are the EXAMPLE's STRUCTURAL levers — a plain one-LLM-call agent
+> implements none of those yet. Implement each knob in your agent (and read it at the call
+> site) BEFORE you declare it — an unread knob is a silent no-op. If your agent is still
+> vanilla, first optimize the levers its single call already has (`model`, `temperature` —
+> just read the tuned value into the existing argument) plus prompt-level knobs you can wire
+> in minutes (prompt style, schema on/off), then add structural knobs as you build each
+> behavior — see the catalog-fallback rule in `traigent-boost-agent`'s 12-step lifecycle
+> playbook, step 5 (SELECT TVARS).
 
 ## 4. Weighted objectives (ACL)
 ```python

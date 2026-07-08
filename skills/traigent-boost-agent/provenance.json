@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f4eb0590c28f775f",
+  "doc_hash": "d55139e4d77d55dd",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/insights-and-iteration.md": "60a5b223a71c0e4f",
@@ -65,8 +65,8 @@
       "run_id": null,
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "3f0f4cc4a8be4e45",
-      "doc_after_hash": "f4eb0590c28f775f",
-      "note": "Step 2 (Validate Before Running): note that the traigent validate/check CLIs run as separate processes and reject out-of-CWD datasets unless TRAIGENT_DATASET_ROOT is exported",
+      "doc_after_hash": "d55139e4d77d55dd",
+      "note": "Step 2 (Validate Before Running): note that traigent validate resolves relative dataset paths against TRAIGENT_DATASET_ROOT (CWD when unset) and rejects paths outside the sandbox; root must exist, REPLACES CWD as sandbox, and the same sandbox governs Steps 3-5 optimization runs; cross-link traigent-setup-quickstart Dataset path sandbox",
       "source_type": "human"
     }
   ]

@@ -94,8 +94,12 @@ traigent check my_script.py --dry-run                         # discovers @traig
 ```
 
 > If your dataset lives outside the current directory, export `TRAIGENT_DATASET_ROOT=<dir>`
-> first so these CLIs (each a separate process) can resolve it — otherwise `traigent validate`
-> rejects the path as outside the dataset sandbox.
+> (an existing directory) first — `traigent validate` resolves relative dataset paths against
+> that root (CWD when unset) and rejects anything outside the dataset sandbox; the other three
+> commands don't load datasets. The root REPLACES CWD as the sandbox — keep datasets under it
+> and pass paths relative to it (or absolute beneath it). The same sandbox governs the
+> optimization runs in Steps 3–5, so exporting in your shell covers both; see
+> `traigent-setup-quickstart` (Dataset path sandbox).
 
 ### Step 3: Run Mock Optimization
 

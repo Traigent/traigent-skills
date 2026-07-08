@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e3f2dd886d30d256",
+  "doc_hash": "2fa93513c3cad25e",
   "reference_hashes": {
     "references/quickstart_text2sql.md": "3317e917867f3842"
   },
@@ -39,8 +39,8 @@
       "run_id": null,
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "418baaedb8e56a96",
-      "doc_after_hash": "e3f2dd886d30d256",
-      "note": "config-space section (§3): add a 'starting from a vanilla single-call agent' bridge — structural knobs must be implemented/read at the call site before being declared (else silent no-op); if the agent is still vanilla, optimize its real knobs first and cross-link traigent-boost-agent Step 5 catalog-fallback",
+      "doc_after_hash": "2fa93513c3cad25e",
+      "note": "config-space section (§3): add a 'starting from a vanilla single-call agent' bridge — the fewshot_*/generation_path/repair STRUCTURAL knobs must be implemented/read at the call site before being declared (else silent no-op); a vanilla agent first optimizes model/temperature plus quick prompt-level knobs; cross-link the catalog-fallback rule in traigent-boost-agent's 12-step lifecycle playbook step 5 (SELECT TVARS)",
       "source_type": "human"
     }
   ]
