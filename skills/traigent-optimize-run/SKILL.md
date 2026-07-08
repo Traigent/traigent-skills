@@ -182,13 +182,14 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 | `"random"` | Sampling | Any | Limited | Local SDK search |
 | `"bayesian"` / `"optuna"` / `"tpe"` / `"cmaes"` / `"nsga2"` | — | — | — | **Not executable today** (roadmap name; fails before any trial runs — see above) |
 
-> ⚠️ **`default_config` consumes a `max_trials` slot.** A supplied `default_config` runs as an
-> extra baseline trial *before* the enumerated grid points and counts against `max_trials`. The
-> slot is consumed under every runnable algorithm (`grid`, `random`, `auto`); the coverage consequence just
-> bites hardest on `grid`: to cover an N-point grid you need `max_trials ≥ N + 1` when
-> `default_config` is set; with `max_trials = N` the last grid point is silently dropped.
-> (Field-observed on 0.21.0: a 2-point grid + `default_config` + `max_trials=2` evaluated only
-> `[default, point-1]`.)
+> ⚠️ **Local `default_config` consumes a `max_trials` slot.** In local SDK execution (`grid`,
+> `random`, and `auto` when it resolves to local random), a supplied `default_config` runs as an
+> extra baseline trial before optimizer suggestions and counts against `max_trials`. This bites
+> hardest on `grid`: to cover an N-point grid, either omit `default_config` and set
+> `max_trials = N`, or keep `default_config` and set `max_trials ≥ N + 1`; otherwise the last grid
+> point is silently dropped. Backend-guided connected `auto` does not run `default_config` as a
+> baseline trial today. (Field-observed on local SDK 0.21.0: a 2-point grid + `default_config` +
+> `max_trials=2` evaluated only `[default, point-1]`.)
 
 Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero-egress path and does not sync results.
 
