@@ -4,7 +4,7 @@ description: "Declare and run Traigent composite knobs: cascades, routers, ensem
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Traigent Composite Knobs
@@ -141,6 +141,8 @@ The table above keys off agent **shape**. Before wiring a knob, also check the *
 - **self-consistency / best-of-n** → output instability
 - **retrieval / similar-fewshot** → unseen patterns / missing examples
 - **chain-of-thought / plan** → multi-step reasoning
+
+Here, repair = `self_debug`/`self_refine` in the table above; retrieval, similar-fewshot, chain-of-thought, and plan are structural knobs (`retriever`, `fewshot_selector`, `prompting_strategy`, `generation_path`) — see `traigent-optimize-config-space` and its `references/structural-spine.md`.
 
 A knob wired in blind adds cost and can lower the score.
 
