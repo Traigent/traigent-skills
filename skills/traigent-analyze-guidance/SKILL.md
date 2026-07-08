@@ -357,6 +357,14 @@ Backend-only report surfaces, each requiring a Traigent account/backend:
 | `stop_reason` is budget-bound | Search stopped before enough evidence accumulated | Adjust budget, cheaper models, max trials, or algorithm with `traigent-optimize-run` |
 | Weak examples identified | The same examples fail across good configs | Feed those examples into guided optimization and add a heldout check |
 
+Flat/negative scores can also mean: (a) the base model isn't capable enough --
+structural knobs fix *form*, not reasoning the model lacks; if a stronger/SOTA
+model is available, add it to the search (model capability is itself a lever on
+hard tasks); and (b) a genuine difficulty/annotation ceiling -- after the metric
+is validated and knobs are complete, if even a strong model fails the residual
+items, the ceiling is the data (report it / clean degenerate references), not
+more tuning. Distinguish both from "dataset too easy".
+
 Use weak examples as evidence, not as a replacement for a holdout.
 
 ```python
