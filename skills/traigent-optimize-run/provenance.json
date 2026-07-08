@@ -1,6 +1,11 @@
 {
   "schema": "skill-provenance/v1",
   "doc_hash": "b9ed4f4e52c073c4",
+  "reference_hashes": {
+    "references/algorithms.md": "be8602fab22668a1",
+    "references/cost-management.md": "e298761487ffa598",
+    "references/parallel-config.md": "f0979cbb952b3cf3"
+  },
   "entries": [
     {
       "edit_id": "genesis",
@@ -39,7 +44,7 @@
       "timestamp": "2026-07-05T00:00:00Z",
       "doc_before_hash": "70e6157794404a2f",
       "doc_after_hash": "aecaeb37a7a929f5",
-      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) — 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
+      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) \u2014 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
       "source_type": "human"
     },
     {

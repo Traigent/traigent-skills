@@ -18,6 +18,7 @@ Each skill has `skills/<name>/provenance.json`:
 
 - `schema`: currently `skill-provenance/v1`.
 - `doc_hash`: first 16 hex characters of the SHA-256 hash of the corresponding `SKILL.md` bytes.
+- `reference_hashes`: optional object mapping each `references/*.md` path, such as `references/example.md`, to the first 16 hex characters of that file's SHA-256 hash. Skills with a `references/` directory must keep this object in sync with exactly the current Markdown reference files.
 - `entries`: applied, gate-rejected, or skipped edit records.
 
 The genesis entry records the baseline snapshot at adoption. Future optimizer entries use this field contract, aligned one-to-one with the trainer's edit-apply records (text fields are replaced by hashes — raw anchor or edit text never appears in this public file):
@@ -31,7 +32,7 @@ The genesis entry records the baseline snapshot at adoption. Future optimizer en
 
 Only `applied` entries on an accepted candidate change the deployed document; `rejected_gate` and `skipped_*` entries are negative-evidence records.
 
-Never put task or example content in `provenance.json`. Store only hashes, scores, identifiers, statuses, and timestamps.
+Never put task or example content in `provenance.json`. Store only hashes, scores, identifiers, statuses, and timestamps. After editing any `references/*.md` file, refresh provenance with `python tools/contract/update_reference_hashes.py <skill-dir>` before running the contract tests.
 
 ## Version Discipline
 

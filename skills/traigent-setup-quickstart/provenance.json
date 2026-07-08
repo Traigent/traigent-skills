@@ -1,6 +1,11 @@
 {
   "schema": "skill-provenance/v1",
   "doc_hash": "12d624893f62ac2b",
+  "reference_hashes": {
+    "references/environment-variables.md": "29a1fb6fe6a78876",
+    "references/first-value-fallback.md": "5571ce556feefb23",
+    "references/installation-extras.md": "87bcbee5d23ec636"
+  },
   "entries": [
     {
       "edit_id": "genesis",
