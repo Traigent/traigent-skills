@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "65f9df98b6701773",
+  "doc_hash": "fe398fe75c753290",
   "reference_hashes": {
     "references/algorithms.md": "be8602fab22668a1",
     "references/cost-management.md": "e298761487ffa598",
@@ -76,8 +76,8 @@
       "run_id": null,
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "b9ed4f4e52c073c4",
-      "doc_after_hash": "65f9df98b6701773",
-      "note": "run paid optimizations detached; killed runs keep completed trials in ~/.traigent/sessions/<id>.json and `traigent sync <session_id>` uploads the partial session (killed sessions have no stop_reason so sync --all skips them); field-tested in Traigent/traigent-first-run (GUIDE Step 9), CLI verified in SDK sync_commands.py",
+      "doc_after_hash": "fe398fe75c753290",
+      "note": "run paid optimizations detached; killed runs keep completed trials in ~/.traigent/sessions/<id>.json and `traigent sync <session_id>` uploads the partial session (sync --all only takes sessions with completed status or a terminal stop_reason - _is_finished_session - which a killed run lacks); verified against SDK 0.21.0 source (storage/local_storage.py, cloud/sync_manager.py), field-tested on 0.20.x",
       "source_type": "human"
     }
   ]

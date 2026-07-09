@@ -87,7 +87,7 @@
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "6c0e11d9930cc9e9",
       "doc_after_hash": "704d790e905ff0ab",
-      "note": "fix own .env example (inline hint on a key line) and document the python-dotenv unfilled-key inline-comment trap (blank value + # hint parses as a garbage non-empty key); field-tested in Traigent/traigent-first-run (.env.example doctrine, preflight C3) and reproduced against python-dotenv 1.2.2",
+      "note": "fix own .env example (inline hint on a key line) and document the python-dotenv unfilled-key inline-comment trap (blank value + # hint parses as a garbage non-empty key); field-tested in a first-run onboarding exercise across 7 environments and reproduced against python-dotenv 1.2.2",
       "source_type": "human"
     }
   ]

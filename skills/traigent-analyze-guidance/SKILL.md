@@ -4,7 +4,7 @@ description: "What should this Traigent optimization run be, and what next? Thre
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0.2"
+  version: "1.0.3"
 ---
 
 # Traigent Analyze Guidance

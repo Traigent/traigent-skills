@@ -333,13 +333,14 @@ latency), and killing `optimize_sync` mid-run does not roll back its spend. Run 
 optimizations as a **detached/background process writing to a log file**, then poll the log —
 never inside a foreground command that can time out.
 
-If a run is killed anyway (verified on SDK 0.20.x): each completed trial was already written
-to `~/.traigent/sessions/<session_id>.json` as it finished, and
-`traigent sync <session_id>` uploads that partial session to the portal after the fact. What
-is actually lost: the in-flight trial's spend, and any example-level logs still buffered
-(flushed every 10 trials). One trap — a killed session gets **no `stop_reason`**, so
-`traigent sync --all` and status listings skip it; pass the explicit `<session_id>` to
-recover it.
+If a run is killed anyway (verified against SDK 0.21.0 source; field-tested on 0.20.x): each
+completed trial was already written to `~/.traigent/sessions/<session_id>.json` as it finished
+(`storage/local_storage.py`), and `traigent sync <session_id>` uploads that partial session to
+the portal after the fact. What is actually lost: the in-flight trial's spend, and any
+example-level logs still buffered (flushed every 10 trials). One trap — `traigent sync --all`
+only considers sessions that finished with a completed status or a terminal `stop_reason`
+(`cloud/sync_manager.py` `_is_finished_session`), and a killed session has **neither**, so
+`--all` and the status counts skip it; pass the explicit `<session_id>` to recover it.
 
 ## Parallel Execution
 

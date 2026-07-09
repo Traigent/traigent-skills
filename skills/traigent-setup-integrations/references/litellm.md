@@ -84,21 +84,28 @@ curl -s https://openrouter.ai/api/v1/models | grep -o '"id":"[^"]*"' | sort
 If an ID is missing from the live list, swap it for one that is — do not assume an ID that
 worked last month still resolves today.
 
-**OpenRouter: also check the account has credit — a valid, unfunded key passes every other
+**OpenRouter: also check the key can actually spend — a valid, unfunded key passes every other
 preflight and then fails mid-run.** OpenRouter returns **HTTP 402** on paid models when the
-account balance is $0 (or a free-tier key is used), and each failed trial just scores 0 — the
-run "completes" with the spend silently refused. Before a run, read the key's balance with an
-authenticated GET of the key-info endpoint (a metadata read, never a completion — costs
-nothing):
+account cannot pay (balance exhausted, or a free-tier key on a paid model). The 402s start
+only *after* the run launches — key-presence, model-liveness, and pricing checks all pass —
+and surface as failed or zero-scored trials: a flat, no-signal run that is a funding failure,
+not model quality. Before a run, probe the key with an authenticated GET of the key-info
+endpoint (a metadata read, never a completion — costs nothing):
 
 ```bash
-curl -s https://openrouter.ai/api/v1/key -H "Authorization: Bearer $OPENROUTER_API_KEY"
-# 401 → key invalid; "limit_remaining": 0 (with a limit set) or 402s on use → fund the
-# account at https://openrouter.ai/credits; pay-as-you-go keys report "limit": null — fine.
+curl -sS -w '\nHTTP %{http_code}\n' https://openrouter.ai/api/v1/key \
+  -H "Authorization: Bearer $OPENROUTER_API_KEY"
 ```
 
-Field-verified: this is the one failure that key-presence, model-liveness, and pricing checks
-all miss — every trial simply scores 0 while the account refuses the spend.
+Interpret it strictly — this is a spendability *signal*, not an account-balance proof:
+
+- **HTTP 401** → key invalid or revoked.
+- **HTTP 402** → the account can't pay; fund it at <https://openrouter.ai/credits>.
+- **`data.limit` non-null** (a per-key cap is set) → require `data.limit_remaining > 0`;
+  `0` or negative means a paid run 402s mid-flight.
+- **`data.limit` null** → no *per-key* cap, which proves nothing about the account balance —
+  treat as pass-with-caveat and confirm the account is funded before a paid run.
+- Any other non-200 → inconclusive; verify funding manually rather than assuming either way.
 
 ## Basic Multi-Provider Example
 

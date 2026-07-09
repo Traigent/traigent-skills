@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c136eb9cba89e3f5",
+  "doc_hash": "5716d077041a7bd7",
   "reference_hashes": {
     "references/dspy.md": "6c899d029a43f9f6",
     "references/langchain.md": "ffe92eb4d431f3b9",
-    "references/litellm.md": "0cca2ef570f25dc8"
+    "references/litellm.md": "82f87fbb218f589d"
   },
   "entries": [
     {
@@ -34,6 +34,17 @@
       "doc_before_hash": "2bf7d398b0a7dc94",
       "doc_after_hash": "c136eb9cba89e3f5",
       "note": "warn that reasoning models' hidden tokens consume max_tokens before answer text \u2014 give >=1024-2048 headroom in sweeps (Traigent/traigent-skills#179)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "openrouter-credit-preflight-2026-07-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-09T00:00:00Z",
+      "doc_before_hash": "c136eb9cba89e3f5",
+      "doc_after_hash": "5716d077041a7bd7",
+      "note": "references/litellm.md: OpenRouter key-spendability preflight (GET /api/v1/key; 401/402 semantics; limit null = no per-key cap, NOT proof of funding); catches the valid-key/unfunded-account HTTP 402 failure that key-presence, liveness, and pricing checks miss; version bump for the reference change",
       "source_type": "human"
     }
   ]

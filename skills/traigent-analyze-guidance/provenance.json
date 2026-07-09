@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1ed3001d67c1b714",
+  "doc_hash": "51a70ef8c7b4bd5d",
   "reference_hashes": {
     "references/iteration-log-template.md": "9a20df1f1a95e563",
     "references/optimization-principles.md": "2c9b62d815e7fbc9",
@@ -38,6 +38,17 @@
       "doc_before_hash": "7b9256ff96ffba2d",
       "doc_after_hash": "1ed3001d67c1b714",
       "note": "add model-capability lever + genuine difficulty/annotation-ceiling causes to the Mode C flat/negative-score diagnosis (Traigent/traigent-skills#181)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "env-template-full-line-hints-2026-07-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-09T00:00:00Z",
+      "doc_before_hash": "1ed3001d67c1b714",
+      "doc_after_hash": "51a70ef8c7b4bd5d",
+      "note": "references/.env.template: move vendor-key hints from value-side inline comments to full-line comments - python-dotenv parses a blank value + inline '# hint' as the literal value '# hint', so every unfilled key read as a configured (garbage) credential; verified post-fix that all 9 keys parse to empty; version bump for the reference change",
       "source_type": "human"
     }
   ]

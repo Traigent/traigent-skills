@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "de2bb78c01208172",
+  "doc_hash": "4b752de4996ba5ad",
   "reference_hashes": {
     "references/evaluator-templates.md": "9559f32c5edba306"
   },
@@ -39,8 +39,8 @@
       "run_id": null,
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "31f571e1827f5f48",
-      "doc_after_hash": "de2bb78c01208172",
-      "note": "add over-strict-metric pitfall: known-good/known-bad gate is not enough \u2014 probe a paraphrased-correct answer scores ~1.0 before any paid run; field-tested in Traigent/traigent-first-run (GUIDE Step 8, real-run report Update 3)",
+      "doc_after_hash": "4b752de4996ba5ad",
+      "note": "add over-strict-metric pitfall: known-good/known-bad gate is not enough - probe that a contract-equivalent paraphrase of a correct answer still scores ~1.0 before any paid run; field-tested on a text2SQL run where a column-order-sensitive scorer capped accuracy and masqueraded as 'no improvement'",
       "source_type": "human"
     }
   ]
