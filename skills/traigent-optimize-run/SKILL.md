@@ -337,7 +337,7 @@ If a run is killed anyway (verified against SDK 0.21.0 source; field-tested on 0
 completed trial was already written to `~/.traigent/sessions/<session_id>.json` as it finished
 (`storage/local_storage.py`), and `traigent sync <session_id>` uploads that partial session to
 the portal after the fact. What is actually lost: the in-flight trial's spend, and any
-example-level logs still buffered (flushed every 10 trials). One trap — `traigent sync --all`
+example-level logging not yet persisted at the kill. One trap — `traigent sync --all`
 only considers sessions that finished with a completed status or a terminal `stop_reason`
 (`cloud/sync_manager.py` `_is_finished_session`), and a killed session has **neither**, so
 `--all` and the status counts skip it; pass the explicit `<session_id>` to recover it.
