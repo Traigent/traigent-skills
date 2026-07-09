@@ -86,11 +86,18 @@ NEXT_RUN_LOCAL_DECISION_PATTERNS = {
 ALLOWED_NEXT_STEP_ACTION_LABELS = {
     "add_safety_gate",
     "adjust_config_space",
+    "audit_evaluator_quality",
     "compare_with_baseline",
+    "curate_evaluation_set",
     "expand_dataset",
+    "improve_evaluator",
     "promote_winner",
     "refine_metric",
     "rerun_larger_sample",
+    "run_optimization",
+    "score_evaluation_set",
+    "validate_holdout",
+    "wait",
 }
 FORBIDDEN_EXACT_LIFECYCLE_TOKENS = {
     "artifact_states",
@@ -767,6 +774,70 @@ def test_next_steps_protocol_uses_portable_backend_url_flag(repo_root: Path) -> 
     assert "connection-refused" not in text.lower(), (
         f"{rel}: do not predict the old default failure mode"
     )
+
+
+def test_next_steps_protocol_validates_authoritative_guidance_decision(
+    repo_root: Path,
+) -> None:
+    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    rel = path.relative_to(repo_root).as_posix()
+
+    required = (
+        "--guidance-variant rules",
+        "--guidance-variant policy",
+        "--strict-experiment",
+        "served_variant",
+        "actual `engine`",
+        "evidence-snapshot hash",
+        "top-level `decision`",
+        "decision.action.command_template",
+        "intention-to-treat",
+        "execution receipt",
+        "require `next_steps` to be empty",
+        "sole lifecycle action",
+    )
+    missing = [marker for marker in required if marker not in text]
+    assert not missing, f"{rel}: missing authoritative-decision protocol markers: {missing}"
+
+    assert "Never treat `served_variant=policy` as proof that policy ran" in text, (
+        f"{rel}: policy treatment must be verified against the actual engine"
+    )
+    assert "never in\n     a controlled comparison" in text, (
+        f"{rel}: legacy first-next_steps compatibility must be forbidden in experiments"
+    )
+
+
+def test_next_steps_protocol_treats_wait_as_non_executable(repo_root: Path) -> None:
+    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    rel = path.relative_to(repo_root).as_posix()
+
+    required = (
+        "`decision.category=wait`",
+        "`decision.action.kind=none`",
+        "empty `decision.action.command_template`",
+        "`next_steps` list is already empty",
+        "Do not execute a\n   command",
+        "or immediately re-query next-steps",
+        "until new evidence arrives",
+    )
+    missing = [marker for marker in required if marker not in text]
+    assert not missing, f"{rel}: missing non-executable wait protocol markers: {missing}"
+
+
+def test_next_steps_experiment_arm_is_precommitted_before_outcomes(repo_root: Path) -> None:
+    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    rel = path.relative_to(repo_root).as_posix()
+
+    required = (
+        "precommit the arm in the\n> experiment manifest before the run",
+        "must match the arm committed in the experiment manifest before outcomes were\n   observed",
+        "do not select an arm after seeing run results",
+    )
+    missing = [marker for marker in required if marker not in text]
+    assert not missing, f"{rel}: missing precommitted treatment protocol: {missing}"
 
 
 def test_dataset_example_insights_snippet_uses_async_sdk_contract(

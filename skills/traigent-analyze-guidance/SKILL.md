@@ -1,17 +1,17 @@
 ---
 name: traigent-analyze-guidance
-description: "What should this Traigent optimization run be, and what next? Three modes: (A) pre-run — fetch the service run-plan, present objectives/models/knobs/search/budget/offline options, apply preflight; (B) post-run, portal-tracked — fetch `traigent next-steps RUN_ID --json`, present posture.summary_text plus the single returned command template; (C) offline/local fallback — diagnose flat/noisy/negative local results, which knob mattered, example evidence, form the next iteration hypothesis when offline=True or no service payload. Portal-tracked decisions come from Traigent, never local markdown."
+description: "What should this Traigent optimization run be, and what next? Three modes: (A) pre-run — fetch the service run-plan, present objectives/models/knobs/search/budget/offline options, apply preflight; (B) post-run, portal-tracked — fetch `traigent next-steps RUN_ID --json`, validate the served guidance variant and authoritative decision, then present its command template; (C) offline/local fallback — diagnose flat/noisy/negative local results, which knob mattered, example evidence, form the next iteration hypothesis when offline=True or no service payload. Portal-tracked decisions come from Traigent, never local markdown."
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.0.2"
+  version: "1.0.4"
 ---
 
 # Traigent Analyze Guidance
 
 ## When to Use
 
-Requires `traigent>=0.16.0`.
+Requires `traigent>=0.21.3.dev0` for authoritative decisions and explicit variants.
 
 Use this skill whenever you need to answer "what should this optimization run
 be, and what should I do after it?" It has three strict modes and one doctrine:
@@ -148,15 +148,11 @@ off to `traigent-analyze-results`.
 
 Fetch the next-step payload from the Traigent service; do not substitute markdown reasoning.
 
-This mode is a thin client. It fetches the post-run payload from the Traigent
-service, presents the returned `posture.summary_text` and the single recommended
-next action to the user, and sends the selected service direction back into
-Mode A as context for a fresh service plan.
+This mode is a thin client. Fetch the post-run payload, validate its decision
+provenance, present `posture.summary_text` and the single authoritative action,
+then send that direction into Mode A as context for a fresh service plan.
 
-The service response may include an optional top-level `posture` object:
-
-- `posture.summary_text`: server-generated, redacted prose for the run.
-- `posture.generated_at`: timestamp for that prose.
+The optional `posture` contains server-redacted `summary_text` and `generated_at`.
 
 This mode is inert without the backend payload. If the command cannot fetch a
 service response, report that directly and stop unless the user asks you to
@@ -186,6 +182,14 @@ fresh recommendation.
 > export TRAIGENT_API_KEY="uk_..."
 > traigent next-steps RUN_ID --backend-url "https://portal.traigent.ai" --json
 > ```
+>
+> For a controlled rules-versus-policy comparison, precommit the arm in the
+> experiment manifest before the run. After the run returns its id, request
+> exactly that precommitted arm and require strict provenance:
+>
+> ```bash
+> traigent next-steps RUN_ID --guidance-variant policy --strict-experiment --backend-url "https://portal.traigent.ai" --json
+> ```
 
 1. Collect the completed run id and the portal `View` link.
    In SDK >= 0.18.1.dev2, `result.experiment_run_id` (and `result.experiment_id`) are
@@ -196,35 +200,69 @@ fresh recommendation.
    run_id = results.experiment_run_id   # available directly; pass this to next-steps
    ```
 2. Fetch next steps with `traigent next-steps RUN_ID --backend-url <url> --json`.
+   For a controlled comparison, also pass `--guidance-variant rules` or
+   `--guidance-variant policy` plus `--strict-experiment`. The requested value
+   must match the arm committed in the experiment manifest before outcomes were
+   observed; do not select an arm after seeing run results or rely on a mutable
+   shell environment to assign it.
    If `traigent next-steps --help` lists `(env: TRAIGENT_BACKEND_URL / TRAIGENT_API_URL)`,
    an env-var-only call is also valid for that SDK, but keep the explicit flag in
    portable docs and scripts.
-3. Present the returned payload without re-ranking it:
+3. Validate the server decision before presenting it:
+   - When an arm was requested, require `guidance_meta` and verify its
+     `served_variant` exactly matches.
+   - Record the actual `engine`, fallback reason, policy-table hash, SmartOpt
+     version, decision id, and evidence-snapshot hash. A requested policy arm
+     served by the rules engine is a fallback, not a policy-served sample.
+   - In a controlled comparison, fail closed on a variant mismatch, missing
+     provenance, or lane error. Report fallback under the experiment's
+     intention-to-treat protocol.
+   - Prefer top-level `decision`. Use the first `next_steps[]` item only for an
+     older response with neither a decision nor guidance metadata, and never in
+     a controlled comparison.
+   - When top-level `decision` is present, require `next_steps` to be empty. The
+     decision is the sole lifecycle action; reject duplicated compatibility
+     actions instead of trying to reconcile two sources of truth.
+4. Present the returned payload without re-ranking it:
    - `posture.summary_text`, when present (show this first),
    - `posture.generated_at`, when present,
-   - the first returned `next_steps[]` item, **if `next_steps` is non-empty**,
-   - `next_steps[].action.command_template`,
+   - the authoritative `decision`, when present,
+   - `decision.action.command_template`,
    - the returned rationale for that next action,
+   - served variant, actual engine, and fallback status,
    - portal link,
    - best config or comparison fields if present,
    - any caveat, advisory, or confidence text returned by the service,
    - any requested follow-up actions.
 
-   **If `next_steps` is an empty list** (normal for very small or low-coverage runs),
+   **If `decision.category=wait`**, additionally require
+   `decision.action.kind=none` and an empty `decision.action.command_template`
+   (the `next_steps` list is already empty
+   for every authoritative decision).
+   Present the wait rationale as the complete recommendation. Do not execute a
+   command, ask the user to pursue one, or immediately re-query next-steps;
+   resume only after new run evidence or a relevant lifecycle-state change.
+
+   **If there is no decision and `next_steps` is an empty list** (normal for very small or low-coverage runs),
    present `posture.summary_text` as the complete guidance for this run and do not
    fabricate step recommendations. Tell the user there are no step recommendations for
    this run and suggest they expand coverage (more trials or more dataset examples) before
    the next run.
 
-4. Ask the user whether to pursue the returned command template. If `next_steps` is empty
-   or has no command template, ask whether to retry the backend request after expanding
-   run coverage.
-5. Run only the command template the service returns, and only after the user
-   confirms it.
-6. Loop back to Mode A, passing the run id, portal link, posture
+5. For an executable decision, ask whether to pursue the returned command. If
+   no decision exists, ask whether to retry after expanding run coverage. For
+   an explicit wait decision, stop as described above without prompting.
+6. Run only the command template the service returns for an executable
+   decision; require it to be non-empty and require user confirmation. Dispatch
+   `action.kind=skill` to the exact installed skill name;
+   execute CLI or SDK actions through their declared surfaces. Do not reinterpret
+   a scoring action as curation or an audit action as evaluator repair.
+7. When available, record an execution receipt with the decision id, completion
+   status, successor run, and holdout or gate evidence. Starting is not completion.
+8. After an executable action, loop back to Mode A, passing the run id, portal link, posture
    prose, and selected service action as context. The next run still requires a
    fresh service plan, option-by-option confirmation, mock dry-run, and explicit
-   go.
+   go. An explicit wait decision ends the cycle until new evidence arrives.
 
 ### Presentation Rules
 
@@ -232,8 +270,11 @@ fresh recommendation.
   but do not change the ordering or imply stronger support than the payload gives.
 - Present `posture.summary_text` as opaque server prose. Do not expand it into
   internal fields or local reasoning.
-- Present the single returned next action with its rationale and
-  `next_steps[].action.command_template`.
+- Present the single authoritative decision with its rationale and
+  `decision.action.command_template`. For an older unversioned response only,
+  present `next_steps[].action.command_template` as the compatibility fallback.
+- Never treat `served_variant=policy` as proof that policy ran; use the returned
+  actual engine and fallback reason.
 - Always include the portal link when available. The portal is the durable record
   for best performers, tradeoffs, parameter importance, and decision context.
 - If the run is absent from the portal, treat that as a registration or
@@ -250,14 +291,17 @@ fresh recommendation.
 
 ### Handoff Reference
 
-Follow whatever command template the service returns. These mappings are only
-handoff labels for a returned action, not a local menu:
+Follow whatever command template the service returns. The server must use the
+current skill names below; reject a stale or unavailable skill name instead of
+guessing what it meant. These are handoff labels, not a local decision menu:
 
+- evaluation-set scoring -> `traigent-dataset-curate`
 - dataset curation -> `traigent-dataset-curate`
 - hard-example reflection -> `traigent-dataset-curate`
 - evaluator review -> `traigent-eval-audit`
-- evaluator repair -> `traigent-eval-audit` (service `improve_evaluator` action; present the returned action verbatim, do not repair locally)
+- evaluator repair -> `traigent-eval-build`
 - optimization run -> `traigent-optimize-run`
+- holdout validation -> `traigent-ci-safety-gate`
 - safety gate setup -> `traigent-ci-safety-gate`
 
 ---
