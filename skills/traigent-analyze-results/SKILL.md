@@ -513,9 +513,16 @@ The status is not binary — read it precisely (field-verified on SDK 0.21.0 rea
 
 | `persistence_status` | Meaning | Action |
 |---|---|---|
-| ok / absent | fully synced | none |
-| `"degraded"` | **partial, not broken** — trial results *and* finalize synced (the portal link works; trial views and per-example diagnostics are live), only the session aggregation rollup was dropped, so summary aggregates may lag | keep the run; do **not** re-run (and re-pay) |
+| `"succeeded"` (or `"skipped"`/absent when backend tracking is off) | fully synced | none |
+| `"degraded"` (benign) | **partial, not broken** — trial results *and* finalize synced (the portal link works; trial views and per-example diagnostics are live), only the session aggregation rollup was dropped, so summary aggregates may lag | keep the run; do **not** re-run (and re-pay) |
+| `"degraded"` (backend-rejected) | the backend actively **refused** the persistence — `persistence_rejected` is True and `persistence_rejection_reason` explains why (quota/auth/tenant) | inspect `persistence_rejection_reason`; treat as a real problem, do **not** assume it's safe |
 | `"failed"` | finalize lost after retries | recover via `traigent local sync`; re-run only if sync can't recover |
+
+The two `"degraded"` cases are distinguished by metadata: benign rollup-lag sets
+`persistence_degraded_reason` (trial results and session finalize both persisted — keep the run);
+a backend rejection sets `persistence_rejected=True`, `persistence_reason="rejected"`, and
+`persistence_rejection_reason=<why>` (the backend refused the data — do not treat it as benign).
+The SDK never emits `"ok"`.
 
 The portal may group runs that share the same agent and canonical dataset. Use that group only to
 find related source runs. Before applying or recommending a configuration, record the exact source

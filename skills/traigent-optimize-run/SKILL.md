@@ -419,19 +419,27 @@ After optimization, `func.apply_best_config(results)` locks in the winning confi
 
 ### Confirm a Portal-Tracked Run Actually Synced
 
-After a non-offline run, check `results.metadata.get("persistence_status")`: if it's `"failed"`,
+After a non-offline run, check `results.metadata.get("persistence_status")` — the SDK emits exactly
+`"skipped"`, `"succeeded"`, `"degraded"`, or `"failed"` (never `"ok"`). If it's `"failed"`,
 the backend finalize failed after retries and the portal session may be stuck `RUNNING` — re-check
-the portal, don't assume the run synced. A `"degraded"` status is **partial, not broken** — trial
-results and finalize synced (the portal link works); only summary aggregates may lag. Keep the run,
-don't re-pay for a rerun. Full detail: `traigent-analyze-results` → "Verify the Run
-Actually Persisted".
+the portal, don't assume the run synced. `"degraded"` has two cases, so check the metadata before
+deciding: if `persistence_degraded_reason` is set (and `persistence_rejected` is not True), it's
+benign rollup-lag — trial results *and* finalize synced (the portal link works), only summary
+aggregates may lag, so keep the run and don't re-pay for a rerun. But if `persistence_rejected` is
+True / `persistence_reason == "rejected"`, the backend actively **refused** the persistence (quota,
+auth, or tenant) — inspect `persistence_rejection_reason` and treat it as a real problem, not benign.
+Full detail: `traigent-analyze-results` → "Verify the Run Actually Persisted".
 
-> **User-side retries need `tenacity`.** If the decorated function passes `num_retries=` to
-> `litellm.completion`, know that LiteLLM imports `tenacity` lazily for it and `tenacity` is NOT
-> in traigent's dependency closure — in a clean install the retry path dies with
+> **LiteLLM's `*_with_retries` helpers need `tenacity`.** If the decorated function calls
+> `litellm.completion_with_retries()` / `acompletion_with_retries()`, know that LiteLLM imports
+> `tenacity` lazily inside those helpers. On SDK 0.21.0 (and any earlier build) `tenacity` is NOT
+> in traigent's dependency closure, so in a clean install that retry path dies with
 > `ModuleNotFoundError: tenacity`, and the failed call is scored 0, silently biasing the trial
-> (field-hit on a real run; Traigent/Traigent#1824). Preflight `python -c "import tenacity"`
-> before a paid run that relies on LiteLLM retries.
+> (field-hit on a real run; Traigent/Traigent#1824, still open). Plain `litellm.completion(num_retries=)`
+> is *not* affected — it uses LiteLLM's own internal retry loop and never imports `tenacity`.
+> Traigent/Traigent#1825 (merged 2026-07-10) now declares `tenacity>=8.1.0` as a core dep, so SDK
+> builds that include it no longer need this — but on 0.21.0 and earlier, preflight
+> `python -c "import tenacity"` before a paid run that relies on the `*_with_retries` helpers.
 
 ## Complete Example
 
