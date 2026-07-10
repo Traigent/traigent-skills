@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1ed3001d67c1b714",
+  "doc_hash": "54ced8848de1595e",
   "reference_hashes": {
     "references/iteration-log-template.md": "9a20df1f1a95e563",
     "references/optimization-principles.md": "2c9b62d815e7fbc9",
@@ -38,6 +38,39 @@
       "doc_before_hash": "7b9256ff96ffba2d",
       "doc_after_hash": "1ed3001d67c1b714",
       "note": "add model-capability lever + genuine difficulty/annotation-ceiling causes to the Mode C flat/negative-score diagnosis (Traigent/traigent-skills#181)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "authoritative-guidance-decision-2026-07-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-09T20:45:36Z",
+      "doc_before_hash": "1ed3001d67c1b714",
+      "doc_after_hash": "9dad2ab3305e3c2b",
+      "note": "make Mode B validate the requested guidance arm and actual engine, consume the authoritative decision instead of mixed legacy ordering, route only current skill names, and record execution receipts",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "non-executable-wait-decision-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T00:00:00Z",
+      "doc_before_hash": "9dad2ab3305e3c2b",
+      "doc_after_hash": "7b3426f7378dc2c4",
+      "note": "treat the authoritative wait category as an explicit non-executable decision and defer re-query until new lifecycle evidence arrives",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "single-source-precommitted-guidance-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T00:00:00Z",
+      "doc_before_hash": "7b3426f7378dc2c4",
+      "doc_after_hash": "54ced8848de1595e",
+      "note": "make top-level decision the sole lifecycle action, require strict experiment validation, and precommit comparison arms before observing outcomes",
       "source_type": "human"
     }
   ]
