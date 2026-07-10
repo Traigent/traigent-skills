@@ -11,7 +11,7 @@ metadata:
 
 ## When to Use
 
-Requires an SDK build with `traigent guidance` for Planner V2. Existing
+Requires Traigent SDK `>=0.21.3.dev0` with `traigent guidance` for Planner V2. Existing
 lifecycles pinned to v1 may continue using `traigent next-steps`; never mix v1
 and v2 decisions inside one experiment arm.
 
@@ -223,12 +223,27 @@ request a fresh server decision.
      and policy, rule, calibration, and shield versions.
    - Require the decision's utility profile to equal the precommitted profile.
      A `policy_override` must have source `policy`, advantage label
-     `model_certified_positive`, an opaque certificate reference, and high
-     evidence. This label means model-certified positive advantage; it is not a
-     formal proof of KPI improvement.
-   - Treat `rules_parity` as the normal no-override result. Treat
-     `rules_fallback` as unavailable planner evidence, never as a policy-served
-     sample. Report both under the experiment's intention-to-treat protocol.
+     `certified_session_utility_advantage_no_kpi_guarantee`, an opaque
+     certificate reference, and high evidence. This means the exact action has
+     independently certified positive session-utility advantage on its stated
+     support; it is not a product-KPI guarantee.
+   - Treat `rules_parity` with label `no_certified_override` as the normal case
+     where no certified override applies and the safe rule action is retained;
+     do not say the policy "agreed" with the rule. Treat `rules_fallback` as
+     unavailable planner evidence, never as a policy-served sample, and retain
+     its exact `meta.fallback_reason`: `policy_unavailable`, `calibration_unavailable`,
+     `artifact_invalid`, `certificate_drift`, `exact_support_mismatch`, or
+     `override_denied`. Report parity and fallback under the experiment's
+     intention-to-treat protocol.
+   - Consume only output already validated by `traigent guidance next` or
+     `PlannerV2Client`. Do not hand-parse raw, stored, or mocked JSON: if it did
+     not pass the SDK's exact-key, enum, category/variant, mode/source/selector,
+     certificate, evidence-level, and cross-field checks, stop without a
+     decision. In particular: parity is source `rules` with selector `policy`,
+     a null certificate, medium evidence, and category equal to the baseline;
+     fallback is requested/served `policy_override` with source/selector
+     `rules`, a non-null fallback reason, and no certificate; pending WAIT is
+     source `rules` with selector `safety`; STOP uses source/selector `safety`.
    - In strict experiments, fail closed on treatment/profile mismatch, missing
      provenance, fallback, malformed command, or an unavailable selector. Do
      not replace a rejected v2 decision with v1 guidance or local reasoning.
@@ -249,7 +264,8 @@ request a fresh server decision.
    profile.
 
    ```bash
-   traigent guidance reopen LIFECYCLE_ID --reason new_artifact --json
+   traigent guidance reopen LIFECYCLE_ID --reason new_artifact \
+     --expected-treatment TREATMENT --expected-profile PROFILE --json
    ```
 5. Require action kind `cli`, a variant valid for the client-safe category, and
    the exact template `traigent guidance execute --decision DECISION_ID` for
@@ -263,7 +279,8 @@ request a fresh server decision.
    - a later `started` receipt is only a heartbeat that refreshes that same
      active attempt lease;
    - `submitted` requires an opaque `result_ref` and may include a successor run;
-   - `failed` and `skipped` close that attempt without claiming success;
+   - `started` is always `pending`; `submitted` may be `pending`, `verified`, or
+     `rejected`; `failed` and `skipped` are always `rejected`;
    - `verification_status=pending` is not completion. A mutation remains
      awaiting verification until a registered revision is consumed by a
      successor run. Never translate `submitted` into `verified` locally.
@@ -305,8 +322,9 @@ record its execution receipt. Do not enroll a new lifecycle in v1.
 - Present the single authoritative v2 decision and its templated rationale. Do
   not reconstruct hidden evidence from local files.
 - Never treat `served_variant=policy_override` as proof that an override ran;
-  require mode `policy_override`, source `policy`, the certified-positive label,
-  and an opaque certificate reference.
+  require mode `policy_override`, source `policy`, the exact
+  `certified_session_utility_advantage_no_kpi_guarantee` label, and an opaque
+  certificate reference.
 - High evidence means a certified override or a safety-complete stop. Medium
   means complete rules/parity evidence. Low is allowed only for a
   non-mandatory fallback or wait; never use it to promote.

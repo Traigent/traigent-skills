@@ -789,7 +789,7 @@ def test_next_steps_protocol_validates_authoritative_guidance_decision(
         "--strict-experiment",
         "meta.served_variant",
         "meta.selector_engine",
-        "model_certified_positive",
+        "certified_session_utility_advantage_no_kpi_guarantee",
         "rules_parity",
         "rules_fallback",
         "evidence-snapshot hash",
