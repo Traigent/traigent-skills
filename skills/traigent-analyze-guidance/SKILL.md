@@ -11,7 +11,7 @@ metadata:
 
 ## When to Use
 
-Requires Traigent SDK `>=0.21.3.dev0` with `traigent guidance` for Planner V2. Existing
+Requires `traigent>=0.21.3.dev0` with `traigent guidance` for Planner V2. Existing
 lifecycles pinned to v1 may continue using `traigent next-steps`; never mix v1
 and v2 decisions inside one experiment arm.
 
@@ -562,7 +562,7 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   return, and any missing fact the step truly requires.
 - Always end by recommending the next Traigent skill or action to take.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
-  or before any data leaves the machine; treat service-returned plans and decisions as
+  or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,
   experiment names, logs, or provenance files.
 <!-- /INTERACTION_POLICY v1 -->

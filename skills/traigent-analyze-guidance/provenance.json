@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "07192640735c1a2a",
+  "doc_hash": "ae3b1580aee948e6",
   "reference_hashes": {
     "references/iteration-log-template.md": "9a20df1f1a95e563",
     "references/optimization-principles.md": "2c9b62d815e7fbc9",
