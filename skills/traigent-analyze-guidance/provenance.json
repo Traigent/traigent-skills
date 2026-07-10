@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ae3b1580aee948e6",
+  "doc_hash": "e140eb4cb0a49475",
   "reference_hashes": {
     "references/iteration-log-template.md": "9a20df1f1a95e563",
     "references/optimization-principles.md": "2c9b62d815e7fbc9",
@@ -115,6 +115,17 @@
       "doc_before_hash": "4c8427fa9bf9879d",
       "doc_after_hash": "07192640735c1a2a",
       "note": "clarify fallback_reason, require SDK-validated payloads and exact mode mappings, and bind reopen inheritance to the parent treatment and profile",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "planner-v2-release-and-attestation-honesty-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T15:15:00Z",
+      "doc_before_hash": "07192640735c1a2a",
+      "doc_after_hash": "e140eb4cb0a49475",
+      "note": "restore shared interaction-policy wording, require the final guidance-bearing SDK release rather than an ambiguous dev build, and describe the current override HMAC as symmetric empirical integrity rather than independent issuer proof",
       "source_type": "human"
     }
   ]

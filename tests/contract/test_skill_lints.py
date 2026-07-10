@@ -44,6 +44,9 @@ import inspect
 import re
 from pathlib import Path
 
+import yaml
+from packaging.version import Version
+
 from .extract import _iter_fenced_blocks
 
 # .optimize(dataset=  /  .optimize_sync( dataset = ...   (robust to whitespace;
@@ -57,6 +60,20 @@ VALIDATE_PROVIDERS_RE = re.compile(r"\bvalidate_providers\s*=")
 PIP_INSTALL_TRAIGENT_RE = re.compile(
     r"\bpip\s+install\b[^#`]*[\s\"']traigent(?![\w.-])(?:\[[^\]]*\])?", re.IGNORECASE
 )
+
+
+def test_planner_v2_sdk_floor_names_a_releasable_final_version(
+    repo_root: Path,
+) -> None:
+    sync_map = yaml.safe_load((repo_root / "sync_map.yml").read_text(encoding="utf-8"))
+    floor = sync_map["skills"]["traigent-analyze-guidance"]["min_sdk_version"]
+    parsed = Version(str(floor))
+
+    assert parsed == Version("0.21.3")
+    assert not parsed.is_devrelease, (
+        "a dev floor cannot distinguish an older develop build that lacks "
+        "the Planner V2 guidance surface"
+    )
 LITERAL_FIRST_RUN_HEADING_RE = re.compile(
     r"(?m)^### Literal First Run \(execution-only agents\)\s*$"
 )

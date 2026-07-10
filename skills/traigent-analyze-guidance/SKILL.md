@@ -11,7 +11,7 @@ metadata:
 
 ## When to Use
 
-Requires `traigent>=0.21.3.dev0` with `traigent guidance` for Planner V2. Existing
+Requires `traigent>=0.21.3` with `traigent guidance` for Planner V2. Existing
 lifecycles pinned to v1 may continue using `traigent next-steps`; never mix v1
 and v2 decisions inside one experiment arm.
 
@@ -225,8 +225,9 @@ request a fresh server decision.
      A `policy_override` must have source `policy`, advantage label
      `certified_session_utility_advantage_no_kpi_guarantee`, an opaque
      certificate reference, and high evidence. This means the exact action has
-     independently certified positive session-utility advantage on its stated
-     support; it is not a product-KPI guarantee.
+     an HMAC-authenticated, empirically screened positive session-utility
+     advantage on its stated support; it is not a product-KPI guarantee or
+     proof of an independent issuer because the current attestation is symmetric.
    - Treat `rules_parity` with label `no_certified_override` as the normal case
      where no certified override applies and the safe rule action is retained;
      do not say the policy "agreed" with the rule. Treat `rules_fallback` as
@@ -325,7 +326,7 @@ record its execution receipt. Do not enroll a new lifecycle in v1.
   require mode `policy_override`, source `policy`, the exact
   `certified_session_utility_advantage_no_kpi_guarantee` label, and an opaque
   certificate reference.
-- High evidence means a certified override or a safety-complete stop. Medium
+- High evidence means a valid HMAC-authenticated empirical override or a safety-complete stop. Medium
   means complete rules/parity evidence. Low is allowed only for a
   non-mandatory fallback or wait; never use it to promote.
 - Always include the portal link when available. The portal is the durable record
