@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7c5ab9eb1a9f6d5b",
+  "doc_hash": "21dc95f04b0a90d2",
   "entries": [
     {
       "edit_id": "genesis",
@@ -19,6 +19,15 @@
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
       "source_type": "human"
+    },
+    {
+      "edit_id": "benchmarks-insights-field-evidence-2026-07-10",
+      "op": "edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T00:00:00Z",
+      "note": "Reasoning-Effort Knobs pattern: effort is a knob not a ladder (high\u2248medium at ~2x tokens, measured), max_tokens headroom pairing (>=4096 under high), one-knob-per-mechanism (prompt-CoT no-op on native-reasoning models); field evidence from benchmarks-insights 2026-07-09/10",
+      "source_type": "agent"
     }
   ]
 }

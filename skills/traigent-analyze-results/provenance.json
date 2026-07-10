@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0f5541aff757d0dd",
+  "doc_hash": "00d4059895739183",
   "entries": [
     {
       "edit_id": "genesis",
@@ -50,7 +50,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "838feefd1437899f",
       "doc_after_hash": "77ffaa88b34926ab",
-      "note": "note that the apply threshold check runs on the search slice, not a promotion decision — promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
+      "note": "note that the apply threshold check runs on the search slice, not a promotion decision \u2014 promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
       "source_type": "human"
     },
     {
@@ -63,6 +63,15 @@
       "doc_after_hash": "0f5541aff757d0dd",
       "note": "clarify results.total_cost/total_tokens semantics: aggregated locally, None means no positive cost was captured (mock/offline/unpriced), never expected for a real local run; per-trial total via get_metric('total_cost')",
       "source_type": "human"
+    },
+    {
+      "edit_id": "benchmarks-insights-field-evidence-2026-07-10",
+      "op": "edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T00:00:00Z",
+      "note": "degraded/failed persistence table; rerun-noise doctrine (\u00b15-10pp at n=40, resolution rule, same-day pairing, bootstrap CI) + winners-don't-port-across-model-families; per-example diagnostics as eval-set audit (variance flags + token-runaway; example_id vs example_num mapping trap, BE#2068); field evidence from benchmarks-insights 2026-07-09/10",
+      "source_type": "agent"
     }
   ]
 }

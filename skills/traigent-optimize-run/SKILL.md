@@ -4,7 +4,7 @@ description: "Run Traigent optimization: async/sync execution, algorithm selecti
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # Running Traigent Optimization
@@ -421,8 +421,17 @@ After optimization, `func.apply_best_config(results)` locks in the winning confi
 
 After a non-offline run, check `results.metadata.get("persistence_status")`: if it's `"failed"`,
 the backend finalize failed after retries and the portal session may be stuck `RUNNING` — re-check
-the portal, don't assume the run synced. Full detail: `traigent-analyze-results` → "Verify the Run
+the portal, don't assume the run synced. A `"degraded"` status is **partial, not broken** — trial
+results and finalize synced (the portal link works); only summary aggregates may lag. Keep the run,
+don't re-pay for a rerun. Full detail: `traigent-analyze-results` → "Verify the Run
 Actually Persisted".
+
+> **User-side retries need `tenacity`.** If the decorated function passes `num_retries=` to
+> `litellm.completion`, know that LiteLLM imports `tenacity` lazily for it and `tenacity` is NOT
+> in traigent's dependency closure — in a clean install the retry path dies with
+> `ModuleNotFoundError: tenacity`, and the failed call is scored 0, silently biasing the trial
+> (field-hit on a real run; Traigent/Traigent#1824). Preflight `python -c "import tenacity"`
+> before a paid run that relies on LiteLLM retries.
 
 ## Complete Example
 

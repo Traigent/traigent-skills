@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b9ed4f4e52c073c4",
+  "doc_hash": "22c8464fe11aad11",
   "entries": [
     {
       "edit_id": "genesis",
@@ -39,7 +39,7 @@
       "timestamp": "2026-07-05T00:00:00Z",
       "doc_before_hash": "70e6157794404a2f",
       "doc_after_hash": "aecaeb37a7a929f5",
-      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) — 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
+      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) \u2014 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
       "source_type": "human"
     },
     {
@@ -63,6 +63,15 @@
       "doc_after_hash": "b9ed4f4e52c073c4",
       "note": "warn that local SDK default_config consumes a max_trials slot for grid, random, and auto when it resolves local; connected backend-guided auto does not run it as a baseline today; N-point grids need max_trials >= N+1 unless default_config is omitted",
       "source_type": "human"
+    },
+    {
+      "edit_id": "benchmarks-insights-field-evidence-2026-07-10",
+      "op": "edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T00:00:00Z",
+      "note": "persistence_status 'degraded' = partial-not-broken clause + user-side LiteLLM num_retries requires tenacity (ModuleNotFoundError -> call scores 0; SDK#1824); field evidence from benchmarks-insights real runs 2026-07-09/10",
+      "source_type": "agent"
     }
   ]
 }
