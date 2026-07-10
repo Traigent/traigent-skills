@@ -740,20 +740,14 @@ def test_next_run_skill_stays_service_decided_thin_client(repo_root: Path) -> No
     assert re.search(
         r"\bdecision comes from the Traigent service\b", text, re.IGNORECASE
     ), "traigent-analyze-guidance must state that the next-step decision comes from the service"
-    assert "posture.summary_text" in text, (
-        "traigent-analyze-guidance must present opaque posture prose"
+    assert "traigent guidance next RUN_ID --json" in text, (
+        "traigent-analyze-guidance must fetch the Planner V2 decision"
     )
-    assert "traigent next-steps RUN_ID --json" in text, (
-        "traigent-analyze-guidance must fetch the service next-steps payload"
+    assert "traigent guidance execute --decision <opaque-id>" in text, (
+        "traigent-analyze-guidance must execute only an opaque decision id"
     )
-    assert "next_steps[]" in text, (
-        "traigent-analyze-guidance must reference returned next_steps"
-    )
-    assert "next_steps[].action.command_template" in text, (
-        "traigent-analyze-guidance must present the returned command template"
-    )
-    assert re.search(r"\bRun only the command template the service returns\b", text), (
-        "traigent-analyze-guidance must execute only returned command templates"
+    assert "Do not execute a\nserver-supplied shell fragment" in text, (
+        "Planner V2 must not turn a server response into a shell command"
     )
 
 
@@ -762,8 +756,11 @@ def test_next_steps_protocol_uses_portable_backend_url_flag(repo_root: Path) -> 
     text = path.read_text(encoding="utf-8")
     rel = path.relative_to(repo_root).as_posix()
 
+    assert "--backend-url \"https://portal.traigent.ai\" --json" in text, (
+        f"{rel}: Mode B must show the backend URL flag on Planner V2 commands"
+    )
     assert "traigent next-steps RUN_ID --backend-url <url> --json" in text, (
-        f"{rel}: Mode B must show the backend URL flag on the next-steps command"
+        f"{rel}: existing v1 lifecycle compatibility must remain explicit"
     )
     assert "`TRAIGENT_BACKEND_URL` must be set" not in text, (
         f"{rel}: next-steps docs must not teach env-var-only setup as mandatory"
@@ -784,27 +781,35 @@ def test_next_steps_protocol_validates_authoritative_guidance_decision(
     rel = path.relative_to(repo_root).as_posix()
 
     required = (
+        "--treatment rules_control",
+        "--treatment policy_override",
+        "--profile balanced",
         "--guidance-variant rules",
         "--guidance-variant policy",
         "--strict-experiment",
-        "served_variant",
-        "actual `engine`",
+        "meta.served_variant",
+        "meta.selector_engine",
+        "model_certified_positive",
+        "rules_parity",
+        "rules_fallback",
         "evidence-snapshot hash",
         "top-level `decision`",
-        "decision.action.command_template",
         "intention-to-treat",
         "execution receipt",
-        "require `next_steps` to be empty",
-        "sole lifecycle action",
+        "result_ref",
+        "verification_status=pending",
     )
     missing = [marker for marker in required if marker not in text]
     assert not missing, f"{rel}: missing authoritative-decision protocol markers: {missing}"
 
-    assert "Never treat `served_variant=policy` as proof that policy ran" in text, (
-        f"{rel}: policy treatment must be verified against the actual engine"
+    assert (
+        "Never treat `served_variant=policy_override` as proof that an override ran"
+        in text
+    ), (
+        f"{rel}: policy treatment must be verified against mode, engine, and certificate"
     )
-    assert "never in\n     a controlled comparison" in text, (
-        f"{rel}: legacy first-next_steps compatibility must be forbidden in experiments"
+    assert "Never use the first\n`next_steps[]` compatibility row" in text, (
+        f"{rel}: legacy compatibility must be forbidden in controlled experiments"
     )
 
 
@@ -815,12 +820,11 @@ def test_next_steps_protocol_treats_wait_as_non_executable(repo_root: Path) -> N
 
     required = (
         "`decision.category=wait`",
+        "mode `pending_wait`",
         "`decision.action.kind=none`",
-        "empty `decision.action.command_template`",
-        "`next_steps` list is already empty",
-        "Do not execute a\n   command",
-        "or immediately re-query next-steps",
-        "until new evidence arrives",
+        "an empty command",
+        "Do not execute, prompt for another action, or\n   immediately re-query",
+        "resume only after new evidence arrives",
     )
     missing = [marker for marker in required if marker not in text]
     assert not missing, f"{rel}: missing non-executable wait protocol markers: {missing}"
@@ -832,12 +836,30 @@ def test_next_steps_experiment_arm_is_precommitted_before_outcomes(repo_root: Pa
     rel = path.relative_to(repo_root).as_posix()
 
     required = (
-        "precommit the arm in the\n> experiment manifest before the run",
-        "must match the arm committed in the experiment manifest before outcomes were\n   observed",
-        "do not select an arm after seeing run results",
+        "precommit both the arm and\n> utility profile in the experiment manifest before the run",
+        "Both must match the experiment\n   manifest committed before outcomes were observed",
+        "Do not select either after\n   seeing results",
     )
     missing = [marker for marker in required if marker not in text]
     assert not missing, f"{rel}: missing precommitted treatment protocol: {missing}"
+
+
+def test_planner_v2_stop_and_receipt_protocol_fail_closed(repo_root: Path) -> None:
+    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
+    text = path.read_text(encoding="utf-8")
+    rel = path.relative_to(repo_root).as_posix()
+
+    required = (
+        "`decision.category=stop`",
+        "mode `safety_stop`",
+        "`new_artifact`, `budget`, or\n   `operator` reason",
+        "`submitted` requires an opaque `result_ref`",
+        "Never translate `submitted` into `verified` locally",
+        "reject unknown top-level or nested fields and unknown enum values",
+        "Do\n     not replace a rejected v2 decision with v1 guidance",
+    )
+    missing = [marker for marker in required if marker not in text]
+    assert not missing, f"{rel}: missing V2 fail-closed markers: {missing}"
 
 
 def test_dataset_example_insights_snippet_uses_async_sdk_contract(
