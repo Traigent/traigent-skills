@@ -5,7 +5,7 @@ sdk:
 default_min_sdk_version: "0.15.0"
 # Keep this pinned and update it when a new PyPI release should be covered by
 # per-PR released-contracts. Do not resolve PyPI live in PR CI.
-current_released_sdk_version: "0.21.0"
+current_released_sdk_version: "0.21.3"
 skills:
   traigent-setup-quickstart:
     env_version_floors:
@@ -220,7 +220,7 @@ skills:
   # (run-plan, next-run, iterate), folded in during the 2026-07 taxonomy
   # consolidation.
   traigent-analyze-guidance:
-    min_sdk_version: "0.21.3.dev0"
+    min_sdk_version: "0.21.3"
     backend_prefixes:
       - /api/v1/experiment-runs
       - /api/v1/optimization-comparisons
@@ -233,6 +233,8 @@ skills:
       - traigent.utils.insights
       - traigent.utils.importance
       - traigent.analytics
+      - traigent.analytics.planner
+      - traigent.cli.guidance_command
     sdk_paths:
       - traigent/api/decorators.py
       - traigent/core/optimized_function.py
@@ -240,6 +242,8 @@ skills:
       - traigent/utils/insights.py
       - traigent/utils/importance.py
       - traigent/analytics/example_insights.py
+      - traigent/analytics/planner.py
+      - traigent/cli/guidance_command.py
 
   traigent-recipe-text2sql:
     min_sdk_version: "0.16.0"
