@@ -1,6 +1,9 @@
 {
   "schema": "skill-provenance/v1",
   "doc_hash": "31f571e1827f5f48",
+  "reference_hashes": {
+    "references/evaluator-templates.md": "9559f32c5edba306"
+  },
   "entries": [
     {
       "edit_id": "genesis",

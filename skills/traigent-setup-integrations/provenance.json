@@ -1,6 +1,11 @@
 {
   "schema": "skill-provenance/v1",
   "doc_hash": "c136eb9cba89e3f5",
+  "reference_hashes": {
+    "references/dspy.md": "6c899d029a43f9f6",
+    "references/langchain.md": "ffe92eb4d431f3b9",
+    "references/litellm.md": "4998284ee87c2142"
+  },
   "entries": [
     {
       "edit_id": "genesis",
@@ -28,7 +33,7 @@
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "2bf7d398b0a7dc94",
       "doc_after_hash": "c136eb9cba89e3f5",
-      "note": "warn that reasoning models' hidden tokens consume max_tokens before answer text — give >=1024-2048 headroom in sweeps (Traigent/traigent-skills#179)",
+      "note": "warn that reasoning models' hidden tokens consume max_tokens before answer text \u2014 give >=1024-2048 headroom in sweeps (Traigent/traigent-skills#179)",
       "source_type": "human"
     }
   ]

@@ -1,6 +1,9 @@
 {
   "schema": "skill-provenance/v1",
   "doc_hash": "418baaedb8e56a96",
+  "reference_hashes": {
+    "references/quickstart_text2sql.md": "3317e917867f3842"
+  },
   "entries": [
     {
       "edit_id": "genesis",

@@ -1,6 +1,9 @@
 {
   "schema": "skill-provenance/v1",
   "doc_hash": "d3580521a5750678",
+  "reference_hashes": {
+    "references/gate-workflow.md": "4f73c4055ab56e4e"
+  },
   "entries": [
     {
       "edit_id": "genesis",

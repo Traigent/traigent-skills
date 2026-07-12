@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.17"
+  version: "1.0.18"
 ---
 
 # Traigent Quickstart
@@ -103,6 +103,10 @@ background it, or continue after a failed command. The final expected line is
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Mock/offline env is set in bash, BEFORE python imports anything.
+export TRAIGENT_OFFLINE_MODE=true
+export LITELLM_LOCAL_MODEL_COST_MAP=True
+
 python -m venv .venv
 source .venv/bin/activate
 
@@ -174,11 +178,6 @@ assert results.best_config is not None, "no best config selected"
 print("TRAIGENT-DRY-RUN-OK")
 PY
 
-export TRAIGENT_OFFLINE_MODE=true
-export LITELLM_LOCAL_MODEL_COST_MAP=True
-# Mock/offline env is set in bash, BEFORE python imports anything.
-export TRAIGENT_OFFLINE_MODE=true
-export LITELLM_LOCAL_MODEL_COST_MAP=True
 python ticket_classifier.py
 ```
 
@@ -248,7 +247,7 @@ export TRAIGENT_API_KEY="uk_..."   # portal keys use the uk_ prefix
 
 The CLI device-flow issues a project-scoped `sk_`-prefixed key with broader permissions (quota, dataset management, full project access). Use this when you need project-level operations beyond experiments.
 
-Run `traigent auth login` in your terminal — it opens a browser for OAuth device authorization. The key is written to `~/.traigent/credentials`. Then export it:
+Run `traigent auth login` in your terminal — it opens a browser for OAuth device authorization. The key is saved to your encrypted local credential store at `~/.traigent/secure_credentials.enc` (secured with `TRAIGENT_MASTER_PASSWORD`); the legacy plaintext `~/.traigent/credentials.json` is no longer read unless `TRAIGENT_ALLOW_PLAINTEXT_CREDENTIALS=true` is set for a one-time migration. Then export it:
 
 ```bash
 export TRAIGENT_API_KEY="sk_..."
@@ -263,8 +262,11 @@ For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offlin
 > `TRAIGENT_BACKEND_URL` is unset — no env var is needed for the standard cloud path.
 > Set `TRAIGENT_BACKEND_URL` only to target a dev or self-hosted backend
 > (e.g. `http://localhost:5000`). Exception: the `traigent next-steps` and `traigent plan`
-> CLI commands default their `--backend-url` flag to `http://localhost:5000`, so for cloud
-> use pass the flag or set the env var explicitly.
+> CLI commands resolve `--backend-url` as flag → `TRAIGENT_BACKEND_URL` / the URL stored by
+> `traigent auth login` → a local default (`http://localhost:5000`), so for cloud use log in
+> first or pass the flag/env var explicitly. (On SDK <= 0.19.x these two commands ignored the
+> stored `traigent auth login` URL and always defaulted to localhost unless the flag or env
+> var was passed — Traigent/Traigent#1721, fixed in 0.20.0.)
 > Portal-issued API keys use the `uk_...` prefix.
 >
 > ```bash
@@ -379,8 +381,11 @@ export ANTHROPIC_API_KEY=sk-ant-...
 
 > **Before your first real run, verify your model IDs are live.** Provider catalogs change — a
 > delisted or renamed ID causes a 404 or a degraded/unpriced trial. Preflight with
-> `traigent models --provider <p> --check <model_id>` (see the CLI Quick Reference below), or
-> query the provider's live catalog directly (e.g. `curl -s https://openrouter.ai/api/v1/models`
+> `traigent models --provider <p> --check <model_id>` (see the CLI Quick Reference below) to
+> catch typos and unknown ID shapes — but know its limit: the check validates against a
+> **shipped model snapshot with pattern-based fallback**, so a retired-but-well-formed ID still
+> passes; it does **not** detect provider-side delisting. To confirm an ID is actually live,
+> query the provider's catalog directly (e.g. `curl -s https://openrouter.ai/api/v1/models`
 > for OpenRouter). The `traigent-setup-integrations` skill covers multi-provider model verification.
 
 See `references/environment-variables.md` for all available environment variables.
@@ -607,7 +612,7 @@ traigent onboard         # guided first-run setup wizard
 | -------------------------- | ------------------------------------------------------------------- |
 | `traigent quickstart`      | Run the bundled mock-mode demo (keyless, zero-setup, always works)  |
 | `traigent onboard`         | Guided setup for Traigent in this project (API key, project, env)   |
-| `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-3-haiku-20240307` (model preflight; catalogs change) |
+| `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-3-haiku-20240307` (ID-shape preflight against a shipped snapshot; confirm liveness via the provider's catalog) |
 | `traigent recommend`       | Evidence-backed TVAR recommendations for your agent/task type       |
 | `traigent recommend-eval`  | Metric and evaluator recommendations for your task type             |
 | `traigent generate-config` | Scaffold a full `@traigent.optimize()` config for your function     |
@@ -622,10 +627,10 @@ traigent onboard         # guided first-run setup wizard
 - **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
 - **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-optimize-run` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-optimize-config-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
-- **Choose an optimization algorithm** -- For connected real runs, omit `algorithm` or use `"auto"`; use `"grid"`/`"random"` for explicit local/offline search. `traigent algorithms` on SDK 0.20.0 lists local/runtime registry names and may omit `auto` and named smart selectors (Traigent/Traigent#1751), so do not treat that CLI output as the complete public selector contract. `"bayesian"` and `"optuna"` validate as known names but are not executable end-to-end as selector names yet (Traigent/Traigent#1752).
+- **Choose an optimization algorithm** -- For connected real runs, omit `algorithm` or use `"auto"`; use `"grid"`/`"random"` for explicit local/offline search. On SDK >= 0.20.1, `traigent algorithms` lists the full public selector surface — `auto`, the local names, and the cloud-routed smart names — with a local/connected availability column (on 0.20.0 the CLI omitted `auto` and the smart names: Traigent/Traigent#1751, fixed in 0.20.1). Smart selector names require an authenticated connected run: since 0.20.1, `bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random` bind to the typed backend Optuna strategy, while unsupported smart names such as `nsga2`/`cmaes` fail fast with a capability message (Traigent/Traigent#1752, #1758 — fixed in 0.20.1; on 0.20.0 no smart name executed end-to-end). With `offline=True` every smart name still raises `ConfigurationError` at decoration time (verified on 0.21.0). The `traigent-optimize-run` skill owns the full selector contract.
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.
 - **Use framework integrations** -- Install `traigent[integrations]` for LangChain, OpenAI, and Anthropic adapters.
-- **Verify model IDs before a real run** -- Catalogs change; run `traigent models --provider <p> --check <id>` (or query the provider's live catalog) so a delisted/renamed ID doesn't cause a 404 or a degraded, unpriced trial. See `traigent-setup-integrations`.
+- **Verify model IDs before a real run** -- Catalogs change; run `traigent models --provider <p> --check <id>` to catch typos and unknown ID shapes, then confirm the ID is actually live against the provider's catalog — the CLI check validates a shipped snapshot with pattern fallback and cannot detect provider-side delisting, so a retired/renamed ID can still pass and cause a 404 or a degraded, unpriced trial. See `traigent-setup-integrations`.
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

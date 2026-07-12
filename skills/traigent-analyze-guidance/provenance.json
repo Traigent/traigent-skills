@@ -1,1 +1,132 @@
-{"schema": "skill-provenance/v1", "doc_hash": "1ed3001d67c1b714", "entries": [{"edit_id": "genesis", "op": "genesis", "status": "accepted", "run_id": null, "timestamp": "2026-07-04T00:00:00Z", "note": "merged from traigent-run-plan + traigent-next-run + traigent-iterate", "source_type": "human"}, {"edit_id": "holdout-partition-promotion-guidance-2026-07-07", "op": "manual_edit", "status": "accepted", "run_id": null, "timestamp": "2026-07-07T00:00:00Z", "doc_before_hash": "902bcf60a89bab6e", "doc_after_hash": "7b9256ff96ffba2d", "note": "require confirming a reserved, disjoint holdout slice in Mode A pre-run gathering and make search-vs-promotion evidence explicit in Mode B presentation rules (Traigent/traigent-smartopt#88, #89)", "source_type": "human"}, {"edit_id": "flat-score-model-capability-data-ceiling-2026-07-08", "op": "manual_edit", "status": "accepted", "run_id": null, "timestamp": "2026-07-08T00:00:00Z", "doc_before_hash": "7b9256ff96ffba2d", "doc_after_hash": "1ed3001d67c1b714", "note": "add model-capability lever + genuine difficulty/annotation-ceiling causes to the Mode C flat/negative-score diagnosis (Traigent/traigent-skills#181)", "source_type": "human"}]}
+{
+  "schema": "skill-provenance/v1",
+  "doc_hash": "e140eb4cb0a49475",
+  "reference_hashes": {
+    "references/iteration-log-template.md": "9a20df1f1a95e563",
+    "references/optimization-principles.md": "2c9b62d815e7fbc9",
+    "references/preflight.md": "6b6bab72a08699af",
+    "references/run-plan.template.md": "435ae0f8515546ad",
+    "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
+  },
+  "entries": [
+    {
+      "edit_id": "genesis",
+      "op": "genesis",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-04T00:00:00Z",
+      "note": "merged from traigent-run-plan + traigent-next-run + traigent-iterate",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "holdout-partition-promotion-guidance-2026-07-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-07T00:00:00Z",
+      "doc_before_hash": "902bcf60a89bab6e",
+      "doc_after_hash": "7b9256ff96ffba2d",
+      "note": "require confirming a reserved, disjoint holdout slice in Mode A pre-run gathering and make search-vs-promotion evidence explicit in Mode B presentation rules (Traigent/traigent-smartopt#88, #89)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "flat-score-model-capability-data-ceiling-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "7b9256ff96ffba2d",
+      "doc_after_hash": "1ed3001d67c1b714",
+      "note": "add model-capability lever + genuine difficulty/annotation-ceiling causes to the Mode C flat/negative-score diagnosis (Traigent/traigent-skills#181)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "authoritative-guidance-decision-2026-07-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-09T20:45:36Z",
+      "doc_before_hash": "1ed3001d67c1b714",
+      "doc_after_hash": "9dad2ab3305e3c2b",
+      "note": "make Mode B validate the requested guidance arm and actual engine, consume the authoritative decision instead of mixed legacy ordering, route only current skill names, and record execution receipts",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "non-executable-wait-decision-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T00:00:00Z",
+      "doc_before_hash": "9dad2ab3305e3c2b",
+      "doc_after_hash": "7b3426f7378dc2c4",
+      "note": "treat the authoritative wait category as an explicit non-executable decision and defer re-query until new lifecycle evidence arrives",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "single-source-precommitted-guidance-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T00:00:00Z",
+      "doc_before_hash": "7b3426f7378dc2c4",
+      "doc_after_hash": "54ced8848de1595e",
+      "note": "make top-level decision the sole lifecycle action, require strict experiment validation, and precommit comparison arms before observing outcomes",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "planner-v2-opaque-execution-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T11:30:00Z",
+      "doc_before_hash": "54ced8848de1595e",
+      "doc_after_hash": "e5a25682233b0af5",
+      "note": "prefer additive Planner V2 decisions with precommitted treatment/profile, certified override semantics, static opaque execution, STOP/WAIT handling, explicit receipt/reopen commands, and submitted-versus-verified receipts while retaining explicitly pinned v1 compatibility",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "planner-v2-final-contract-alignment-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T11:36:09Z",
+      "doc_before_hash": "e5a25682233b0af5",
+      "doc_after_hash": "565060e11a9d9ef4",
+      "note": "align parity, certified session-utility advantage, fallback categories, and receipt verification language with the final Planner V2 contract",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "planner-v2-sdk-floor-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T11:51:21Z",
+      "doc_before_hash": "565060e11a9d9ef4",
+      "doc_after_hash": "4c8427fa9bf9879d",
+      "note": "state the first SDK development version that includes the Planner V2 guidance surface",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "planner-v2-forward-test-hardening-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T12:01:54Z",
+      "doc_before_hash": "4c8427fa9bf9879d",
+      "doc_after_hash": "07192640735c1a2a",
+      "note": "clarify fallback_reason, require SDK-validated payloads and exact mode mappings, and bind reopen inheritance to the parent treatment and profile",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "planner-v2-release-and-attestation-honesty-2026-07-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-10T15:15:00Z",
+      "doc_before_hash": "07192640735c1a2a",
+      "doc_after_hash": "e140eb4cb0a49475",
+      "note": "restore shared interaction-policy wording, require the final guidance-bearing SDK release rather than an ambiguous dev build, and describe the current override HMAC as symmetric empirical integrity rather than independent issuer proof",
+      "source_type": "human"
+    }
+  ]
+}
