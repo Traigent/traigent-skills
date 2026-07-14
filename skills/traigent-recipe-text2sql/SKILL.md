@@ -154,7 +154,9 @@ OBJECTIVES = ObjectiveSchema(objectives=[
 ```
 Accuracy-dominant (0.80) lets a much cheaper, nearly-as-accurate config win. When
 using a custom_evaluator, emit `metrics={"accuracy":.., "cost":.., "latency":..}`
-with REAL values so the weighted objective uses real cost/latency.
+with REAL values so the weighted objective uses real cost/latency — `latency` in
+**milliseconds** (the SDK's canonical unit for the bare metric) and `cost` as the
+per-eval spend in USD.
 
 ## 5. Run it (SDK v0.17-compatible API)
 ```python

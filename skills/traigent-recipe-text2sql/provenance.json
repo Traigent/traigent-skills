@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "418baaedb8e56a96",
+  "doc_hash": "b27a561f3ca49876",
   "reference_hashes": {
-    "references/quickstart_text2sql.md": "3317e917867f3842"
+    "references/quickstart_text2sql.md": "ab366ebd753f26ee"
   },
   "entries": [
     {

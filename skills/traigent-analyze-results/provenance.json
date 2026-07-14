@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0f5541aff757d0dd",
+  "doc_hash": "03d9b8f8cb05b87c",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/mcp-analytics-tools.md": "4c68385be07782a7",
-    "references/optimization-result-api.md": "3c122bbe5808354c"
+    "references/optimization-result-api.md": "14592a4d68793156"
   },
   "entries": [
     {
