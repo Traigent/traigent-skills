@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.12"
+  version: "1.1.13"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -340,6 +340,49 @@ if len(sorted_trials) >= 2:
             print(f"  {key}: best={best.config[key]}, worst={worst.config[key]}")
 ```
 
+### Is the Delta Real? Rerun Noise, Paired Comparisons, and Non-Portable Winners
+
+Before reporting any config-A-vs-config-B difference, know the noise floor — field-measured on
+real runs (benchmarks-insights, 2026-07): **the same config on the same data, nothing changed,
+moved ±5–10 pp across days at n=40 examples per cell** (one cell measured 82.5 → 87.5 → 95.0
+across three passes). Three rules follow:
+
+1. **Resolution rule:** a k-example evaluation only resolves gaps ≫ 100/k pp. Marginal means
+   pooled over ≥4 cells (n ≥ 160) roughly halve the noise; single-cell deltas under ~10 pp are
+   unreportable.
+2. **Pair, don't cross-compare:** never compare numbers measured in different sessions/days.
+   Case study: an apparent 12-pp effort-knob gap dissolved to +1.2 pp (2 answers in 160 — noise)
+   once both sides were rerun same-day on the same fold. Cross-day deltas were the artifact.
+3. **Ship deltas with a bootstrap CI** over held-out examples (≥1,000 resamples); a win is
+   claimable only if the CI excludes zero. The same skepticism applies to public leaderboard
+   gaps of a few points.
+
+**Winning configs do not port across model families.** Identical knob grids on two families kept
+the knob *ranking* but flipped the *optimum* (one model peaked with full schema context; the
+other did better on the compact variant — full slightly hurt it). Re-optimize per model; never
+copy a winner onto a new model and report the old score.
+
+### Per-Example Diagnostics: Your Eval Set Is Also Under Test
+
+Across N trials every eval row gets scored N times — which makes the run itself an audit of the
+dataset, at zero additional API cost. Two independent signals (both field-validated 2026-07):
+
+- **Variance flags.** The portal's Deterministic Insights flag rows whose pass/fail flips in
+  ways overall trial quality doesn't explain ("high variance unexplained by trial quality").
+  Read them as: *this row's verdict can't be trusted for this model*. On inspection a subset is
+  intrinsically defective (one flagged row's gold answered a different question than asked, and
+  replicated as unstable on a second model family); the rest are model-specific instability.
+  Either way: fix or drop flagged rows before promoting on small deltas.
+- **Token-runaway.** A row that hits the token cap (`finish_reason == "length"`) or burns
+  outlier reasoning tokens under *every* config is usually a broken item (ambiguous or
+  self-contradictory) — one such row was later confirmed removed by GSM8K-Platinum's expert
+  audit. Report it as a dataset fix, not a model problem.
+
+Mapping trap: the SDK keys rows as `example_{<0-based row index in the eval_dataset file>}`
+(`traigent/evaluators/base.py`). The portal's separate `example_num` field has undefined
+semantics (TraigentBackend#2068) — map flags back to your dataset via `example_id`, never
+`example_num`.
+
 ### Configuration Insights
 
 Use `get_optimization_insights(results)` for a first structured pass over top configurations,
@@ -468,6 +511,21 @@ complete while the backend session is left `RUNNING` on the portal. Re-check the
 (or run `traigent local sync`) before reporting a portal-tracked result as final. (Newer SDK builds
 — the fix merged as Traigent#1731 — also expose this as `results.persistence_failed`, a bool
 shorthand for the same check; check the metadata key directly if your installed SDK predates it.)
+
+The status is not binary — read it precisely (field-verified on SDK 0.21.0 real runs, 2026-07-09):
+
+| `persistence_status` | Meaning | Action |
+|---|---|---|
+| `"succeeded"` (or `"skipped"`/absent when backend tracking is off) | fully synced | none |
+| `"degraded"` (benign) | **partial, not broken** — trial results *and* finalize synced (the portal link works; trial views and per-example diagnostics are live), only the session aggregation rollup was dropped, so summary aggregates may lag | keep the run; do **not** re-run (and re-pay) |
+| `"degraded"` (backend-rejected) | the backend actively **refused** the persistence — `persistence_rejected` is True and `persistence_rejection_reason` explains why (quota/auth/tenant) | inspect `persistence_rejection_reason`; treat as a real problem, do **not** assume it's safe |
+| `"failed"` | finalize lost after retries | recover via `traigent local sync`; re-run only if sync can't recover |
+
+The two `"degraded"` cases are distinguished by metadata: benign rollup-lag sets
+`persistence_degraded_reason` (trial results and session finalize both persisted — keep the run);
+a backend rejection sets `persistence_rejected=True`, `persistence_reason="rejected"`, and
+`persistence_rejection_reason=<why>` (the backend refused the data — do not treat it as benign).
+The SDK never emits `"ok"`.
 
 The portal may group runs that share the same agent and canonical dataset. Use that group only to
 find related source runs. Before applying or recommending a configuration, record the exact source

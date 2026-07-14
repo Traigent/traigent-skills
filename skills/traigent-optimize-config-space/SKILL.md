@@ -4,7 +4,7 @@ description: "Define tuned variables, structural knobs, and configuration spaces
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Traigent Configuration Space
@@ -410,6 +410,32 @@ temperature = Range(0.0, 1.0)
 def answer(question: str) -> str:
     config = traigent.get_config()
     ...
+```
+
+### Reasoning-Effort Knobs (native effort parameters)
+
+For models exposing a native effort control (`reasoning_effort` / thinking budgets), treat it as a
+categorical knob — with three field-measured rules (same fold, three token budgets incl.
+uncapped, plus a same-day paired rerun; benchmarks-insights 2026-07):
+
+1. **Don't assume more effort = more accuracy.** On a task the model already saturates, `high`
+   matched `medium` on accuracy (+1.2 pp, statistical noise) while billing ~2× the reasoning
+   tokens — and its extra spend concentrated on *defective* eval items (a self-contradictory
+   question consumed up to ~3.7K reasoning tokens per call and still failed under every effort).
+   Sweep effort as a knob and let the data decide; expect `medium` to win cost-adjusted.
+2. **Pair the effort knob with output headroom** — `max_tokens ≥ 2048`, and `≥ 4096` when `high`
+   is in the space (truncation was still observed at 4096). A truncated call
+   (`finish_reason == "length"`) scores 0 and corrupts the sweep.
+3. **One knob per mechanism.** Don't put a prompt-CoT knob and a native effort knob in the same
+   space expecting them to add: prompt-CoT measured as a no-op (+0.4 pp) on a native-reasoning
+   model. Redundant knobs waste grid budget and muddy variable-importance readouts.
+
+```python
+config_space = {
+    "model": ["openrouter/openai/gpt-oss-120b"],
+    "reasoning_effort": ["low", "medium", "high"],
+    "max_tokens": [4096],          # headroom rule: fixed, not swept, while effort is swept
+}
 ```
 
 ### RAG Pipeline Tuning
