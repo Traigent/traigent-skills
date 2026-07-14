@@ -1,8 +1,9 @@
 name: Snapshot Refresh
 
-# Weekly self-validating refresh for vendored API/route snapshots. When upstream
-# surfaces move, this validates the regenerated snapshots and interface
-# inventory in the generating run before opening or updating the refresh PR.
+# Weekly self-validating refresh for vendored API/route snapshots. Untrusted
+# upstream code is installed and executed only in the read-only validation job.
+# A separate publishing job receives only the four validated JSON snapshots and
+# has the minimum permissions needed to open or update the refresh PR.
 #
 # Requires BACKEND_REPO_TOKEN with read access to Traigent/TraigentBackend and
 # Traigent/Traigent, and JS_REPO_TOKEN with read access to Traigent/traigent-js.
@@ -13,23 +14,28 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 concurrency:
   group: snapshot-refresh
   cancel-in-progress: true
 
 jobs:
-  refresh:
-    name: refresh
+  generate-and-validate:
+    name: generate and validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
+    outputs:
+      be_sha: ${{ steps.sources.outputs.be_sha }}
+      sdk_sha: ${{ steps.sources.outputs.sdk_sha }}
+      js_sha: ${{ steps.sources.outputs.js_sha }}
     steps:
       - name: Checkout skills
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
-          fetch-depth: 0
+          persist-credentials: false
 
       - name: Guard - require upstream tokens
         env:
@@ -50,6 +56,39 @@ jobs:
             exit 1
           fi
 
+      # Each private token is used only by actions/checkout. With persisted
+      # credentials disabled, the later install and test steps cannot recover
+      # a PAT from an upstream repository's Git configuration.
+      - name: Checkout TraigentBackend
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: Traigent/TraigentBackend
+          ref: develop
+          token: ${{ secrets.BACKEND_REPO_TOKEN }}
+          path: upstream/backend
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout Traigent SDK
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: Traigent/Traigent
+          ref: develop
+          token: ${{ secrets.BACKEND_REPO_TOKEN }}
+          path: upstream/sdk
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Checkout traigent-js
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: Traigent/traigent-js
+          ref: main
+          token: ${{ secrets.JS_REPO_TOKEN }}
+          path: upstream/js
+          fetch-depth: 1
+          persist-credentials: false
+
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
@@ -64,43 +103,27 @@ jobs:
           uv export --frozen --no-emit-project --no-hashes -o harness-requirements.txt
           uv pip install --system -r harness-requirements.txt
 
-      - name: Clone upstream sources
-        env:
-          BACKEND_REPO_TOKEN: ${{ secrets.BACKEND_REPO_TOKEN }}
-          JS_REPO_TOKEN: ${{ secrets.JS_REPO_TOKEN }}
-        run: |
-          set -euo pipefail
-          git clone --depth 1 --branch develop \
-            "https://x-access-token:${BACKEND_REPO_TOKEN}@github.com/Traigent/TraigentBackend.git" /tmp/be
-          git -C /tmp/be fetch --depth 1 origin develop
-
-          git clone --depth 1 --branch develop \
-            "https://x-access-token:${BACKEND_REPO_TOKEN}@github.com/Traigent/Traigent.git" /tmp/sdk
-          git -C /tmp/sdk fetch --depth 1 origin develop
-
-          git clone --depth 1 --branch main \
-            "https://x-access-token:${JS_REPO_TOKEN}@github.com/Traigent/traigent-js.git" /tmp/js
-          git -C /tmp/js fetch --depth 1 origin main
-
       - name: Install SDK checkout dependencies
         run: |
           set -euo pipefail
-          uv pip install --system -e /tmp/sdk
+          uv pip install --system -e upstream/sdk
 
       - name: Capture source SHAs
         id: sources
         run: |
           set -euo pipefail
-          echo "be_sha=$(git -C /tmp/be rev-parse origin/develop)" >> "$GITHUB_OUTPUT"
-          echo "sdk_sha=$(git -C /tmp/sdk rev-parse origin/develop)" >> "$GITHUB_OUTPUT"
-          echo "js_sha=$(git -C /tmp/js rev-parse origin/main)" >> "$GITHUB_OUTPUT"
+          {
+            echo "be_sha=$(git -C upstream/backend rev-parse HEAD)"
+            echo "sdk_sha=$(git -C upstream/sdk rev-parse HEAD)"
+            echo "js_sha=$(git -C upstream/js rev-parse HEAD)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Regenerate snapshots and inventory
         run: |
           set -euo pipefail
-          python tools/contract/refresh_backend_routes.py --repo /tmp/be --ref origin/develop
-          python tools/contract/refresh_js_api.py --js-repo /tmp/js --ref origin/main
-          python tools/contract/refresh_python_api.py --sdk-repo /tmp/sdk --ref origin/develop
+          python tools/contract/refresh_backend_routes.py --repo upstream/backend --ref HEAD
+          python tools/contract/refresh_js_api.py --js-repo upstream/js --ref HEAD
+          python tools/contract/refresh_python_api.py --sdk-repo upstream/sdk --ref HEAD
           python tools/contract/build_interface_inventory.py
 
       - name: Validate refreshed contracts
@@ -130,14 +153,49 @@ jobs:
 
           exit "$rc"
 
+      - name: Upload validated snapshots
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: validated-snapshots-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            tests/data/backend_routes_snapshot.json
+            tests/data/js_api_snapshot.json
+            tests/data/python_api_snapshot.json
+            tests/data/interface_inventory.json
+          if-no-files-found: error
+          retention-days: 1
+
+  publish-refresh-pr:
+    name: publish refresh PR
+    needs: generate-and-validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout skills
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # This job never installs or executes upstream code. The artifact contains
+      # only the fixed JSON outputs that passed the read-only job's contract tests.
+      - name: Download validated snapshots
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: validated-snapshots-${{ github.run_id }}-${{ github.run_attempt }}
+          path: tests/data
+
       - name: Create or update refresh PR
         env:
           GH_TOKEN: ${{ github.token }}
           BRANCH: chore/snapshot-refresh
           TITLE: "chore: refresh contract snapshots"
-          BE_SHA: ${{ steps.sources.outputs.be_sha }}
-          SDK_SHA: ${{ steps.sources.outputs.sdk_sha }}
-          JS_SHA: ${{ steps.sources.outputs.js_sha }}
+          BE_SHA: ${{ needs.generate-and-validate.outputs.be_sha }}
+          SDK_SHA: ${{ needs.generate-and-validate.outputs.sdk_sha }}
+          JS_SHA: ${{ needs.generate-and-validate.outputs.js_sha }}
         run: |
           set -euo pipefail
           if git diff --quiet -- tests/data/backend_routes_snapshot.json tests/data/js_api_snapshot.json tests/data/python_api_snapshot.json tests/data/interface_inventory.json; then
@@ -165,6 +223,7 @@ jobs:
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          gh auth setup-git
           git checkout -B "$BRANCH"
           git add tests/data/backend_routes_snapshot.json tests/data/js_api_snapshot.json tests/data/python_api_snapshot.json tests/data/interface_inventory.json
           git commit -m "$TITLE"
