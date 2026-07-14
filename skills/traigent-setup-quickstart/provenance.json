@@ -1,6 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "12d624893f62ac2b",
+  "doc_hash": "6c0e11d9930cc9e9",
+  "reference_hashes": {
+    "references/environment-variables.md": "01d5b26914c28bf5",
+    "references/first-value-fallback.md": "5571ce556feefb23",
+    "references/installation-extras.md": "87bcbee5d23ec636"
+  },
   "entries": [
     {
       "edit_id": "genesis",
@@ -63,6 +68,16 @@
       "doc_after_hash": "12d624893f62ac2b",
       "note": "document the TRAIGENT_DATASET_ROOT / CWD dataset sandbox: default root is the current working directory; outside paths raise ConfigurationError via func.optimize (wrapping ValidationError)",
       "source_type": "human"
+    },
+    {
+      "edit_id": "sdk-0.21-doc-corrections-2026-07-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-08T00:00:00Z",
+      "doc_before_hash": "12d624893f62ac2b",
+      "doc_after_hash": "6c0e11d9930cc9e9",
+      "note": "restamp version-sensitive claims (verified live on SDK 0.21.0): `traigent algorithms` lists auto + smart selector names with availability since 0.20.1 (#1751, fixed in 0.20.1); supported smart names bind to the typed backend Optuna strategy and nsga2/cmaes fail fast since 0.20.1 (#1752/#1758); plan/next-steps --backend-url honors the stored auth-login URL before the localhost fallback since 0.20.0 (#1721). State that `traigent models --check` is a shipped-snapshot ID-shape preflight with pattern fallback that cannot detect provider-side delisting. Dedupe the doubled offline-mode exports in the Literal First Run block and hoist them above the first python invocation (mirrors references/literal-quickstart.sh); remove the editorial '(read on all current SDK versions)' markers that leaked into references/environment-variables.md code blocks. Fix skills#173: `traigent auth login` stores the key in the encrypted store at ~/.traigent/secure_credentials.enc (TRAIGENT_MASTER_PASSWORD), not ~/.traigent/credentials; legacy plaintext credentials.json is ignored unless TRAIGENT_ALLOW_PLAINTEXT_CREDENTIALS=true."
     }
   ]
 }

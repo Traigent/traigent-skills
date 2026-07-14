@@ -1,6 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1ebba8e6b8f2d243",
+  "doc_hash": "a483d26dd976e3b4",
+  "reference_hashes": {
+    "references/advanced-recipes.md": "8b80485ca22dc7f3",
+    "references/pattern-catalog.md": "59998518e556f1b1"
+  },
   "entries": [
     {
       "edit_id": "genesis",

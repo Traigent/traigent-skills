@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Mock/offline env is set in bash, BEFORE python imports anything.
+export TRAIGENT_OFFLINE_MODE=true
+export LITELLM_LOCAL_MODEL_COST_MAP=True
+
 python -m venv .venv
 source .venv/bin/activate
 
@@ -72,9 +76,4 @@ assert results.best_config is not None, "no best config selected"
 print("TRAIGENT-DRY-RUN-OK")
 PY
 
-export TRAIGENT_OFFLINE_MODE=true
-export LITELLM_LOCAL_MODEL_COST_MAP=True
-# Mock/offline env is set in bash, BEFORE python imports anything.
-export TRAIGENT_OFFLINE_MODE=true
-export LITELLM_LOCAL_MODEL_COST_MAP=True
 python ticket_classifier.py

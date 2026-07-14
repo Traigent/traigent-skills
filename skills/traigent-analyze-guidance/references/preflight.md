@@ -16,7 +16,9 @@ fixed-set knobs. Reserve continuous ranges for genuinely continuous knobs.
 Route LLM calls through a metering proxy (OpenRouter / LiteLLM) so cost is real
 tokens x price. If a model's price isn't auto-detected, supply it via
 `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` (or compute cost from token usage x price)
-so the cost objective is accurate. Measure latency as real wall-clock.
+so the cost objective is accurate. Measure latency as real wall-clock **milliseconds**
+(the SDK's canonical unit for the bare `latency` metric on SDKs after 0.22.0; earlier
+local builtins recorded seconds).
 
 When you use a `custom_evaluator`, emit `accuracy`, `cost`, and `latency` as real
 per-eval metrics so the weighted objective uses real values. Also emit accuracy

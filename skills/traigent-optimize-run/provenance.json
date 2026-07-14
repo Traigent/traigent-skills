@@ -1,6 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "08e34947c9dd0c86",
+  "doc_hash": "3827c7798632a4d9",
+  "reference_hashes": {
+    "references/algorithms.md": "be8602fab22668a1",
+    "references/cost-management.md": "3d19b55f25fbfd7b",
+    "references/parallel-config.md": "f0979cbb952b3cf3"
+  },
   "entries": [
     {
       "edit_id": "genesis",
@@ -63,15 +68,6 @@
       "doc_after_hash": "b9ed4f4e52c073c4",
       "note": "warn that local SDK default_config consumes a max_trials slot for grid, random, and auto when it resolves local; connected backend-guided auto does not run it as a baseline today; N-point grids need max_trials >= N+1 unless default_config is omitted",
       "source_type": "human"
-    },
-    {
-      "edit_id": "benchmarks-insights-field-evidence-2026-07-10",
-      "op": "edit",
-      "status": "accepted",
-      "run_id": null,
-      "timestamp": "2026-07-10T00:00:00Z",
-      "note": "persistence_status 'degraded' = partial-not-broken clause + user-side LiteLLM num_retries requires tenacity (ModuleNotFoundError -> call scores 0; SDK#1824); field evidence from benchmarks-insights real runs 2026-07-09/10",
-      "source_type": "agent"
     }
   ]
 }
