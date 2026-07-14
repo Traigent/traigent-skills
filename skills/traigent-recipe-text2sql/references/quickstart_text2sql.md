@@ -165,7 +165,7 @@ _COST = {"cost": 0.0, "latency": 0.0}
 def _complete(model: str, temperature: float, messages: list[dict]) -> str:
     t0 = time.time()
     resp = litellm.completion(model=model, messages=messages, temperature=temperature)
-    _COST["latency"] += time.time() - t0
+    _COST["latency"] += (time.time() - t0) * 1000.0  # ms — the SDK's canonical latency unit
     try:
         _COST["cost"] += float(litellm.completion_cost(completion_response=resp) or 0.0)
     except Exception:
@@ -216,15 +216,16 @@ def exec_eval(func, config, example) -> ExampleResult:
         success, err = True, None
     except Exception as e:
         pred, accuracy, success, err = "", 0.0, False, str(e)
-    latency = _COST["latency"] or (time.time() - t0)
+    elapsed_s = time.time() - t0
+    latency_ms = _COST["latency"] or elapsed_s * 1000.0  # metric unit: ms
     return ExampleResult(
         example_id="store",
         input_data=inp if isinstance(inp, dict) else {"input": question},
         expected_output=gold,
         actual_output=pred,
-        metrics={"accuracy": accuracy, "cost": _COST["cost"], "latency": latency,
+        metrics={"accuracy": accuracy, "cost": _COST["cost"], "latency": latency_ms,
                  "exec_accuracy": accuracy},
-        execution_time=latency,
+        execution_time=elapsed_s,  # execution_time stays SECONDS (SDK convention)
         success=success,
         error_message=err,
     )
