@@ -107,9 +107,14 @@ def _call_answer_model(question: str, cfg: dict) -> str:
         # (output, metrics) tuple return, USE THE BUILT-IN EVALUATOR — a custom
         # `scoring_function` (and 3-arg `metric_functions`) is currently NOT
         # invoked with the unpacked prediction on this path and every trial
-        # silently scores accuracy=0.0 (known SDK issue). If you see uniform
-        # zero accuracy alongside a sane built-in `score`, suspect this wiring,
-        # not your agent.
+        # silently scores accuracy=0.0 (known SDK issue). Diagnostic tell, by
+        # SDK version: on <= 0.21.3 the built-in exact-match value appears as
+        # metrics["score"] (uniform zero accuracy next to a sane "score" =
+        # this wiring, not your agent); after 0.21.3 "score" mirrors the
+        # objective (so it is ALSO 0.0 here) and the sane built-in value is
+        # relocated to metrics["exact_match_default"] — check that key, and
+        # look for the run-level "custom scoring_function defines the
+        # 'accuracy' objective" log line.
         eval_dataset="evals/qa.jsonl",
     ),
     objectives=["accuracy", "cost"],

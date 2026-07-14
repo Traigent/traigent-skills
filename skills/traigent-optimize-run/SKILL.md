@@ -403,7 +403,8 @@ print(results.stop_reason)     # "max_trials_reached"
 print(results.total_cost)      # 0.34 (USD, if tracked)
 print(results.optimization_id) # "opt_abc123"
 
-# Trial details (per-trial scores/costs live in trial.metrics, not on the trial)
+# Trial details (per-trial scores/costs live in trial.metrics; SDKs after
+# 0.21.3 also populate trial.score with the primary-objective value)
 for trial in results.trials:
     print(f"Config: {trial.config}, Score: {trial.metrics.get('score')}")
 

@@ -201,7 +201,8 @@ results = await func.optimize(max_trials=10, algorithm="grid")
 print(f"Total cost: ${results.total_cost:.4f}")
 print(f"Total tokens: {results.total_tokens}")
 
-# Per-trial scores/costs live in trial.metrics (not as attributes on the trial)
+# Per-trial scores/costs live in trial.metrics (works on every SDK version;
+# SDKs after 0.21.3 also set trial.score to the primary-objective value)
 for trial in results.trials:
     m = trial.metrics
     print(f"Trial {trial.trial_id}: score={m.get('score')}, cost=${m.get('total_cost', 0.0):.4f}")
