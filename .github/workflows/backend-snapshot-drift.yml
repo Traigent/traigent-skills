@@ -33,6 +33,8 @@ jobs:
     steps:
       - name: Checkout skills
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Guard - require backend token
         id: guard
@@ -51,15 +53,20 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Matches the #204 posture: the token reaches git only via a one-shot
+      # http.extraheader, never embedded in the remote URL and never written to
+      # the clone's .git/config (a top-level `git -c` config is not persisted into
+      # the new repo), so later steps cannot recover a PAT from disk.
       - name: Clone TraigentBackend (develop)
         if: steps.guard.outputs.armed == 'true'
         env:
           BACKEND_REPO_TOKEN: ${{ secrets.BACKEND_REPO_TOKEN }}
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch develop \
-            "https://x-access-token:${BACKEND_REPO_TOKEN}@github.com/Traigent/TraigentBackend.git" /tmp/be
-          git -C /tmp/be fetch --depth 1 origin develop
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${BACKEND_REPO_TOKEN}" | base64 -w0)"
+          git -c http.extraheader="${auth_header}" clone --depth 1 --branch develop \
+            https://github.com/Traigent/TraigentBackend.git /tmp/be
+          git -C /tmp/be -c http.extraheader="${auth_header}" fetch --depth 1 origin develop
 
       - name: Regenerate snapshot and compare routes
         if: steps.guard.outputs.armed == 'true'
@@ -113,7 +120,12 @@ jobs:
             cat snapshot-diff.txt
             echo '```'
           } > issue-body.md
-          issue="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // ""')"
+          # Exact-title match over the open-issue list (not `--search`, whose
+          # index lag has spawned duplicate drift issues) so a create-vs-edit
+          # decision is deterministic. TITLE is passed as jq data via --arg,
+          # never interpolated into a pattern. --limit covers >30 open issues.
+          issue="$(gh issue list --state open --limit 200 --json number,title \
+            | jq -r --arg t "$TITLE" 'map(select(.title == $t)) | .[0].number // ""')"
           if [ -n "$issue" ]; then
             gh issue edit "$issue" --body-file issue-body.md
           else
