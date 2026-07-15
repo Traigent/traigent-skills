@@ -1279,6 +1279,8 @@
     "js:@traigent/sdk/vercel-ai#withTraigent",
     "py:EvaluationOptions#custom_evaluator",
     "py:EvaluationOptions#eval_dataset",
+    "py:EvaluationOptions#evaluator_definition_id",
+    "py:EvaluationOptions#evaluator_id",
     "py:EvaluationOptions#metric_functions",
     "py:EvaluationOptions#scoring_function",
     "py:EvaluationOptions#surrogate_evaluator",
