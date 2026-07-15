@@ -7,7 +7,9 @@ name: JS API Snapshot Drift
 # Compares EXPORTS only (the generated_from.commit_sha header is not drift).
 #
 # Requires a repo secret JS_REPO_TOKEN with read access to Traigent/traigent-js.
-# Until that secret is set, the job skips cleanly (no failure, no issue).
+# A missing/expired secret fails the run loudly (matching snapshot-refresh.yml and
+# backend-snapshot-drift.yml): a silent skip here means zero drift detection with no
+# signal, and taught JS exports could false-green against a stale snapshot indefinitely.
 
 on:
   schedule:
@@ -30,6 +32,8 @@ jobs:
     steps:
       - name: Checkout skills
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Guard - require JS repo token
         id: guard
@@ -37,11 +41,10 @@ jobs:
           JS_REPO_TOKEN: ${{ secrets.JS_REPO_TOKEN }}
         run: |
           if [ -z "${JS_REPO_TOKEN:-}" ]; then
-            echo "JS_REPO_TOKEN not set - skipping JS API drift check."
-            echo "armed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "armed=true" >> "$GITHUB_OUTPUT"
+            echo "::error::JS_REPO_TOKEN not set - JS API drift check cannot run. Without it, removed JS exports can false-green against the stale snapshot with no signal."
+            exit 1
           fi
+          echo "armed=true" >> "$GITHUB_OUTPUT"
 
       - name: Set up Python
         if: steps.guard.outputs.armed == 'true'
@@ -49,15 +52,20 @@ jobs:
         with:
           python-version: "3.12"
 
+      # Matches the #204 posture: the token reaches git only via a one-shot
+      # http.extraheader, never embedded in the remote URL and never written to
+      # the clone's .git/config (a top-level `git -c` config is not persisted into
+      # the new repo), so later steps cannot recover a PAT from disk.
       - name: Clone traigent-js (main)
         if: steps.guard.outputs.armed == 'true'
         env:
           JS_REPO_TOKEN: ${{ secrets.JS_REPO_TOKEN }}
         run: |
           set -euo pipefail
-          git clone --depth 1 --branch main \
-            "https://x-access-token:${JS_REPO_TOKEN}@github.com/Traigent/traigent-js.git" /tmp/js
-          git -C /tmp/js fetch --depth 1 origin main
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${JS_REPO_TOKEN}" | base64 -w0)"
+          git -c http.extraheader="${auth_header}" clone --depth 1 --branch main \
+            https://github.com/Traigent/traigent-js.git /tmp/js
+          git -C /tmp/js -c http.extraheader="${auth_header}" fetch --depth 1 origin main
 
       - name: Regenerate snapshot and compare exports
         if: steps.guard.outputs.armed == 'true'
@@ -109,7 +117,12 @@ jobs:
             cat js-drift.txt
             echo '```'
           } > issue-body.md
-          issue="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // ""')"
+          # Exact-title match over the open-issue list (not `--search`, whose
+          # index lag has spawned duplicate drift issues) so a create-vs-edit
+          # decision is deterministic. TITLE is passed as jq data via --arg,
+          # never interpolated into a pattern. --limit covers >30 open issues.
+          issue="$(gh issue list --state open --limit 200 --json number,title \
+            | jq -r --arg t "$TITLE" 'map(select(.title == $t)) | .[0].number // ""')"
           if [ -n "$issue" ]; then
             gh issue edit "$issue" --body-file issue-body.md
           else

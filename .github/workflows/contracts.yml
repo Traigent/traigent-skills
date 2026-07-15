@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
@@ -67,6 +69,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
@@ -115,7 +119,12 @@ jobs:
             echo '```'
           } > issue-body.md
 
-          issue="$(gh issue list --state open --search "$TITLE in:title" --json number --jq '.[0].number // ""')"
+          # Exact-title match over the open-issue list (not `--search`, whose
+          # index lag has spawned duplicate drift issues) so a create-vs-edit
+          # decision is deterministic. TITLE is passed as jq data via --arg,
+          # never interpolated into a pattern. --limit covers >30 open issues.
+          issue="$(gh issue list --state open --limit 200 --json number,title \
+            | jq -r --arg t "$TITLE" 'map(select(.title == $t)) | .[0].number // ""')"
           if [ -n "$issue" ]; then
             gh issue edit "$issue" --body-file issue-body.md
           else

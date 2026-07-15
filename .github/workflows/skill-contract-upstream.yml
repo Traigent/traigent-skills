@@ -49,9 +49,14 @@ jobs:
             echo "armed=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Tokens are needed for the checkout fetch only. persist-credentials: false
+      # keeps neither the caller GITHUB_TOKEN nor skills_token in .git/config, so
+      # the untrusted PR SDK installed and tested below cannot recover them.
       - name: Checkout caller PR (the SDK under change)
         if: steps.guard.outputs.armed == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
 
       - name: Checkout skills contract harness
         if: steps.guard.outputs.armed == 'true'
@@ -61,6 +66,7 @@ jobs:
           ref: ${{ inputs.skills_ref }}
           token: ${{ secrets.skills_token }}
           path: _skills
+          persist-credentials: false
 
       - name: Set up Python
         if: steps.guard.outputs.armed == 'true'
