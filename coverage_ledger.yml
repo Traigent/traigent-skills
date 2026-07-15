@@ -808,3 +808,9 @@ waivers:
   "be:PUT /api/v1beta/projects/<string:project_id>/trials/<trial_id>/workflow-metadata":
     reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
     owner: nimrodbusany
+  "py:EvaluationOptions#evaluator_definition_id":
+    reason: first shipped in SDK 0.21.3; first surfaced in the released snapshot by the 0.23.0 oracle bump (hosted evaluator-binding surface); teach-vs-waive decision deferred to owner — flagged in the #219 fix PR
+    owner: nimrodbusany
+  "py:EvaluationOptions#evaluator_id":
+    reason: first shipped in SDK 0.21.3; first surfaced in the released snapshot by the 0.23.0 oracle bump (hosted evaluator-binding surface; compatibility alias of evaluator_definition_id); teach-vs-waive decision deferred to owner — flagged in the #219 fix PR
+    owner: nimrodbusany
