@@ -16,6 +16,11 @@
     "first-prompt",
     "generate",
     "generate-config",
+    "guidance",
+    "guidance execute",
+    "guidance next",
+    "guidance receipt",
+    "guidance reopen",
     "hooks",
     "hooks check",
     "hooks init",
@@ -63,6 +68,8 @@
   "evaluation_options": [
     "custom_evaluator",
     "eval_dataset",
+    "evaluator_definition_id",
+    "evaluator_id",
     "metric_functions",
     "scoring_function",
     "surrogate_evaluator",
@@ -130,7 +137,7 @@
     "smart_pruning"
   ],
   "generated_from": {
-    "commit_sha": "206f19400fd5d5b1e3c948444d0a8d81f2cdf466",
+    "commit_sha": "a55a38a3ad797fa741f4478d129686470e2b630f",
     "ref": "HEAD",
     "repo": "Traigent/Traigent"
   },
