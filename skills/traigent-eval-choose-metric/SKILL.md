@@ -63,7 +63,7 @@ Use this vocabulary in prose and tables. Do not import these names.
 | `efficiency` | Did the system use fewer tokens, calls, tools, or dollars? | deterministic |
 | `reliability` | Does the behavior remain stable across repeats or noisy inputs? | statistical or hybrid |
 
-The built-in `latency` objective binds to the bare key `latency`, reported in milliseconds on SDKs after 0.22.0 (seconds on 0.22.0 and earlier).
+The built-in `latency` objective binds to the bare key `latency`, reported in milliseconds on SDKs after 0.22.0 (see version-matrix: `latency-unit`).
 
 Evaluation methods:
 
@@ -149,7 +149,7 @@ Use `accuracy + cost` as the default two-objective pattern for LLM tasks. It kee
 |---|---|
 | `["accuracy"]` | Early correctness tuning with a fixed budget outside the objective. |
 | `["accuracy", "cost"]` | Default for answer quality where spend matters. |
-| `["accuracy", "latency"]` | User-facing online flows where response time matters (bare `latency` key, in ms on SDKs after 0.22.0). |
+| `["accuracy", "latency"]` | User-facing online flows where response time matters (bare `latency` key, in ms on SDKs after 0.22.0 — see version-matrix: `latency-unit`). |
 | `["valid_schema", "accuracy", "cost"]` | Extraction tasks with machine-checkable output format. |
 | `["success_rate", "cost"]` | Tool or agent workflows where execution success is the main signal. |
 
