@@ -100,8 +100,10 @@ FEWSHOT = [  # fixed in-domain exemplars, NOT in the testbed (no leakage)
 
 def write_dataset() -> None:
     with DATA_PATH.open("w", encoding="utf-8") as f:
-        for q, gold in TESTBED:
-            f.write(json.dumps({"input": q, "output": gold, "db_id": "store"}) + "\n")
+        for i, (q, gold) in enumerate(TESTBED):
+            # `id` = real per-row identity (portal variance flags map back via it);
+            # `db_id` = the database name, which many rows can share.
+            f.write(json.dumps({"id": f"store_q{i}", "input": q, "output": gold, "db_id": "store"}) + "\n")
 
 
 # --------------------------------------------------------------------------- #
@@ -219,7 +221,10 @@ def exec_eval(func, config, example) -> ExampleResult:
     elapsed_s = time.time() - t0
     latency_ms = _COST["latency"] or elapsed_s * 1000.0  # metric unit: ms
     return ExampleResult(
-        example_id="store",
+        # Real per-row id so portal variance flags map back via example_id. "store"
+        # is the db_id (database name), NOT a row identity — using it here collides
+        # every row. Fall back to the (unique) question if no id is in metadata.
+        example_id=str(example.metadata.get("id", question)),
         input_data=inp if isinstance(inp, dict) else {"input": question},
         expected_output=gold,
         actual_output=pred,

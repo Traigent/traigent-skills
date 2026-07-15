@@ -416,16 +416,19 @@ def answer(question: str) -> str:
 
 For models exposing a native effort control (`reasoning_effort` / thinking budgets), treat it as a
 categorical knob — with three field-measured rules (same fold, three token budgets incl.
-uncapped, plus a same-day paired rerun; benchmarks-insights 2026-07):
+uncapped, plus a same-day paired rerun; measured on real benchmark runs, 2026-07):
 
 1. **Don't assume more effort = more accuracy.** On a task the model already saturates, `high`
    matched `medium` on accuracy (+1.2 pp, statistical noise) while billing ~2× the reasoning
    tokens — and its extra spend concentrated on *defective* eval items (a self-contradictory
    question consumed up to ~3.7K reasoning tokens per call and still failed under every effort).
    Sweep effort as a knob and let the data decide; expect `medium` to win cost-adjusted.
-2. **Pair the effort knob with output headroom** — `max_tokens ≥ 2048`, and `≥ 4096` when `high`
-   is in the space (truncation was still observed at 4096). A truncated call
-   (`finish_reason == "length"`) scores 0 and corrupts the sweep.
+2. **Pair the effort knob with output headroom.** A truncated call
+   (`finish_reason == "length"`) scores 0 and corrupts the sweep, so size `max_tokens` above the
+   reasoning budget: `≥ 2048` for `low`/`medium`, and — because truncation was still observed at
+   `4096` under `high` — `≥ 8192` when `high` is in the space. (Canonical, model/effort-dependent
+   floor: `references/parameter-types.md` → "Reasoning models need more than the default
+   `max_tokens` range".)
 3. **One knob per mechanism.** Don't put a prompt-CoT knob and a native effort knob in the same
    space expecting them to add: prompt-CoT measured as a no-op (+0.4 pp) on a native-reasoning
    model. Redundant knobs waste grid budget and muddy variable-importance readouts.
@@ -434,7 +437,7 @@ uncapped, plus a same-day paired rerun; benchmarks-insights 2026-07):
 config_space = {
     "model": ["openrouter/openai/gpt-oss-120b"],
     "reasoning_effort": ["low", "medium", "high"],
-    "max_tokens": [4096],          # headroom rule: fixed, not swept, while effort is swept
+    "max_tokens": [8192],          # headroom rule: ≥8192 because "high" is in the space (4096 still truncated)
 }
 ```
 

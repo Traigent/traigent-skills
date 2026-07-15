@@ -179,7 +179,8 @@ Present **one** aggregated table labelled:
 
 Rows are configuration-runs across the cohort's runs. Include these columns when present:
 `experiment_run_id`, `configuration_run_id`, `trial_number`, key configuration parameters, key
-measures such as accuracy/score, cost, and latency, `status`, and `timestamp`. Keep source ids
+measures such as accuracy/score, cost, and latency (ms on SDKs after 0.22.0; seconds on 0.22.0
+and earlier), `status`, and `timestamp`. Keep source ids
 visible in every row; join on ids and never deduplicate by configuration hash.
 
 This is a presentation aggregation over source rows, not a merged analytics identity. The portal
@@ -286,7 +287,7 @@ for trial in results.trials:
 
     # Safe metric access with default
     accuracy = trial.get_metric("accuracy", default=0.0)
-    latency = trial.get_metric("latency", default=None)
+    latency = trial.get_metric("latency", default=None)  # ms on SDKs after 0.22.0; seconds on 0.22.0 and earlier
 
     # Check for errors
     if trial.error_message:
@@ -343,13 +344,14 @@ if len(sorted_trials) >= 2:
 ### Is the Delta Real? Rerun Noise, Paired Comparisons, and Non-Portable Winners
 
 Before reporting any config-A-vs-config-B difference, know the noise floor — field-measured on
-real runs (benchmarks-insights, 2026-07): **the same config on the same data, nothing changed,
+real benchmark runs (2026-07): **the same config on the same data, nothing changed,
 moved ±5–10 pp across days at n=40 examples per cell** (one cell measured 82.5 → 87.5 → 95.0
 across three passes). Three rules follow:
 
-1. **Resolution rule:** a k-example evaluation only resolves gaps ≫ 100/k pp. Marginal means
-   pooled over ≥4 cells (n ≥ 160) roughly halve the noise; single-cell deltas under ~10 pp are
-   unreportable.
+1. **Resolution rule:** rerun noise follows a √k law — the same-config SD is ≈ `50/√k` pp at
+   p≈0.5 (≈8 pp at k=40, consistent with the ±5–10 pp above), so a k-example evaluation resolves
+   only gaps several times that. Marginal means pooled over ≥4 cells (n ≥ 160) roughly halve the
+   noise (4× the samples → √4 = 2× tighter); single-cell deltas under ~10 pp are unreportable.
 2. **Pair, don't cross-compare:** never compare numbers measured in different sessions/days.
    Case study: an apparent 12-pp effort-knob gap dissolved to +1.2 pp (2 answers in 160 — noise)
    once both sides were rerun same-day on the same fold. Cross-day deltas were the artifact.
@@ -372,7 +374,11 @@ dataset, at zero additional API cost. Two independent signals (both field-valida
   Read them as: *this row's verdict can't be trusted for this model*. On inspection a subset is
   intrinsically defective (one flagged row's gold answered a different question than asked, and
   replicated as unstable on a second model family); the rest are model-specific instability.
-  Either way: fix or drop flagged rows before promoting on small deltas.
+  Treat the two causes differently: fix or drop **only** rows confirmed as defective gold (wrong
+  or ambiguous, replicated across model families). **Keep** the model-instability rows in the set
+  and report them as an instability signal — those are exactly where the model is weak, so
+  deleting them before a promotion decision cherry-picks the easy items and inflates the promoted
+  score.
 - **Token-runaway.** A row that hits the token cap (`finish_reason == "length"`) or burns
   outlier reasoning tokens under *every* config is usually a broken item (ambiguous or
   self-contradictory) — one such row was later confirmed removed by GSM8K-Platinum's expert
@@ -380,8 +386,10 @@ dataset, at zero additional API cost. Two independent signals (both field-valida
 
 Mapping trap: the SDK keys rows as `example_{<0-based row index in the eval_dataset file>}`
 (`traigent/evaluators/base.py`). The portal's separate `example_num` field has undefined
-semantics (TraigentBackend#2068) — map flags back to your dataset via `example_id`, never
-`example_num`.
+semantics — map flags back to your dataset via `example_id`, never `example_num`. Built-in
+evaluators emit those `example_{index}` keys automatically; a custom evaluator should set
+`example_id` to a real per-row id (e.g. `example.metadata.get("id", index)`) so the two keyings
+line up.
 
 ### Configuration Insights
 
@@ -453,13 +461,21 @@ df = results.to_aggregated_dataframe(primary_objective="accuracy")
 # mean under its BARE name (e.g. "accuracy", "cost") + "duration" (mean seconds).
 print(df.columns.tolist())  # confirm the exact metric column names for your run
 
-# Non-dominated (Pareto) frontier: maximize accuracy, minimize cost.
-def pareto_front(df, maximize="accuracy", minimize="cost"):
+# Guard the frontier against rerun noise — see "Is the Delta Real?" above. Without this, a
+# few-point sampling blip makes a config momentarily non-dominated and a noise artifact lands
+# on the frontier. Two guards: drop under-sampled configs, and require a config to BEAT
+# another by more than the noise floor on the quality axis before it counts as dominating.
+MIN_SAMPLES = 4     # per-config repetitions; raise for a tighter frontier
+TIE_BAND = 0.05     # accuracy gap (≈ the ±5–10 pp rerun floor) below which two configs tie
+df = df[df["samples_count"] >= MIN_SAMPLES]
+
+# Non-dominated (Pareto) frontier: maximize accuracy, minimize cost, within the tie-band.
+def pareto_front(df, maximize="accuracy", minimize="cost", tol=TIE_BAND):
     keep = []
     for i, row in df.iterrows():
         dominated = (
-            (df[maximize] >= row[maximize]) & (df[minimize] <= row[minimize])
-            & ((df[maximize] > row[maximize]) | (df[minimize] < row[minimize]))
+            (df[maximize] >= row[maximize] - tol) & (df[minimize] <= row[minimize])
+            & ((df[maximize] > row[maximize] + tol) | (df[minimize] < row[minimize]))
         ).any()
         if not dominated:
             keep.append(i)
@@ -469,9 +485,13 @@ frontier = pareto_front(df)
 print(frontier[["accuracy", "cost", "duration"]])  # use your run's actual metric names
 ```
 
-Each frontier row is a defensible operating point: pick the cheapest config that clears your
-accuracy bar, or the most accurate within your cost budget. (`results.to_dataframe()` gives the raw
-per-trial rows if you want to plot the full cloud behind the frontier.)
+Each frontier row is a *candidate* operating point, not yet a proven one: pick the cheapest config
+that clears your accuracy bar, or the strongest quality/cost trade-off within your cost budget —
+note the tie-band folds configs within the noise band of a cheaper option into it, so the literal
+highest-accuracy config may not appear. Confirm your choice with a bootstrap CI on the difference
+(see "Is the Delta Real?" above) before promoting.
+(`results.to_dataframe()` gives the raw per-trial rows if you want to plot the full cloud behind
+the frontier.)
 
 ## Find Your Run on the Portal
 

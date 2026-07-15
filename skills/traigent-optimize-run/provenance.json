@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3827c7798632a4d9",
+  "doc_hash": "1ccb585f6287cac5",
   "reference_hashes": {
     "references/algorithms.md": "be8602fab22668a1",
     "references/cost-management.md": "3d19b55f25fbfd7b",
@@ -67,6 +67,17 @@
       "doc_before_hash": "2455d55a5f7ca49c",
       "doc_after_hash": "b9ed4f4e52c073c4",
       "note": "warn that local SDK default_config consumes a max_trials slot for grid, random, and auto when it resolves local; connected backend-guided auto does not run it as a baseline today; N-point grids need max_trials >= N+1 unless default_config is omitted",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "tenacity-preflight-scope-and-citation-fix-2026-07-15",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-15T00:00:00Z",
+      "doc_before_hash": "3827c7798632a4d9",
+      "doc_after_hash": "1ccb585f6287cac5",
+      "note": "correct the tenacity preflight note: tenacity first shipped in 0.21.3, so restate boundary as 'before 0.21.3' (0.21.2 and earlier lack it), and fix citation from '#1824, still open' to '#1824, fixed in 0.21.3 via #1825' (Traigent/traigent-skills#212)",
       "source_type": "human"
     }
   ]
