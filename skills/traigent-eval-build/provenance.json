@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "31f571e1827f5f48",
+  "doc_hash": "ac355859344bdd1e",
   "reference_hashes": {
     "references/evaluator-templates.md": "9559f32c5edba306"
   },
@@ -30,6 +30,17 @@
       "run_id": null,
       "timestamp": "2026-07-05T00:00:00Z",
       "note": "add 'Known pitfall: arbitrary gold ordering caps accuracy' section (order policy for structured comparisons; 100%-failure audit signal)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "latency-unit-note-2026-07-15",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-15T00:00:00Z",
+      "doc_before_hash": "31f571e1827f5f48",
+      "doc_after_hash": "ac355859344bdd1e",
+      "note": "stamp bare `latency` metric unit (ms after SDK 0.22.0, seconds earlier) on the decision ladder (#214)",
       "source_type": "human"
     }
   ]

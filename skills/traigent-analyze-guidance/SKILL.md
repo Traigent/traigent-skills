@@ -447,12 +447,19 @@ Backend-only report surfaces, each requiring a Traigent account/backend:
 
 | Symptom | Likely read | Ranked next action |
 |---|---|---|
-| Flat scores everywhere | Evaluation dataset is too easy, objective is saturated, or the space lacks meaningful variation | Synthesize harder examples with `traigent-dataset-curate`; add discriminating cases; then re-run a small grid |
-| High variance across repetitions | Evaluator or model behavior is noisy | Raise repetitions, use statistical aggregation, and audit the evaluator with `traigent-eval-audit`. A server-side ACET evaluator-audit action (computed from the run's tensor) is coming as a next-step option — prefer it when available. |
+| Flat scores everywhere | Evaluation dataset is too easy, objective is saturated, or the space lacks meaningful variation | First rule out rerun noise (`traigent-analyze-results` → "Is the Delta Real?" — see the note below); then synthesize harder examples with `traigent-dataset-curate`; add discriminating cases; then re-run a small grid |
+| High variance across repetitions | Evaluator or model behavior is noisy | Rule out rerun noise first (`traigent-analyze-results` → "Is the Delta Real?" — see the note below): a single-cell delta under ~10 pp at n=40 is unreportable. Then raise repetitions, use statistical aggregation, and audit the evaluator with `traigent-eval-audit`. A server-side ACET evaluator-audit action (computed from the run's tensor) is coming as a next-step option — prefer it when available. |
 | One knob dominates | The useful region is narrower than the current space | Narrow that knob's range; add structural knobs with `traigent-optimize-config-space` or `traigent-optimize-composite-knobs` |
 | Winner ties baseline | Objective weights or threshold may not reflect the product decision | Revisit objective weights with `traigent-eval-choose-metric`; inspect holdout slices before changing the space |
 | `stop_reason` is budget-bound | Search stopped before enough evidence accumulated | Adjust budget, cheaper models, max trials, or algorithm with `traigent-optimize-run` |
 | Weak examples identified | The same examples fail across good configs | Feed those examples into guided optimization and add a heldout check |
+
+> **Before treating a flat or noisy result as signal, rule out rerun noise.** See
+> `traigent-analyze-results` → *"Is the Delta Real?"*: the same config on the same data moves
+> ±5–10 pp across days at n=40 (same-config SD ≈ `50/√k` pp at p≈0.5), so a single-cell delta
+> under ~10 pp is unreportable, pooling ≥4 cells only halves the noise, and numbers measured in
+> different sessions/days must never be cross-compared. Claim a win only when a bootstrap CI on
+> the difference excludes zero — a "flat" or "high-variance" result is often just this floor.
 
 Use weak examples as evidence, not as a replacement for a holdout.
 

@@ -433,14 +433,15 @@ Full detail: `traigent-analyze-results` → "Verify the Run Actually Persisted".
 
 > **LiteLLM's `*_with_retries` helpers need `tenacity`.** If the decorated function calls
 > `litellm.completion_with_retries()` / `acompletion_with_retries()`, know that LiteLLM imports
-> `tenacity` lazily inside those helpers. On SDK 0.21.0 (and any earlier build) `tenacity` is NOT
-> in traigent's dependency closure, so in a clean install that retry path dies with
-> `ModuleNotFoundError: tenacity`, and the failed call is scored 0, silently biasing the trial
-> (field-hit on a real run; Traigent/Traigent#1824, still open). Plain `litellm.completion(num_retries=)`
-> is *not* affected — it uses LiteLLM's own internal retry loop and never imports `tenacity`.
-> Traigent/Traigent#1825 (merged 2026-07-10) now declares `tenacity>=8.1.0` as a core dep, so SDK
-> builds that include it no longer need this — but on 0.21.0 and earlier, preflight
-> `python -c "import tenacity"` before a paid run that relies on the `*_with_retries` helpers.
+> `tenacity` lazily inside those helpers. On any SDK build before 0.21.3 (0.21.2 and earlier)
+> `tenacity` is NOT in traigent's dependency closure, so in a clean install that retry path dies
+> with `ModuleNotFoundError: tenacity`, and the failed call is scored 0, silently biasing the trial
+> (field-hit on a real run; Traigent/Traigent#1824, fixed in 0.21.3 via #1825). Plain
+> `litellm.completion(num_retries=)` is *not* affected — it uses LiteLLM's own internal retry loop
+> and never imports `tenacity`. Traigent/Traigent#1825 (merged 2026-07-10) first declares
+> `tenacity>=8.1.0` as a core dep in 0.21.3, so SDK 0.21.3+ bundle it and no longer need this — but
+> on 0.21.2 and earlier, preflight `python -c "import tenacity"` before a paid run that relies on
+> the `*_with_retries` helpers.
 
 ## Complete Example
 

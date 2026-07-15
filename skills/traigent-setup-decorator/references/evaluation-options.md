@@ -67,7 +67,7 @@ def my_evaluator(func, config, example):
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=prediction,
-        metrics={"score": score, "latency_ms": latency * 1000},
+        metrics={"score": score, "latency": latency * 1000},  # bare `latency` key; ms on SDKs after 0.22.0
         execution_time=latency,
         success=True,
     )
@@ -81,6 +81,13 @@ def answer(question: str) -> str:
     cfg = traigent.get_config()
     return prompt_model(question, model=cfg["model"])
 ```
+
+Objectives bind to metric keys by exact name: an `objectives=["latency"]` entry
+reads the bare `latency` key (in milliseconds on SDKs after 0.22.0; seconds on
+0.22.0 and earlier), **not** a suffixed name like `latency_ms`. Emit the exact
+key your objectives reference, or that objective silently has no metric.
+`execution_time` is a separate first-class field, always in seconds — it is not a
+metric key.
 
 ### Validation
 

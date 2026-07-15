@@ -4,7 +4,7 @@
   "reference_hashes": {
     "references/dspy.md": "6c899d029a43f9f6",
     "references/langchain.md": "ffe92eb4d431f3b9",
-    "references/litellm.md": "4998284ee87c2142"
+    "references/litellm.md": "e956550b145d5222"
   },
   "entries": [
     {
@@ -34,6 +34,17 @@
       "doc_before_hash": "2bf7d398b0a7dc94",
       "doc_after_hash": "c136eb9cba89e3f5",
       "note": "warn that reasoning models' hidden tokens consume max_tokens before answer text \u2014 give >=1024-2048 headroom in sweeps (Traigent/traigent-skills#179)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "reasoning-headroom-floor-crosslink-2026-07-15",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-15T00:00:00Z",
+      "doc_before_hash": "c136eb9cba89e3f5",
+      "doc_after_hash": "c136eb9cba89e3f5",
+      "note": "references-only: reconcile references/litellm.md max_tokens headroom floor with the canonical effort-dependent statement in traigent-optimize-config-space/references/parameter-types.md (cross-link + note >=8192 under reasoning_effort='high'); SKILL.md unchanged (Traigent/traigent-skills#211)",
       "source_type": "human"
     }
   ]

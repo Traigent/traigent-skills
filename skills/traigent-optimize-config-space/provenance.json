@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "21dc95f04b0a90d2",
+  "doc_hash": "90c314eeca62bc9b",
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
-    "references/parameter-types.md": "6a488987a503401b",
+    "references/parameter-types.md": "eab8e4595ec71fd9",
     "references/structural-spine.md": "9792d63628ceef85"
   },
   "entries": [
@@ -23,6 +23,17 @@
       "run_id": null,
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "reasoning-effort-headroom-and-neutral-provenance-2026-07-15",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-15T00:00:00Z",
+      "doc_before_hash": "21dc95f04b0a90d2",
+      "doc_after_hash": "90c314eeca62bc9b",
+      "note": "make reasoning-effort worked example self-consistent (max_tokens 4096->8192 under 'high'); reconcile the three divergent max_tokens headroom floors into one effort-dependent statement owned by references/parameter-types.md with cross-links; replace internal research-repo provenance with neutral wording (Traigent/traigent-skills#211, #217)",
       "source_type": "human"
     }
   ]
