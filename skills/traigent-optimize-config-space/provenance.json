@@ -4,7 +4,7 @@
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
     "references/parameter-types.md": "eab8e4595ec71fd9",
-    "references/structural-spine.md": "9792d63628ceef85"
+    "references/structural-spine.md": "262c7f4ac4be9549"
   },
   "entries": [
     {
@@ -34,6 +34,17 @@
       "doc_before_hash": "21dc95f04b0a90d2",
       "doc_after_hash": "90c314eeca62bc9b",
       "note": "make reasoning-effort worked example self-consistent (max_tokens 4096->8192 under 'high'); reconcile the three divergent max_tokens headroom floors into one effort-dependent statement owned by references/parameter-types.md with cross-links; replace internal research-repo provenance with neutral wording (Traigent/traigent-skills#211, #217)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "version-matrix-collapse-2026-07-15",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-15T00:00:00Z",
+      "doc_before_hash": "90c314eeca62bc9b",
+      "doc_after_hash": "90c314eeca62bc9b",
+      "note": "collapse inline SDK-version stamps into the authoritative docs/version-matrix.md rows with `see version-matrix: <fact_id>` pointers; restamp smart-selector executability to the verified 0.20.1 boundary (Traigent/traigent-skills#221; fact E per #190)",
       "source_type": "human"
     }
   ]

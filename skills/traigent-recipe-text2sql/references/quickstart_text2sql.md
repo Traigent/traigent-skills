@@ -275,7 +275,7 @@ def main() -> int:
         os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
         from traigent.testing import enable_mock_mode_for_quickstart
         enable_mock_mode_for_quickstart()
-        offline, algorithm = True, "grid"          # named smart algorithms are not yet executable
+        offline, algorithm = True, "grid"          # named smart algorithms never run offline
     else:
         if not os.environ.get("TRAIGENT_API_KEY"):
             print("ERROR: TRAIGENT_API_KEY not set (.env).")
@@ -287,9 +287,10 @@ def main() -> int:
         os.environ["TRAIGENT_COST_APPROVED"] = "true"
         os.environ["TRAIGENT_OFFLINE_MODE"] = "false"
         # offline=False -> online/cloud, portal-tracked. Omit algorithm or use
-        # "auto"; in SDK 0.20.0 this is the reliable connected path to real
-        # cloud Optuna TPE. "bayesian"/"tpe"/"optuna" validate as known names
-        # but do not execute end-to-end yet (Traigent/Traigent#1752).
+        # "auto" for the default connected path to real cloud Optuna TPE.
+        # Named smart selectors ("bayesian"/"tpe"/"optuna") execute on connected
+        # runs since 0.20.1 (see version-matrix: smart-selector-exec); they
+        # never run locally/offline (Traigent/Traigent#1752, #1758).
         offline, algorithm = False, "auto"
 
     decorated = traigent.optimize(

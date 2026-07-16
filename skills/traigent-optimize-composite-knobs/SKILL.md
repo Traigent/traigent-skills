@@ -105,9 +105,11 @@ With the tuple return, use the BUILT-IN evaluator (expected outputs in
 3-arg `metric_functions` is currently NOT invoked with the unpacked prediction
 on this path, and every trial silently scores `accuracy=0.0` (known SDK
 issue). Diagnostic tell, by SDK version: on <= 0.21.3, uniform zero accuracy
-next to a sane built-in `score` means scoring wiring, not a bad agent; after
-0.21.3 `score` mirrors the objective (also 0.0 here) and the sane built-in
-value is relocated to `exact_match_default` — check that key instead.
+next to a sane built-in `score` means scoring wiring, not a bad agent; `score`
+mirrors the primary objective on SDKs after 0.21.3
+(see version-matrix: `score-relocation`), so it is also 0.0 here and the sane built-in value is
+relocated to `exact_match_default` — check that key instead, and look for the
+run-level "custom scoring_function defines the 'accuracy' objective" log line.
 **Escape hatch:** if you need custom scoring on this
 path, compute the metric inside the function and return it in the tuple's
 metrics dict (as the Quick Start's `accuracy` does) — do not wire a

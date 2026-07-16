@@ -1,6 +1,6 @@
 ---
 name: traigent-optimize-run
-description: "Run Traigent optimization: async/sync execution, algorithm selection, cost limits, stop conditions, and parallel trials. Use when calling func.optimize() or optimize_sync(), choosing algorithms (auto/grid/random today; bayesian/optuna are roadmap, not yet executable), setting max_trials or cost_limit, configuring parallel execution, or handling CostLimitExceeded."
+description: "Run Traigent optimization: async/sync execution, algorithm selection, cost limits, stop conditions, and parallel trials. Use when calling func.optimize() or optimize_sync(), choosing algorithms (auto/grid/random anywhere; named smart selectors like bayesian/optuna on authenticated connected runs, SDK 0.20.1+), setting max_trials or cost_limit, configuring parallel execution, or handling CostLimitExceeded."
 license: Apache-2.0
 metadata:
   author: Nimrod
@@ -14,7 +14,7 @@ metadata:
 Use this skill after you have decorated a function with `@traigent.optimize()` and need to:
 
 - Run optimization (async or sync)
-- Choose an algorithm (`auto` for connected real runs; `grid`/`random` for explicit local/offline search; `bayesian`/`optuna`/`tpe`/`cmaes`/`nsga2` are roadmap names, not executable end-to-end as named selectors)
+- Choose an algorithm (`auto` for connected real runs; `grid`/`random` for explicit local/offline search; named smart selectors like `bayesian`/`tpe`/`optuna` on authenticated connected runs, SDK 0.20.1+)
 - Set trial limits, timeouts, or cost budgets
 - Configure parallel trial execution
 - Handle cost limit exceptions
@@ -103,7 +103,7 @@ results = await answer.optimize(max_trials=10)  # default algorithm="auto"
 
 | Parameter | Type | Description |
 |---|---|---|
-| `algorithm` | `str \| None` | Algorithm: `"auto"` (default cloud smart optimizer), `"grid"`/`"random"` (local search). Named smart algorithms such as `"bayesian"`/`"optuna"` validate but are not yet executable — see below. Falls back to decorator setting. |
+| `algorithm` | `str \| None` | Algorithm: `"auto"` (default cloud smart optimizer), `"grid"`/`"random"` (local search). Named smart algorithms such as `"bayesian"`/`"optuna"` are connected-only (SDK 0.20.1+) — see below. Falls back to decorator setting. |
 | `max_trials` | `int \| None` | Maximum number of trials to run. |
 | `timeout` | `float \| None` | Maximum wall-clock time in seconds. |
 | `save_to` | `str \| None` | Path to save results to disk. |
@@ -160,16 +160,16 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 **Best for**: Large config spaces, quick exploration, when you have a limited trial budget.
 
-### Smart Algorithms (Bayesian / Optuna / TPE / CMA-ES / NSGA-II) — Not Yet Executable
+### Smart Algorithms (Bayesian / Optuna / TPE / CMA-ES / NSGA-II) — Connected-Only
 
-> **Named smart selectors are not currently executable end-to-end** (restamped against SDK 0.20.0). `algorithm="bayesian"`, `"optuna"`, `"tpe"`, `"cmaes"`, `"nsga2"`, and the other Optuna-family names validate as known names but do not run trials today. With `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*), and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). In connected typed-session runs, the SDK does not execute or transmit the named selector before it self-aborts ahead of backend guidance (Traigent/Traigent#1752); the backend would reject the name if it arrived. The connected smart path that does run real cloud Optuna TPE is `algorithm="auto"` (the default). Treat the named selectors as roadmap, not selectable values.
+> **Named smart selectors execute on connected runs since 0.20.1** (see version-matrix: `smart-selector-exec`). On an authenticated connected run, the supported names — `algorithm="bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"` — bind to the typed backend Optuna strategy and are serialized on session creation; unsupported smart names such as `"nsga2"`/`"cmaes"` fail fast before session creation with a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no named smart selector executed end-to-end). They never run locally on any version: with `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*), and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). `algorithm="auto"` (the default) remains the connected smart path when you do not need a specific strategy.
 
 ```python
-# Do NOT teach this as runnable — fails before any trial runs
-# (ConfigurationError/OptimizationError depending on path):
+# Connected-only — requires TRAIGENT_API_KEY and offline=False; on SDK 0.20.1+
+# binds the named strategy server-side (fails on 0.20.0 and always with offline=True):
 # results = await func.optimize(max_trials=30, algorithm="bayesian")
 
-# Use the connected smart path instead:
+# Default connected smart path:
 results = await func.optimize(max_trials=30, algorithm="auto")
 ```
 
@@ -180,7 +180,7 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 | `"auto"` | Cloud smart default | Any | Any | Traigent cloud |
 | `"grid"` | Exhaustive | Small (< 50) | Matches space size | Local SDK search |
 | `"random"` | Sampling | Any | Limited | Local SDK search |
-| `"bayesian"` / `"optuna"` / `"tpe"` / `"cmaes"` / `"nsga2"` | — | — | — | **Not executable today** (roadmap name; fails before any trial runs — see above) |
+| `"bayesian"` / `"optuna"` / `"tpe"` / `"cmaes"` / `"nsga2"` | Named backend strategy | Any | Any | **Connected only, SDK 0.20.1+** (supported names bind server-side; `nsga2`/`cmaes` fail fast — see above) |
 
 > ⚠️ **Local `default_config` consumes a `max_trials` slot.** In local SDK execution (`grid`,
 > `random`, and `auto` when it resolves to local random), a supplied `default_config` runs as an
@@ -403,8 +403,8 @@ print(results.stop_reason)     # "max_trials_reached"
 print(results.total_cost)      # 0.34 (USD, if tracked)
 print(results.optimization_id) # "opt_abc123"
 
-# Trial details (per-trial scores/costs live in trial.metrics; SDKs after
-# 0.21.3 also populate trial.score with the primary-objective value)
+# Trial details (per-trial scores/costs live in trial.metrics; score mirrors the
+# primary objective on SDKs after 0.21.3 — see version-matrix: score-relocation)
 for trial in results.trials:
     print(f"Config: {trial.config}, Score: {trial.metrics.get('score')}")
 
@@ -439,9 +439,9 @@ Full detail: `traigent-analyze-results` → "Verify the Run Actually Persisted".
 > (field-hit on a real run; Traigent/Traigent#1824, fixed in 0.21.3 via #1825). Plain
 > `litellm.completion(num_retries=)` is *not* affected — it uses LiteLLM's own internal retry loop
 > and never imports `tenacity`. Traigent/Traigent#1825 (merged 2026-07-10) first declares
-> `tenacity>=8.1.0` as a core dep in 0.21.3, so SDK 0.21.3+ bundle it and no longer need this — but
-> on 0.21.2 and earlier, preflight `python -c "import tenacity"` before a paid run that relies on
-> the `*_with_retries` helpers.
+> `tenacity>=8.1.0` as a core dep: `tenacity` is bundled since 0.21.3 (0.21.2 and earlier lack it —
+> see version-matrix: `tenacity-bundling`). On 0.21.2 and earlier, preflight
+> `python -c "import tenacity"` before a paid run that relies on the `*_with_retries` helpers.
 
 ## Complete Example
 

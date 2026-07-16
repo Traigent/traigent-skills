@@ -179,8 +179,8 @@ Present **one** aggregated table labelled:
 
 Rows are configuration-runs across the cohort's runs. Include these columns when present:
 `experiment_run_id`, `configuration_run_id`, `trial_number`, key configuration parameters, key
-measures such as accuracy/score, cost, and latency (ms on SDKs after 0.22.0; seconds on 0.22.0
-and earlier), `status`, and `timestamp`. Keep source ids
+measures such as accuracy/score, cost, and latency (bare `latency` is milliseconds on SDKs
+after 0.22.0 — see version-matrix: `latency-unit`), `status`, and `timestamp`. Keep source ids
 visible in every row; join on ids and never deduplicate by configuration hash.
 
 This is a presentation aggregation over source rows, not a merged analytics identity. The portal
@@ -281,13 +281,13 @@ for trial in results.trials:
     print(f"  Config: {trial.config}")
     print(f"  Status: {trial.status}")        # TrialStatus enum
     print(f"  Duration: {trial.duration:.1f}s")
-    print(f"  Metrics: {trial.metrics}")       # {"accuracy": 0.85, "latency": 1200.0}  # latency in ms (SDKs after 0.22.0)
+    print(f"  Metrics: {trial.metrics}")       # {"accuracy": 0.85, "latency": 1200.0}  # latency in ms on SDKs after 0.22.0 (see version-matrix: latency-unit)
     print(f"  Successful: {trial.is_successful}")
     print(f"  Timestamp: {trial.timestamp}")
 
     # Safe metric access with default
     accuracy = trial.get_metric("accuracy", default=0.0)
-    latency = trial.get_metric("latency", default=None)  # ms on SDKs after 0.22.0; seconds on 0.22.0 and earlier
+    latency = trial.get_metric("latency", default=None)  # ms on SDKs after 0.22.0 (see version-matrix: latency-unit)
 
     # Check for errors
     if trial.error_message:
@@ -433,7 +433,7 @@ print(f"Trial counts: {stats.trial_counts}")
 
 # Best metrics from the winning trial
 print(f"Best metrics: {results.best_metrics}")
-# {"accuracy": 0.92, "latency": 800.0}  # latency in ms (SDKs after 0.22.0; earlier local runs recorded seconds)
+# {"accuracy": 0.92, "latency": 800.0}  # latency in ms on SDKs after 0.22.0 (see version-matrix: latency-unit)
 ```
 
 > **`None` means *not tracked*, not *local*.** `results.total_cost` / `total_tokens` are
@@ -441,10 +441,10 @@ print(f"Best metrics: {results.best_metrics}")
 > (mock/offline runs, unpriced custom models — see `traigent-optimize-run` → Cost Wiring Probe).
 > A real paid run — local or portal-tracked — should show a positive `total_cost`; treat
 > `None`/`0.0` with real calls as cost not wired, never as "expected for a local run".
-> Per-trial: `trial.get_metric("total_cost")` is the trial total. On SDKs after 0.22.0, `"cost"` is
-> ALSO the per-trial total on every lane (it reconciles with `total_cost`; the per-example mean moved
-> to `"cost_per_example_mean"`). On 0.22.0 and earlier, local runs reported `"cost"` as the
-> per-example mean — ~N× smaller than hybrid runs of the same config.
+> Per-trial: `trial.get_metric("total_cost")` is the trial total. `"cost"` is the per-trial total
+> on SDKs after 0.22.0 (see version-matrix: `cost-unit`) — it reconciles with `total_cost`, and the
+> per-example mean moved to `"cost_per_example_mean"`. On 0.22.0 and earlier, local runs reported
+> `"cost"` as the per-example mean — ~N× smaller than hybrid runs of the same config.
 
 ## The Quality / Cost / Latency Trade-off (multi-objective)
 

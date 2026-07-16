@@ -4,7 +4,7 @@
   "reference_hashes": {
     "references/iteration-log-template.md": "9a20df1f1a95e563",
     "references/optimization-principles.md": "2c9b62d815e7fbc9",
-    "references/preflight.md": "1ce8858d98851a98",
+    "references/preflight.md": "7c0f72b75aac157f",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -137,6 +137,17 @@
       "doc_before_hash": "e140eb4cb0a49475",
       "doc_after_hash": "51a8c8aea0c8cf0f",
       "note": "cross-link Mode C flat/high-variance rows to analyze-results 'Is the Delta Real?' rerun-noise doctrine using the corrected sqrt(k) rule and pair-don't-cross-compare warning (#216)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "version-matrix-collapse-2026-07-15",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-15T00:00:00Z",
+      "doc_before_hash": "51a8c8aea0c8cf0f",
+      "doc_after_hash": "51a8c8aea0c8cf0f",
+      "note": "collapse inline SDK-version stamps into the authoritative docs/version-matrix.md rows with `see version-matrix: <fact_id>` pointers; restamp smart-selector executability to the verified 0.20.1 boundary (Traigent/traigent-skills#221; fact E per #190)",
       "source_type": "human"
     }
   ]

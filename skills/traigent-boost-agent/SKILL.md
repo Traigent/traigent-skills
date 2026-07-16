@@ -226,23 +226,23 @@ os.environ["TRAIGENT_COST_APPROVED"] = "true"
 ```
 
 > **Algorithm selector.** For connected real runs, omit `algorithm` or use `algorithm="auto"`.
-> In SDK 0.20.0, `auto` is the reliable connected path to real cloud Optuna TPE. Use
+> `auto` is the default connected path to real cloud Optuna TPE. Use
 > `algorithm="grid"` / `"random"` only for explicit local/offline search.
 >
-> **Named smart selectors are not yet executable end-to-end.** `bayesian` (and the rest of
-> the Optuna/Bayesian family, incl. `tpe`/`cmaes`/`nsga2`) validate as known names but fail
-> before any trial runs. With `offline=True`, the decorator raises `ConfigurationError`;
-> the local optimizer registry raises `OptimizationError`. In connected SDK 0.20.0 runs,
-> the SDK does not execute or transmit the named selector on the default typed path and
-> self-aborts before backend guidance (Traigent/Traigent#1752); the backend would reject
-> the name if it arrived. Use `auto` for connected smart optimization.
+> **Named smart selectors execute on connected runs since 0.20.1**
+> (see version-matrix: `smart-selector-exec`). On an authenticated connected run, supported names
+> (`bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random`) bind to the typed backend Optuna
+> strategy at session creation; unsupported smart names such as `nsga2`/`cmaes` fail fast with
+> a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no named smart selector
+> executed end-to-end). They never run locally: with `offline=True` the decorator raises
+> `ConfigurationError`, and the local optimizer registry raises `OptimizationError`.
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
     # Connected real run: omit algorithm or use "auto". Smart selector names
-    # like "bayesian" are roadmap and fail before any trial runs.
+    # like "bayesian" are connected-only (SDK 0.20.1+) and never run locally.
     results = my_function.optimize_sync(max_trials=10, algorithm="auto")
 except CostLimitExceeded as e:
     print(f"Budget hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
@@ -413,7 +413,7 @@ CONFIGURATION_SPACE = {
 10. INSIGHT: configurations AND examples.
    - Configuration side: start with `get_optimization_insights(results)`, then use `traigent-analyze-variable-importance` for importance-backed knob ranking.
    - Example side: use `ExampleInsightsClient` to compute example scores, read scores, and read dataset-quality metadata. Its reportable scope is non-signal metadata; do not claim hidden difficulty, informativeness, ambiguity, or causal signal values.
-   - As of 0.21.0 (present since 0.13.x), importing `ExampleInsightsClient` from core `traigent.analytics` emits a `DeprecationWarning` pointing at the `traigent-analytics` plugin — but the plugin does not export this class, so keep the core import and ignore the warning for this class. If the plugin IS installed, the core shim stops exposing the class; use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (see the verified import note in `traigent-dataset-curate`).
+   - Core `ExampleInsightsClient` import warns deprecated since 0.13.x (see version-matrix: `exampleinsights-deprecation`): importing it from core `traigent.analytics` emits a `DeprecationWarning` pointing at the `traigent-analytics` plugin — but the plugin does not export this class, so keep the core import and ignore the warning for this class. If the plugin IS installed, the core shim stops exposing the class; use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (see the verified import note in `traigent-dataset-curate`).
    - Report baseline vs `results.best_config` delta for the agreed metrics, cost, token use, trial count, failed trials, and `results.stop_reason`.
    - Use `traigent-analyze-results` for `OptimizationResult` inspection and `traigent-analyze-variable-importance` to explain which knobs mattered.
    <!-- PROTECTED -->

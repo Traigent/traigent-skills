@@ -51,7 +51,7 @@ print(results.total_tokens)      # 15420
 
 # Computed properties
 print(results.success_rate)      # 0.8
-print(results.best_metrics)      # {"accuracy": 0.92, "latency": 800.0}  # latency in ms (SDKs after 0.22.0)
+print(results.best_metrics)      # {"accuracy": 0.92, "latency": 800.0}  # latency in ms on SDKs after 0.22.0 (see version-matrix: latency-unit)
 print(len(results.successful_trials))  # 8
 print(len(results.failed_trials))      # 2
 
@@ -78,7 +78,7 @@ The `TrialResult` dataclass represents the outcome of a single optimization tria
 |---|---|---|
 | `trial_id` | `str` | Unique identifier for this trial. |
 | `config` | `dict[str, Any]` | The configuration used for this trial (e.g., `{"model": "gpt-4o", "temperature": 0.5}`). |
-| `metrics` | `dict[str, float]` | Metric values produced by this trial (e.g., `{"accuracy": 0.85, "latency": 1200.0}` — the bare `latency` metric is **milliseconds** on SDKs after 0.22.0; earlier local runs recorded seconds). |
+| `metrics` | `dict[str, float]` | Metric values produced by this trial (e.g., `{"accuracy": 0.85, "latency": 1200.0}` — the bare `latency` metric is **milliseconds** on SDKs after 0.22.0; see version-matrix: `latency-unit`). |
 | `status` | `TrialStatus` | Status of this trial. One of: `NOT_STARTED`, `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `PRUNED`. |
 | `duration` | `float` | Wall-clock execution time for this trial in seconds. |
 | `timestamp` | `datetime` | When this trial was executed. |
@@ -104,7 +104,7 @@ for trial in results.trials:
     # Field access
     print(trial.trial_id)       # "trial-001"
     print(trial.config)         # {"model": "gpt-4o-mini", "temperature": 0.3}
-    print(trial.metrics)        # {"accuracy": 0.85, "latency": 1200.0}  # ms, SDKs after 0.22.0
+    print(trial.metrics)        # {"accuracy": 0.85, "latency": 1200.0}  # ms on SDKs after 0.22.0 (see version-matrix: latency-unit)
     print(trial.status)         # TrialStatus.COMPLETED
     print(trial.duration)       # 3.7
     print(trial.timestamp)      # datetime(2024, 1, 15, 10, 30, 0)

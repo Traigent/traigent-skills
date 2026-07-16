@@ -31,7 +31,7 @@ Prefer the smallest evaluator surface that measures the chosen objective.
 | 4 | `custom_evaluator` | `custom_evaluator(func, config, example) -> ExampleResult` | The evaluator must call the function itself, collect timing/cost, run a judge, repeat samples, or fail closed. |
 | 5 | `BaseEvaluator` subclass | `async evaluate(self, func, config, dataset, *, sample_lease=None, progress_callback=None) -> EvaluationResult` | You need full batch control, custom concurrency, leases, progress callbacks, or a reusable evaluator class. |
 
-The built-in `latency` metric uses the bare key `latency`, reported in milliseconds on SDKs after 0.22.0 (seconds on 0.22.0 and earlier).
+The built-in `latency` metric uses the bare key `latency`, reported in milliseconds on SDKs after 0.22.0 (see version-matrix: `latency-unit`).
 
 **No `expected_output` at all?** Tiers 1-3 assume a gold label to compare against. For
 subjective/generative tasks with no labels, skip straight to Tier 4 with the **"LLM judge with
