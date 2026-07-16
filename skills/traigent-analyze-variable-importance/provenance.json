@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0f1e37f1a660a77d",
+  "doc_hash": "05a4232224a1fbda",
   "entries": [
     {
       "edit_id": "genesis",
@@ -30,6 +30,17 @@
       "doc_after_hash": "0f1e37f1a660a77d",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata, and make the bundled analyzer command plugin-location independent",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "permutation-null-significance-2026-07-30",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-30T00:00:00Z",
+      "doc_before_hash": "0f1e37f1a660a77d",
+      "doc_after_hash": "05a4232224a1fbda",
+      "note": "replace the bootstrap-CI significance gate (a non-negative spread whose CI clears zero even under pure noise) with a label-shuffled permutation null, and report a per-knob effect instead of copying the run-level heldout delta onto every knob",
+      "source_type": "human"
     }
   ]
 }

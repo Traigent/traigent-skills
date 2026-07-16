@@ -58,7 +58,7 @@ The script writes these files into `--output-dir`:
 - `importance.csv`: flat CSV with the same fields.
 - `significant_variables.svg`: hand-written 1280x720 dark-theme SVG with horizontal bars, bootstrap CI whiskers, best-value annotations, and a directional/significance caption.
 - `insights.md`: short human-readable summary using honest claim language.
-- `video_card.json`: compact payload: `top_variables`, `n_trials`, `objective`, and `caption`.
+- `video_card.json`: compact payload: `top_variables` (each with the knob's own `accuracy_pp`/`cost_delta_pct`), `n_trials`, `objective`, run-level `heldout_accuracy_pp`/`heldout_cost_delta_pct`, and `caption`.
 
 <!-- PROTECTED -->
 ## Honesty Rule
@@ -66,7 +66,8 @@ The script writes these files into `--output-dir`:
 Never overclaim significance:
 
 - With fewer than 20 trials, importances are labelled `directional`, not statistically significant.
-- A variable is called `significant` only if its bootstrap CI lower bound is greater than 0.
+- A variable is called `significant` only when its per-value spread beats a label-shuffled permutation (no-effect) null at the configured confidence. The max−min spread is non-negative by construction, so a bootstrap CI clearing 0 is not a significance test — the CI is shown for scale only.
+- The video card's per-knob `accuracy_pp`/`cost_delta_pct` are that knob's own measured effect; the whole-run heldout optimized-vs-baseline delta is reported once as a card-level field, never copied onto each knob.
 - The ranking is observational: "on this fixed Spider slice, in this run." It is not proof of causal attribution.
 <!-- /PROTECTED -->
 
