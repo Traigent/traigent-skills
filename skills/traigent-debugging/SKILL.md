@@ -242,13 +242,15 @@ endpoint → degraded run).
 verified live one:
 
 ```bash
-# SDK-native preflight (no spend): valid -> true/false against the provider's known models
+# SDK-native shape preflight (no spend): checks ID shape vs a shipped snapshot w/ pattern fallback;
+# catches typos/unknown shapes but a retired-but-well-formed ID still passes -- can't detect delisting
 traigent models --provider openai
 traigent models --provider anthropic --check claude-3-haiku-20240307
 ```
 
 ```bash
-# Or query the provider's live catalog directly (e.g. OpenRouter, not covered by `traigent models`)
+# Then confirm liveness against the provider's live catalog -- the authoritative check the
+# preflight above can't do (required for providers not covered by `traigent models`, e.g. OpenRouter)
 curl -s https://openrouter.ai/api/v1/models | grep -o '"id":"[^"]*"' | sort
 ```
 

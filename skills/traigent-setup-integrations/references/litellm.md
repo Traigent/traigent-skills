@@ -60,8 +60,10 @@ actually work). Two real-world failures we have hit:
 - `openrouter/anthropic/claude-3.5-haiku` — routes to a **retired** Amazon Bedrock
   endpoint; the trial degrades instead of erroring cleanly.
 
-**SDK-native preflight (recommended).** The CLI validates an ID against a provider's known
-model list without spending anything:
+**SDK-native preflight (shape check, no spend).** The CLI checks an ID against a shipped model
+snapshot with pattern-based fallback — it catches typos and unknown ID shapes without spending
+anything, but a retired-but-well-formed ID still passes; it does **not** detect provider-side
+delisting, so treat it as a first pass, not proof the ID is still served:
 
 ```bash
 # List a provider's known model IDs, or validate a specific one (valid: true/false)
@@ -70,8 +72,11 @@ traigent models --provider anthropic --check claude-3-haiku-20240307
 traigent models --provider gemini --check gemini-3-flash --json
 ```
 
-**Query the provider catalog directly.** When a provider isn't covered by `traigent models`
-(e.g. OpenRouter), hit its live catalog endpoint and grep for the exact ID:
+**Query the provider catalog directly (authoritative liveness check).** Because the preflight
+above can't detect delisting, confirm the ID is actually served against the provider's live
+catalog — required for any provider `traigent models` doesn't cover (e.g. OpenRouter), and the
+only way to catch a delisted-but-well-formed ID for the providers it does. Hit the live catalog
+endpoint and grep for the exact ID:
 
 ```bash
 # OpenRouter: the slug after "openrouter/" must appear in the live catalog

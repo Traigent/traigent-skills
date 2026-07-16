@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6432031d644c8756",
+  "doc_hash": "39352a037b3de5b2",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/mcp-analytics-tools.md": "4c68385be07782a7",
@@ -55,7 +55,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "838feefd1437899f",
       "doc_after_hash": "77ffaa88b34926ab",
-      "note": "note that the apply threshold check runs on the search slice, not a promotion decision \u2014 promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
+      "note": "note that the apply threshold check runs on the search slice, not a promotion decision — promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
       "source_type": "human"
     },
     {

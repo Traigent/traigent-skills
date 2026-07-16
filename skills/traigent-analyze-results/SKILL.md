@@ -457,8 +457,11 @@ of the same config and averages each metric), then filter to the non-dominated s
 
 ```python
 df = results.to_aggregated_dataframe(primary_objective="accuracy")
-# One row per unique config. Columns: config params + samples_count + each metric as its
-# mean under its BARE name (e.g. "accuracy", "cost") + "duration" (mean seconds).
+# One row per unique config. Columns: config params + samples_count + each metric as its mean
+# under its BARE name (e.g. "accuracy", "cost", "latency" in ms) + "duration" (mean total
+# wall-clock seconds) + "avg_response_time_ms" / "avg_response_time" (mean PER-CALL latency, in
+# ms / seconds) when the run recorded per-call timings. "duration" (total wall-clock) is a
+# DIFFERENT metric from the per-call "latency"/"avg_response_time_ms" — don't read one for the other.
 print(df.columns.tolist())  # confirm the exact metric column names for your run
 
 # Guard the frontier against rerun noise — see "Is the Delta Real?" above. Without this, a
@@ -482,7 +485,8 @@ def pareto_front(df, maximize="accuracy", minimize="cost", tol=TIE_BAND):
     return df.loc[keep].sort_values(minimize)
 
 frontier = pareto_front(df)
-print(frontier[["accuracy", "cost", "duration"]])  # use your run's actual metric names
+# For a latency objective, read the PER-CALL latency column (ms) — NOT "duration" (total wall-clock):
+print(frontier[["accuracy", "cost", "avg_response_time_ms"]])  # use your run's actual metric names
 ```
 
 Each frontier row is a *candidate* operating point, not yet a proven one: pick the cheapest config
