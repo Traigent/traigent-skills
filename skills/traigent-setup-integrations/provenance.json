@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c136eb9cba89e3f5",
+  "doc_hash": "4e471ddcc57ad36b",
   "reference_hashes": {
     "references/dspy.md": "6c899d029a43f9f6",
     "references/langchain.md": "ffe92eb4d431f3b9",
-    "references/litellm.md": "e956550b145d5222"
+    "references/litellm.md": "63db130850e6a2ac"
   },
   "entries": [
     {
@@ -45,6 +45,17 @@
       "doc_before_hash": "c136eb9cba89e3f5",
       "doc_after_hash": "c136eb9cba89e3f5",
       "note": "references-only: reconcile references/litellm.md max_tokens headroom floor with the canonical effort-dependent statement in traigent-optimize-config-space/references/parameter-types.md (cross-link + note >=8192 under reasoning_effort='high'); SKILL.md unchanged (Traigent/traigent-skills#211)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "models-check-not-liveness-preflight-2026-07-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-16T00:00:00Z",
+      "doc_before_hash": "c136eb9cba89e3f5",
+      "doc_after_hash": "4e471ddcc57ad36b",
+      "note": "propagate the quickstart caveat: `traigent models --check` is an ID-shape preflight against a shipped snapshot with pattern fallback, cannot detect provider-side delisting; make the live provider catalog the authoritative liveness check in SKILL.md and references/litellm.md (Traigent/traigent-skills#227)",
       "source_type": "human"
     }
   ]

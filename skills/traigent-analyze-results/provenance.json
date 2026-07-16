@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "8aa6d614e0348be8",
+  "doc_hash": "5ed6a0933157d9ce",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/mcp-analytics-tools.md": "4c68385be07782a7",
@@ -78,6 +78,17 @@
       "doc_before_hash": "0d00b6ce0f5f6491",
       "doc_after_hash": "8aa6d614e0348be8",
       "note": "wave doc corrections: fix resolution rule to sqrt(k) law (#209); add min-samples + tie-band CI guard to pareto_front recipe (#210); scope drop to defective gold, retain instability rows (#213); neutralize internal provenance/tracker refs (#217); reconcile example_id vs example_{index} keying (#215); stamp latency units (#214)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "frontier-per-call-latency-not-duration-2026-07-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-16T00:00:00Z",
+      "doc_before_hash": "8aa6d614e0348be8",
+      "doc_after_hash": "5ed6a0933157d9ce",
+      "note": "aggregated-dataframe column list now names the avg_response_time_ms/avg_response_time per-call latency columns the SDK emits and distinguishes them from `duration` (total wall-clock seconds); Pareto-frontier example reads avg_response_time_ms (per-call latency, ms) for latency-objective runs instead of `duration` (Traigent/traigent-skills#228)",
       "source_type": "human"
     }
   ]

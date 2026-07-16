@@ -125,8 +125,10 @@ LiteLLM provides a unified `completion()` interface across 100+ LLM providers (O
 > **Verify model IDs are live + priced before a real run.** Provider catalogs change — IDs get
 > delisted, renamed, or re-routed to a retired backend. A dead ID causes a 404 or a *degraded*
 > trial whose cost stays unpriced ($0.00). The IDs below were valid when written; re-check them
-> first with `traigent models --provider <p> --check <id>` (or the provider's live catalog
-> endpoint — e.g. `curl -s https://openrouter.ai/api/v1/models` for OpenRouter). Prefer specific
+> first: `traigent models --provider <p> --check <id>` catches typos and unknown ID shapes but
+> only validates a shipped snapshot with pattern fallback — it cannot detect delisting, so confirm
+> the ID is actually live against the provider's live catalog endpoint (e.g.
+> `curl -s https://openrouter.ai/api/v1/models` for OpenRouter). Prefer specific
 > versioned IDs over `-latest` aliases. See [LiteLLM reference](references/litellm.md#verifying-model-availability) and the `traigent-debugging` skill's "Model 404 / retired endpoint" entry.
 
 > **⚠️ Give reasoning models enough `max_tokens` headroom.** Reasoning models (`gemini-2.5`/`3.x`,
