@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1ccb585f6287cac5",
+  "doc_hash": "ad8b4d5c3c32a975",
   "reference_hashes": {
-    "references/algorithms.md": "be8602fab22668a1",
-    "references/cost-management.md": "3d19b55f25fbfd7b",
+    "references/algorithms.md": "4c79ff944c78bf76",
+    "references/cost-management.md": "44fca0c7fb536c36",
     "references/parallel-config.md": "f0979cbb952b3cf3"
   },
   "entries": [
@@ -78,6 +78,17 @@
       "doc_before_hash": "3827c7798632a4d9",
       "doc_after_hash": "1ccb585f6287cac5",
       "note": "correct the tenacity preflight note: tenacity first shipped in 0.21.3, so restate boundary as 'before 0.21.3' (0.21.2 and earlier lack it), and fix citation from '#1824, still open' to '#1824, fixed in 0.21.3 via #1825' (Traigent/traigent-skills#212)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "version-matrix-collapse-2026-07-15",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-15T00:00:00Z",
+      "doc_before_hash": "1ccb585f6287cac5",
+      "doc_after_hash": "ad8b4d5c3c32a975",
+      "note": "collapse inline SDK-version stamps into the authoritative docs/version-matrix.md rows with `see version-matrix: <fact_id>` pointers; restamp smart-selector executability to the verified 0.20.1 boundary (Traigent/traigent-skills#221; fact E per #190)",
       "source_type": "human"
     }
   ]

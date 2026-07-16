@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "bda310fcfefe9dd0",
+  "doc_hash": "15db56fdce241007",
   "entries": [
     {
       "edit_id": "genesis",
@@ -29,6 +29,17 @@
       "doc_before_hash": "08420f04e0f05cf5",
       "doc_after_hash": "bda310fcfefe9dd0",
       "note": "stamp bare `latency` metric unit (ms after SDK 0.22.0, seconds earlier) on measure-type and multi-objective tables (#214)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "version-matrix-collapse-2026-07-15",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-15T00:00:00Z",
+      "doc_before_hash": "bda310fcfefe9dd0",
+      "doc_after_hash": "15db56fdce241007",
+      "note": "collapse inline SDK-version stamps into the authoritative docs/version-matrix.md rows with `see version-matrix: <fact_id>` pointers; restamp smart-selector executability to the verified 0.20.1 boundary (Traigent/traigent-skills#221; fact E per #190)",
       "source_type": "human"
     }
   ]

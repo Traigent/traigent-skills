@@ -16,9 +16,9 @@ fixed-set knobs. Reserve continuous ranges for genuinely continuous knobs.
 Route LLM calls through a metering proxy (OpenRouter / LiteLLM) so cost is real
 tokens x price. If a model's price isn't auto-detected, supply it via
 `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` (or compute cost from token usage x price)
-so the cost objective is accurate. Measure latency as real wall-clock **milliseconds**
-(the SDK's canonical unit for the bare `latency` metric on SDKs after 0.22.0; earlier
-local builtins recorded seconds).
+so the cost objective is accurate. Measure latency as real wall-clock **milliseconds** —
+bare `latency` is milliseconds on SDKs after 0.22.0
+(see version-matrix: `latency-unit`).
 
 When you use a `custom_evaluator`, emit `accuracy`, `cost`, and `latency` as real
 per-eval metrics so the weighted objective uses real values. Also emit accuracy
@@ -27,13 +27,14 @@ alongside the composite score.
 
 ## Algorithm prerequisites
 
-Named smart algorithms (`algorithm="bayesian"`/`"tpe"`/`"optuna"`/`"cmaes"`/`"nsga2"`)
-are **not yet executable end-to-end** as named selectors (SDK 0.20.0). They
-validate as known names but fail before any trial runs: `offline=True` raises
-`ConfigurationError`, the local registry raises `OptimizationError`, and
-connected typed runs self-abort before backend guidance because the SDK does
-not execute/transmit the named selector (Traigent/Traigent#1752). Use
-`algorithm="auto"` for connected real runs; use `algorithm="grid"` or
+Named smart selectors execute on connected runs since 0.20.1
+(see version-matrix: `smart-selector-exec`). On an authenticated connected run,
+supported names (`algorithm="bayesian"`/`"tpe"`/`"optuna"`/`"optuna_tpe"`/
+`"optuna_random"`) bind to the typed backend Optuna strategy; unsupported smart
+names (`"nsga2"`/`"cmaes"`) fail fast with a capability message
+(Traigent/Traigent#1752, #1758). They never run locally: `offline=True` raises
+`ConfigurationError` and the local registry raises `OptimizationError`. Use
+`algorithm="auto"` for default connected real runs; use `algorithm="grid"` or
 `algorithm="random"` only for explicit local/offline search. A clean Python
 3.11/3.12 environment is still recommended either way.
 

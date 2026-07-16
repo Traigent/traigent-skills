@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "5ed6a0933157d9ce",
+  "doc_hash": "39352a037b3de5b2",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/mcp-analytics-tools.md": "4c68385be07782a7",
-    "references/optimization-result-api.md": "14592a4d68793156"
+    "references/optimization-result-api.md": "5d902e1d910d1a81"
   },
   "entries": [
     {
@@ -55,7 +55,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "838feefd1437899f",
       "doc_after_hash": "77ffaa88b34926ab",
-      "note": "note that the apply threshold check runs on the search slice, not a promotion decision \u2014 promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
+      "note": "note that the apply threshold check runs on the search slice, not a promotion decision — promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
       "source_type": "human"
     },
     {
@@ -81,14 +81,14 @@
       "source_type": "human"
     },
     {
-      "edit_id": "frontier-per-call-latency-not-duration-2026-07-16",
+      "edit_id": "version-matrix-collapse-2026-07-15",
       "op": "manual_edit",
       "status": "accepted",
       "run_id": null,
-      "timestamp": "2026-07-16T00:00:00Z",
+      "timestamp": "2026-07-15T00:00:00Z",
       "doc_before_hash": "8aa6d614e0348be8",
-      "doc_after_hash": "5ed6a0933157d9ce",
-      "note": "aggregated-dataframe column list now names the avg_response_time_ms/avg_response_time per-call latency columns the SDK emits and distinguishes them from `duration` (total wall-clock seconds); Pareto-frontier example reads avg_response_time_ms (per-call latency, ms) for latency-objective runs instead of `duration` (Traigent/traigent-skills#228)",
+      "doc_after_hash": "6432031d644c8756",
+      "note": "collapse inline SDK-version stamps into the authoritative docs/version-matrix.md rows with `see version-matrix: <fact_id>` pointers; restamp smart-selector executability to the verified 0.20.1 boundary (Traigent/traigent-skills#221; fact E per #190)",
       "source_type": "human"
     }
   ]

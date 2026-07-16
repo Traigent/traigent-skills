@@ -110,8 +110,9 @@ def _call_answer_model(question: str, cfg: dict) -> str:
         # silently scores accuracy=0.0 (known SDK issue). Diagnostic tell, by
         # SDK version: on <= 0.21.3 the built-in exact-match value appears as
         # metrics["score"] (uniform zero accuracy next to a sane "score" =
-        # this wiring, not your agent); after 0.21.3 "score" mirrors the
-        # objective (so it is ALSO 0.0 here) and the sane built-in value is
+        # this wiring, not your agent); score mirrors the primary objective on
+        # SDKs after 0.21.3 (see version-matrix: score-relocation), so "score"
+        # is ALSO 0.0 here and the sane built-in value is
         # relocated to metrics["exact_match_default"] — check that key, and
         # look for the run-level "custom scoring_function defines the
         # 'accuracy' objective" log line.
