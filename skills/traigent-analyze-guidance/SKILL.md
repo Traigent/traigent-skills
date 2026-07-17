@@ -4,7 +4,7 @@ description: "What should this Traigent optimization run be, and what next? Thre
 license: Apache-2.0
 metadata:
   author: Traigent
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Traigent Analyze Guidance
@@ -26,6 +26,26 @@ from local markdown reasoning.**
   next-step payload, then loop back to Mode A.
 - **Mode C — offline/local fallback:** diagnose local results and form ONE next
   hypothesis when no service payload is available.
+
+## Optimization Economics — Read This Before Sizing a Run
+
+**Do not default to recommending zero spend.** The canonical Traigent posture on spending,
+the five characterization questions with their exact options, the tailoring rules, the
+explanation duty, and the local survey draft contract all live in one place:
+**`docs/shared/economics-characterization.v0.md`**. Read it before you propose, size, or
+decline a run — it is the source of truth and is deliberately not restated here.
+
+**This skill's part:** weigh the next run's cost against conservative value and the value of
+the further information it would buy. This shapes *how much* to propose; it never overrides
+the Traigent service, which still owns the next-step decision itself.
+
+**Mandatory whenever you relay any of it:** show the options, recommend exactly one, and
+explain **why in the user's own numbers** — their agent, their volumes, their error costs. The
+explanation is a product requirement, not decoration.
+
+Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval before any
+paid run**, an explicit spend cap, and the recorded stop rule. The economics reference sets
+*how much* to invest; it never affects *whether* approval is required — it always is.
 
 ## Mode Arbitration
 

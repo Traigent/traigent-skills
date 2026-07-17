@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "23c57e5772586d93",
+  "doc_hash": "4665b7cf92bd385a",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/insights-and-iteration.md": "60a5b223a71c0e4f",
@@ -67,6 +67,17 @@
       "doc_before_hash": "3f0f4cc4a8be4e45",
       "doc_after_hash": "23c57e5772586d93",
       "note": "collapse inline SDK-version stamps into the authoritative docs/version-matrix.md rows with `see version-matrix: <fact_id>` pointers; restamp smart-selector executability to the verified 0.20.1 boundary (Traigent/traigent-skills#221; fact E per #190)",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "economics-bounded-investment-posture-2026-07-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-17T00:00:00Z",
+      "doc_before_hash": "23c57e5772586d93",
+      "doc_after_hash": "4665b7cf92bd385a",
+      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: characterize value and propose a bounded first experiment. WI-A of the economics model; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     }
   ]

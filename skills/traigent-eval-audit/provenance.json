@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0cfbd5cc6be2f30e",
+  "doc_hash": "08dc15f37da5a849",
   "entries": [
     {
       "edit_id": "genesis",
@@ -18,6 +18,17 @@
       "run_id": null,
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "economics-bounded-investment-posture-2026-07-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-17T00:00:00Z",
+      "doc_before_hash": "0cfbd5cc6be2f30e",
+      "doc_after_hash": "08dc15f37da5a849",
+      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: produce independently confirmed defect receipts and human-QA equivalence. WI-A of the economics model; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     }
   ]

@@ -4,7 +4,7 @@ description: "Configure the @traigent.optimize() decorator with evaluation, inje
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.9"
+  version: "1.0.10"
 ---
 
 # Traigent Decorator Setup
@@ -19,6 +19,25 @@ Use this skill when you need to go beyond the basic `@traigent.optimize()` decor
 - Multi-objective optimization with weighted objectives
 - Naming/labeling a run with `experiment_name` (there is no `tags`/`metadata` argument)
 - Portal-synced or zero-egress local execution
+
+## Optimization Economics — Read This Before Sizing a Run
+
+**Do not default to recommending zero spend.** The canonical Traigent posture on spending,
+the five characterization questions with their exact options, the tailoring rules, the
+explanation duty, and the local survey draft contract all live in one place:
+**`docs/shared/economics-characterization.v0.md`**. Read it before you propose, size, or
+decline a run — it is the source of truth and is deliberately not restated here.
+
+**This skill's part:** wire the decorator so the calculated cap, the required receipt, and
+the stop rule are enforceable on the run that follows.
+
+**Mandatory whenever you relay any of it:** show the options, recommend exactly one, and
+explain **why in the user's own numbers** — their agent, their volumes, their error costs. The
+explanation is a product requirement, not decoration.
+
+Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval before any
+paid run**, an explicit spend cap, and the recorded stop rule. The economics reference sets
+*how much* to invest; it never affects *whether* approval is required — it always is.
 
 ## Inputs to Provide (Quick Cycle)
 

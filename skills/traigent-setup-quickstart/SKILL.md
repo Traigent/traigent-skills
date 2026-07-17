@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.18"
+  version: "1.0.19"
 ---
 
 # Traigent Quickstart
@@ -19,6 +19,25 @@ Use this skill when:
 - Building an evaluation dataset in JSONL format
 - Verifying that the installation works correctly
 - Running optimization in mock mode for development
+
+## Optimization Economics — Read This Before Sizing a Run
+
+**Do not default to recommending zero spend.** The canonical Traigent posture on spending,
+the five characterization questions with their exact options, the tailoring rules, the
+explanation duty, and the local survey draft contract all live in one place:
+**`docs/shared/economics-characterization.v0.md`**. Read it before you propose, size, or
+decline a run — it is the source of truth and is deliberately not restated here.
+
+**This skill's part:** characterize the value the user's agent creates, then propose a
+bounded first experiment sized to it.
+
+**Mandatory whenever you relay any of it:** show the options, recommend exactly one, and
+explain **why in the user's own numbers** — their agent, their volumes, their error costs. The
+explanation is a product requirement, not decoration.
+
+Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval before any
+paid run**, an explicit spend cap, and the recorded stop rule. The economics reference sets
+*how much* to invest; it never affects *whether* approval is required — it always is.
 
 ## Cold Start — First Value, One Step at a Time
 
