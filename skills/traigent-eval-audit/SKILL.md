@@ -4,7 +4,7 @@ description: "Audit evaluator reliability before trusting Traigent optimization 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.5"
+  version: "1.1.6"
 ---
 
 # Evaluator Audit
@@ -26,10 +26,13 @@ optimization run**, not an optional check: without it you may be optimizing judg
 ## Optimization Economics — Read This Before Sizing a Run
 
 **Do not default to recommending zero spend.** The canonical Traigent posture on spending,
-the five characterization questions with their exact options, the tailoring rules, the
-explanation duty, and the local survey draft contract all live in one place:
-**`docs/shared/economics-characterization.v0.md`**. Read it before you propose, size, or
-decline a run — it is the source of truth and is deliberately not restated here.
+the five characterization questions with their exact options, the tailoring rules (including
+the three-option paging rule), the explanation duty, and the local survey draft contract all
+live in one file that ships inside this skill:
+**`references/economics-characterization.v0.md`**. Read it from this skill's own directory
+before you propose, size, or decline a run — it is deliberately not restated here. It is
+generated from `docs/shared/economics-characterization.v0.md` in the traigent-skills repo,
+which is where any edit goes; the copy shipped here is byte-identical.
 
 **This skill's part:** produce independently confirmed defect receipts — each one an example
 hash, a defect category, an independent confirmation, and the correction or test — so the

@@ -4,11 +4,17 @@
 - **Worktree:** `/home/nimrod/TraigentProjects/worktrees/econ-model-2026-07-17/traigent-skills`
 - **Governance:** Spine-Trail `st_6443b96904d7`; replacement ChangeSession `cs_8e10a485f94fda03`
 - **Scope note:** WI-D incentives excluded. No commit, push, PR, or merge performed.
-- **PR-ready:** **YES** (with two owner-visible notes in *Risks*, neither blocking)
+- **PR-ready:** **YES** (one owner-visible note in *Risks*, non-blocking)
+- **Revision:** updated 2026-07-17 after the Terra review. Three BLOCK findings (install
+  reachability of the canonical reference, `traigent-analyze-guidance` shaping economics
+  locally, and the 3-option cap vs. five closed values) are repaired; the repair pass is
+  reported separately in [`wi-a-review-fix-result.md`](wi-a-review-fix-result.md). The claims
+  below describe the repaired state.
 
 ## What changed
 
-One new canonical reference, eight skills pointed at it. The posture is written **once**.
+One canonical reference, **authored once** and **generated into** the eight skills that use
+it, so it is readable from every supported install. The posture is written **once**.
 
 ### New — the single source of truth
 
@@ -20,40 +26,51 @@ One new canonical reference, eight skills pointed at it. The posture is written 
 | §1 (cont.) | What changed (cost avoidance is no longer the default) and the explicit list of safety rules that did **not** change |
 | §2 | All five session2 questions — canonical wording **and** slot-tailored templates — with all exact options mapped to closed enum values |
 | §3 | Who asks: the user's actual coding agent; name the real agent, infer first, confirmations carry evidence, Q1+Q3 always explicitly confirmed, Q2/Q4/Q5 only when not confidently inferable, target 2 asked |
-| §4 | The explanation duty: options + one recommendation + WHY in the user's own numbers — stated as a product requirement, not styling |
+| §4 | The explanation duty: options + one recommendation + WHY in the user's own numbers — stated as a product requirement, not styling — plus the **paging rule** that keeps all five closed values reachable inside the interaction policy's 3-option cap |
 | §5 | Templates/tailoring are suggestions; the closed submission is the commitment |
 | §6 | Until a submission path exists: write the closed draft to `.traigent/economics-survey.v0.json`, local + uncommitted, nothing transmitted |
 | §7 | Budget/floors/caps, payback, stop rule, receipts, credibility rules — all labeled starting assumptions |
 
-### Modified — eight skills (SKILL.md + provenance.json each)
+### New — the generator and its gate
+
+- `tools/contract/sync_economics_reference.py` — copies the canonical doc into each economics
+  skill's `references/economics-characterization.v0.md`. Targets are **discovered** (any
+  SKILL.md carrying the pointer marker), not hardcoded. `--check` is the CI-usable gate.
+- `tests/contract/test_economics_reference.py` — 43 tests: byte-identity of every generated
+  copy, readability from a **simulated single-skill install**, the analyze-guidance
+  local-budget regression lint, and the paging-rule reachability property.
+
+### Modified — eight skills (SKILL.md + provenance.json + generated reference each)
 
 Each got one `## Optimization Economics — Read This Before Sizing a Run` section inserted
 immediately after `## When to Use` (outside every PROTECTED / SLOW_UPDATE /
-INTERACTION_POLICY region), containing: a pointer to the shared reference, the skill's own
-role per session3 §2, the mandatory explanation duty, and the unchanged-safety restatement.
-**The three-sentence posture is not reproduced in any of them.**
+INTERACTION_POLICY region), containing: a pointer to the reference **shipped inside the
+skill**, the skill's own role per session3 §2, the mandatory explanation duty, and the
+unchanged-safety restatement. **The three-sentence posture is not reproduced in any of them.**
 
 | Skill | Version | doc_hash before → after | Role (session3 §2) |
 |---|---|---|---|
-| traigent-setup-quickstart | 1.0.18 → **1.0.19** | `3a19554c5624fb4f` → `d1fcc507af83c0ee` | characterize value, propose bounded first experiment |
-| traigent-boost-agent | 2.1.6 → **2.1.7** | `23c57e5772586d93` → `4665b7cf92bd385a` | characterize value, propose bounded first experiment |
-| traigent-optimize-run | 1.0.13 → **1.0.14** | `ad8b4d5c3c32a975` → `738713d34a109be3` | enforce cap, receipt, stop rule |
-| traigent-setup-decorator | 1.0.9 → **1.0.10** | `3db71bdafe5e0a1a` → `7af2edc441c2c350` | make cap/receipt/stop rule enforceable |
-| traigent-analyze-guidance | 1.1.0 → **1.1.1** | `51a8c8aea0c8cf0f` → `368bf51ad808152b` | weigh next-run cost vs conservative value + value of further information |
-| traigent-analyze-results | 1.1.13 → **1.1.14** | `39352a037b3de5b2` → `3e30b2333041940f` | winner / no-gain / insufficient-evidence receipt |
-| traigent-dataset-curate | 1.1.2 → **1.1.3** | `f5481ef2791c45ef` → `34eec3149f68cccd` | confirmed defect receipts, human-QA equivalence |
-| traigent-eval-audit | 1.1.4 → **1.1.5** | `0cfbd5cc6be2f30e` → `08dc15f37da5a849` | confirmed defect receipts, human-QA equivalence |
+| traigent-setup-quickstart | 1.0.18 → **1.0.20** | `3a19554c5624fb4f` → `1bceeccc65431713` | characterize value, propose bounded first experiment |
+| traigent-boost-agent | 2.1.6 → **2.1.8** | `23c57e5772586d93` → `be83fe17856839da` | characterize value, propose bounded first experiment |
+| traigent-optimize-run | 1.0.13 → **1.0.15** | `ad8b4d5c3c32a975` → `6fdd53351932dcb7` | enforce cap, receipt, stop rule |
+| traigent-setup-decorator | 1.0.9 → **1.0.11** | `3db71bdafe5e0a1a` → `d0f6a46c79384fd9` | make cap/receipt/stop rule enforceable |
+| traigent-analyze-guidance | 1.1.0 → **1.1.2** | `51a8c8aea0c8cf0f` → `59464aba14a2deb3` | collect/relay characterization; present **only** a service-authored budget |
+| traigent-analyze-results | 1.1.13 → **1.1.15** | `39352a037b3de5b2` → `f2dda030a1ffec27` | winner / no-gain / insufficient-evidence receipt |
+| traigent-dataset-curate | 1.1.2 → **1.1.4** | `f5481ef2791c45ef` → `363c38db65a63d3a` | confirmed defect receipts, human-QA equivalence |
+| traigent-eval-audit | 1.1.4 → **1.1.6** | `0cfbd5cc6be2f30e` → `5dc6add523971e24` | confirmed defect receipts, human-QA equivalence |
 
-Every `provenance.json` got its `doc_hash` updated plus **one** appended `manual_edit` record
-(`edit_id: economics-bounded-investment-posture-2026-07-17`) following the existing format
-exactly: `edit_id, op, status, run_id, timestamp, doc_before_hash, doc_after_hash, note,
-source_type`. Provenance was edited by surgical string replacement rather than a JSON
-round-trip, because `traigent-boost-agent` and `traigent-analyze-results` contain raw
-em-dashes in existing entries that `json.dump(ensure_ascii=True)` would have re-escaped —
-that would have produced unrelated churn. Diff is +13/-1 lines per file, nothing else touched.
+Each `provenance.json` carries **two** appended `manual_edit` records — the original
+`economics-bounded-investment-posture-2026-07-17` and the repair
+`economics-reference-install-reachability-2026-07-17` — following the existing field format
+exactly. Provenance is **append-only**: the first record was left untouched, hashes chain
+`before → after → after'`, and no history was rewritten. Version bumped twice for the same
+reason: the SKILL.md bytes changed twice.
 
-**Full change set (17 files, all in scope; verified nothing outside scope was touched):**
-1 new `docs/shared/economics-characterization.v0.md`; 8 × `SKILL.md`; 8 × `provenance.json`.
+**Full change set (28 files, all in scope):** 1 × `docs/shared/economics-characterization.v0.md`;
+8 × `SKILL.md`; 8 × `provenance.json`; 8 × generated `references/economics-characterization.v0.md`;
+1 × `tools/contract/sync_economics_reference.py`; 1 × `tests/contract/test_economics_reference.py`;
+plus `README.md` and one allowlist line in `tests/contract/test_skill_names.py` (see the repair
+report).
 
 ## Commands run and results
 
@@ -77,7 +94,8 @@ uv run --frozen pytest tests/contract/test_provenance.py tests/contract/test_int
 ```
 
 **Full contract suite, with the released SDK installed** (`pyproject.toml` deliberately does
-not pin the SDK, so it must be installed to get a real signal):
+not pin the SDK, so it must be installed to get a real signal). Figures below are from the
+original pass; the post-repair run is **849 passed / 0 failed** — see the repair report:
 ```
 uv pip install "traigent==0.23.0"            # sync_map.yml: current_released_sdk_version
 uv run --no-sync pytest tests/contract -q --sdk-version 0.23.0
@@ -102,8 +120,9 @@ With the SDK present the suite is fully green, so no failure is being carried.
 
 | Criterion | Status | Evidence |
 |---|---|---|
-| One source of truth, no duplicated posture | **PASS** | `grep -rl "bounded investment, not a cost to avoid by default"` returns **exactly one** file |
-| All 8 skills point at it | **PASS** | 1 pointer each, 8/8 |
+| One source of truth, no duplicated posture | **PASS** | Authored in exactly one file; the 8 skill copies are generated artifacts pinned byte-identical to it by `test_economics_reference.py`, and a hand-edited copy fails the suite (proved by `test_sync_tool_detects_a_tampered_copy`) |
+| All 8 skills point at it | **PASS** | 1 pointer each, 8/8, at the skill-relative path |
+| Reference readable from a single-skill install | **PASS** | `test_single_skill_install_can_read_the_reference` copies each skill dir **alone** into a tmpdir (no repo, no `docs/`) and reads the reference there — 8/8 |
 | All exact questions present | **PASS** | 5/5 canonical questions matched with `grep -F` |
 | All exact options present | **PASS** | 24/24 distinct option strings matched with `grep -F` |
 | Slots used | **PASS** | `{agent_name} {dataset_name} {evidence} {model_name} {observed_volume}` |
@@ -115,36 +134,33 @@ With the SDK present the suite is fully green, so no failure is being carried.
 | Local uncommitted draft | **PASS** | `.traigent/economics-survey.v0.json` + `.gitignore` instruction + "nothing is transmitted" |
 | Provenance hashes valid | **PASS** | `test_provenance.py` green; `doc_hash == live SKILL.md` 8/8; `doc_after_hash == doc_hash` 8/8 |
 | Protected regions undisturbed | **PASS** | `test_interaction_policy.py` green; insertions placed after `## When to Use`, outside all PROTECTED/SLOW_UPDATE regions |
-| Contract tests pass | **PASS** | 806 passed / 0 failed |
+| analyze-guidance authors no budget locally | **PASS** | `test_analyze_guidance_does_not_author_a_budget_locally` + `..._carries_no_budget_arithmetic`; the lint was shown to fire on the pre-repair wording |
+| All 5 closed values reachable within the 3-option cap | **PASS** | `test_every_closed_value_is_reachable_without_breaking_the_option_cap` — for every field, for **every** choice of recommendation |
+| Contract tests pass | **PASS** | 849 passed / 0 failed (806 baseline + 43 new) |
 
 ## Risks and owner-visible notes
 
-1. **`traigent-analyze-guidance` has a doctrinal tension worth a reviewer's eye (non-blocking).**
-   That skill is lint-enforced as a *thin client* that must defer next-step decisions to the
-   Traigent service (`test_next_run_skill_stays_service_decided_thin_client`), while the shared
-   economics reference contains local budget arithmetic. I scoped its block to *how much* to
-   propose and added an explicit sentence that it "never overrides the Traigent service, which
-   still owns the next-step decision itself". The lint passes, and no banned local-decision
-   vocabulary (`formula`, `threshold`, …) appears in the block. When WI-C makes the calculator
-   backend-authoritative this tension disappears — the skill will call it rather than reason
-   locally. Flagging it so it is a conscious call, not an accident.
+1. ~~**`traigent-analyze-guidance` doctrinal tension.**~~ **Repaired.** Terra was right that
+   this was a contradiction, not a tension to note: the skill claimed local economics shapes
+   *how much* to propose while being lint-enforced as a thin client. It now collects and
+   relays the characterization and presents **only** a service-authored budget; with no
+   economics result from the service it says so and stops, or falls back with no number.
+   Regression-linted. See the repair report.
 
-2. **The interaction policy caps presented options at 3; the closed fields have 5 values.**
-   A real contradiction between two shipped policies. Resolved explicitly in §4: present the
-   recommended value plus one or two nearest alternatives (3 shown, 1 recommended), full list
-   on request, while the *submitted* value must still be one of the five closed values.
-   Presentation narrows; the contract does not. Worth owner confirmation that this is the
-   intended reconciliation.
+2. ~~**3-option cap vs. 5 closed values.**~~ **Repaired.** The old resolution ("full list on
+   request") left the remaining-options behavior undefined. §4 now defines a concrete paging
+   rule — page 1 is the recommendation plus up to 2 alternatives; every later page carries the
+   *same* recommendation plus up to 2 unseen values; ≤3 options and exactly one **Recommended**
+   per page; five values need at most two pages; a value is never dropped for not fitting.
+   Property-tested for every field and every choice of recommendation.
 
-3. **Pointer style, not synced-region style.** The existing shared doc
-   (`interaction-policy.v1.md`) is *copied* into every skill by
-   `tools/contract/sync_interaction_policy.py`. WI-A explicitly required pointing without
-   duplicating, so I used a repo-relative path pointer — the same convention `docs/version-matrix.md`
-   already uses. Consequence: there is **no** sync tool or hash-pinning guarding the economics
-   reference, so a skill pointer could drift from the file's contents without a test noticing.
-   The plugin ships the whole repo (`marketplace.json` `source: "./"`), so the path does
-   resolve for installed users. If drift protection is wanted later, the cheap fix is a lint
-   asserting each of the 8 skills contains the pointer string.
+3. ~~**Pointer style, not synced-region style.**~~ **Repaired — the claim in this slot was
+   wrong.** It said the plugin ships the whole repo "so the path does resolve for installed
+   users". That is true only for the full-plugin install. The two documented single-skill
+   paths (`npx skills add --skill <one>`, `cp -r traigent-skills/skills/<one> ...`) copy one
+   skill directory, so `docs/shared/...` was a dangling pointer for exactly the users most
+   likely to hold one skill. The reference is now generated into each skill, and the test
+   proves it from the **installed layout** rather than the source tree.
 
 4. **All dollar figures are unvalidated starting assumptions.** The reference says so at the
    top and labels the archetype table accordingly. Nothing in the copy presents them as

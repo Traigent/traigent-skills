@@ -1,8 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4665b7cf92bd385a",
+  "doc_hash": "be83fe17856839da",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
+    "references/economics-characterization.v0.md": "9db7a300909ada12",
     "references/insights-and-iteration.md": "60a5b223a71c0e4f",
     "references/instrument-recipe.md": "df63b2ecf2199945"
   },
@@ -55,7 +56,7 @@
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "d383427cef704ca1",
       "doc_after_hash": "3f0f4cc4a8be4e45",
-      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class — keep core import or deep-import traigent.analytics.example_insights when plugin installed",
+      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class \u2014 keep core import or deep-import traigent.analytics.example_insights when plugin installed",
       "source_type": "human"
     },
     {
@@ -78,6 +79,17 @@
       "doc_before_hash": "23c57e5772586d93",
       "doc_after_hash": "4665b7cf92bd385a",
       "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: characterize value and propose a bounded first experiment. WI-A of the economics model; Spine-Trail st_6443b96904d7",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "economics-reference-install-reachability-2026-07-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-17T00:00:00Z",
+      "doc_before_hash": "4665b7cf92bd385a",
+      "doc_after_hash": "be83fe17856839da",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     }
   ]

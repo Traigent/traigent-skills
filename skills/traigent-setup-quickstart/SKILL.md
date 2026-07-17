@@ -4,7 +4,7 @@ description: "Install, set up, and get first value from the Traigent SDK for LLM
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.0.19"
+  version: "1.0.20"
 ---
 
 # Traigent Quickstart
@@ -23,10 +23,13 @@ Use this skill when:
 ## Optimization Economics — Read This Before Sizing a Run
 
 **Do not default to recommending zero spend.** The canonical Traigent posture on spending,
-the five characterization questions with their exact options, the tailoring rules, the
-explanation duty, and the local survey draft contract all live in one place:
-**`docs/shared/economics-characterization.v0.md`**. Read it before you propose, size, or
-decline a run — it is the source of truth and is deliberately not restated here.
+the five characterization questions with their exact options, the tailoring rules (including
+the three-option paging rule), the explanation duty, and the local survey draft contract all
+live in one file that ships inside this skill:
+**`references/economics-characterization.v0.md`**. Read it from this skill's own directory
+before you propose, size, or decline a run — it is deliberately not restated here. It is
+generated from `docs/shared/economics-characterization.v0.md` in the traigent-skills repo,
+which is where any edit goes; the copy shipped here is byte-identical.
 
 **This skill's part:** characterize the value the user's agent creates, then propose a
 bounded first experiment sized to it.

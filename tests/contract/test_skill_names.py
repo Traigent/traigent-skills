@@ -36,6 +36,10 @@ ALLOWLIST = {
     # This repo's own name, referenced in prose/URLs (e.g.
     # `Traigent/traigent-skills`), not a skill dir.
     "traigent-skills",
+    # Schema identifier of the local economics-survey draft record
+    # (`"schema": "traigent-economics-survey/v0"`) in the shared economics
+    # reference shipped inside each economics skill, not a skill dir.
+    "traigent-economics-survey",
     # Suggested GitHub Actions workflow filename
     # (`.github/workflows/traigent-safety-gate.yml`) in traigent-ci-safety-gate's
     # reference doc — a filename for the user's own repo, not a skill dir.
