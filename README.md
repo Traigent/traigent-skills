@@ -6,6 +6,15 @@ These skills work across **all major AI coding agents**: Claude Code, Cursor, Gi
 
 > Looking for internal dev/CI/design skills (code review, PR automation, security forensics, UI/UX)? Those live in the internal [`Traigent/agents-skills`](https://github.com/Traigent/agents-skills) repo. **This repo holds only the user-facing SDK skills.**
 
+## Interface identity
+
+- Repository: `traigent-skills` — public source and cross-agent distribution.
+- Plugin: `traigent` — the installed product boundary; the shorter ID avoids `traigent-skills:traigent-*` repetition.
+- Skills: `traigent-<lifecycle>-<capability>` — portable names for clients that flatten or install individual skills.
+- Metadata: `catalog/skills.json` plus `traigent-audience`, `traigent-topic`, `traigent-stage`, and `traigent-maturity` in every skill.
+
+The related internal plugins are `traigent-coding-agents` and `traigent-spine`; their skills are not copied into this public interface.
+
 ## Interaction policy
 
 Every skill carries a shared **Traigent Interaction Policy** — a managed block that instructs the coding agent to track the user's expertise (`se` / `ds`) and autonomy preference (`delegate` / `guided` / `inspect`) and adapt verbosity, terminology, and how much it stops to ask accordingly. The policy also enforces that the agent always recommends the next Traigent skill or action to take at the end of each response. The canonical text lives in [`docs/shared/interaction-policy.v1.md`](docs/shared/interaction-policy.v1.md) and is propagated to all skills by `python tools/contract/sync_interaction_policy.py`.

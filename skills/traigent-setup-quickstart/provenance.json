@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3a19554c5624fb4f",
+  "doc_hash": "59f3b56507cbe500",
   "reference_hashes": {
     "references/environment-variables.md": "01d5b26914c28bf5",
     "references/first-value-fallback.md": "5571ce556feefb23",
@@ -89,6 +89,17 @@
       "doc_after_hash": "3a19554c5624fb4f",
       "note": "collapse inline SDK-version stamps into the authoritative docs/version-matrix.md rows with `see version-matrix: <fact_id>` pointers; restamp smart-selector executability to the verified 0.20.1 boundary (Traigent/traigent-skills#221; fact E per #190)",
       "source_type": "human"
+    },
+    {
+      "edit_id": "plugin-taxonomy-metadata-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "3a19554c5624fb4f",
+      "doc_after_hash": "59f3b56507cbe500",
+      "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
+      "source_type": "owner_intent"
     }
   ]
 }

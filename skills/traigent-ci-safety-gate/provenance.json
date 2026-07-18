@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d3580521a5750678",
+  "doc_hash": "d58186cf81ede09e",
   "reference_hashes": {
     "references/gate-workflow.md": "4f73c4055ab56e4e"
   },
@@ -44,6 +44,17 @@
       "doc_after_hash": "d3580521a5750678",
       "note": "sharpen key-hygiene intro: leaks observed across multiple coding-agent CLI families (Codex, Claude, Gemini), not one tool's quirk (round 2 of sim-testbed findings, 20-cell wave)",
       "source_type": "human"
+    },
+    {
+      "edit_id": "plugin-taxonomy-metadata-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "d3580521a5750678",
+      "doc_after_hash": "d58186cf81ede09e",
+      "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
+      "source_type": "owner_intent"
     }
   ]
 }

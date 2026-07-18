@@ -3,6 +3,10 @@ name: traigent-boost-agent
 description: "End-to-end lifecycle playbook — from a single decorated function to a full 12-step codebase onboarding — for adding Traigent to an existing client agent codebase and measurably boosting accuracy, cost, latency, or reliability. Use when asked to add Traigent to this agent, onboard this agent to Traigent end-to-end, run a full agent-build lifecycle, wire an evaluator and optimize, boost accuracy/cost of an existing agent codebase, select TVARs with recommend_configuration_space(), choose composite knobs by agent shape, instrument @traigent.optimize minimally, validate in mock mode, run real optimization with budgets, inspect results, iterate, gate a promoted config, optimize a function with @traigent.optimize, run an optimization, or set up Traigent optimization. ALWAYS start with dry-run (mock mode) to validate the full pipeline, then switch to real execution only when the user explicitly requests it."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: front-door
+  traigent-maturity: stable
   author: Nimrod
   version: "2.1.6"
 ---

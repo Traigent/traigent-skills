@@ -3,6 +3,10 @@ name: traigent-eval-choose-metric
 description: "Choose Traigent objectives and metric functions before optimizing. Use when asked which metric to use, how to measure quality, whether to optimize accuracy/cost/latency/safety, how to name objectives, how to combine multiple objectives, when to use custom metric_functions, or how to turn product goals into Traigent objectives."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: evaluation
+  traigent-maturity: stable
   author: Nimrod
   version: "1.1.3"
 ---

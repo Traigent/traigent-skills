@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "plugin": "traigent",
+  "plugin_version": "1.1.0",
+  "repository": "traigent-skills",
+  "audience": "sdk-user",
+  "topic": "agent-optimization",
+  "skills": [
+    {"name": "traigent-boost-agent", "stage": "front-door", "maturity": "stable"},
+    {"name": "traigent-setup-quickstart", "stage": "setup", "maturity": "stable"},
+    {"name": "traigent-setup-decorator", "stage": "setup", "maturity": "stable"},
+    {"name": "traigent-setup-integrations", "stage": "setup", "maturity": "stable"},
+    {"name": "traigent-dataset-curate", "stage": "dataset", "maturity": "stable"},
+    {"name": "traigent-eval-choose-metric", "stage": "evaluation", "maturity": "stable"},
+    {"name": "traigent-eval-build", "stage": "evaluation", "maturity": "stable"},
+    {"name": "traigent-eval-audit", "stage": "evaluation", "maturity": "stable"},
+    {"name": "traigent-optimize-config-space", "stage": "optimize", "maturity": "stable"},
+    {"name": "traigent-optimize-composite-knobs", "stage": "optimize", "maturity": "stable"},
+    {"name": "traigent-optimize-run", "stage": "optimize", "maturity": "stable"},
+    {"name": "traigent-analyze-guidance", "stage": "analyze", "maturity": "stable"},
+    {"name": "traigent-analyze-results", "stage": "analyze", "maturity": "stable"},
+    {"name": "traigent-analyze-variable-importance", "stage": "analyze", "maturity": "stable"},
+    {"name": "traigent-ci-safety-gate", "stage": "gate-debug", "maturity": "stable"},
+    {"name": "traigent-debugging", "stage": "gate-debug", "maturity": "stable"},
+    {"name": "traigent-js", "stage": "javascript", "maturity": "stable"},
+    {"name": "traigent-recipe-text2sql", "stage": "recipe", "maturity": "stable"}
+  ]
+}

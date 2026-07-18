@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e2c6ca4fe79227f0",
+  "doc_hash": "0f1e37f1a660a77d",
   "entries": [
     {
       "edit_id": "genesis",
@@ -19,6 +19,17 @@
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
       "source_type": "human"
+    },
+    {
+      "edit_id": "plugin-taxonomy-metadata-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "e2c6ca4fe79227f0",
+      "doc_after_hash": "0f1e37f1a660a77d",
+      "note": "add portable audience, topic, lifecycle-stage, and maturity metadata, and make the bundled analyzer command plugin-location independent",
+      "source_type": "owner_intent"
     }
   ]
 }

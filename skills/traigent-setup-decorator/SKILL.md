@@ -3,6 +3,10 @@ name: traigent-setup-decorator
 description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming/labeling a run with experiment_name (there is no tags/metadata argument), using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s)."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: setup
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.9"
 ---

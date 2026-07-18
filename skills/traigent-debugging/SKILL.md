@@ -3,6 +3,10 @@ name: traigent-debugging
 description: "Debug and troubleshoot Traigent optimization issues. Use when encountering CostLimitExceeded, ConfigurationError, OptimizationStateError, ModuleNotFoundError, or when optimization produces unexpected results. Covers mock mode, logging configuration, and common error resolution."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: gate-debug
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.5"
 ---

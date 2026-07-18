@@ -3,6 +3,10 @@ name: traigent-js
 description: "Set up and run native JavaScript/TypeScript optimization with @traigent/sdk. Use when a user asks to optimize a JS/TS agent function, use optimize(spec)(agentFn), configure param.* search spaces, define evaluation.data/loadData metrics, use getTrialParam/getTrialConfig, or author backend-routed config-space specs for Traigent-compatible services."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: javascript
+  traigent-maturity: stable
   author: Traigent
   version: "1.0.4"
 ---

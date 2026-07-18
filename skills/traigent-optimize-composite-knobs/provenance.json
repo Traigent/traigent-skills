@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "db7fe8c47e00bdca",
+  "doc_hash": "670fcc40721ccda4",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1"
@@ -45,6 +45,17 @@
       "doc_after_hash": "db7fe8c47e00bdca",
       "note": "collapse inline SDK-version stamps into the authoritative docs/version-matrix.md rows with `see version-matrix: <fact_id>` pointers; restamp smart-selector executability to the verified 0.20.1 boundary (Traigent/traigent-skills#221; fact E per #190); also adds the run-level log-line tell ('custom scoring_function defines the 'accuracy' objective') copied from traigent-boost-agent's instrument recipe per Traigent/traigent-skills#150 comment item 3",
       "source_type": "human"
+    },
+    {
+      "edit_id": "plugin-taxonomy-metadata-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "db7fe8c47e00bdca",
+      "doc_after_hash": "670fcc40721ccda4",
+      "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
+      "source_type": "owner_intent"
     }
   ]
 }
