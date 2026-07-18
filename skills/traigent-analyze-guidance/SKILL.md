@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.1.0"
+  version: "1.1.2"
 ---
 
 # Traigent Analyze Guidance
@@ -30,6 +30,44 @@ from local markdown reasoning.**
   next-step payload, then loop back to Mode A.
 - **Mode C — offline/local fallback:** diagnose local results and form ONE next
   hypothesis when no service payload is available.
+
+## Optimization Economics — Read This Before Sizing a Run
+
+**Do not default to recommending zero spend.** The canonical Traigent posture on spending,
+the five characterization questions with their exact options, the tailoring rules (including
+the three-option paging rule), the explanation duty, and the local survey draft contract all
+live in one file that ships inside this skill:
+**`references/economics-characterization.v0.md`**. Read it from this skill's own directory
+before you propose, size, or decline a run — it is deliberately not restated here. It is
+generated from `docs/shared/economics-characterization.v0.md` in the traigent-skills repo,
+which is where any edit goes; the copy shipped here is byte-identical.
+
+**This skill's part — collect and relay, never compute.** Gather the characterization (infer
+what you can, confirm Q1 and Q3, record it locally per the reference), pass it to the
+Traigent service, and present **only the budget the service returns**, together with the
+service-supplied why. This skill is a thin client for economics exactly as it is for the
+run-plan and the next-step decision: **budget authorship belongs to the service.**
+
+**Do not compute, adjust, or recommend a budget locally.** No budget arithmetic in markdown,
+no scaling the returned number, no "roughly $X/day" of your own. The reference describes what
+the service computes; it is not a local calculator, and a plausible-looking number you derived
+here is a fabricated one.
+
+**When the service returns no economics result:** say so plainly — "Traigent hasn't returned
+a budget for this run, so I don't have one to give you" — and stop, or continue in Mode C
+with **no budget number at all**. Diagnosis without a budget is a valid answer; an invented
+budget is not. There is no local fallback calculator, and until the economics service ships
+there may simply be no number available.
+
+**Mandatory whenever you relay any of it:** show the options, recommend exactly one, and
+explain **why in the user's own numbers** — their agent, their volumes, their error costs. The
+explanation is a product requirement, not decoration. It applies to relaying the service's
+recommendation; it is never a licence to author one.
+
+Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval before any
+paid run**, an explicit spend cap, and the recorded stop rule. Economics governs *how much* to
+invest — and here that number comes from the service; it never affects *whether* approval is
+required — it always is.
 
 ## Mode Arbitration
 

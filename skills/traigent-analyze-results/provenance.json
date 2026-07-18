@@ -1,8 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "90f6042298762b22",
+  "doc_hash": "fa7179e14caa7e5d",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
+    "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/mcp-analytics-tools.md": "4c68385be07782a7",
     "references/optimization-result-api.md": "5d902e1d910d1a81"
   },
@@ -55,7 +56,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "838feefd1437899f",
       "doc_after_hash": "77ffaa88b34926ab",
-      "note": "note that the apply threshold check runs on the search slice, not a promotion decision — promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
+      "note": "note that the apply threshold check runs on the search slice, not a promotion decision \u2014 promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
       "source_type": "human"
     },
     {
@@ -101,6 +102,50 @@
       "doc_after_hash": "90f6042298762b22",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "economics-bounded-investment-posture-2026-07-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-17T00:00:00Z",
+      "doc_before_hash": "39352a037b3de5b2",
+      "doc_after_hash": "3e30b2333041940f",
+      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: produce a winner, no-gain, or insufficient-evidence receipt. WI-A of the economics model; Spine-Trail st_6443b96904d7",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "economics-reference-install-reachability-2026-07-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-17T00:00:00Z",
+      "doc_before_hash": "3e30b2333041940f",
+      "doc_after_hash": "f2dda030a1ffec27",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "economics-schema-vocabulary-alignment-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "f2dda030a1ffec27",
+      "doc_after_hash": "a270c83e4d3fd46e",
+      "note": "Sol NO-GO remediation (WI-A): make 'characterize, never compute a budget locally' the economics-section boundary in this skill (the service authors the budget; no local arithmetic; when no service result, say so and give no number), matching the budget lint now extended across all eight economics skills. The shared reference was realigned to the canonical TraigentSchema economics vocabulary (value_channel/daily_volume_band/error_cost_band/lifecycle_stage/human_cycle_hours_band enums exactly), the Track R2 finding was scoped to a single unvalidated pilot, and followable budget arithmetic was removed from the reference pending the WI-C backend calculator. Spine-Trail st_6443b96904d7",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "merge-main-taxonomy-into-econ-wi-a-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "a270c83e4d3fd46e",
+      "doc_after_hash": "fa7179e14caa7e5d",
+      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "source_type": "human"
     }
   ]
 }

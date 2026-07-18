@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.13"
+  version: "1.1.16"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -43,6 +43,37 @@ Use this skill when you want to understand a finished run. This covers:
 - Checking cost and token usage
 - Applying the best configuration for production use
 - Reviewing optimization history across multiple runs
+
+## Optimization Economics — Read This Before Sizing a Run
+
+**Do not default to recommending zero spend.** The canonical Traigent posture on spending,
+the five characterization questions with their exact options, the tailoring rules (including
+the three-option paging rule), the explanation duty, and the local survey draft contract all
+live in one file that ships inside this skill:
+**`references/economics-characterization.v0.md`**. Read it from this skill's own directory
+before you propose, size, or decline a run — it is deliberately not restated here. It is
+generated from `docs/shared/economics-characterization.v0.md` in the traigent-skills repo,
+which is where any edit goes; the copy shipped here is byte-identical.
+
+**Characterize, never compute a budget locally.** Collect the characterization and relay it;
+the Traigent service authors the budget, exactly as it authors the run-plan and the next-step
+decision — **budget authorship belongs to the service.** Do not compute, adjust, or recommend a
+budget locally: no budget arithmetic in markdown, no floor/cap table, no "roughly $X/day" of
+your own. The reference describes what the service computes; it is not a local calculator, and
+when the service returns no economics result, say so plainly and continue with **no budget
+number at all** rather than inventing one.
+
+**This skill's part:** turn a finished run into exactly one machine-verifiable receipt — a
+winner, a no-gain, or an insufficient-evidence result. A narrative is not a receipt, and the
+agent that proposed a run cannot validate its own.
+
+**Mandatory whenever you relay any of it:** show the options, recommend exactly one, and
+explain **why in the user's own numbers** — their agent, their volumes, their error costs. The
+explanation is a product requirement, not decoration.
+
+Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval before any
+paid run**, an explicit spend cap, and the recorded stop rule. The service sets
+*how much* to invest; it never affects *whether* approval is required — it always is.
 
 ## Terminal-First Analysis (MCP)
 
