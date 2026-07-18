@@ -1,6 +1,6 @@
 {
   "name": "traigent",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Improve LLM agents with Traigent: curate eval datasets, build and audit evaluators, run cost-aware prompt, model, and parameter optimizations, and analyze results.",
   "author": {
     "name": "Traigent",
