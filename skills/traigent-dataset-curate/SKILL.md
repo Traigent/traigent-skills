@@ -3,6 +3,10 @@ name: traigent-dataset-curate
 description: "Create and improve a Traigent evaluation dataset / JSONL eval set. Use when asked to create an evaluation dataset, check whether examples are good enough, synthesize more examples, grow a dataset, score examples after a run, inspect dataset quality, design a holdout split, avoid leakage in eval data, reflect on hard examples, work through server-flagged hard or broken example IDs, map flagged example IDs to local content, or run the content-reflection loop after a run."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: dataset
+  traigent-maturity: stable
   author: Nimrod
   version: "1.1.5"
 ---

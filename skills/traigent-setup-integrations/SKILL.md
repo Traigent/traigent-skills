@@ -3,6 +3,10 @@ name: traigent-setup-integrations
 description: "Integrate Traigent with LangChain, LiteLLM, DSPy, and other AI frameworks. Use when importing langchain/litellm/dspy alongside traigent, setting up multi-provider model testing, using auto_override_frameworks, or asking about framework-specific adapter patterns."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: setup
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.3"
 ---

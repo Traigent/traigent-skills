@@ -1,6 +1,6 @@
 {
   "name": "traigent",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Improve LLM agents with Traigent: curate eval datasets, build and audit evaluators, run cost-aware prompt, model, and parameter optimizations, and analyze results.",
   "author": {
     "name": "Traigent",
@@ -23,6 +23,19 @@
   ],
   "skills": "./skills/",
   "interface": {
-    "displayName": "Traigent Agent Optimization"
+    "displayName": "Traigent Agent Optimization",
+    "shortDescription": "Optimize and evaluate LLM agents with Traigent.",
+    "longDescription": "Traigent Agent Optimization guides SDK users through setup, datasets, evaluator design, configuration spaces, optimization runs, result analysis, and safety gates.",
+    "developerName": "Traigent",
+    "category": "Engineering",
+    "capabilities": [
+      "Read",
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Add Traigent to this agent.",
+      "Help me design an optimization run.",
+      "Analyze my latest Traigent results."
+    ]
   }
 }

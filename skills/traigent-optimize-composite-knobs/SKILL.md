@@ -3,6 +3,10 @@ name: traigent-optimize-composite-knobs
 description: "Declare and run Traigent composite knobs: cascades, routers, ensembles, self-consistency, best-of-n, self-refine, self-debug, ReAct tool loops, verification gates, mixture-of-experts, and fallback patterns. Use when choosing a catalog pattern, wiring StageRunner/LoopBodyRunner execution, merging composite telemetry into metrics, or explaining calibration-backed claim scope."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: optimize
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.6"
 ---

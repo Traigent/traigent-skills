@@ -3,6 +3,10 @@ name: traigent-ci-safety-gate
 description: "Add Traigent safety and promotion gates to CI. Use when users ask to add safety constraints, gate the optimized config, prevent regressions in CI, enforce cost or latency budgets, compare candidate versus incumbent, validate TVL specs, or write GitHub Actions for agent optimization safety."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: gate-debug
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.3"
 ---

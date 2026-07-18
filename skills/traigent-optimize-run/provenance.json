@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f7aa1f2ae1997601",
+  "doc_hash": "c578e36da860899e",
   "reference_hashes": {
     "references/algorithms.md": "4c79ff944c78bf76",
     "references/cost-management.md": "44fca0c7fb536c36",
@@ -93,6 +93,17 @@
       "source_type": "human"
     },
     {
+      "edit_id": "plugin-taxonomy-metadata-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "ad8b4d5c3c32a975",
+      "doc_after_hash": "c583ed2a9cf5b838",
+      "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
+      "source_type": "owner_intent"
+    },
+    {
       "edit_id": "economics-bounded-investment-posture-2026-07-17",
       "op": "manual_edit",
       "status": "accepted",
@@ -123,6 +134,17 @@
       "doc_before_hash": "6fdd53351932dcb7",
       "doc_after_hash": "f7aa1f2ae1997601",
       "note": "Sol NO-GO remediation (WI-A): make 'characterize, never compute a budget locally' the economics-section boundary in this skill (the service authors the budget; no local arithmetic; when no service result, say so and give no number), matching the budget lint now extended across all eight economics skills. The shared reference was realigned to the canonical TraigentSchema economics vocabulary (value_channel/daily_volume_band/error_cost_band/lifecycle_stage/human_cycle_hours_band enums exactly), the Track R2 finding was scoped to a single unvalidated pilot, and followable budget arithmetic was removed from the reference pending the WI-C backend calculator. Spine-Trail st_6443b96904d7",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "merge-main-taxonomy-into-econ-wi-a-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "f7aa1f2ae1997601",
+      "doc_after_hash": "c578e36da860899e",
+      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
       "source_type": "human"
     }
   ]

@@ -4,7 +4,7 @@
     "name": "Traigent",
     "url": "https://traigent.ai"
   },
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Official Traigent marketplace: agent-optimization skills for the Traigent SDKs.",
   "plugins": [
     {
@@ -12,7 +12,7 @@
       "displayName": "Traigent Agent Optimization",
       "source": "./",
       "description": "Improve LLM agents with Traigent: curate eval datasets, build and audit evaluators, run cost-aware prompt, model, and parameter optimizations, and analyze results.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Traigent",
         "url": "https://traigent.ai"

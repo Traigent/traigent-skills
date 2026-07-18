@@ -18,6 +18,11 @@ SKILL_TOKEN_RE = re.compile(r"\btraigent-[a-z0-9]+(?:-[a-z0-9]+)*\b")
 # directory names — packages, repo URLs, project strings, anchors, etc. Each
 # entry is commented with why it is not a skill.
 ALLOWLIST = {
+    # Cross-client taxonomy metadata keys in SKILL.md frontmatter, not skills.
+    "traigent-audience",
+    "traigent-topic",
+    "traigent-stage",
+    "traigent-maturity",
     # Python package / MCP server, not a skill dir.
     "traigent-analytics",
     # Integration name referenced in traigent-setup-integrations references

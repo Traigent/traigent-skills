@@ -3,6 +3,10 @@ name: traigent-optimize-run
 description: "Run Traigent optimization: async/sync execution, algorithm selection, cost limits, stop conditions, and parallel trials. Use when calling func.optimize() or optimize_sync(), choosing algorithms (auto/grid/random anywhere; named smart selectors like bayesian/optuna on authenticated connected runs, SDK 0.20.1+), setting max_trials or cost_limit, configuring parallel execution, or handling CostLimitExceeded."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: optimize
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.16"
 ---

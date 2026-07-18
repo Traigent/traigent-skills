@@ -3,6 +3,10 @@ name: traigent-setup-quickstart
 description: "Install, set up, and get first value from the Traigent SDK for LLM optimization. The cold-start path: use when the user is new to traigent, wants their first run, has no dataset yet, or wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, API-key setup, mock mode, a linear first-value walkthrough, and running a first optimization."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: setup
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.21"
 ---

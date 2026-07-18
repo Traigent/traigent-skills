@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4e471ddcc57ad36b",
+  "doc_hash": "7c97ace17a3429d5",
   "reference_hashes": {
     "references/dspy.md": "6c899d029a43f9f6",
     "references/langchain.md": "ffe92eb4d431f3b9",
@@ -57,6 +57,17 @@
       "doc_after_hash": "4e471ddcc57ad36b",
       "note": "propagate the quickstart caveat: `traigent models --check` is an ID-shape preflight against a shipped snapshot with pattern fallback, cannot detect provider-side delisting; make the live provider catalog the authoritative liveness check in SKILL.md and references/litellm.md (Traigent/traigent-skills#227)",
       "source_type": "human"
+    },
+    {
+      "edit_id": "plugin-taxonomy-metadata-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "4e471ddcc57ad36b",
+      "doc_after_hash": "7c97ace17a3429d5",
+      "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
+      "source_type": "owner_intent"
     }
   ]
 }
