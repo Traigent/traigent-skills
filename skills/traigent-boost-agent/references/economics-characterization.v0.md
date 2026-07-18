@@ -32,10 +32,12 @@ present any number here to a user as measured, benchmarked, or proven.
 ### What this changes, and what it does not
 
 **Changed — cost avoidance is no longer the default.** The prior posture treated spending as
-something to minimize first and justify second. In practice that produced agents that
-proposed `$0` and never started, so the user never saw a result and never learned what a run
-is worth. A bounded, capped, receipt-backed experiment is the default recommendation whenever
-conservative expected value is positive.
+something to minimize first and justify second. A single Track R2 pilot observed that this
+cost-caution-first wording led autonomous coding agents to propose `$0` and never start, so
+the user never saw a result and never learned what a run is worth. Treat that as **candidate,
+unvalidated evidence from one pilot — a motivating observation, not a general law.** A bounded,
+capped, receipt-backed experiment is the default recommendation whenever conservative expected
+value is positive.
 
 **Not changed — every existing safety rule stands, unweakened:**
 
@@ -72,11 +74,11 @@ is a bug, not a placeholder to show the user.
 
 | Option (exact) | Closed value |
 |---|---|
-| save developer/expert time | `developer_time_saved` |
-| replace manual support/operations | `manual_ops_replaced` |
-| process large volumes cheaper or faster | `volume_throughput` |
-| increase revenue/customer success | `revenue_growth` |
-| prevent costly mistakes | `mistake_prevention` |
+| save developer/expert time | `save_expert_time` |
+| replace manual support/operations | `replace_manual_operations` |
+| process large volumes cheaper or faster | `process_volume_cheaper` |
+| increase revenue/customer success | `increase_revenue` |
+| prevent costly mistakes | `prevent_costly_mistakes` |
 
 Identifies: dominant value channel and initial archetype.
 
@@ -91,11 +93,11 @@ I see {observed_volume} — confirm?"
 
 | Option (exact) | Closed value |
 |---|---|
-| under 100 | `band_lt_100` |
-| 100–999 | `band_100_999` |
-| 1,000–99,999 | `band_1k_99k` |
-| 100,000–999,999 | `band_100k_999k` |
-| 1 million or more | `band_1m_plus` |
+| under 100 | `under_100` |
+| 100–999 | `100_to_999` |
+| 1,000–99,999 | `1k_to_99k` |
+| 100,000–999,999 | `100k_to_999k` |
+| 1 million or more | `1m_or_more` |
 
 Identifies: `N`, scale economics, and whether quality or unit cost dominates.
 
@@ -113,10 +115,10 @@ when observed volume is solid.
 
 | Option (exact) | Closed value |
 |---|---|
-| cheap retry under `$1` | `retry_lt_1` |
-| human correction costing `$1–50` | `human_fix_1_50` |
-| customer escalation/rework costing `$50–5,000` | `escalation_50_5k` |
-| financial/security/regulated harm above `$5,000` | `severe_gt_5k` |
+| cheap retry under `$1` | `cheap_retry_under_1_usd` |
+| human correction costing `$1–50` | `human_correction_1_to_50_usd` |
+| customer escalation/rework costing `$50–5,000` | `escalation_50_to_5k_usd` |
+| financial/security/regulated harm above `$5,000` | `severe_harm_above_5k_usd` |
 | not measured | `not_measured` |
 
 Identifies: `L_bad`, error asymmetry, and required evidence strength.
@@ -134,11 +136,11 @@ the *prior*, but dollar loss is always user-specific — Q3 is asked, not guesse
 
 | Option (exact) | Closed value |
 |---|---|
-| building without a trusted evaluation | `build_no_trusted_eval` |
-| building with a trusted evaluation | `build_with_trusted_eval` |
-| limited production and we pay model costs | `limited_prod_self_paid` |
-| full production and we pay | `full_prod_self_paid` |
-| production where a customer/business unit pays | `prod_customer_paid` |
+| building without a trusted evaluation | `building_without_trusted_eval` |
+| building with a trusted evaluation | `building_with_trusted_eval` |
+| limited production and we pay model costs | `limited_production_we_pay` |
+| full production and we pay | `full_production_we_pay` |
+| production where a customer/business unit pays | `production_customer_pays` |
 
 Identifies: build/run phase, cost bearer, evidence maturity, and appropriate payback horizon.
 
@@ -157,10 +159,10 @@ cycle take you today?"
 
 | Option (exact) | Closed value |
 |---|---|
-| automated/under 1 hour | `lt_1h` |
-| 1–8 hours | `1_8h` |
-| 8–40 hours | `8_40h` |
-| over 40 hours or specialist review | `gt_40h_or_specialist` |
+| automated/under 1 hour | `automated_under_1h` |
+| 1–8 hours | `1_to_8h` |
+| 8–40 hours | `8_to_40h` |
+| over 40 hours or specialist review | `over_40h_or_specialist` |
 | not measured | `not_measured` |
 
 Identifies: developer, labeling, QA, and eval-issue-discovery value.
@@ -247,12 +249,12 @@ The user may pick **any** of the five values at any time, including one you have
 yet — if they name it, take it. The *submitted* value is always one of the five closed
 values: presentation narrows, the contract does not.
 
-Worked example for `error_cost_band` (five values), recommending `escalation_50_5k`:
+Worked example for `error_cost_band` (five values), recommending `escalation_50_to_5k_usd`:
 
 | Page | Options shown | Recommended |
 |---|---|---|
-| 1 | `escalation_50_5k`, `human_fix_1_50`, `retry_lt_1` | `escalation_50_5k` |
-| 2 (on request) | `escalation_50_5k` (carried), `severe_gt_5k`, `not_measured` | `escalation_50_5k` |
+| 1 | `escalation_50_to_5k_usd`, `human_correction_1_to_50_usd`, `cheap_retry_under_1_usd` | `escalation_50_to_5k_usd` |
+| 2 (on request) | `escalation_50_to_5k_usd` (carried), `severe_harm_above_5k_usd`, `not_measured` | `escalation_50_to_5k_usd` |
 
 Two pages, three options each, one Recommended each, all five values reachable.
 
@@ -287,11 +289,11 @@ Write the completed draft to **`.traigent/economics-survey.v0.json`** in the pro
   "schema": "traigent-economics-survey/v0",
   "agent_display_name": "your ticket classifier",
   "closed_fields": {
-    "value_channel":          {"value": "mistake_prevention", "provenance": "asked",    "confidence": "high",   "evidence": null},
-    "daily_volume_band":      {"value": "band_1k_99k",        "provenance": "inferred", "confidence": "high",   "evidence": "traces: ~3.1k runs/day over 14 days"},
-    "error_cost_band":        {"value": "escalation_50_5k",   "provenance": "asked",    "confidence": "high",   "evidence": null},
-    "lifecycle_stage":        {"value": "limited_prod_self_paid", "provenance": "inferred", "confidence": "medium", "evidence": "offline=False + OPENAI_API_KEY owned by this project"},
-    "human_cycle_hours_band": {"value": "1_8h",               "provenance": "defaulted", "confidence": "low",   "evidence": null}
+    "value_channel":          {"value": "prevent_costly_mistakes", "provenance": "asked",    "confidence": "high",   "evidence": null},
+    "daily_volume_band":      {"value": "1k_to_99k",          "provenance": "inferred", "confidence": "high",   "evidence": "traces: ~3.1k runs/day over 14 days"},
+    "error_cost_band":        {"value": "escalation_50_to_5k_usd", "provenance": "asked",    "confidence": "high",   "evidence": null},
+    "lifecycle_stage":        {"value": "limited_production_we_pay", "provenance": "inferred", "confidence": "medium", "evidence": "offline=False + OPENAI_API_KEY owned by this project"},
+    "human_cycle_hours_band": {"value": "1_to_8h",            "provenance": "defaulted", "confidence": "low",   "evidence": null}
   },
   "typed_overrides": {
     "value_per_task_usd": null,
@@ -319,48 +321,34 @@ Field rules:
   the narrowest setting the user agrees to; bands may travel while raw evidence stays local.
   Never widen it without asking.
 
-## 7. Turning answers into a bounded proposal (v0 starting assumptions)
+## 7. Turning answers into a bounded proposal (service-authored — do not compute locally)
 
-**All figures below are starting assumptions [our-assumption-needs-validation]. Present them
-as such.** Lead with the conservative lower bound, and always show the spend-`$0` case
-alongside any recommendation.
+**The budget is authored by the Traigent service, never here.** The characterization you
+collect — value channel, volume, error cost, lifecycle, human-cycle, and any typed overrides —
+is the INPUT the service turns into a bounded proposal: the archetype, the recommended daily
+budget with its floor and cap, the payback statement, and the stop/continue/promote
+thresholds. Those numbers come from the one backend calculator so that the SDK preflight, the
+portal, and these skills all quote the same figure. This section describes WHAT the service
+produces and how to present it; it is deliberately **not** a formula, floor/cap table, or
+recipe you can follow to author a number yourself.
 
-**Recommended daily build budget**
+**Until the backend economics calculator ships, there is no budget to compute.** Do not invent
+a daily figure, a floor, a cap, or a payback from these bands locally. Collect and record the
+characterization (§6); when no service result is available, present the spend-`$0` case and say
+plainly that no budget is available yet rather than deriving one. A plausible-looking number
+you produced here is a fabricated one.
 
-```
-B_day = clamp(floor, archetype_cap, 0.10 × LCB(RealizedV30) / 14)
-```
+**What a service-authored proposal contains (present these, do not compute them):**
 
-where `RealizedV30 = P(start) × P(accept/deploy) × V30` — realized value, not headline value.
-
-Initial floors / caps, by archetype:
-
-| Archetype | Floor | Cap |
-|---|---:|---:|
-| Solo coding builder | `$5` | `$50` |
-| Internal tool or research assistant | `$5` | `$100` |
-| Support or extraction system | `$10` | `$250` |
-| High-stakes agent or agent platform | `$25` | `$500` |
-
-The floor is credit-backed until one real run produces evidence. Customer-paid spend requires
-`LCB(RealizedV30) > 0` — a negative conservative bound means recommend `$0` and say so.
-
-**Payback statement**
-
-```
-payback_days = total_optimization_cost / conservative_daily_realized_value
-```
-
-> "One avoided bad promotion worth `$C_wrong` pays for `C_wrong / (7 × B_day)` weeks of
-> optimization."
-
-**Stop / continue rule** — record it *before* spending, then apply it:
-
-- **Continue** when `EVSI(next experiment) + LCB(incremental J$30) > next experiment cost`.
-- **Stop** when `UCB(incremental J$30) ≤ next experiment cost`, or when attainable uptake
-  makes realized value nonpositive.
-- **Promote** only when `LCB(incremental J$30) > incremental serving cost + amortized
-  integration cost` and payback is at most 30 days.
+- a **recommended daily build budget** bounded by an archetype floor and cap, led with the
+  conservative lower bound and never positive when that bound is negative — a negative
+  conservative bound means the service recommends `$0`, and you say so;
+- a **payback statement** in the user's own numbers — how quickly avoided loss or realized
+  value repays the optimization cost;
+- a **stop / continue / promote rule**, recorded *before* spending and then applied: continue
+  only while the value of further information and the conservative value bound justify the next
+  experiment's cost; stop when they do not; promote only when the conservative value bound
+  clears the serving and integration cost within a short payback horizon.
 
 **Required receipt** — the claim envelope is recorded *before* spending (value channel,
 frozen baseline, evaluator and dataset hashes, maximum spend, required receipt, stop rule),
@@ -376,7 +364,8 @@ and the spend is justified *after* only by a machine-verifiable receipt:
 The proposing agent cannot validate its own receipt. Narrative quality never raises a cap or
 unlocks budget; only verified receipts do. Unsupported claims unlock `$0`.
 
-**Credibility rules.** Publish the formula and assumptions with the number. Show source,
-confidence, and sensitivity for every inferred value. Never claim payback from a point
-estimate when the conservative bound is negative. Recommendations stay independent of
-Traigent's own pricing incentives — the honest answer is sometimes "don't spend".
+**Credibility rules.** When the service publishes a number, it ships with its assumptions;
+present those alongside it, and show source, confidence, and sensitivity for every inferred
+value. Never claim payback from a point estimate when the conservative bound is negative.
+Recommendations stay independent of Traigent's own pricing incentives — the honest answer is
+sometimes "don't spend".

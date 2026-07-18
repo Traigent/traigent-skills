@@ -173,3 +173,83 @@ With the SDK present the suite is fully green, so no failure is being carried.
 ## Blockers
 
 None. The work is complete and the contract suite is green.
+
+---
+
+## Sol remediation (2026-07-18)
+
+Sol issued SHIP NO-GO on WI-A with four merge-blockers. All are addressed here in the
+`feature/econ-model-wi-a` worktree (uncommitted). TraigentSchema `@ c27a034` is canonical and
+was read-only.
+
+### 1. Adopt the canonical TraigentSchema vocabulary (contract-first)
+The shared reference `docs/shared/economics-characterization.v0.md` now uses the Schema enums
+exactly, across Q1–Q5 option tables, the §4 paging worked example, and the §6 local-draft JSON:
+
+| Field | Was (skills) → Now (Schema) |
+|---|---|
+| `value_channel` | `developer_time_saved/manual_ops_replaced/volume_throughput/revenue_growth/mistake_prevention` → `save_expert_time/replace_manual_operations/process_volume_cheaper/increase_revenue/prevent_costly_mistakes` |
+| `daily_volume_band` | `band_lt_100/band_100_999/band_1k_99k/band_100k_999k/band_1m_plus` → `under_100/100_to_999/1k_to_99k/100k_to_999k/1m_or_more` |
+| `error_cost_band` | `retry_lt_1/human_fix_1_50/escalation_50_5k/severe_gt_5k/not_measured` → `cheap_retry_under_1_usd/human_correction_1_to_50_usd/escalation_50_to_5k_usd/severe_harm_above_5k_usd/not_measured` |
+| `lifecycle_stage` | `build_no_trusted_eval/build_with_trusted_eval/limited_prod_self_paid/full_prod_self_paid/prod_customer_paid` → `building_without_trusted_eval/building_with_trusted_eval/limited_production_we_pay/full_production_we_pay/production_customer_pays` |
+| `human_cycle_hours_band` | `lt_1h/1_8h/8_40h/gt_40h_or_specialist/not_measured` → `automated_under_1h/1_to_8h/8_to_40h/over_40h_or_specialist/not_measured` |
+
+Field names already matched the Schema (`value_channel`, `daily_volume_band`, `error_cost_band`,
+`lifecycle_stage`, `human_cycle_hours_band`, plus the typed overrides incl. `value_per_task_usd`).
+The 8 generated skill copies were re-synced byte-identical via
+`tools/contract/sync_economics_reference.py`.
+
+**Schema-backed test (fails closed if the sibling is absent):**
+`test_documented_band_values_match_schema_enum_exactly` (5 params, one per field),
+`test_documented_field_names_match_schema_field_allowlist`, and
+`test_documented_survey_json_values_are_schema_enums` load the sibling
+`TraigentSchema/traigent_schema/schemas/economics/economics_characterization_vocabulary_schema.json`
+(searched under a `TraigentSchema*` sibling or `$TRAIGENT_SCHEMA_REPO`) and assert the doc's
+tokens are exactly the Schema enums/field allowlist. If the sibling is not present they
+`pytest.skip` with a reason — never a false pass.
+
+### 2. "Characterize, never compute a budget locally" across ALL EIGHT skills
+Previously only `traigent-analyze-guidance` carried the service-owned-budget boundary; the
+other seven implied local sizing ("propose a bounded first experiment sized to it", "enforce
+the calculated cap"). All eight economics `SKILL.md` sections now state the boundary
+(budget authorship belongs to the service; no local arithmetic; when no service result,
+give no number). The reference §7 was rewritten from a followable local calculator (the
+`B_day = clamp(...)` formula, the archetype floor/cap dollar table, `payback_days = ...`, and
+the EVSI/UCB/LCB inequalities) into a description of WHAT the service computes, explicitly
+stating there is no budget to compute locally until the WI-C backend calculator ships.
+
+**Lint extended to all eight (previously analyze-guidance only):**
+`test_no_skill_authors_a_budget_locally`, `test_every_skill_states_the_service_owned_budget_boundary`,
+and `test_no_skill_carries_budget_arithmetic` are now parametrized over all 8 economics skills;
+`test_reference_carries_no_followable_budget_arithmetic` guards the shipped reference (no
+`B_day=`/`clamp(`/`0.10 ×`/`payback_days=`, no archetype floor/cap table).
+
+### 3. Scope the Track R2 claim as one pilot, not a general law
+§1 no longer asserts "In practice that produced agents that proposed `$0` and never started."
+It now reads "A single Track R2 pilot observed that this cost-caution-first wording led
+autonomous coding agents to propose `$0` and never start … candidate, unvalidated evidence
+from one pilot — a motivating observation, not a general law." This matches the §1 status
+("v0 — a starting model, not a validated one").
+
+### 4. PROTECTED/SLOW_UPDATE + provenance-hash machinery respected
+No PROTECTED/SLOW_UPDATE regions were edited. Reference copies were regenerated via the
+documented tools; `reference_hashes` refreshed via `tools/contract/update_reference_hashes.py`
+(both `--check`s clean). The 7 edited `SKILL.md` files had `metadata.version` bumped, `doc_hash`
+recomputed (SHA-256[:16] of the new bytes), and a `manual_edit` provenance audit entry appended
+(`economics-schema-vocabulary-alignment-2026-07-18`).
+
+### Test counts
+- Full contract suite: **878 passed, 451 skipped** (baseline before remediation: 849 passed,
+  451 skipped; net +29 from the new/extended economics tests — Schema cross-check present and
+  passing in this workspace).
+- `tests/contract/test_economics_reference.py` alone: **71 passed**.
+- `tools/contract/sync_economics_reference.py --check` and
+  `tools/contract/update_reference_hashes.py --check`: both clean.
+
+### Residuals
+- The 7 Schema-backed cross-check tests SKIP (never fail) in a skills-only CI checkout without
+  the sibling `TraigentSchema` (or `$TRAIGENT_SCHEMA_REPO`). They passed here because the
+  sibling worktree is present.
+- Report residual #4 above ("archetype table") is superseded: that table was removed in fix #2.
+- WI-C (backend calculator) and WI-D (pricing) remain out of scope; until WI-C ships the skills
+  characterize and relay only, with no local budget number.

@@ -21,6 +21,8 @@ Three properties are pinned here, each one a Terra BLOCK finding made executable
 
 from __future__ import annotations
 
+import json
+import os
 import re
 import shutil
 import subprocess
@@ -186,8 +188,13 @@ def test_sync_tool_detects_a_tampered_copy(tmp_path: Path) -> None:
 
 
 # --------------------------------------------------------------------------------------
-# 2. traigent-analyze-guidance may not shape or compute economics locally
+# 2. No economics skill (all EIGHT) may shape or compute economics locally
 # --------------------------------------------------------------------------------------
+#
+# "Characterize, never compute budgets locally" is not just analyze-guidance's rule — it is
+# the boundary for every skill that ships the economics reference. The budget is authored by
+# the backend calculator (WI-C); until it ships there is no budget to compute. These lints
+# hold across all eight economics skills so no skill hands an agent a local calculator.
 
 # Phrasings that hand budget authorship back to the skill. Kept narrow and positive-form so
 # the required "Do not compute ... locally" sentences cannot themselves trip the lint.
@@ -205,45 +212,194 @@ REQUIRED_GUIDANCE_SENTENCES = (
     "no budget number at all",
 )
 
+# Followable budget arithmetic — a local calculator. Forbidden in every SKILL.md economics
+# section AND in the shipped reference itself (it travels inside each skill).
+BUDGET_ARITHMETIC_PATTERNS = (
+    r"B_day\s*=",
+    r"clamp\s*\(",
+    r"0\.10\s*×",
+    r"payback_days\s*=",
+)
 
-def _guidance_section() -> str:
-    path = _repo_root() / "skills" / "traigent-analyze-guidance" / "SKILL.md"
-    return _economics_section(path.read_text(encoding="utf-8"))
+
+def _skill_economics_section(skill_dir: Path) -> str:
+    return _economics_section((skill_dir / "SKILL.md").read_text(encoding="utf-8"))
 
 
-def test_analyze_guidance_does_not_author_a_budget_locally() -> None:
-    section = _guidance_section()
+@pytest.mark.parametrize("skill_dir", ECONOMICS_SKILLS, ids=ECONOMICS_SKILL_IDS)
+def test_no_skill_authors_a_budget_locally(skill_dir: Path) -> None:
+    """Every economics skill is a thin client: the service authors the budget, not markdown."""
+    section = _skill_economics_section(skill_dir)
     offenders = [
         pattern
         for pattern in LOCAL_BUDGET_AUTHORSHIP_PATTERNS
         if re.search(pattern, section, flags=re.IGNORECASE)
     ]
     assert not offenders, (
-        "traigent-analyze-guidance is a thin client: the Traigent service authors the "
-        "budget exactly as it authors the run-plan and the next-step decision. These "
-        "phrasings hand budget authorship back to local markdown reasoning: "
-        + ", ".join(repr(o) for o in offenders)
+        f"{skill_dir.name}: the Traigent service authors the budget exactly as it authors "
+        "the run-plan and the next-step decision. These phrasings hand budget authorship "
+        "back to local markdown reasoning: " + ", ".join(repr(o) for o in offenders)
     )
 
 
-def test_analyze_guidance_states_the_service_owned_budget_boundary() -> None:
-    section = _guidance_section()
+@pytest.mark.parametrize("skill_dir", ECONOMICS_SKILLS, ids=ECONOMICS_SKILL_IDS)
+def test_every_skill_states_the_service_owned_budget_boundary(skill_dir: Path) -> None:
+    """All eight must state the service-owned budget boundary and the no-payload behaviour."""
+    # Collapse whitespace: the required sentences may wrap across lines in the markdown.
+    section = re.sub(r"\s+", " ", _skill_economics_section(skill_dir))
     missing = [s for s in REQUIRED_GUIDANCE_SENTENCES if s not in section]
     assert not missing, (
-        "traigent-analyze-guidance must state the service-owned budget boundary and the "
-        "no-payload behaviour (say so and stop / fall back with no number — never invent "
-        f"one). Missing: {missing}"
+        f"{skill_dir.name}: the economics section must state the service-owned budget "
+        "boundary and the no-payload behaviour (say so and stop / fall back with no number — "
+        f"never invent one). Missing: {missing}"
     )
 
 
-def test_analyze_guidance_carries_no_budget_arithmetic() -> None:
-    """No local calculator: a formula in this SKILL.md is a budget the service didn't author."""
-    section = _guidance_section()
-    formula_hits = re.findall(r"B_day\s*=|clamp\s*\(|0\.10\s*×", section)
+@pytest.mark.parametrize("skill_dir", ECONOMICS_SKILLS, ids=ECONOMICS_SKILL_IDS)
+def test_no_skill_carries_budget_arithmetic(skill_dir: Path) -> None:
+    """No local calculator: a formula in a SKILL.md is a budget the service didn't author."""
+    section = _skill_economics_section(skill_dir)
+    formula_hits = [p for p in BUDGET_ARITHMETIC_PATTERNS if re.search(p, section)]
     assert not formula_hits, (
-        "traigent-analyze-guidance must not carry budget arithmetic; the formulas live in "
-        f"the reference as documentation of what the SERVICE computes. Found: {formula_hits}"
+        f"{skill_dir.name}: the economics section must not carry budget arithmetic; the "
+        f"budget is service-authored. Found: {formula_hits}"
     )
+
+
+def test_reference_carries_no_followable_budget_arithmetic() -> None:
+    """The shipped reference must not hand agents a local calculator before WI-C exists.
+
+    The reference travels byte-identical inside every economics skill, so a formula, a
+    floor/cap dollar table, or a payback recipe there is a budget an agent could author
+    locally — exactly what "characterize, never compute budgets locally" forbids.
+    """
+    text = _canonical_text()
+    hits = [p for p in BUDGET_ARITHMETIC_PATTERNS if re.search(p, text)]
+    assert not hits, (
+        f"{CANONICAL_RELPATH} carries followable budget arithmetic {hits}. The budget is "
+        "service-authored — describe WHAT the service computes, never a formula an agent can "
+        "run locally before the WI-C backend calculator ships."
+    )
+    assert not re.search(r"\|\s*Archetype\s*\|\s*Floor\s*\|\s*Cap\s*\|", text), (
+        f"{CANONICAL_RELPATH} still ships the archetype floor/cap dollar table — a local "
+        "calculator. The service owns floors and caps; describe them, do not tabulate them."
+    )
+
+
+# --------------------------------------------------------------------------------------
+# 2b. The documented vocabulary is EXACTLY the canonical TraigentSchema vocabulary
+# --------------------------------------------------------------------------------------
+#
+# Contract-first: TraigentSchema owns the economics characterization vocabulary. The skills
+# must document the SAME closed enums and field names — a drift (band_1k_99k vs 1k_to_99k,
+# mistake_prevention vs prevent_costly_mistakes, …) is a broken contract. In the multi-repo
+# workspace the schema repo is a sibling of traigent-skills; a skills-only CI checkout will
+# not have it, so this check SKIPS with a reason when it cannot find the sibling — it never
+# passes falsely on a missing schema.
+
+# Each documented closed band field maps to one TraigentSchema enum definition.
+SCHEMA_FIELD_TO_DEFINITION = {
+    "value_channel": "ValueChannel",
+    "daily_volume_band": "DailyVolumeBand",
+    "error_cost_band": "ErrorCostBand",
+    "lifecycle_stage": "LifecycleStage",
+    "human_cycle_hours_band": "HumanCycleHoursBand",
+}
+
+SCHEMA_VOCAB_RELPATH = (
+    "traigent_schema/schemas/economics/economics_characterization_vocabulary_schema.json"
+)
+
+
+def _schema_vocabulary_path() -> Path | None:
+    """Locate the sibling TraigentSchema canonical vocabulary file, or None if absent."""
+    candidates: list[Path] = []
+    env = os.environ.get("TRAIGENT_SCHEMA_REPO")
+    if env:
+        candidates.append(Path(env) / SCHEMA_VOCAB_RELPATH)
+    parent = _repo_root().parent
+    candidates.append(parent / "TraigentSchema" / SCHEMA_VOCAB_RELPATH)
+    candidates.extend(
+        sibling / SCHEMA_VOCAB_RELPATH for sibling in sorted(parent.glob("TraigentSchema*"))
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _load_schema_vocabulary() -> dict:
+    path = _schema_vocabulary_path()
+    if path is None:
+        pytest.skip(
+            "sibling TraigentSchema economics vocabulary not found (looked for "
+            f"{SCHEMA_VOCAB_RELPATH} under a TraigentSchema* sibling or $TRAIGENT_SCHEMA_REPO)"
+            " — cross-repo vocabulary check skipped, not passed"
+        )
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _survey_json_example(text: str) -> dict:
+    """Parse the §6 local-draft survey JSON example from the canonical doc."""
+    for block in re.findall(r"```json\n(.*?)\n```", text, flags=re.DOTALL):
+        if "traigent-economics-survey" in block:
+            return json.loads(block)
+    raise AssertionError("no economics-survey JSON example found in the canonical doc")
+
+
+@pytest.mark.parametrize("field", CLOSED_FIELDS)
+def test_documented_band_values_match_schema_enum_exactly(field: str) -> None:
+    """Every documented closed value is EXACTLY a TraigentSchema enum for that field."""
+    vocab = _load_schema_vocabulary()
+    definition = SCHEMA_FIELD_TO_DEFINITION[field]
+    schema_enum = vocab["definitions"][definition]["enum"]
+    documented = _parse_closed_values(_canonical_text(), field)
+    assert set(documented) == set(schema_enum), (
+        f"{field}: documented closed values {sorted(documented)} are not the Schema enum "
+        f"{sorted(schema_enum)} ({definition}). TraigentSchema is canonical — align "
+        f"{CANONICAL_RELPATH}, then re-run tools/contract/sync_economics_reference.py."
+    )
+
+
+def test_documented_field_names_match_schema_field_allowlist() -> None:
+    """The five band fields + five typed overrides equal the Schema field-name allowlist."""
+    vocab = _load_schema_vocabulary()
+    schema_bands = set(vocab["definitions"]["CharacterizationBands"]["properties"])
+    schema_overrides = set(vocab["definitions"]["CharacterizationOverrides"]["properties"])
+    allowlist = set(vocab["definitions"]["CharacterizationFieldName"]["enum"])
+
+    json_block = _survey_json_example(_canonical_text())
+    documented_bands = set(json_block["closed_fields"])
+    documented_overrides = set(json_block["typed_overrides"])
+
+    assert set(CLOSED_FIELDS) == schema_bands, (
+        f"the doc's five closed band fields {sorted(CLOSED_FIELDS)} are not the Schema band "
+        f"fields {sorted(schema_bands)}"
+    )
+    assert documented_bands == schema_bands, (
+        f"§6 local-draft closed_fields {sorted(documented_bands)} != Schema band fields "
+        f"{sorted(schema_bands)}"
+    )
+    assert documented_overrides == schema_overrides, (
+        f"§6 local-draft typed_overrides {sorted(documented_overrides)} != Schema overrides "
+        f"{sorted(schema_overrides)}"
+    )
+    assert (documented_bands | documented_overrides) <= allowlist, (
+        "documented field names are not all in the Schema CharacterizationFieldName allowlist"
+    )
+
+
+def test_documented_survey_json_values_are_schema_enums() -> None:
+    """The §6 local-draft example uses only Schema enum values in its closed band fields."""
+    vocab = _load_schema_vocabulary()
+    json_block = _survey_json_example(_canonical_text())
+    for field, cell in json_block["closed_fields"].items():
+        definition = SCHEMA_FIELD_TO_DEFINITION[field]
+        schema_enum = set(vocab["definitions"][definition]["enum"])
+        assert cell["value"] in schema_enum, (
+            f"§6 example: {field}={cell['value']!r} is not a Schema {definition} enum value "
+            f"{sorted(schema_enum)}"
+        )
 
 
 # --------------------------------------------------------------------------------------

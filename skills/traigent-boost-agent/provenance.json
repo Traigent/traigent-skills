@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "be83fe17856839da",
+  "doc_hash": "5b0ee62e049d363e",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
-    "references/economics-characterization.v0.md": "9db7a300909ada12",
+    "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/insights-and-iteration.md": "60a5b223a71c0e4f",
     "references/instrument-recipe.md": "df63b2ecf2199945"
   },
@@ -90,6 +90,17 @@
       "doc_before_hash": "4665b7cf92bd385a",
       "doc_after_hash": "be83fe17856839da",
       "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "economics-schema-vocabulary-alignment-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "be83fe17856839da",
+      "doc_after_hash": "5b0ee62e049d363e",
+      "note": "Sol NO-GO remediation (WI-A): make 'characterize, never compute a budget locally' the economics-section boundary in this skill (the service authors the budget; no local arithmetic; when no service result, say so and give no number), matching the budget lint now extended across all eight economics skills. The shared reference was realigned to the canonical TraigentSchema economics vocabulary (value_channel/daily_volume_band/error_cost_band/lifecycle_stage/human_cycle_hours_band enums exactly), the Track R2 finding was scoped to a single unvalidated pilot, and followable budget arithmetic was removed from the reference pending the WI-C backend calculator. Spine-Trail st_6443b96904d7",
       "source_type": "human"
     }
   ]

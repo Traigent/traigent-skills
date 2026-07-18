@@ -4,7 +4,7 @@ description: "Audit evaluator reliability before trusting Traigent optimization 
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.6"
+  version: "1.1.7"
 ---
 
 # Evaluator Audit
@@ -34,6 +34,14 @@ before you propose, size, or decline a run — it is deliberately not restated h
 generated from `docs/shared/economics-characterization.v0.md` in the traigent-skills repo,
 which is where any edit goes; the copy shipped here is byte-identical.
 
+**Characterize, never compute a budget locally.** Collect the characterization and relay it;
+the Traigent service authors the budget, exactly as it authors the run-plan and the next-step
+decision — **budget authorship belongs to the service.** Do not compute, adjust, or recommend a
+budget locally: no budget arithmetic in markdown, no floor/cap table, no "roughly $X/day" of
+your own. The reference describes what the service computes; it is not a local calculator, and
+when the service returns no economics result, say so plainly and continue with **no budget
+number at all** rather than inventing one.
+
 **This skill's part:** produce independently confirmed defect receipts — each one an example
 hash, a defect category, an independent confirmation, and the correction or test — so the
 work can be compared honestly against what the same review would have cost by hand.
@@ -43,7 +51,7 @@ explain **why in the user's own numbers** — their agent, their volumes, their 
 explanation is a product requirement, not decoration.
 
 Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval before any
-paid run**, an explicit spend cap, and the recorded stop rule. The economics reference sets
+paid run**, an explicit spend cap, and the recorded stop rule. The service sets
 *how much* to invest; it never affects *whether* approval is required — it always is.
 
 ## Service-Side Evaluator Audit (ACET)

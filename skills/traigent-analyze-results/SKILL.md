@@ -4,7 +4,7 @@ description: "Analyze and report Traigent optimization results from the terminal
 license: Apache-2.0
 metadata:
   author: Nimrod
-  version: "1.1.15"
+  version: "1.1.16"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -51,6 +51,14 @@ before you propose, size, or decline a run — it is deliberately not restated h
 generated from `docs/shared/economics-characterization.v0.md` in the traigent-skills repo,
 which is where any edit goes; the copy shipped here is byte-identical.
 
+**Characterize, never compute a budget locally.** Collect the characterization and relay it;
+the Traigent service authors the budget, exactly as it authors the run-plan and the next-step
+decision — **budget authorship belongs to the service.** Do not compute, adjust, or recommend a
+budget locally: no budget arithmetic in markdown, no floor/cap table, no "roughly $X/day" of
+your own. The reference describes what the service computes; it is not a local calculator, and
+when the service returns no economics result, say so plainly and continue with **no budget
+number at all** rather than inventing one.
+
 **This skill's part:** turn a finished run into exactly one machine-verifiable receipt — a
 winner, a no-gain, or an insufficient-evidence result. A narrative is not a receipt, and the
 agent that proposed a run cannot validate its own.
@@ -60,7 +68,7 @@ explain **why in the user's own numbers** — their agent, their volumes, their 
 explanation is a product requirement, not decoration.
 
 Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval before any
-paid run**, an explicit spend cap, and the recorded stop rule. The economics reference sets
+paid run**, an explicit spend cap, and the recorded stop rule. The service sets
 *how much* to invest; it never affects *whether* approval is required — it always is.
 
 ## Terminal-First Analysis (MCP)
