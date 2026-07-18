@@ -1,6 +1,6 @@
 ---
 name: traigent-optimize-composite-knobs
-description: "Declare and run Traigent composite knobs: cascades, routers, ensembles, self-consistency, best-of-n, self-refine, self-debug, ReAct tool loops, verification gates, mixture-of-experts, and fallback patterns. Use when choosing a catalog pattern, wiring StageRunner/LoopBodyRunner execution, merging composite telemetry into metrics, or explaining calibration-backed claim scope."
+description: "Declare and run Traigent composite knobs: cascades, routers, ensembles, self-consistency, best-of-n, self-refine, self-debug, ReAct tool loops, verification gates, mixture-of-experts, and fallback patterns. Use when choosing a catalog pattern, assessing whether cheap-to-strong routing or escalation is fit for a task, defining a comparator or gate signal, calibrating thresholds, wiring StageRunner/LoopBodyRunner execution, merging composite telemetry into metrics, or explaining calibration-backed claim scope."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.6"
+  version: "1.1.0"
 ---
 
 # Traigent Composite Knobs
@@ -25,7 +25,11 @@ Use this skill when:
 - Returning `(output, metrics)` from an optimized function so composite telemetry rides the measures channel
 - Explaining which values are tuned, calibrated, fixed, or observed
 
-For exact factory signatures and per-pattern caveats, read `references/pattern-catalog.md`. For adaptive RAG and bounded refine specializations, read `references/advanced-recipes.md`.
+For exact factory signatures and per-pattern caveats, read `references/pattern-catalog.md`. Before
+adding a router or cheap-to-strong cascade, read `references/router-fitness.md`; it distinguishes
+pre-dispatch routing from post-output escalation and requires signal, headroom, comparator, economics,
+and calibration checks. For adaptive RAG and bounded refine specializations, read
+`references/advanced-recipes.md`.
 
 ## Quick Start
 

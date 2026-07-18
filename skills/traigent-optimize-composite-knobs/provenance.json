@@ -1,9 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "670fcc40721ccda4",
+  "doc_hash": "31680229368b35c3",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
-    "references/pattern-catalog.md": "59998518e556f1b1"
+    "references/pattern-catalog.md": "59998518e556f1b1",
+    "references/router-fitness.md": "29537947ff5e0c4d"
   },
   "entries": [
     {
@@ -55,6 +56,17 @@
       "doc_before_hash": "db7fe8c47e00bdca",
       "doc_after_hash": "670fcc40721ccda4",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
+      "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "router-fitness-consolidation-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "670fcc40721ccda4",
+      "doc_after_hash": "31680229368b35c3",
+      "note": "move the useful fitness, comparator, headroom, economics, calibration, and historical evidence guidance from the retired agents-skills traigent-router prototype into the owning public composite-knobs skill; distinguish current pre-dispatch router semantics from post-output cascades and incorporate Traigent/agents-skills#118 claim disambiguation",
       "source_type": "owner_intent"
     }
   ]
