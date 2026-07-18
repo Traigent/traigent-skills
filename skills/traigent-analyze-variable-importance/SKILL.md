@@ -3,6 +3,10 @@ name: traigent-analyze-variable-importance
 description: "Show significant tuned variables and rank which variables mattered in a Traigent optimization. Use for: show significant tuned variables, which variables mattered, tuned variable importance, feature importance for optimization, optimization gains attribution, parameter importance with honest confidence labels, or one-glance video card summaries of what drove optimization gains."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: analyze
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.1"
 ---
@@ -70,10 +74,12 @@ The primary importance is the spread between the best and worst per-value mean o
 
 ## Worked Example
 
-Run with the Python interpreter where you installed the Traigent SDK (`python3`, or your project's `.venv/bin/python`):
+Run with the Python interpreter where you installed the Traigent SDK (`python3`, or your project's
+`.venv/bin/python`). Resolve `<skill-dir>` to the directory
+containing this `SKILL.md`; plugin and flat-install locations differ.
 
 ```bash
-python3 skills/traigent-analyze-variable-importance/scripts/significant_tuned_variables.py \
+python3 <skill-dir>/scripts/significant_tuned_variables.py \
   --trials /path/to/02_trials.jsonl \
   --heldout /path/to/07_heldout_report.json \
   --objective accuracy \

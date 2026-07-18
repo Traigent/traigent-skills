@@ -3,6 +3,10 @@ name: traigent-optimize-config-space
 description: "Define tuned variables, structural knobs, and configuration spaces for Traigent optimization. Use when setting up parameter search spaces, choosing models/temperatures/prompts, designing task-level text2SQL/RAG/multi-hop knobs, using Range/IntRange/Choices/LogRange types, adding constraints, or using factory presets like Range.temperature()."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: optimize
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.4"
 ---

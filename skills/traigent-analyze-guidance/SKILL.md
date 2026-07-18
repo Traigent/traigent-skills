@@ -3,6 +3,10 @@ name: traigent-analyze-guidance
 description: "What should this Traigent optimization run be, and what next? Three modes: (A) pre-run — fetch the service run-plan, present objectives/models/knobs/search/budget/offline options, apply preflight; (B) post-run, portal-tracked — fetch `traigent guidance next RUN_ID --json`, validate the Planner V2 treatment, lifecycle, certificate label, and authoritative decision, then execute only its opaque decision id; (C) offline/local fallback — diagnose flat/noisy/negative local results, which knob mattered, example evidence, form the next iteration hypothesis when offline=True or no service payload. Portal-tracked decisions come from Traigent, never local markdown."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: analyze
+  traigent-maturity: stable
   author: Traigent
   version: "1.1.0"
 ---

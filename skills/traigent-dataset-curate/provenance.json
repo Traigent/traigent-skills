@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f5481ef2791c45ef",
+  "doc_hash": "fceec8f630dddba9",
   "reference_hashes": {
     "references/dataset-recipes.md": "adfa250fd96c0892"
   },
@@ -33,6 +33,17 @@
       "doc_after_hash": "f5481ef2791c45ef",
       "note": "add partition-record requirement to Holdout rules (reserve before first run; create one if none exists; preserve split across rounds) (Traigent/traigent-smartopt#88, #89)",
       "source_type": "human"
+    },
+    {
+      "edit_id": "plugin-taxonomy-metadata-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "f5481ef2791c45ef",
+      "doc_after_hash": "fceec8f630dddba9",
+      "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
+      "source_type": "owner_intent"
     }
   ]
 }

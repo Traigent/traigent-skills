@@ -3,6 +3,10 @@ name: traigent-eval-audit
 description: "Audit evaluator reliability before trusting Traigent optimization decisions. Use when users ask: is my LLM judge reliable, audit my evaluator, judge agreement, evaluator calibration, calibrate thresholds, parse-failure policy, repeated-judge stability, bias probes, or when optimization results depend on an LLM-as-judge metric."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: evaluation
+  traigent-maturity: stable
   author: Nimrod
   version: "1.1.4"
 ---

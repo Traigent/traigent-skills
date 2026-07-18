@@ -3,6 +3,10 @@ name: traigent-recipe-text2sql
 description: "End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 66.7% -> 90% on the cheap model."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: recipe
+  traigent-maturity: stable
   author: Traigent
   version: "1.0.3"
 ---

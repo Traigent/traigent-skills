@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0cfbd5cc6be2f30e",
+  "doc_hash": "e1dc3f964df22735",
   "entries": [
     {
       "edit_id": "genesis",
@@ -19,6 +19,17 @@
       "timestamp": "2026-06-27T00:00:00Z",
       "note": "inject shared interaction-policy v1 managed region",
       "source_type": "human"
+    },
+    {
+      "edit_id": "plugin-taxonomy-metadata-2026-07-18",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-18T00:00:00Z",
+      "doc_before_hash": "0cfbd5cc6be2f30e",
+      "doc_after_hash": "e1dc3f964df22735",
+      "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
+      "source_type": "owner_intent"
     }
   ]
 }

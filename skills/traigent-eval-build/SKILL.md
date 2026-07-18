@@ -3,6 +3,10 @@ name: traigent-eval-build
 description: "Build Traigent evaluators and scoring code. Use when wiring eval_dataset, scoring_function, metric_functions, custom_evaluator, ExampleResult, BaseEvaluator subclasses, deterministic checks, LLM judges, statistical repeated evaluations, hybrid evaluators, or fixing tuple-return/custom-scorer pitfalls."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: evaluation
+  traigent-maturity: stable
   author: Nimrod
   version: "1.0.8"
 ---

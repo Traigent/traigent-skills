@@ -3,6 +3,10 @@ name: traigent-analyze-results
 description: "Analyze and report Traigent optimization results from the terminal — without opening the portal's tabs. Use when a user asks to analyze a run, 'how did my run do?', 'analyze my latest run in project X', what the winner is, or to read result fields, reports, leaderboards, Pareto trade-offs, correlations, or parameter/example insights. Decision questions route to `traigent-analyze-guidance` for portal-tracked runs and `traigent-analyze-guidance` for offline/local runs. Also covers the local OptimizationResult object: reading results.best_config, comparing trials, checking stop_reason, calling apply_best_config(), accessing total_cost or total_tokens, or understanding why optimization stopped."
 license: Apache-2.0
 metadata:
+  traigent-audience: sdk-user
+  traigent-topic: agent-optimization
+  traigent-stage: analyze
+  traigent-maturity: stable
   author: Nimrod
   version: "1.1.13"
 ---
