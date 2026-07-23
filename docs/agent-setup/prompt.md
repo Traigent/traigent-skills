@@ -80,16 +80,36 @@ yet** — use the source/link flow in the `traigent-js` skill until it ships.
 ## 3. Add your Traigent API key
 
 Backend-connected features (the default cloud smart optimizer, dataset synthesis, analytics, and
-portal result history) need `TRAIGENT_API_KEY`.
+portal result history) need `TRAIGENT_API_KEY`, and the key must be **read + write**
+(`experiments:write`): with a read-only key the cloud optimizer and dataset synthesis get a 403 and
+the SDK silently falls back to local — the run never reaches portal history.
 
 - **If a key was pasted into this prompt** (a portal handed it to you), add it to this project's
-  `.env` as `TRAIGENT_API_KEY` and continue.
-- **Otherwise**, create one at <https://traigent.ai> — open the portal, go to **API Keys**, and
-  click **Create key** (portal keys use the `uk_` prefix) — then add it to `.env` the same way.
+  `.env` as `TRAIGENT_API_KEY` (don't echo it) and continue.
+- **Otherwise**, prepare `.env` first, then send the user to create a key:
+  1. Create this project's `.env` if it's missing, preserving any existing content. If
+     `TRAIGENT_API_KEY` already has a non-empty value, keep it (don't overwrite) and skip creating a
+     new key — but it must be **read + write** (`experiments:write`); if a later cloud run 403s, that
+     key is read-only and needs replacing via the Full-access flow below. Otherwise add the line
+     `TRAIGENT_API_KEY=` with the value left blank, confirm `.env`
+     is git-ignored, and print its **absolute path**. Then set `$ENV` to that path and best-effort
+     open it in a **standalone, detached** editor — Linux: `setsid -f gnome-text-editor "$ENV"` (or
+     the first of `kate`/`gedit`/`xed`/`mousepad` that exists; last resort `xdg-open "$ENV"`);
+     macOS: `open -t "$ENV"`; Windows: `start "" notepad "<that absolute path>"`. Do **not** open it through the
+     user's IDE (`code`/`cursor` can hijack or crash a window); if no window appears, have the user
+     open the printed path themselves.
+  2. Tell the user: to create a key, register at <https://portal.traigent.ai/register> (or log in
+     if already registered), open the **account (avatar) menu → API Keys**, click **Create API
+     Key**, and choose the **Full access** (read + write) preset — the default **Read-only** preset
+     can't run the cloud optimizer or dataset synthesis. The portal's one-click **Get optimization
+     API key** flow also works; it already issues a read + write key. Portal keys use the `uk_`
+     prefix.
+  3. Have the user paste the key after `TRAIGENT_API_KEY=` in the open `.env` and save — **never
+     ask the user to paste the key into the chat**; it would land in the transcript and logs.
 
 Never print, echo, or log the key value; reference it only by the name `TRAIGENT_API_KEY`, and make
-sure `.env` is git-ignored. The mock verification in step 4 needs **no key**, so you can run that
-first and add the key after.
+sure `.env` is git-ignored **before** any key goes into it. The mock verification in step 4 needs
+**no key**, so you can run that first and add the key after.
 
 ## 4. Verify — run the keyless mock quickstart
 
@@ -126,11 +146,18 @@ Finally, print a summary box:
 ╰───────────────────────────────────────────────╯
 ```
 
-If the key is not set yet, render that last line as
-`⧗  TRAIGENT_API_KEY — add your key from traigent.ai` instead of a check.
+If the key is not set yet, render that last line (keeping it within the box width) as
+`⧗  TRAIGENT_API_KEY — add a Full-access key` instead of a check.
+
+Right below the box, remind the user of the last gate: the skills installed in step 1 don't load
+into the current session — in Claude Code they activate only after `/reload-plugins` (or restarting
+the session); other agents may need a restart too.
 
 ## Next
 
+First confirm the reload above actually happened — the `traigent:*` skills stay inert until then.
+
 Point the user at the `traigent-setup-quickstart` and `traigent-boost-agent` skills to optimize a
 real function against their own evaluation dataset. Always mock/dry-run first; run a real (paid)
-optimization only on the user's explicit go.
+optimization only on the user's explicit go — using a write-capable key, since cloud optimization
+needs `experiments:write`.
