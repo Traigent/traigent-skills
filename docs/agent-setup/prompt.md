@@ -82,14 +82,38 @@ yet** — use the source/link flow in the `traigent-js` skill until it ships.
 Backend-connected features (the default cloud smart optimizer, dataset synthesis, analytics, and
 portal result history) need `TRAIGENT_API_KEY`.
 
-- **If a key was pasted into this prompt** (a portal handed it to you), add it to this project's
-  `.env` as `TRAIGENT_API_KEY` and continue.
-- **Otherwise**, create one at <https://traigent.ai> — open the portal, go to **API Keys**, and
-  click **Create key** (portal keys use the `uk_` prefix) — then add it to `.env` the same way.
+**Prepare `.env` first — never paste the key into the chat.** Before fetching a key, create this
+project's `.env` (if it doesn't already exist) with the key *name* pre-filled and the value blank,
+so the user pastes the secret straight into the file — it never touches this conversation, the logs,
+or your context:
 
-Never print, echo, or log the key value; reference it only by the name `TRAIGENT_API_KEY`, and make
-sure `.env` is git-ignored. The mock verification in step 4 needs **no key**, so you can run that
-first and add the key after.
+```text
+TRAIGENT_API_KEY=
+```
+
+Print the **absolute path** to that `.env` (e.g. `/home/me/proj/.env`) so the user can always find
+it, then best-effort pop it open in a **standalone, detached** editor window. Pick the launcher by
+OS, and never open it through the user's IDE — `code`/`cursor` can spawn a nested instance that
+crashes, and it hijacks whichever IDE window is focused, so `.env` can pop up inside an unrelated
+project:
+
+- **Linux:** `setsid -f gnome-text-editor "$PWD/.env"` — or the first of `kate` / `gedit` / `xed` /
+  `mousepad` that exists; last resort `xdg-open "$PWD/.env"`.
+- **macOS:** `open -t "$PWD/.env"`.
+- **Windows:** `start "" notepad ".env"`.
+
+Now get the key, and have the user paste it after `TRAIGENT_API_KEY=` in the file you just opened:
+
+- **If a key was pasted into this prompt** (a portal handed it to you), it's already yours — paste
+  it into the open `.env` and save.
+- **New user, no account yet?** Register at <https://portal.traigent.ai/register>, then — once
+  logged in — open **API Keys** and click **Create key** (portal keys use the `uk_` prefix).
+- **Already have a portal account?** Go straight to **API Keys** → **Create key** in the portal.
+
+Wait for the user to paste and save — **never request, print, echo, or log the key value**; reference
+it only by the name `TRAIGENT_API_KEY`, and make sure `.env` is git-ignored (add it to `.gitignore`
+if it isn't). The mock verification in step 4 needs **no key**, so you can run that first and add the
+key after.
 
 ## 4. Verify — run the keyless mock quickstart
 
@@ -127,10 +151,16 @@ Finally, print a summary box:
 ```
 
 If the key is not set yet, render that last line as
-`⧗  TRAIGENT_API_KEY — add your key from traigent.ai` instead of a check.
+`⧗  TRAIGENT_API_KEY — add your key from portal.traigent.ai` instead of a check.
+
+Right after the box, remind the user that the `traigent:*` skills **only activate after
+`/reload-plugins` (or restarting the session)** — the box says "connected," but the skills won't
+load until they do that.
 
 ## Next
 
-Point the user at the `traigent-setup-quickstart` and `traigent-boost-agent` skills to optimize a
-real function against their own evaluation dataset. Always mock/dry-run first; run a real (paid)
-optimization only on the user's explicit go.
+- **Reload first** — the `traigent:*` skills activate only after `/reload-plugins` (or a session
+  restart). Do that before trying to use them.
+- Point the user at the `traigent-setup-quickstart` and `traigent-boost-agent` skills to optimize a
+  real function against their own evaluation dataset. Always mock/dry-run first; run a real (paid)
+  optimization only on the user's explicit go.
