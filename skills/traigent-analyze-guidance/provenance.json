@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e3bc28c725cd680e",
+  "doc_hash": "00fa3c6feef7398d",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -193,6 +193,17 @@
       "doc_before_hash": "59464aba14a2deb3",
       "doc_after_hash": "e3bc28c725cd680e",
       "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "attribution-presentation-mode-b-2026-07-26",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-26T00:00:00Z",
+      "doc_before_hash": "e3bc28c725cd680e",
+      "doc_after_hash": "00fa3c6feef7398d",
+      "note": "Mode B Presentation Rules: add the conditional active-voice presentation of the Traigent `attribution` block (show headline + why verbatim as provenance, not a performance claim; no evidence upgrade) for when the service payload carries it. Forward-looking / gated on Traigent/TraigentBackend#2431 landing on develop and the SDK surfacing the field (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
       "source_type": "human"
     }
   ]

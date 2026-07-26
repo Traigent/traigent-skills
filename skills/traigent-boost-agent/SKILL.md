@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.9"
+  version: "2.1.10"
 ---
 
 # Traigent Boost Agent
@@ -463,9 +463,9 @@ CONFIGURATION_SPACE = {
    - DELEGATE: `traigent-analyze-results` owns result-object depth; `traigent-analyze-variable-importance` owns richer TVAR importance reporting.
 
 11. RECOMMEND the most promising next steps.
-   - Point at the symptom-to-action table in `references/insights-and-iteration.md` and choose one next hypothesis, not a bundle of unrelated changes.
+   - When the service payload carries a Traigent `attribution` block (active-voice provenance rolling out via BE #2431 — not yet on the backend `develop`, and the SDK does not surface it yet), that block is the Traigent-authored next action: present its `headline` (active voice, Traigent as the subject) and `why` **verbatim** through `traigent-analyze-guidance`, without re-wording or recomputing it locally. It is provenance, not a performance claim — no guarantee, no evidence upgrade.
+   - Offline, or until BE #2431 lands and the SDK exposes `attribution`: fall back to the symptom-to-action table in `references/insights-and-iteration.md` and choose one next hypothesis, not a bundle of unrelated changes.
    - Use example-side findings only as evidence for targeted curation or heldout checks.
-   - Planned: a backend next-steps endpoint may eventually package these recommendations; until then, use the manual symptom-to-action table.
    - DELEGATE: `traigent-analyze-guidance` owns post-run next-action selection.
 
 12. COMPLETE: recommend the safety gate and CI checks.
