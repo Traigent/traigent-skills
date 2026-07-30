@@ -363,15 +363,14 @@ record its execution receipt. Do not enroll a new lifecycle in v1.
 - Use Traigent's words for the recommendation. You may summarize for readability,
   but do not change the ordering or imply stronger support than the payload gives.
 - Traigent-attributed recommendation (active voice): when the service payload
-  carries a Traigent `attribution` block (rolling out via BE #2431 — not yet on
-  the backend `develop`, and the guidance/next-steps SDK clients do not surface it
-  yet), present it in Traigent's own voice — show `attribution.headline` (Traigent
-  as the subject of the recommended action) and `attribution.why` **verbatim**. Do
-  not re-word, re-order, or recompute the rationale locally. It is provenance, not
-  a performance claim: it does not upgrade the evidence tier, and the no-guarantee
-  and no-stronger-support rules above still hold. Until BE #2431 lands and the SDK
-  exposes the field, present the decision as in the bullets above and do not assert
-  the block is present.
+  carries a Traigent `attribution` block, present it in Traigent's own voice —
+  show `attribution.headline` (Traigent as the subject of the recommended action)
+  and `attribution.why` **verbatim**. Do not re-word, re-order, or recompute the
+  rationale locally. It is provenance, not a performance claim: it does not
+  upgrade the evidence tier, and the no-guarantee and no-stronger-support rules
+  above still hold. The block is optional and version-dependent — older backends
+  and older SDK clients will not return it. When it is absent, present the
+  decision as in the bullets above and do not assert the block was there.
 - Present the single authoritative v2 decision and its templated rationale. Do
   not reconstruct hidden evidence from local files.
 - Never treat `served_variant=policy_override` as proof that an override ran;
