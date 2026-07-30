@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "00fa3c6feef7398d",
+  "doc_hash": "beee7675380e0c9d",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -202,8 +202,8 @@
       "run_id": null,
       "timestamp": "2026-07-26T00:00:00Z",
       "doc_before_hash": "e3bc28c725cd680e",
-      "doc_after_hash": "00fa3c6feef7398d",
-      "note": "Mode B Presentation Rules: add the conditional active-voice presentation of the Traigent `attribution` block (show headline + why verbatim as provenance, not a performance claim; no evidence upgrade) for when the service payload carries it. Forward-looking / gated on Traigent/TraigentBackend#2431 landing on develop and the SDK surfacing the field (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
+      "doc_after_hash": "beee7675380e0c9d",
+      "note": "Mode B Presentation Rules: add the conditional active-voice presentation of the Traigent `attribution` block (show headline + why verbatim as provenance, not a performance claim; no evidence upgrade) for when the service payload carries it. Backend support landed via Traigent/TraigentBackend#2439 and SDK support via Traigent/Traigent#2019 + #2042 (all merged 2026-07-27); the block stays optional and version-dependent, so presentation is conditional on the payload carrying it (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
       "source_type": "human"
     }
   ]

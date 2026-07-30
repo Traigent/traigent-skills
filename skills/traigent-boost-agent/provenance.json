@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3d7a0394ad45003b",
+  "doc_hash": "338b3994f9a77d4a",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -132,8 +132,8 @@
       "run_id": null,
       "timestamp": "2026-07-26T00:00:00Z",
       "doc_before_hash": "a502d64640e23484",
-      "doc_after_hash": "3d7a0394ad45003b",
-      "note": "Step 11 RECOMMEND: reference the Traigent-attributed recommendation (the `attribution` block) as the Traigent-authored next action, presented verbatim via traigent-analyze-guidance, and demote the local symptom-to-action table to the offline/no-attribution fallback. Forward-looking / gated on Traigent/TraigentBackend#2431 landing on develop and the SDK surfacing the field (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
+      "doc_after_hash": "338b3994f9a77d4a",
+      "note": "Step 11 RECOMMEND: reference the Traigent-attributed recommendation (the `attribution` block) as the Traigent-authored next action, presented verbatim via traigent-analyze-guidance, and demote the local symptom-to-action table to the offline/no-attribution fallback. Backend support landed via Traigent/TraigentBackend#2439 and SDK support via Traigent/Traigent#2019 + #2042 (all merged 2026-07-27); the block stays optional and version-dependent, so presentation is conditional on the payload carrying it (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
       "source_type": "human"
     }
   ]
