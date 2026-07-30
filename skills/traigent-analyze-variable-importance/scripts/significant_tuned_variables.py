@@ -256,6 +256,49 @@ def bootstrap_spread_ci(
     )
 
 
+def permutation_spread_pvalue(
+    trials: list[Trial],
+    knob: str,
+    draws: int = DEFAULT_BOOTSTRAP_DRAWS,
+    seed: int = BOOTSTRAP_SEED,
+) -> float:
+    """Label-shuffled permutation p-value for a knob's per-value mean spread.
+
+    The max-min spread is non-negative by construction, so asking whether its own
+    resample CI clears 0 is not a test against a no-effect null. Instead, under the
+    null the knob value is unrelated to the objective: hold the per-value group
+    sizes fixed and shuffle the objective values across trials, recomputing the
+    spread each draw. The p-value is the fraction of shuffled-null spreads that
+    reach the observed spread (add-one smoothed). A small p-value means the observed
+    spread is larger than label-shuffled noise; a large one means it is not.
+    """
+    relevant = [trial for trial in trials if knob in trial.config]
+    if len(relevant) < 2 or draws <= 0:
+        return 1.0
+    labels = [canonical_value(trial.config[knob]) for trial in relevant]
+    if len(set(labels)) < 2:
+        return 1.0
+    observed = spread_for_groups(grouped_trials(relevant, knob))
+    if observed <= 0.0:
+        return 1.0
+    objectives = [trial.objective for trial in relevant]
+    rng = random.Random(seed)
+    at_or_above = 0
+    for _ in range(draws):
+        shuffled = objectives[:]
+        rng.shuffle(shuffled)
+        groups: dict[str, list[float]] = defaultdict(list)
+        for label_key, value in zip(labels, shuffled):
+            groups[label_key].append(value)
+        group_means = [mean(values) for values in groups.values() if values]
+        null_spread = (
+            max(group_means) - min(group_means) if len(group_means) >= 2 else 0.0
+        )
+        if null_spread >= observed:
+            at_or_above += 1
+    return (at_or_above + 1) / (draws + 1)
+
+
 def value_from_key(groups: dict[str, list[Trial]], key: str, knob: str) -> Any:
     return groups[key][0].config[knob]
 
@@ -297,7 +340,20 @@ def analyze_knob(
         confidence=confidence,
         draws=bootstrap_draws,
     )
-    label = "significant" if total_n >= 20 and ci_low > 0.0 else "directional"
+    # Significance is gated against a label-shuffled no-effect null, not the CI
+    # lower bound of a non-negative spread (which is > 0 for pure noise). The
+    # bootstrap CI is retained only as a scale/whisker annotation.
+    p_value = permutation_spread_pvalue(
+        trials=trials,
+        knob=knob,
+        draws=bootstrap_draws,
+    )
+    alpha = 1.0 - confidence
+    label = (
+        "significant"
+        if total_n >= 20 and spread > 0.0 and p_value < alpha
+        else "directional"
+    )
 
     return KnobImportance(
         knob=knob,
@@ -518,9 +574,9 @@ def write_svg(
     bar_h = 28
     axis_w = chart_w
     caption = (
-        f"directional (n={n_trials}): fewer than 20 trials, or CI lower bound touches zero"
+        f"directional (n={n_trials}): fewer than 20 trials to test against a null"
         if n_trials < 20
-        else f"n={n_trials}; significant requires {int(confidence * 100)}% bootstrap CI lower bound > 0"
+        else f"n={n_trials}; significant requires the spread to beat a label-shuffled null at {int(confidence * 100)}% (CI whiskers show scale only)"
     )
 
     parts = [
@@ -601,24 +657,17 @@ def write_video_card_json(
     heldout_accuracy_pp, heldout_cost_delta_pct = heldout_card_metrics(
         heldout, objective
     )
+    # Per-knob fields carry the knob's OWN measured effect, never the run-level
+    # heldout delta — copying the whole-run gain onto every top knob overclaims
+    # per-knob attribution. The run-level delta stays a single card-level field.
     top_variables: list[dict[str, Any]] = []
     for row in rows[:top_k]:
-        accuracy_pp = (
-            heldout_accuracy_pp
-            if heldout_accuracy_pp is not None
-            else row.spread * 100.0
-        )
-        cost_delta_pct = (
-            heldout_cost_delta_pct
-            if heldout_cost_delta_pct is not None
-            else row.cost_effect_pct
-        )
         top_variables.append(
             {
                 "knob": row.knob,
                 "best_value": row.best_value,
-                "accuracy_pp": round_float_or_none(accuracy_pp),
-                "cost_delta_pct": round_float_or_none(cost_delta_pct),
+                "accuracy_pp": round_float(row.spread * 100.0),
+                "cost_delta_pct": round_float_or_none(row.cost_effect_pct),
                 "label": row.label,
             }
         )
@@ -642,10 +691,13 @@ def write_video_card_json(
         "top_variables": top_variables,
         "n_trials": n_trials,
         "objective": objective,
+        "heldout_accuracy_pp": round_float_or_none(heldout_accuracy_pp),
+        "heldout_cost_delta_pct": round_float_or_none(heldout_cost_delta_pct),
         "caption": (
             f"On {slice_label}, in this run: "
             f"{label_clause}; {delta_clause}. "
-            "Variable ranking is observational, not a causal proof."
+            "Per-knob deltas are that knob's own effect; the heldout delta is "
+            "run-level. Variable ranking is observational, not a causal proof."
         ),
     }
     path.write_text(
@@ -672,7 +724,7 @@ def write_insights_md(
         "",
         f"On {slice_label}, in this run, {len(rows)} tuned variables had at least two observed values across {n_trials} trials.",
         "",
-        "Honesty rule: with fewer than 20 trials, importances are labelled `directional`, not statistically significant. A variable is called `significant` only when the bootstrap CI lower bound is greater than 0.",
+        "Honesty rule: with fewer than 20 trials, importances are labelled `directional`, not statistically significant. A variable is called `significant` only when its per-value spread beats a label-shuffled permutation (no-effect) null at the configured confidence; the bootstrap CI is a scale annotation, not the significance test.",
         "",
     ]
     if heldout_accuracy_pp is not None or heldout_cost_delta_pct is not None:
