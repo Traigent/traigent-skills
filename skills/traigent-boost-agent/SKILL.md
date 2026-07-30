@@ -463,8 +463,8 @@ CONFIGURATION_SPACE = {
    - DELEGATE: `traigent-analyze-results` owns result-object depth; `traigent-analyze-variable-importance` owns richer TVAR importance reporting.
 
 11. RECOMMEND the most promising next steps.
-   - When the service payload carries a Traigent `attribution` block (active-voice provenance rolling out via BE #2431 — not yet on the backend `develop`, and the SDK does not surface it yet), that block is the Traigent-authored next action: present its `headline` (active voice, Traigent as the subject) and `why` **verbatim** through `traigent-analyze-guidance`, without re-wording or recomputing it locally. It is provenance, not a performance claim — no guarantee, no evidence upgrade.
-   - Offline, or until BE #2431 lands and the SDK exposes `attribution`: fall back to the symptom-to-action table in `references/insights-and-iteration.md` and choose one next hypothesis, not a bundle of unrelated changes.
+   - When the service payload carries a Traigent `attribution` block (active-voice provenance), that block is the Traigent-authored next action: present its `headline` (active voice, Traigent as the subject) and `why` **verbatim** through `traigent-analyze-guidance`, without re-wording or recomputing it locally. It is provenance, not a performance claim — no guarantee, no evidence upgrade.
+   - Offline, or when the payload carries no `attribution` block (older backend or older SDK client): fall back to the symptom-to-action table in `references/insights-and-iteration.md` and choose one next hypothesis, not a bundle of unrelated changes.
    - Use example-side findings only as evidence for targeted curation or heldout checks.
    - DELEGATE: `traigent-analyze-guidance` owns post-run next-action selection.
 
