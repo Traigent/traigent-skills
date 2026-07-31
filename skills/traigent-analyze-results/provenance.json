@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "fa7179e14caa7e5d",
+  "doc_hash": "bddd73a79633f84d",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -145,6 +145,15 @@
       "doc_before_hash": "a270c83e4d3fd46e",
       "doc_after_hash": "fa7179e14caa7e5d",
       "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "experiment-name-is-agent-identity-2026-07-31",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-31T00:00:00Z",
+      "note": "experiment_name is an agent identity key, not a per-run label: the backend derives the agent from it and optimization history is grouped by (agent, dataset), so the prior guidance to encode variant/weights/permutation-count/date into it forked a new agent per run and shattered cross-run history into one-run fragments",
       "source_type": "human"
     }
   ]

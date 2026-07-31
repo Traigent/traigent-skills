@@ -289,13 +289,15 @@ print(results.objectives)       # ["accuracy"]
 print(results.timestamp)        # datetime when optimization completed
 ```
 
-> **Identifying a run in the portal.** Runs are labeled by the `experiment_name` set on the
-> decorator (`@traigent.optimize(experiment_name=...)`) or, if omitted, by the access-time
-> `TRAIGENT_EXPERIMENT_NAME` env var, then the deterministic self-describing default
-> `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"`, then bare `func.__name__` only when no
-> objectives or knobs were registered. The current SDK has no `tags`/`metadata` argument.
-> To make runs easy to find later, give each one a descriptive `experiment_name` before you run it.
-> See `traigent-setup-decorator` -> "Naming and Labeling Runs".
+> **Identifying a run in the portal.** `experiment_name` (set on the decorator, or the
+> access-time `TRAIGENT_EXPERIMENT_NAME` env var, then the deterministic self-describing
+> default `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"`, then bare `func.__name__`) names
+> the **agent**, not the individual run — the portal groups optimization history by
+> (agent, evaluation dataset). Keep it **stable across runs**; giving each run its own name
+> splits that history into one-run fragments. Find a specific run by its `experiment_id` or
+> `results.cloud_url`, or by timestamp within the agent's history — not by naming each run.
+> The current SDK has no `tags`/`metadata` argument.
+> See `traigent-setup-decorator` -> "Naming: `experiment_name` identifies the agent, not the run".
 
 `best_score` is `None` when no trial produced a valid score (e.g., all trials failed). Always check before comparing:
 

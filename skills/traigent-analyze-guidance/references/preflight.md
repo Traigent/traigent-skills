@@ -55,15 +55,24 @@ run.
 
 ## Run naming
 
-Set an explicit decorator `experiment_name` when you need a stable portal label.
+Set an explicit decorator `experiment_name` to pin a **stable agent identity**.
 Name precedence is: explicit decorator argument; `TRAIGENT_EXPERIMENT_NAME`
 checked at access time; deterministic self-describing default built at decoration
 time as `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"` with at most 4 knobs
 shown and a 120-character cap; bare `func.__name__` only when no objectives or
-knobs were registered. Make explicit names self-descriptive: **who · weights ·
-problem-space · permutation count · date** (e.g.
-`Amir_ACL_80_15_05_txt2sql_216perms_20260620`). Recording the config-space size
-(permutations) in the name makes runs comparable at a glance.
+knobs were registered.
+
+`experiment_name` identifies the **agent**, not the run: the portal groups
+optimization history by (agent, evaluation dataset). Use a short stable slug
+naming the agent — e.g. `amir_txt2sql` — and reuse it for every run of that
+agent.
+
+**Do not** encode weights, permutation count, or a date into the name (e.g.
+`Amir_ACL_80_15_05_txt2sql_216perms_20260620`). Each distinct value forks a new
+agent, so a per-run name shatters the optimization history into one-run
+fragments and makes runs *less* comparable, not more. The config-space size,
+weights, and timestamp are already recorded on each run and are visible in the
+history view.
 
 ## Models and gateway
 
@@ -86,4 +95,5 @@ run.
 4. `ExecutionOptions(offline=False)` (DEFAULT = online/cloud; `offline=True` local-only if chosen) + `algorithm` arg; cost cap set.
 5. Mock dry-run (free) -> confirm trials run + metrics non-zero -> real run.
 6. After the real run, confirm the experiment shows its trials; if not, retry.
-7. Set an explicit `experiment_name` with its permutation count + weights + date.
+7. Set an explicit `experiment_name` — a stable agent slug, reused across runs. No
+   permutation count, weights, or date in the name (that forks the agent).
