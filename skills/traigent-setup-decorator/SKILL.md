@@ -1,6 +1,6 @@
 ---
 name: traigent-setup-decorator
-description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming/labeling a run with experiment_name (there is no tags/metadata argument), using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s)."
+description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming an optimization with experiment_name (an agent identity key, not a per-run label; there is no tags/metadata argument), using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s)."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -21,7 +21,8 @@ Use this skill when you need to go beyond the basic `@traigent.optimize()` decor
 - Injection modes (how optimized configs reach your function)
 - Execution behavior (`algorithm` and `offline` — where and how optimization runs)
 - Multi-objective optimization with weighted objectives
-- Naming/labeling a run with `experiment_name` (there is no `tags`/`metadata` argument)
+- Naming an optimization with `experiment_name` — an **agent identity key**, not a per-run
+  label (there is no `tags`/`metadata` argument)
 - Portal-synced or zero-egress local execution
 
 ## Optimization Economics — Read This Before Sizing a Run
@@ -128,17 +129,20 @@ def my_func(query: str) -> str:
     return prompt_model(query, model=cfg["model"])
 ```
 
-## Naming and Labeling Runs
+## Naming: `experiment_name` identifies the agent, not the run
 
-Use `experiment_name` to label a run so you can identify it in the Traigent portal and in local
-storage. It is the **only** labeling mechanism on the decorator — the current SDK has **no
-`tags` or `metadata` argument** on `@traigent.optimize()` or on the runtime `.optimize()` /
-`.optimize_sync()` methods. Do not try to attach tags; encode whatever you need (agent name,
-variant, dataset version) into a descriptive `experiment_name` instead.
+**`experiment_name` is an identity key, not a per-run label.** The backend derives the
+agent from it, and your optimization history is grouped by (agent, evaluation dataset).
+Keep it **stable across every run of the same agent**.
+
+> **Do not encode a variant, date, hypothesis, or dataset version into
+> `experiment_name`.** Each distinct value creates a *separate agent* in the portal, so
+> a per-run name splits one agent's optimization history into a pile of one-run
+> fragments — losing exactly the cross-run comparison the portal exists to give you.
 
 ```python
 @traigent.optimize(
-    experiment_name="txt2sql v3 (claude, ACL>=0.8)",  # shown in the portal; the only label knob
+    experiment_name="txt2sql_agent",   # stable identity — same string every run
     objectives=["accuracy"],
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
@@ -147,15 +151,38 @@ def my_func(query: str) -> str:
     return prompt_model(query, model=cfg["model"])
 ```
 
-- `experiment_name` accepts spaces and punctuation (it is not a Python identifier).
-- Experiment-name precedence, highest to lowest: explicit `experiment_name` decorator
-  argument; `TRAIGENT_EXPERIMENT_NAME` environment variable checked at access time,
-  not decoration time; self-describing default built at decoration time as
+| Intent | Do |
+|---|---|
+| Name the agent being optimized | `experiment_name="txt2sql_agent"` — stable forever |
+| Distinguish two genuinely different agents | Two different `experiment_name` values |
+| Record what one run was testing | Not a decorator argument — see below |
+| Attach tags/metadata to a run | Not supported; there is no `tags`/`metadata` argument |
+
+**Anti-pattern** — every one of these silently forks the agent:
+
+```python
+experiment_name="txt2sql v3 (claude, ACL>=0.8)"   # variant + config in the name
+experiment_name=f"txt2sql-{datetime.now():%Y%m%d}"  # date in the name
+experiment_name="check best router model"          # hypothesis in the name
+```
+
+To tell runs of one agent apart, use the portal: runs are already distinguished by
+timestamp, configuration space, objectives, and results. Do not reach for the name.
+
+- `experiment_name` accepts spaces and punctuation (it is not a Python identifier), but
+  prefer a short stable slug.
+- Precedence, highest to lowest: explicit `experiment_name` decorator argument;
+  `TRAIGENT_EXPERIMENT_NAME` environment variable checked at access time, not decoration
+  time; self-describing default built at decoration time as
   `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"` with at most 4 knobs shown, a
   120-character cap, and deterministic ordering; bare `func.__name__` only when no
   objectives or knobs were registered.
-- The label is set on the **decorator**, not on the run call — there is no `experiment_name`
-  (or `tags`) parameter on `.optimize()` / `.optimize_sync()`.
+- Because the default is derived from the function name, objectives, and knobs, **adding
+  or removing a knob or objective changes the default identity**. If you intend a series
+  of runs to share one history while you vary the search space, set `experiment_name`
+  explicitly.
+- The name is set on the **decorator**, not on the run call — there is no
+  `experiment_name` (or `tags`) parameter on `.optimize()` / `.optimize_sync()`.
 
 ## Evaluation Setup
 

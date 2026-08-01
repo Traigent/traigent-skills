@@ -5,7 +5,7 @@
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
     "references/optimization-principles.md": "2c9b62d815e7fbc9",
-    "references/preflight.md": "7c0f72b75aac157f",
+    "references/preflight.md": "56489d08e02da5ec",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -204,6 +204,15 @@
       "doc_before_hash": "e3bc28c725cd680e",
       "doc_after_hash": "beee7675380e0c9d",
       "note": "Mode B Presentation Rules: add the conditional active-voice presentation of the Traigent `attribution` block (show headline + why verbatim as provenance, not a performance claim; no evidence upgrade) for when the service payload carries it. Backend support landed via Traigent/TraigentBackend#2439 and SDK support via Traigent/Traigent#2019 + #2042 (all merged 2026-07-27); the block stays optional and version-dependent, so presentation is conditional on the payload carrying it (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "experiment-name-is-agent-identity-2026-07-31",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-31T00:00:00Z",
+      "note": "experiment_name is an agent identity key, not a per-run label: the backend derives the agent from it and optimization history is grouped by (agent, dataset), so the prior guidance to encode variant/weights/permutation-count/date into it forked a new agent per run and shattered cross-run history into one-run fragments",
       "source_type": "human"
     }
   ]
