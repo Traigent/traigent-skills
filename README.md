@@ -187,4 +187,12 @@ Optimizer-proposed edits are accepted only through reviewed PRs that pass a stri
 
 ## License
 
-Apache-2.0 — see [LICENSE](LICENSE). Same as the Traigent SDK.
+These skills are licensed under Apache-2.0 — see [LICENSE](LICENSE). They are documentation for the
+Traigent SDK, not a copy of it, and they carry their own terms: installing a skill into your project
+puts Apache-2.0 files there and nothing more.
+
+The SDK the skills describe is licensed separately. `traigent` on PyPI is offered under the
+[GNU Affero General Public License v3.0 only](https://github.com/Traigent/Traigent/blob/main/LICENSE)
+(`AGPL-3.0-only`) **or** a [Traigent commercial license](https://github.com/Traigent/Traigent/blob/main/COMMERCIAL-LICENSE.md)
+under a separate written agreement — SPDX `AGPL-3.0-only OR LicenseRef-Traigent-Commercial`.
+Installing the SDK does not itself grant commercial terms; contact `legal@traigent.ai`.
