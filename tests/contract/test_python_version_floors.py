@@ -414,3 +414,78 @@ def test_real_sync_map_list_buckets_output(repo_root: Path, sync_map: dict) -> N
         key=Version,
     )
     assert buckets == expected
+
+
+# --- terra review: a floor must not be able to suppress a whole skill --------
+
+
+class _Cfg:
+    def __init__(self, version: str) -> None:
+        self._version = version
+
+    def getoption(self, name: str):  # noqa: ANN201 - pytest.Config duck type
+        return self._version if name == "--sdk-version" else None
+
+
+def _floors(key: str, floor: str) -> dict:
+    return {"skills": {"demo": {"python_version_floors": {key: floor}}}}
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "SKILL.md",  # most python facts live here -- would suppress the skill
+        "references/a/b.md",  # nested, escapes the flat references contract
+        "references/notes.txt",  # not markdown
+        "provenance.json",
+        "*",
+    ],
+)
+def test_only_flat_reference_markdown_may_carry_a_floor(repo_root: Path, key: str) -> None:
+    """A floor narrows ONE reference file, or it is refused.
+
+    SKILL.md is the dangerous one: most of a skill's python facts live there,
+    so accepting it would be a whole-skill wildcard spelled differently --
+    exactly what this mechanism must not provide.
+    """
+    path = repo_root / "skills" / "demo" / key if key else repo_root / "skills" / "demo"
+    with pytest.raises(AssertionError, match="not allowed"):
+        _python_version_floor_ok("demo", path, _floors(key, "0.99.0"), _Cfg("0.23.0"), repo_root)
+
+
+def test_a_malformed_floor_is_refused_not_silently_ignored(repo_root: Path) -> None:
+    """A declaration that cannot be enforced is a defect, not a default.
+
+    Returning "check everywhere" was safe but silent: the entry looked
+    effective and did nothing, and prose like "Requires traigent>=next" would
+    satisfy the prose lint.
+    """
+    path = repo_root / "skills" / "demo" / "references" / "x.md"
+    with pytest.raises(AssertionError, match="not a valid PEP 440 version"):
+        _python_version_floor_ok(
+            "demo", path, _floors("references/x.md", "next"), _Cfg("0.23.0"), repo_root
+        )
+
+
+def test_a_valid_reference_floor_still_works(repo_root: Path) -> None:
+    """The restriction must not break the case the feature exists for."""
+    path = repo_root / "skills" / "demo" / "references" / "x.md"
+    sync_map = _floors("references/x.md", "0.99.0")
+
+    assert not _python_version_floor_ok("demo", path, sync_map, _Cfg("0.23.0"), repo_root)
+    assert _python_version_floor_ok("demo", path, sync_map, _Cfg("0.99.0"), repo_root)
+    assert _python_version_floor_ok("demo", path, sync_map, _Cfg("develop"), repo_root)
+
+
+def test_a_key_that_matches_nothing_is_harmless(repo_root: Path) -> None:
+    """An unmatched key admits the fact -- it cannot silence anything.
+
+    An empty or nonsense key never equals a computed skill-relative path, so
+    the lookup misses and the fact is CHECKED. That is the safe direction, and
+    it is why the refusal above only fires for keys that would actually match.
+    """
+    path = repo_root / "skills" / "demo" / "references" / "x.md"
+    for key in ("", "   ", "nope"):
+        assert _python_version_floor_ok(
+            "demo", path, _floors(key, "0.99.0"), _Cfg("0.23.0"), repo_root
+        ), f"key {key!r} should admit (check), not exclude"

@@ -220,6 +220,21 @@ def _env_fact_in_bucket(
         return True
 
 
+def _is_floorable_key(key: str) -> bool:
+    """Only ``references/<name>.md`` inside the skill directory may be floored.
+
+    Rejects ``SKILL.md`` (too broad -- see ``_python_version_floor_ok``), any
+    nested or escaping path, and any non-markdown file.
+    """
+    parts = key.split("/")
+    return (
+        len(parts) == 2
+        and parts[0] == "references"
+        and parts[1].endswith(".md")
+        and parts[1] not in ("", ".", "..")
+    )
+
+
 def _python_version_floor_ok(
     skill: str,
     path: Path,
@@ -259,13 +274,36 @@ def _python_version_floor_ok(
     floor = floors.get(key)
     if not floor:
         return True
+    # A floor may only narrow a REFERENCE file, never SKILL.md.
+    #
+    # Most of a skill's Python facts live in SKILL.md itself, so accepting it
+    # as a key would let one line suppress an entire skill's contract checking
+    # in every lower bucket -- the whole-skill wildcard this mechanism is
+    # supposed not to have, spelled differently. Reference files are where an
+    # unreleased API actually gets documented, which is the case this exists
+    # to serve.
+    if not _is_floorable_key(key):
+        raise AssertionError(
+            f"{skill}: python_version_floors key {key!r} is not allowed. "
+            "Only 'references/*.md' may carry a floor; SKILL.md and other "
+            "paths would suppress checking too broadly."
+        )
     selected = _sdk_version_label(config)
     if selected == "develop":
         return True
     try:
-        return Version(str(floor)) <= Version(selected)
-    except InvalidVersion:
-        return True
+        floor_version = Version(str(floor))
+    except InvalidVersion as exc:
+        # A typo'd floor previously fell through to "check everywhere", which
+        # is safe but silent: the declaration looked effective and did nothing,
+        # and prose like "Requires traigent>=next" satisfied the lint. Fail
+        # loudly instead -- an unenforceable declaration is a defect, not a
+        # default.
+        raise AssertionError(
+            f"{skill}: python_version_floors[{key!r}] = {floor!r} is not a "
+            "valid PEP 440 version"
+        ) from exc
+    return floor_version <= Version(selected)
 
 
 def _skill_relative_path(skill: str, path: Path, repo_root: Path) -> str:
