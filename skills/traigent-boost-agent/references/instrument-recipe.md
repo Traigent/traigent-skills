@@ -62,8 +62,19 @@ CONSISTENCY = self_consistency(
     ),
 )
 
+# generate_config returns ROWS, not a ready configuration_space dict. Build the
+# space from the rows you actually decide to tune -- each carries range_type and
+# range_kwargs (e.g. Choices -> {"values": [...]}, IntRange -> {"low":, "high":}).
+# Take Choices rows literally; convert numeric ranges with Range/IntRange from
+# traigent, and read apply_guidance first for knobs that need runtime wiring.
+SUGGESTED_CHOICES = {
+    rec.name: rec.range_kwargs["values"]
+    for rec in SUGGESTED.recommendations
+    if rec.range_type == "Choices"
+}
+
 CONFIGURATION_SPACE = {
-    **RAG_RECOMMENDATIONS["configuration_space"],
+    **SUGGESTED_CHOICES,
     "model": ["gpt-4o-mini", "gpt-4o"],
     "temperature": [0.0, 0.2, 0.7],
     "candidate_count": [1, 2, 3],
