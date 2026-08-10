@@ -231,9 +231,11 @@ outputs, and actual outputs, then takes one server-suggested action.
 The server selects the examples and recommends the next action. This skill
 does not decide which examples are hard.
 
-- Fetch flagged ids and coarse categories from server surfaces such as
-  `traigent next-steps RUN_ID --json` and example-scoring dataset-quality
-  output (see "Score examples after a run" above).
+- Fetch flagged ids and coarse categories from the example-scoring
+  dataset-quality output (see "Score examples after a run" above). Do not
+  reach for `traigent next-steps`: it was retired from the SDK on 2026-08-03
+  and is absent from 0.26.0, so any instruction to run it is dead on a current
+  install.
 - Do not rank, expand, or replace the flagged id list locally.
 - Do not send raw example text, expected answers, actual answers, traces, or
   customer content to Traigent unless the user explicitly approves that
@@ -246,9 +248,8 @@ does not decide which examples are hard.
 
 ### Protocol
 
-1. Fetch the server payload. Prefer `traigent next-steps RUN_ID --json`; if
-   the flow is already in example-scoring, use the server's dataset-quality
-   or curation output (see "Score examples after a run" above). Record the
+1. Fetch the server payload from the example-scoring dataset-quality or
+   curation output (see "Score examples after a run" above). Record the
    returned ids, coarse categories, and recommended actions exactly.
 2. Build a local example-content map: use `traigent report-example-map` for a
    local-only file map from dataset rows to stable example ids, or the SDK
