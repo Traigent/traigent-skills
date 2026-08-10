@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "bddd73a79633f84d",
+  "doc_hash": "1bfe10f4a0160f70",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -154,6 +154,17 @@
       "run_id": null,
       "timestamp": "2026-07-31T00:00:00Z",
       "note": "experiment_name is an agent identity key, not a per-run label: the backend derives the agent from it and optimization history is grouped by (agent, dataset), so the prior guidance to encode variant/weights/permutation-count/date into it forked a new agent per run and shattered cross-run history into one-run fragments",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "drop-retired-next-steps-pointer-2026-08-11",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-11T00:00:00Z",
+      "doc_before_hash": "bddd73a79633f84d",
+      "doc_after_hash": "1bfe10f4a0160f70",
+      "note": "the decision-routing note pointed readers at `traigent next-steps RUN_ID --json`, which the SDK retired on 2026-08-03 (absent from 0.26.0). Route decisions to traigent-analyze-guidance's decision-brief protocol (`analytics_get_run_decision_brief`) instead; this skill's own tool catalog already documented the brief.",
       "source_type": "human"
     }
   ]
