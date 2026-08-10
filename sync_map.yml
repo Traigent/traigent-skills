@@ -152,12 +152,13 @@ skills:
   # (curate-dataset, plus the reflect-on-hard-examples skill), folded in
   # during the 2026-07 taxonomy consolidation.
   traigent-dataset-curate:
-    min_sdk_version: "0.16.0"
+    min_sdk_version: "0.27.0"
     backend_prefixes:
       - /api/v1/datasets
       - /api/v1/analytics/example-scoring
       - /api/v1/analytics/experiments
       - /api/v1/analytics/runs
+      - /api/v1/guidance/cold-start-plan
     modules:
       - traigent.generation
       - traigent.analytics
