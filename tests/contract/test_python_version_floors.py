@@ -231,7 +231,17 @@ def test_python_floored_files_state_required_sdk_in_prose(
 
     violations: list[str] = []
     for skill, entry in (sync_map.get("skills") or {}).items():
-        floors = entry.get("python_version_floors") or {}
+        # Key presence + type, not `or {}` -- the same shape fixed twice
+        # already in this PR. Safe here only because the eager declaration
+        # check runs first, and "safe because something else catches it" is
+        # how the other two survived.
+        entry = entry or {}
+        if "python_version_floors" not in entry:
+            continue
+        floors = entry["python_version_floors"]
+        assert isinstance(floors, dict), (
+            f"{skill}: python_version_floors must be a mapping, got {type(floors).__name__}"
+        )
         for rel_path, floor in floors.items():
             doc_path = repo_root / "skills" / skill / rel_path
             violations.extend(
