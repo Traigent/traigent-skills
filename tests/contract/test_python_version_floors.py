@@ -489,3 +489,17 @@ def test_a_key_that_matches_nothing_is_harmless(repo_root: Path) -> None:
         assert _python_version_floor_ok(
             "demo", path, _floors(key, "0.99.0"), _Cfg("0.23.0"), repo_root
         ), f"key {key!r} should admit (check), not exclude"
+
+
+@pytest.mark.parametrize("selected", ["0.23.0", "develop"])
+def test_a_malformed_floor_is_refused_in_every_bucket(repo_root: Path, selected: str) -> None:
+    """Including develop -- the bucket that actually gates pull requests.
+
+    Validating after the develop short-circuit meant a typo'd floor passed
+    develop-contracts silently and only surfaced in a released bucket later.
+    """
+    path = repo_root / "skills" / "demo" / "references" / "x.md"
+    with pytest.raises(AssertionError, match="not a valid PEP 440 version"):
+        _python_version_floor_ok(
+            "demo", path, _floors("references/x.md", "next"), _Cfg(selected), repo_root
+        )

@@ -288,9 +288,10 @@ def _python_version_floor_ok(
             "Only 'references/*.md' may carry a floor; SKILL.md and other "
             "paths would suppress checking too broadly."
         )
-    selected = _sdk_version_label(config)
-    if selected == "develop":
-        return True
+    # Validate the floor BEFORE the develop short-circuit. Returning early on
+    # develop would silently honour an unparseable floor in exactly the job
+    # that gates pull requests (develop-contracts), so a typo'd version would
+    # ship and only surface later in a released bucket.
     try:
         floor_version = Version(str(floor))
     except InvalidVersion as exc:
@@ -303,6 +304,9 @@ def _python_version_floor_ok(
             f"{skill}: python_version_floors[{key!r}] = {floor!r} is not a "
             "valid PEP 440 version"
         ) from exc
+    selected = _sdk_version_label(config)
+    if selected == "develop":
+        return True
     return floor_version <= Version(selected)
 
 
