@@ -271,9 +271,15 @@ def _python_version_floor_ok(
     if not floors:
         return True
     key = _skill_relative_path(skill, path, repo_root)
-    floor = floors.get(key)
-    if not floor:
+    # `key not in floors`, NOT `if not floor`. A present-but-falsy value ("",
+    # None, False, 0, []) is a malformed DECLARATION, and truthiness would send
+    # it down the "no floor here" path, skipping validation entirely. It cannot
+    # make a failing fact pass -- it admits the fact everywhere -- but it makes
+    # the entry silently inert, which is the failure mode this file exists to
+    # refuse.
+    if key not in floors:
         return True
+    floor = floors[key]
     # A floor may only narrow a REFERENCE file, never SKILL.md.
     #
     # Most of a skill's Python facts live in SKILL.md itself, so accepting it

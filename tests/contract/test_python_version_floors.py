@@ -34,11 +34,16 @@ import sys
 from pathlib import Path
 
 import pytest
+from packaging.version import InvalidVersion, Version
 import yaml
 from packaging.version import Version
 
 from .facts import ContractFact
-from .conftest import _python_version_floor_ok, _skill_relative_path
+from .conftest import (
+    _is_floorable_key,
+    _python_version_floor_ok,
+    _skill_relative_path,
+)
 from .verifier import verify_python_fact
 
 
@@ -502,4 +507,98 @@ def test_a_malformed_floor_is_refused_in_every_bucket(repo_root: Path, selected:
     with pytest.raises(AssertionError, match="not a valid PEP 440 version"):
         _python_version_floor_ok(
             "demo", path, _floors("references/x.md", "next"), _Cfg(selected), repo_root
+        )
+
+
+# --- sol escalation: validate every DECLARATION once, not lazily per fact ----
+
+
+def test_every_declared_python_floor_is_well_formed(repo_root: Path) -> None:
+    """Validate all `python_version_floors` in the real sync_map, eagerly.
+
+    `_python_version_floor_ok` only validates a key when a fact happens to
+    resolve to it. An entry naming a file that no longer exists, or carrying a
+    value nobody parses, therefore sits inert until something coincidentally
+    lands on it -- which for a mechanism whose whole job is to narrow checking
+    is the wrong direction to fail.
+
+    This walks every declaration once so a bad entry fails immediately and by
+    itself, regardless of which facts exist.
+    """
+    sync_map = yaml.safe_load((repo_root / "sync_map.yml").read_text(encoding="utf-8"))
+    problems: list[str] = []
+
+    for skill, entry in (sync_map.get("skills") or {}).items():
+        floors = (entry or {}).get("python_version_floors") or {}
+        if not isinstance(floors, dict):
+            problems.append(f"{skill}: python_version_floors must be a mapping")
+            continue
+        for key, floor in floors.items():
+            if not _is_floorable_key(str(key)):
+                problems.append(
+                    f"{skill}: floor key {key!r} is not a flat references/<name>.md"
+                )
+                continue
+            if not (repo_root / "skills" / skill / key).is_file():
+                problems.append(f"{skill}: floor key {key!r} names a file that does not exist")
+            if not isinstance(floor, str):
+                problems.append(
+                    f"{skill}: floor for {key!r} must be a version STRING, got {type(floor).__name__}"
+                )
+                continue
+            try:
+                Version(floor)
+            except InvalidVersion:
+                problems.append(f"{skill}: floor {floor!r} for {key!r} is not valid PEP 440")
+
+    assert not problems, "\n".join(problems)
+
+
+def test_the_declaration_check_has_teeth(repo_root: Path, tmp_path: Path) -> None:
+    """The eager check must actually reject each bad declaration shape."""
+    bad_cases = [
+        ({"SKILL.md": "0.27.0"}, "not a flat references"),
+        ({"references/does-not-exist.md": "0.27.0"}, "does not exist"),
+        ({"references/cold-start.md": 0}, "must be a version STRING"),
+        ({"references/cold-start.md": "next"}, "not valid PEP 440"),
+    ]
+    for floors, expected in bad_cases:
+        problems: list[str] = []
+        for key, floor in floors.items():
+            if not _is_floorable_key(str(key)):
+                problems.append(f"demo: floor key {key!r} is not a flat references/<name>.md")
+                continue
+            if not (repo_root / "skills" / "demo" / key).is_file():
+                problems.append(f"demo: floor key {key!r} names a file that does not exist")
+            if not isinstance(floor, str):
+                problems.append(f"demo: floor for {key!r} must be a version STRING")
+                continue
+            try:
+                Version(floor)
+            except InvalidVersion:
+                problems.append(f"demo: floor {floor!r} for {key!r} is not valid PEP 440")
+        assert any(expected in p for p in problems), f"{floors} should have been rejected"
+
+
+@pytest.mark.parametrize("falsy", ["", None, False, [], {}])
+@pytest.mark.parametrize("selected", ["0.23.0", "develop"])
+def test_a_present_but_falsy_floor_is_refused(
+    repo_root: Path, falsy: object, selected: str
+) -> None:
+    """A declared-but-empty floor must not slip past validation.
+
+    The lookup used `if not floor: return True`, so a present-but-falsy value
+    took the "no floor declared here" path and skipped validation entirely.
+    It could not make a failing fact pass -- it admits the fact everywhere --
+    but the entry was silently inert, which is precisely what this mechanism
+    is not allowed to be. The lookup now tests `key not in floors`.
+    """
+    path = repo_root / "skills" / "demo" / "references" / "x.md"
+    with pytest.raises(AssertionError):
+        _python_version_floor_ok(
+            "demo",
+            path,
+            {"skills": {"demo": {"python_version_floors": {"references/x.md": falsy}}}},
+            _Cfg(selected),
+            repo_root,
         )
