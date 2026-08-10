@@ -265,9 +265,21 @@ def _python_version_floor_ok(
     fact floored at a version where the taught API still does not exist keeps
     failing in every bucket at or above that floor.
     """
-    floors = ((sync_map.get("skills") or {}).get(skill) or {}).get(
-        "python_version_floors"
-    ) or {}
+    entry = (sync_map.get("skills") or {}).get(skill) or {}
+    # Key presence, then type -- NOT `... or {}`. The truthiness normalisation
+    # this replaces turned a present-but-falsy declaration
+    # (`python_version_floors: []`, `""`, `false`, `null`) into an empty dict,
+    # so a malformed DECLARATION read as "none declared here". Same defect as
+    # the per-value one below, one level up: the container was normalised
+    # before it was validated.
+    if "python_version_floors" not in entry:
+        return True
+    floors = entry["python_version_floors"]
+    if not isinstance(floors, dict):
+        raise AssertionError(
+            f"{skill}: python_version_floors must be a mapping of "
+            f"references/<name>.md -> version, got {type(floors).__name__}"
+        )
     if not floors:
         return True
     key = _skill_relative_path(skill, path, repo_root)

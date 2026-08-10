@@ -529,9 +529,15 @@ def test_every_declared_python_floor_is_well_formed(repo_root: Path) -> None:
     problems: list[str] = []
 
     for skill, entry in (sync_map.get("skills") or {}).items():
-        floors = (entry or {}).get("python_version_floors") or {}
+        entry = entry or {}
+        if "python_version_floors" not in entry:
+            continue
+        floors = entry["python_version_floors"]
         if not isinstance(floors, dict):
-            problems.append(f"{skill}: python_version_floors must be a mapping")
+            problems.append(
+                f"{skill}: python_version_floors must be a mapping, "
+                f"got {type(floors).__name__}"
+            )
             continue
         for key, floor in floors.items():
             if not _is_floorable_key(str(key)):
@@ -602,3 +608,31 @@ def test_a_present_but_falsy_floor_is_refused(
             _Cfg(selected),
             repo_root,
         )
+
+
+@pytest.mark.parametrize("bad_container", [[], "", False, None, 0, "nope", 3])
+def test_a_malformed_floors_CONTAINER_is_refused(repo_root: Path, bad_container: object) -> None:
+    """The same defect one level up: validate the container before normalising it.
+
+    `floors = ... or {}` turned a present-but-falsy declaration
+    (`python_version_floors: []`) into an empty dict, so a malformed
+    DECLARATION read as "none declared here" — the outer twin of the
+    per-value truthiness bug. Key presence first, then type.
+    """
+    path = repo_root / "skills" / "demo" / "references" / "x.md"
+    with pytest.raises(AssertionError, match="must be a mapping"):
+        _python_version_floor_ok(
+            "demo",
+            path,
+            {"skills": {"demo": {"python_version_floors": bad_container}}},
+            _Cfg("0.23.0"),
+            repo_root,
+        )
+
+
+def test_an_absent_floors_key_is_still_fine(repo_root: Path) -> None:
+    """Declaring nothing must stay free — only a malformed declaration is refused."""
+    path = repo_root / "skills" / "demo" / "references" / "x.md"
+    assert _python_version_floor_ok(
+        "demo", path, {"skills": {"demo": {}}}, _Cfg("0.23.0"), repo_root
+    )
