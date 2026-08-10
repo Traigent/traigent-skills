@@ -108,6 +108,52 @@ def test_skills_do_not_teach_release_gated_features(repo_root: Path) -> None:
     assert not violations, "\n".join(violations)
 
 
+def _scan_missing_python_floor_prose(
+    skill: str, rel_path: str, doc_path: Path, floor: object
+) -> list[str]:
+    """Enforce the ``python_version_floors`` prose rule for one (skill, file,
+    floor) triple: the floored file must literally state the version
+    requirement, mirroring the literal ``Requires `traigent>=X.Y.Z`` `` rule
+    already enforced for skill-level floors above.
+
+    A floor with no matching prose is exactly the failure mode this mechanism
+    must not permit: declaring a floor to silence a contract failure without
+    ever telling a reader why the fact is gated.
+    """
+    if not doc_path.is_file():
+        return [
+            f"{skill}: python_version_floors references missing file {rel_path!r}"
+        ]
+    text = doc_path.read_text(encoding="utf-8")
+    required = f"Requires `traigent>={floor}`"
+    if required in text:
+        return []
+    return [
+        f"{skill}/{rel_path}: floored at {floor!r} but missing literal "
+        f"{required!r} in prose"
+    ]
+
+
+def test_python_floor_prose_lint_has_teeth(tmp_path: Path) -> None:
+    """Self-test: the lint must flag a floor with no prose and pass one with it."""
+    missing = tmp_path / "missing.md"
+    missing.write_text("# Demo\n\nNo version note here.\n", encoding="utf-8")
+    assert _scan_missing_python_floor_prose("demo", "missing.md", missing, "0.27.0")
+
+    present = tmp_path / "present.md"
+    present.write_text(
+        "# Demo\n\nRequires `traigent>=0.27.0` for this API.\n", encoding="utf-8"
+    )
+    assert not _scan_missing_python_floor_prose(
+        "demo", "present.md", present, "0.27.0"
+    )
+
+    absent_file = tmp_path / "does-not-exist.md"
+    assert _scan_missing_python_floor_prose(
+        "demo", "does-not-exist.md", absent_file, "0.27.0"
+    )
+
+
 def _section(text: str, heading: str) -> str:
     lines = text.splitlines()
     try:

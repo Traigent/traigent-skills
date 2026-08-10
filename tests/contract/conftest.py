@@ -53,6 +53,9 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             for fact in facts
             if fact.kind in {"import", "symbol", "call_kwargs"}
             and _in_bucket(fact.skill, sync_map, metafunc.config)
+            and _python_version_floor_ok(
+                fact.skill, fact.path, sync_map, metafunc.config, repo_root
+            )
         ]
         metafunc.parametrize(
             "python_fact",
@@ -104,6 +107,9 @@ def pytest_generate_tests(metafunc: pytest.Metafunc) -> None:
             snippet
             for snippet in collect_runnable_snippets(repo_root)
             if _in_bucket(snippet.skill, sync_map, metafunc.config)
+            and _python_version_floor_ok(
+                snippet.skill, snippet.path, sync_map, metafunc.config, repo_root
+            )
         ]
         metafunc.parametrize(
             "runnable_snippet",
@@ -212,6 +218,62 @@ def _env_fact_in_bucket(
         return Version(str(floor)) <= Version(selected)
     except InvalidVersion:
         return True
+
+
+def _python_version_floor_ok(
+    skill: str,
+    path: Path,
+    sync_map: dict[str, Any],
+    config: pytest.Config,
+    repo_root: Path,
+) -> bool:
+    """Per-file version floors for Python facts and runnable snippets.
+
+    Mirrors ``env_version_floors`` (see ``_env_fact_in_bucket``): a skill may
+    document an unreleased Traigent API — an import, symbol, call kwarg, or a
+    runnable example — in one reference file (e.g.
+    ``references/cold-start.md``) that only exists at a newer SDK version than
+    the skill's own floor. Declaring that file under the skill's
+    ``python_version_floors`` in sync_map.yml validates every Python fact and
+    runnable snippet extracted from that file only in buckets at or above the
+    floor — and the file must state the version requirement in prose (see
+    ``test_python_floored_files_state_required_sdk_in_prose``).
+
+    Keyed by the file's path relative to the skill directory, not by symbol
+    name (a ``call_kwargs`` fact is a target+kwargs tuple, not one stable
+    string) and never by a whole-skill wildcard: raising ``min_sdk_version``
+    itself to an unreleased version is what this mechanism exists to avoid —
+    ``list_buckets.py`` turns every distinct ``min_sdk_version`` into a
+    ``pip install traigent==<version>`` bucket, and an unreleased version has
+    no wheel to install. This function only narrows which buckets a fact is
+    *collected* into; it never weakens ``verify_python_fact`` itself, so a
+    fact floored at a version where the taught API still does not exist keeps
+    failing in every bucket at or above that floor.
+    """
+    floors = ((sync_map.get("skills") or {}).get(skill) or {}).get(
+        "python_version_floors"
+    ) or {}
+    if not floors:
+        return True
+    key = _skill_relative_path(skill, path, repo_root)
+    floor = floors.get(key)
+    if not floor:
+        return True
+    selected = _sdk_version_label(config)
+    if selected == "develop":
+        return True
+    try:
+        return Version(str(floor)) <= Version(selected)
+    except InvalidVersion:
+        return True
+
+
+def _skill_relative_path(skill: str, path: Path, repo_root: Path) -> str:
+    skill_dir = repo_root / "skills" / skill
+    try:
+        return path.resolve().relative_to(skill_dir.resolve()).as_posix()
+    except ValueError:
+        return path.as_posix()
 
 
 def _escape_github_annotation(message: str) -> str:

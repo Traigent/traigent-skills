@@ -1,0 +1,416 @@
+"""``python_version_floors`` — per-file version floors for Python facts.
+
+Mirrors ``env_version_floors`` (see ``conftest._env_fact_in_bucket``), but for
+Python facts (imports, symbols, call kwargs) and runnable snippets rather than
+``TRAIGENT_*`` env vars. A skill cannot document an unreleased SDK API by
+raising its own ``min_sdk_version``: ``list_buckets.py`` turns every distinct
+``min_sdk_version`` into a ``pip install traigent==<version>`` bucket, and an
+unreleased version has no wheel to install
+(``No solution found ... no version of traigent==0.27.0``).
+``python_version_floors`` solves this the same way ``env_version_floors``
+solves it for env vars: gate the individual fact by a per-file floor instead
+of moving the whole skill's floor.
+
+These tests prove three things the design depends on:
+
+1. The floor actually excludes a fact from buckets below it, and includes it
+   at/above it (``_python_version_floor_ok``).
+2. Flooring a fact does NOT weaken verification — a fact floored at a version
+   where the taught API still does not exist keeps failing in every bucket at
+   or above the floor. This is the mechanism's whole point: it must not
+   become a way to silence an inconvenient contract failure by declaring a
+   floor.
+3. The prose requirement is enforced, not just documented: a floored file
+   that doesn't state its version requirement fails a dedicated lint.
+
+A fourth test (in this file) proves ``list_buckets.py`` never derives a
+bucket from ``python_version_floors`` — only from ``min_sdk_version``.
+"""
+
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+import pytest
+import yaml
+from packaging.version import Version
+
+from .facts import ContractFact
+from .conftest import _python_version_floor_ok, _skill_relative_path
+from .verifier import verify_python_fact
+
+
+class _FakeConfig:
+    """Minimal stand-in for pytest.Config — only ``getoption`` is used."""
+
+    def __init__(self, sdk_version: str | None) -> None:
+        self._sdk_version = sdk_version
+
+    def getoption(self, name: str) -> str | None:
+        assert name == "--sdk-version"
+        return self._sdk_version
+
+
+FLOORED_REL_PATH = "references/unreleased.md"
+
+
+def _floored_sync_map(floor: str = "0.27.0") -> dict:
+    return {
+        "skills": {
+            "demo": {
+                "python_version_floors": {FLOORED_REL_PATH: floor},
+            }
+        }
+    }
+
+
+# ---------------------------------------------------------------------------
+# 1. The floor gates fact selection: excluded below, included at/above.
+# ---------------------------------------------------------------------------
+
+
+def test_python_version_floor_excludes_fact_below_floor(repo_root: Path) -> None:
+    sync_map = _floored_sync_map("0.27.0")
+    path = repo_root / "skills" / "demo" / FLOORED_REL_PATH
+    config = _FakeConfig("0.23.0")  # below the floor
+    assert (
+        _python_version_floor_ok("demo", path, sync_map, config, repo_root) is False
+    )
+
+
+def test_python_version_floor_includes_fact_at_floor(repo_root: Path) -> None:
+    sync_map = _floored_sync_map("0.27.0")
+    path = repo_root / "skills" / "demo" / FLOORED_REL_PATH
+    config = _FakeConfig("0.27.0")  # exactly at the floor
+    assert _python_version_floor_ok("demo", path, sync_map, config, repo_root) is True
+
+
+def test_python_version_floor_includes_fact_above_floor(repo_root: Path) -> None:
+    sync_map = _floored_sync_map("0.27.0")
+    path = repo_root / "skills" / "demo" / FLOORED_REL_PATH
+    config = _FakeConfig("0.30.0")  # above the floor
+    assert _python_version_floor_ok("demo", path, sync_map, config, repo_root) is True
+
+
+def test_python_version_floor_develop_always_included(repo_root: Path) -> None:
+    sync_map = _floored_sync_map("0.99.0")
+    path = repo_root / "skills" / "demo" / FLOORED_REL_PATH
+    config = _FakeConfig("develop")
+    assert _python_version_floor_ok("demo", path, sync_map, config, repo_root) is True
+
+
+def test_python_version_floor_unfloored_file_always_included(repo_root: Path) -> None:
+    sync_map = _floored_sync_map("0.99.0")
+    other_path = repo_root / "skills" / "demo" / "references" / "other.md"
+    config = _FakeConfig("0.1.0")
+    assert (
+        _python_version_floor_ok("demo", other_path, sync_map, config, repo_root)
+        is True
+    )
+
+
+def test_python_version_floor_unfloored_skill_always_included(repo_root: Path) -> None:
+    sync_map = _floored_sync_map("0.99.0")
+    path = repo_root / "skills" / "other-skill" / FLOORED_REL_PATH
+    config = _FakeConfig("0.1.0")
+    assert (
+        _python_version_floor_ok("other-skill", path, sync_map, config, repo_root)
+        is True
+    )
+
+
+def test_python_version_floor_does_not_honor_a_whole_skill_wildcard(
+    repo_root: Path,
+) -> None:
+    """The mechanism is keyed by file path only — a "*" entry is inert, not a
+    skill-wide wildcard. Nothing in ``_python_version_floor_ok`` special-cases
+    it; this pins that down explicitly."""
+    sync_map = {
+        "skills": {"demo": {"python_version_floors": {"*": "0.99.0"}}}
+    }
+    path = repo_root / "skills" / "demo" / "references" / "anything.md"
+    config = _FakeConfig("0.1.0")
+    assert _python_version_floor_ok("demo", path, sync_map, config, repo_root) is True
+
+
+def test_skill_relative_path_shape(repo_root: Path) -> None:
+    path = repo_root / "skills" / "demo" / "references" / "unreleased.md"
+    assert _skill_relative_path("demo", path, repo_root) == FLOORED_REL_PATH
+
+    skill_md = repo_root / "skills" / "demo" / "SKILL.md"
+    assert _skill_relative_path("demo", skill_md, repo_root) == "SKILL.md"
+
+
+# ---------------------------------------------------------------------------
+# 2. Critical: a fact wrongly floored at a version where the API STILL does
+#    not exist must keep failing once the bucket reaches that floor. The
+#    floor mechanism only narrows which buckets collect a fact; it never
+#    weakens verify_python_fact.
+# ---------------------------------------------------------------------------
+
+
+def test_bogus_symbol_floored_anywhere_still_fails_at_its_own_floor(
+    repo_root: Path,
+) -> None:
+    sync_map = _floored_sync_map("0.99.0")
+    path = repo_root / "skills" / "demo" / FLOORED_REL_PATH
+    fact = ContractFact(
+        kind="symbol",
+        skill="demo",
+        path=path,
+        line=1,
+        module="traigent.utils.exceptions",
+        symbol="ThisSymbolDoesNotExistAtAnyReleasedVersion",
+    )
+    config = _FakeConfig("0.99.0")  # exactly the declared floor
+
+    # The floor does not exclude this fact from the 0.99.0 bucket...
+    assert _python_version_floor_ok(fact.skill, fact.path, sync_map, config, repo_root)
+
+    # ...and verification (unchanged by this feature) still catches the dead
+    # teaching. A wrongly-declared floor cannot silence a real failure.
+    with pytest.raises(AssertionError, match="symbol missing"):
+        verify_python_fact(fact, repo_root=repo_root, sdk_version="0.99.0")
+
+
+def test_bogus_import_floored_anywhere_still_fails_at_its_own_floor(
+    repo_root: Path,
+) -> None:
+    sync_map = _floored_sync_map("0.99.0")
+    path = repo_root / "skills" / "demo" / FLOORED_REL_PATH
+    fact = ContractFact(
+        kind="import",
+        skill="demo",
+        path=path,
+        line=1,
+        module="traigent.this_module_does_not_exist_anywhere",
+    )
+    config = _FakeConfig("0.99.0")
+
+    assert _python_version_floor_ok(fact.skill, fact.path, sync_map, config, repo_root)
+
+    with pytest.raises(AssertionError, match="module not found"):
+        verify_python_fact(fact, repo_root=repo_root, sdk_version="0.99.0")
+
+
+def test_real_symbol_floored_and_checked_passes(repo_root: Path) -> None:
+    """Positive control: a genuinely-real symbol floored at a version that has
+    already shipped it is checked (not skipped) and passes."""
+    sync_map = _floored_sync_map("0.15.0")
+    path = repo_root / "skills" / "demo" / FLOORED_REL_PATH
+    fact = ContractFact(
+        kind="symbol",
+        skill="demo",
+        path=path,
+        line=1,
+        module="traigent.utils.exceptions",
+        symbol="ConfigurationError",
+    )
+    config = _FakeConfig("0.23.0")
+
+    assert _python_version_floor_ok(fact.skill, fact.path, sync_map, config, repo_root)
+    verify_python_fact(fact, repo_root=repo_root, sdk_version="0.23.0")  # no raise
+
+
+# ---------------------------------------------------------------------------
+# 3. Prose requirement: a floored file must state the version requirement.
+# ---------------------------------------------------------------------------
+
+
+def test_python_floored_files_state_required_sdk_in_prose(
+    repo_root: Path, sync_map: dict
+) -> None:
+    from .test_text_requirements import _scan_missing_python_floor_prose
+
+    violations: list[str] = []
+    for skill, entry in (sync_map.get("skills") or {}).items():
+        floors = entry.get("python_version_floors") or {}
+        for rel_path, floor in floors.items():
+            doc_path = repo_root / "skills" / skill / rel_path
+            violations.extend(
+                _scan_missing_python_floor_prose(skill, rel_path, doc_path, floor)
+            )
+    assert not violations, "\n".join(violations)
+
+
+# ---------------------------------------------------------------------------
+# 4. list_buckets.py must keep deriving buckets only from min_sdk_version —
+#    a python_version_floors entry must never grow the installed bucket set.
+# ---------------------------------------------------------------------------
+
+
+def test_list_buckets_ignores_python_version_floors(
+    tmp_path: Path, repo_root: Path
+) -> None:
+    # Copy the real script verbatim: this also proves the script itself was
+    # not touched to read python_version_floors.
+    script_src = repo_root / "tools" / "contract" / "list_buckets.py"
+    tool_dir = tmp_path / "tools" / "contract"
+    tool_dir.mkdir(parents=True)
+    (tool_dir / "list_buckets.py").write_text(
+        script_src.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+
+    sync_map = {
+        "default_min_sdk_version": "0.15.0",
+        "current_released_sdk_version": "0.23.0",
+        "skills": {
+            "demo": {
+                "min_sdk_version": "0.16.0",
+                "python_version_floors": {
+                    # Wildly different from any real floor — if list_buckets.py
+                    # ever started reading this key, it would show up below.
+                    "references/unreleased.md": "0.99.0",
+                },
+            },
+            "other-demo": {},
+        },
+    }
+    (tmp_path / "sync_map.yml").write_text(
+        yaml.safe_dump(sync_map), encoding="utf-8"
+    )
+
+    output = subprocess.check_output(
+        [sys.executable, str(tool_dir / "list_buckets.py")],
+        cwd=tmp_path,
+        text=True,
+    )
+    buckets = [line for line in output.splitlines() if line]
+
+    assert buckets == ["0.15.0", "0.16.0", "0.23.0"]
+    assert "0.99.0" not in buckets
+    assert buckets == sorted(set(buckets), key=Version)
+
+
+# ---------------------------------------------------------------------------
+# 5. End-to-end: a real, isolated pytest run (not just direct calls to the
+#    gating function) proves the wiring in pytest_generate_tests — below the
+#    floor the bogus fact isn't even collected; at the floor it is collected
+#    and fails.
+# ---------------------------------------------------------------------------
+
+_HARNESS_FILES = (
+    "__init__.py",
+    "conftest.py",
+    "extract.py",
+    "facts.py",
+    "verifier.py",
+    "test_python_contracts.py",
+)
+
+
+def _build_synthetic_harness(tmp_path: Path, repo_root: Path, floor: str) -> Path:
+    """A minimal, isolated copy of the real harness plus one skill whose only
+    fact is a symbol that will never exist. ``conftest.py``/``extract.py``
+    locate the repo root by directory depth (``parents[2]`` from
+    ``tests/contract/conftest.py``), so copying the harness into
+    ``tmp_path/tests/contract/`` makes it self-contained — no monkeypatching.
+    """
+    contract_dir = tmp_path / "tests" / "contract"
+    contract_dir.mkdir(parents=True)
+    for name in _HARNESS_FILES:
+        (contract_dir / name).write_text(
+            (repo_root / "tests" / "contract" / name).read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+
+    skill_dir = tmp_path / "skills" / "demo"
+    references_dir = skill_dir / "references"
+    references_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("# Demo skill\n", encoding="utf-8")
+    (references_dir / "unreleased.md").write_text(
+        f"# Unreleased feature\n\n"
+        f"Requires `traigent>={floor}` for this API.\n\n"
+        "```python\n"
+        "from traigent.utils.exceptions import "
+        "ThisSymbolDoesNotExistAtAnyReleasedVersion\n"
+        "```\n",
+        encoding="utf-8",
+    )
+
+    sync_map = {
+        "sdk": {"dist": "traigent"},
+        "default_min_sdk_version": "0.15.0",
+        "skills": {
+            "demo": {"python_version_floors": {"references/unreleased.md": floor}}
+        },
+    }
+    (tmp_path / "sync_map.yml").write_text(
+        yaml.safe_dump(sync_map), encoding="utf-8"
+    )
+    return tmp_path
+
+
+def _run_synthetic_pytest(tmp_path: Path, sdk_version: str) -> subprocess.CompletedProcess:
+    return subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "tests/contract/test_python_contracts.py",
+            f"--sdk-version={sdk_version}",
+            "-v",
+            "-p",
+            "no:cacheprovider",
+        ],
+        cwd=tmp_path,
+        text=True,
+        capture_output=True,
+    )
+
+
+def test_end_to_end_floor_excludes_fact_below_floor(
+    tmp_path: Path, repo_root: Path
+) -> None:
+    harness = _build_synthetic_harness(tmp_path, repo_root, floor="0.99.0")
+    result = _run_synthetic_pytest(harness, sdk_version="0.23.0")  # below the floor
+    # Empty parametrization for the floored fact -> pytest skips (no failure),
+    # and the fact's own id never shows up (it was never collected).
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "1 skipped" in result.stdout
+    assert "unreleased.md" not in result.stdout
+
+
+def test_end_to_end_floor_includes_and_fails_at_floor(
+    tmp_path: Path, repo_root: Path
+) -> None:
+    harness = _build_synthetic_harness(tmp_path, repo_root, floor="0.99.0")
+    result = _run_synthetic_pytest(harness, sdk_version="0.99.0")  # at the floor
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "1 failed" in result.stdout
+    assert "unreleased.md" in result.stdout
+    assert "symbol missing" in result.stdout
+
+
+def test_end_to_end_floor_includes_and_fails_above_floor(
+    tmp_path: Path, repo_root: Path
+) -> None:
+    harness = _build_synthetic_harness(tmp_path, repo_root, floor="0.99.0")
+    result = _run_synthetic_pytest(harness, sdk_version="1.0.0")  # above the floor
+    assert result.returncode == 1, result.stdout + result.stderr
+    assert "1 failed" in result.stdout
+
+
+def test_real_sync_map_list_buckets_output(repo_root: Path, sync_map: dict) -> None:
+    """Baseline snapshot of the real repo's bucket list, independent of any
+    python_version_floors entries (there are none checked in), so a reviewer
+    running ``list_buckets.py`` before/after adding one can diff against this.
+    """
+    output = subprocess.check_output(
+        [sys.executable, str(repo_root / "tools/contract/list_buckets.py")],
+        cwd=repo_root,
+        text=True,
+    )
+    buckets = [line for line in output.splitlines() if line]
+    expected = sorted(
+        {str(sync_map["default_min_sdk_version"]), str(sync_map["current_released_sdk_version"])}
+        | {
+            str(entry["min_sdk_version"])
+            for entry in (sync_map.get("skills") or {}).values()
+            if isinstance(entry, dict) and entry.get("min_sdk_version")
+        },
+        key=Version,
+    )
+    assert buckets == expected
