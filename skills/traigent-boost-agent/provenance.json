@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4dac7b0e587ea882",
+  "doc_hash": "c8075d9a69ea3126",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -143,7 +143,7 @@
       "run_id": null,
       "timestamp": "2026-08-10T00:00:00Z",
       "doc_before_hash": "338b3994f9a77d4a",
-      "doc_after_hash": "4dac7b0e587ea882",
+      "doc_after_hash": "c8075d9a69ea3126",
       "note": "Step 5 taught traigent.config_generator.recommendations / recommend_configuration_space() / list_recommendation_agent_types(), which the SDK REMOVED -- tests/unit/test_recommendation_catalog_absence.py asserts they stay absent, so the snippet raised ImportError for every user. Replaced with the supported successor traigent.config_generator.generate_config(), which returns TVarRecommendation rows, infers agent_type instead of requiring a hand-picked catalog type, and runs preset-only with enrich=False (executed: llm_calls_made=0, llm_cost_usd=0.0). NOTE: TVarRecommendation has NO confidence attribute -- a first pass taught rec.confidence and would have raised AttributeError; the rows expose reasoning, impact_estimate and apply_guidance, and the PROTECTED caveat now names those. apply_guidance is surfaced explicitly because it carries the manual runtime steps the coding/RAG knob packs need. The skill description advertised the removed helper and was updated.",
       "source_type": "human"
     }

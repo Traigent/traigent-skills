@@ -392,7 +392,7 @@ for rec in suggested.recommendations:
      configuration space from the client's REAL knobs (prompt/style variants,
      temperature, sample count) instead of forcing the suggested one. Say in the
      report that the space is client-derived, and keep surfacing each row's
-     `confidence` and `reasoning` either way.
+     `reasoning`, `impact_estimate` and `apply_guidance` either way.
 
 6. SELECT A COMPOSITE with this SHAPE-to-PATTERN decision table.
 
