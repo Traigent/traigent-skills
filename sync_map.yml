@@ -152,12 +152,21 @@ skills:
   # (curate-dataset, plus the reflect-on-hard-examples skill), folded in
   # during the 2026-07 taxonomy consolidation.
   traigent-dataset-curate:
+    # The skill itself still targets the released floor. Only the cold-start
+    # reference documents an unreleased API, so it carries a PER-FILE floor
+    # instead: raising min_sdk_version to 0.27.0 would make list_buckets.py
+    # try to `pip install traigent==0.27.0`, which does not exist.
     min_sdk_version: "0.16.0"
+    python_version_floors:
+      # traigent.generation.coldstart lands in 0.27.0; the reference states
+      # the requirement in prose at the top of the file.
+      references/cold-start.md: "0.27.0"
     backend_prefixes:
       - /api/v1/datasets
       - /api/v1/analytics/example-scoring
       - /api/v1/analytics/experiments
       - /api/v1/analytics/runs
+      - /api/v1/guidance/cold-start-plan
     modules:
       - traigent.generation
       - traigent.analytics

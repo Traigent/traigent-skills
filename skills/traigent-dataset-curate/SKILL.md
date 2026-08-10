@@ -24,6 +24,7 @@ Use this skill when you need to build, grow, or audit the examples that Traigent
 - Mock or zero-egress check first with `enable_mock_mode_for_quickstart()`, `offline=True`, and a small local sample.
 - Before paid provider or backend runs, estimate cost, ask for user approval, and set `TRAIGENT_RUN_COST_LIMIT`.
 - For task-shape recipes, read `references/dataset-recipes.md`.
+- Only when none of the above sources exist at all — no fixtures, golden sets, tickets, logs, traces, or labeled examples anywhere — read `references/cold-start.md`. Requires `traigent>=0.27.0`; unreleased today, and the backend planning endpoint it needs ships off by default.
 
 ## Optimization Economics — Read This Before Sizing a Run
 
