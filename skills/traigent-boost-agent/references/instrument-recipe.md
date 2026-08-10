@@ -31,18 +31,20 @@ from time import perf_counter
 import traigent
 from openai import OpenAI
 from traigent.api.decorators import EvaluationOptions
-from traigent.config_generator.recommendations import (
-    RECOMMENDATION_CAVEAT,
-    recommend_configuration_space,
-)
+from traigent.config_generator import generate_config
 from traigent.knobs.patterns import self_consistency
 from traigent.knobs.runtime import StageRunner, execute_composite
 from traigent.knobs.telemetry import merge_composite_measures
 
 client = OpenAI()
 
-RAG_RECOMMENDATIONS = recommend_configuration_space("rag", min_impact="low")
-print(RAG_RECOMMENDATIONS["caveat"] or RECOMMENDATION_CAVEAT)
+# Reads the target file and proposes tuned variables from the shipped TVar
+# catalog. enrich=False keeps it offline: no LLM call, no spend.
+SUGGESTED = generate_config(__file__, function_name="answer_question", enrich=False)
+for rec in SUGGESTED.recommendations:
+    # Each recommendation carries its own confidence and reasoning. They are
+    # search-space STARTING POINTS, not performance claims -- say so to the user.
+    print(f"{rec.name}: {rec.range_type} (confidence {rec.confidence}) -- {rec.reasoning}")
 
 CONSISTENCY = self_consistency(
     "qa_self_consistency",

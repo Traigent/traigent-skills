@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "338b3994f9a77d4a",
+  "doc_hash": "6252b8922ef3ea75",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/insights-and-iteration.md": "60a5b223a71c0e4f",
-    "references/instrument-recipe.md": "df63b2ecf2199945"
+    "references/instrument-recipe.md": "984922477b299efd"
   },
   "entries": [
     {
@@ -134,6 +134,17 @@
       "doc_before_hash": "a502d64640e23484",
       "doc_after_hash": "338b3994f9a77d4a",
       "note": "Step 11 RECOMMEND: reference the Traigent-attributed recommendation (the `attribution` block) as the Traigent-authored next action, presented verbatim via traigent-analyze-guidance, and demote the local symptom-to-action table to the offline/no-attribution fallback. Backend support landed via Traigent/TraigentBackend#2439 and SDK support via Traigent/Traigent#2019 + #2042 (all merged 2026-07-27); the block stays optional and version-dependent, so presentation is conditional on the payload carrying it (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "drop-removed-recommendation-catalog-2026-08-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-10T00:00:00Z",
+      "doc_before_hash": "338b3994f9a77d4a",
+      "doc_after_hash": "6252b8922ef3ea75",
+      "note": "Step 5 taught traigent.config_generator.recommendations / recommend_configuration_space() / list_recommendation_agent_types(), which the SDK REMOVED -- tests/unit/test_recommendation_catalog_absence.py asserts they stay absent, so the snippet raised ImportError for every user. Replaced with the supported successor traigent.config_generator.generate_config(), which returns the same TVarRecommendation rows, infers agent_type instead of requiring a hand-picked catalog type, and runs preset-only with enrich=False (verified: llm_calls_made=0, llm_cost_usd=0.0). The mandatory-caveat PROTECTED block is preserved, now pointing at each row's own confidence/reasoning. The skill description advertised the removed helper and was updated to match.",
       "source_type": "human"
     }
   ]
