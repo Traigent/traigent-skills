@@ -382,11 +382,15 @@ for rec in suggested.recommendations:
    - Knob packs still exist in the shipped catalog and surface through `recommendations` when they fit the inferred agent type — e.g. `repo_context_strategy`, `file_view_window`, `edit_granularity`, `test_selection_strategy`, `patch_review_mode` for coding agents; `retrieval_k`, `context_selection_policy`, `context_order`, `summary_style`, `compression_ratio`, `citation_policy` for long-context/RAG agents. Read each row's `reasoning` for what it means.
    - **Do NOT use** `traigent.config_generator.recommendations`, `recommend_configuration_space()`, or `list_recommendation_agent_types()`. That public catalog surface was REMOVED from the SDK, and `tests/unit/test_recommendation_catalog_absence.py` asserts it stays removed — teaching it hands the user an ImportError.
    - For range syntax, constraints, and typed parameters, cross-reference `traigent-optimize-config-space` instead of duplicating it.
-   - **Catalog fallback**: if the client's agent shape matches no catalog type
-     (e.g. a single-call classifier — neither `code_gen` nor `rag`), drive the
+   - **When the suggestions do not fit**: `generate_config` infers the agent
+     type, so the old "matches no catalog type" dead end is gone — a single-call
+     classifier comes back as `classification`, not as an error. But an inferred
+     type is still a guess about someone else's code. If the returned
+     `recommendations` clearly do not describe the client's agent, drive the
      configuration space from the client's REAL knobs (prompt/style variants,
-     temperature, sample count) instead of forcing a catalog type. Still print
-     the caveat; note in the report that the space is client-derived.
+     temperature, sample count) instead of forcing the suggested one. Say in the
+     report that the space is client-derived, and keep surfacing each row's
+     `confidence` and `reasoning` either way.
 
 6. SELECT A COMPOSITE with this SHAPE-to-PATTERN decision table.
 
