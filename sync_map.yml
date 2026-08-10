@@ -112,7 +112,7 @@ skills:
     backend_prefixes:
       - /api/v1/analytics/runs
     modules:
-      - traigent.config_generator.recommendations
+      - traigent.config_generator
       - traigent.api.decorators
       - traigent.core.optimized_function
       - traigent.knobs.patterns
@@ -123,7 +123,7 @@ skills:
       - traigent.utils.env_config
       - traigent.analytics
     sdk_paths:
-      - traigent/config_generator/recommendations.py
+      - traigent/config_generator/__init__.py
       - traigent/config_generator/catalog/tvar_catalog.v1.json
       - traigent/api/decorators.py
       - traigent/core/optimized_function.py
@@ -233,8 +233,6 @@ skills:
       - traigent.utils.insights
       - traigent.utils.importance
       - traigent.analytics
-      - traigent.analytics.planner
-      - traigent.cli.guidance_command
     sdk_paths:
       - traigent/api/decorators.py
       - traigent/core/optimized_function.py
@@ -242,8 +240,6 @@ skills:
       - traigent/utils/insights.py
       - traigent/utils/importance.py
       - traigent/analytics/example_insights.py
-      - traigent/analytics/planner.py
-      - traigent/cli/guidance_command.py
 
   traigent-recipe-text2sql:
     min_sdk_version: "0.16.0"

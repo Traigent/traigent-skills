@@ -1,6 +1,6 @@
 ---
 name: traigent-boost-agent
-description: "End-to-end lifecycle playbook — from a single decorated function to a full 12-step codebase onboarding — for adding Traigent to an existing client agent codebase and measurably boosting accuracy, cost, latency, or reliability. Use when asked to add Traigent to this agent, onboard this agent to Traigent end-to-end, run a full agent-build lifecycle, wire an evaluator and optimize, boost accuracy/cost of an existing agent codebase, select TVARs with recommend_configuration_space(), choose composite knobs by agent shape, instrument @traigent.optimize minimally, validate in mock mode, run real optimization with budgets, inspect results, iterate, gate a promoted config, optimize a function with @traigent.optimize, run an optimization, or set up Traigent optimization. ALWAYS start with dry-run (mock mode) to validate the full pipeline, then switch to real execution only when the user explicitly requests it."
+description: "End-to-end lifecycle playbook — from a single decorated function to a full 12-step codebase onboarding — for adding Traigent to an existing client agent codebase and measurably boosting accuracy, cost, latency, or reliability. Use when asked to add Traigent to this agent, onboard this agent to Traigent end-to-end, run a full agent-build lifecycle, wire an evaluator and optimize, boost accuracy/cost of an existing agent codebase, select TVARs with generate_config(), choose composite knobs by agent shape, instrument @traigent.optimize minimally, validate in mock mode, run real optimization with budgets, inspect results, iterate, gate a promoted config, optimize a function with @traigent.optimize, run an optimization, or set up Traigent optimization. ALWAYS start with dry-run (mock mode) to validate the full pipeline, then switch to real execution only when the user explicitly requests it."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -357,38 +357,42 @@ answer = my_function("What is Python?")
    - Audit any LLM judge before trusting it to drive optimization.
    - DELEGATE: `traigent-eval-build` owns evaluator code; `traigent-eval-audit` owns judge reliability checks.
 
-5. SELECT TVARS from the public recommendation catalog.
-   - Use only the real SDK helpers:
+5. SELECT TVARS with `generate_config`.
+   - Use only the real SDK helper:
 
 ```python
-from traigent.config_generator.recommendations import (
-    RECOMMENDATION_CAVEAT,
-    list_recommendation_agent_types,
-    recommend_configuration_space,
+from traigent.config_generator import generate_config
+
+suggested = generate_config(
+    "path/to/agent.py",
+    function_name="my_agent",
+    enrich=False,  # offline: no LLM call, no spend
 )
 
-valid_agent_types = list_recommendation_agent_types()
-recommendations = recommend_configuration_space(
-    "code_gen",  # or "rag"
-    min_impact=None,
-    min_confidence=None,
-)
-configuration_space = recommendations["configuration_space"]
-print(recommendations["caveat"] or RECOMMENDATION_CAVEAT)
+print(suggested.agent_type)          # inferred, e.g. "classification", "rag"
+for rec in suggested.recommendations:
+    print(rec.name, rec.range_type, rec.impact_estimate)
+    print("  why  :", rec.reasoning)
+    print("  apply:", rec.apply_guidance)   # manual runtime steps, when the knob needs them
 ```
 
-   - Valid public agent types are returned by `list_recommendation_agent_types()`; the current catalog exposes `code_gen` and `rag`.
+   - `generate_config` reads the target file and returns `tvars`, `objectives`, `benchmarks`, `safety_constraints` and `recommendations`, with the agent type INFERRED — you no longer pick a catalog type by hand.
+   - With `enrich=False` it is preset-only: `llm_calls_made == 0` and `llm_cost_usd == 0.0`. Pass `enrich=True` only with the user's approval, and respect `budget_usd`.
    <!-- PROTECTED -->
-   - Treat `RECOMMENDATION_CAVEAT` as mandatory user-facing context: recommendations are search-space starting points, not universal performance claims.
+   - Every recommendation carries `reasoning` and an `impact_estimate`, and knob-pack rows carry `apply_guidance` (the manual runtime steps). Treat these as mandatory user-facing context: recommendations are search-space starting points, not universal performance claims. There is no `confidence` attribute on these rows — `TVarRecommendation` exposes `name`, `range_type`, `range_kwargs`, `category`, `reasoning`, `impact_estimate`, `entry_id`, `catalog_entry_id`, `kind`, `effectuation_status`, `effectuation_strategy`, `evidence_refs`, `apply_guidance`, `recommended_values`.
    <!-- /PROTECTED -->
-   - For coding agents, `recommend_configuration_space("code_gen")` includes the `agent_computer_interface` knob pack: `repo_context_strategy`, `file_view_window`, `edit_granularity`, `test_selection_strategy`, and `patch_review_mode`. Its CVAR vocabulary and manual runtime guidance live in each row's `apply_guidance`.
-   - For long-context/RAG agents, `recommend_configuration_space("rag")` includes `retrieval_k` plus the `context_budget` knob pack: `context_selection_policy`, `context_order`, `summary_style`, `compression_ratio`, and `citation_policy`. Its CVAR vocabulary and manual runtime guidance also live in `apply_guidance`.
+   - Knob packs still exist in the shipped catalog and surface through `recommendations` when they fit the inferred agent type — e.g. `repo_context_strategy`, `file_view_window`, `edit_granularity`, `test_selection_strategy`, `patch_review_mode` for coding agents; `retrieval_k`, `context_selection_policy`, `context_order`, `summary_style`, `compression_ratio`, `citation_policy` for long-context/RAG agents. Read each row's `reasoning` for what it means and `apply_guidance` for the manual runtime steps it needs.
+   - **Do NOT use** `traigent.config_generator.recommendations`, `recommend_configuration_space()`, or `list_recommendation_agent_types()`. That public catalog surface was REMOVED from the SDK, and `tests/unit/test_recommendation_catalog_absence.py` asserts it stays removed — teaching it hands the user an ImportError.
    - For range syntax, constraints, and typed parameters, cross-reference `traigent-optimize-config-space` instead of duplicating it.
-   - **Catalog fallback**: if the client's agent shape matches no catalog type
-     (e.g. a single-call classifier — neither `code_gen` nor `rag`), drive the
+   - **When the suggestions do not fit**: `generate_config` infers the agent
+     type, so the old "matches no catalog type" dead end is gone — a single-call
+     classifier comes back as `classification`, not as an error. But an inferred
+     type is still a guess about someone else's code. If the returned
+     `recommendations` clearly do not describe the client's agent, drive the
      configuration space from the client's REAL knobs (prompt/style variants,
-     temperature, sample count) instead of forcing a catalog type. Still print
-     the caveat; note in the report that the space is client-derived.
+     temperature, sample count) instead of forcing the suggested one. Say in the
+     report that the space is client-derived, and keep surfacing each row's
+     `reasoning`, `impact_estimate` and `apply_guidance` either way.
 
 6. SELECT A COMPOSITE with this SHAPE-to-PATTERN decision table.
 
