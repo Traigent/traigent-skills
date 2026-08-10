@@ -42,9 +42,12 @@ client = OpenAI()
 # catalog. enrich=False keeps it offline: no LLM call, no spend.
 SUGGESTED = generate_config(__file__, function_name="answer_question", enrich=False)
 for rec in SUGGESTED.recommendations:
-    # Each recommendation carries its own confidence and reasoning. They are
-    # search-space STARTING POINTS, not performance claims -- say so to the user.
-    print(f"{rec.name}: {rec.range_type} (confidence {rec.confidence}) -- {rec.reasoning}")
+    # Rows are search-space STARTING POINTS, not performance claims -- say so to
+    # the user. apply_guidance carries the manual runtime steps where a knob
+    # needs them (the coding / RAG knob packs do).
+    print(f"{rec.name}: {rec.range_type} (impact {rec.impact_estimate}) -- {rec.reasoning}")
+    if rec.apply_guidance:
+        print(f"  apply: {rec.apply_guidance}")
 
 CONSISTENCY = self_consistency(
     "qa_self_consistency",

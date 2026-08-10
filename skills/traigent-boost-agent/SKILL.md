@@ -371,15 +371,17 @@ suggested = generate_config(
 
 print(suggested.agent_type)          # inferred, e.g. "classification", "rag"
 for rec in suggested.recommendations:
-    print(rec.name, rec.range_type, rec.confidence, rec.reasoning)
+    print(rec.name, rec.range_type, rec.impact_estimate)
+    print("  why  :", rec.reasoning)
+    print("  apply:", rec.apply_guidance)   # manual runtime steps, when the knob needs them
 ```
 
    - `generate_config` reads the target file and returns `tvars`, `objectives`, `benchmarks`, `safety_constraints` and `recommendations`, with the agent type INFERRED — you no longer pick a catalog type by hand.
    - With `enrich=False` it is preset-only: `llm_calls_made == 0` and `llm_cost_usd == 0.0`. Pass `enrich=True` only with the user's approval, and respect `budget_usd`.
    <!-- PROTECTED -->
-   - Every recommendation carries its own `confidence` and `reasoning`. Treat these as mandatory user-facing context: recommendations are search-space starting points, not universal performance claims.
+   - Every recommendation carries `reasoning` and an `impact_estimate`, and knob-pack rows carry `apply_guidance` (the manual runtime steps). Treat these as mandatory user-facing context: recommendations are search-space starting points, not universal performance claims. There is no `confidence` attribute on these rows — `TVarRecommendation` exposes `name`, `range_type`, `range_kwargs`, `category`, `reasoning`, `impact_estimate`, `entry_id`, `catalog_entry_id`, `kind`, `effectuation_status`, `effectuation_strategy`, `evidence_refs`, `apply_guidance`, `recommended_values`.
    <!-- /PROTECTED -->
-   - Knob packs still exist in the shipped catalog and surface through `recommendations` when they fit the inferred agent type — e.g. `repo_context_strategy`, `file_view_window`, `edit_granularity`, `test_selection_strategy`, `patch_review_mode` for coding agents; `retrieval_k`, `context_selection_policy`, `context_order`, `summary_style`, `compression_ratio`, `citation_policy` for long-context/RAG agents. Read each row's `reasoning` for what it means.
+   - Knob packs still exist in the shipped catalog and surface through `recommendations` when they fit the inferred agent type — e.g. `repo_context_strategy`, `file_view_window`, `edit_granularity`, `test_selection_strategy`, `patch_review_mode` for coding agents; `retrieval_k`, `context_selection_policy`, `context_order`, `summary_style`, `compression_ratio`, `citation_policy` for long-context/RAG agents. Read each row's `reasoning` for what it means and `apply_guidance` for the manual runtime steps it needs.
    - **Do NOT use** `traigent.config_generator.recommendations`, `recommend_configuration_space()`, or `list_recommendation_agent_types()`. That public catalog surface was REMOVED from the SDK, and `tests/unit/test_recommendation_catalog_absence.py` asserts it stays removed — teaching it hands the user an ImportError.
    - For range syntax, constraints, and typed parameters, cross-reference `traigent-optimize-config-space` instead of duplicating it.
    - **When the suggestions do not fit**: `generate_config` infers the agent

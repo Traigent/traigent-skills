@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "959660fd9db9f899",
+  "doc_hash": "4dac7b0e587ea882",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/insights-and-iteration.md": "60a5b223a71c0e4f",
-    "references/instrument-recipe.md": "984922477b299efd"
+    "references/instrument-recipe.md": "30faf174aa7b16c0"
   },
   "entries": [
     {
@@ -143,7 +143,7 @@
       "run_id": null,
       "timestamp": "2026-08-10T00:00:00Z",
       "doc_before_hash": "338b3994f9a77d4a",
-      "doc_after_hash": "959660fd9db9f899",
+      "doc_after_hash": "4dac7b0e587ea882",
       "note": "Step 5 taught traigent.config_generator.recommendations / recommend_configuration_space() / list_recommendation_agent_types(), which the SDK REMOVED -- tests/unit/test_recommendation_catalog_absence.py asserts they stay absent, so the snippet raised ImportError for every user. Replaced with the supported successor traigent.config_generator.generate_config(), which returns the same TVarRecommendation rows, infers agent_type instead of requiring a hand-picked catalog type, and runs preset-only with enrich=False (verified: llm_calls_made=0, llm_cost_usd=0.0). The mandatory-caveat PROTECTED block is preserved, now pointing at each row's own confidence/reasoning. The skill description advertised the removed helper and was updated to match.",
       "source_type": "human"
     }
