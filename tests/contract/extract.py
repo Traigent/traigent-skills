@@ -12,6 +12,23 @@ ENV_RE = re.compile(r"\bTRAIGENT_[A-Z0-9_]+\b")
 FENCE_RE = re.compile(r"^```(?P<info>[A-Za-z0-9_.+# -]*)\s*$")
 IMPORT_LINE_RE = re.compile(r"^\s*(from|import)\s+traigent[\w.]*")
 INLINE_CODE_RE = re.compile(r"`([^`]+)`")
+# An inline code span that looks like a runnable CLI invocation: `traigent <subcommand> ...`.
+# Requires whitespace after `traigent` (so skill names like `traigent-dataset-curate` and
+# module paths like `traigent.generation` never match) and a lowercase-hyphen subcommand
+# token (so capitalized prose like `` `traigent SDK` `` and version strings like
+# `` `traigent 0.0.1 does not provide ...` `` never match either).
+INLINE_CLI_RE = re.compile(r"^traigent\s+[a-z][a-z0-9-]*(?:\s+\S.*)?$")
+# Same-paragraph signal that an inline `traigent <subcommand>` span is a MENTION of the
+# command's absence/status, not an assertion that it is runnable today — e.g. "Do not reach for
+# `traigent next-steps`: it was retired ..." or "Planned: a `traigent ci` command group will
+# package these checks". Scoped to the enclosing paragraph (see _paragraph_text_by_line), not
+# the whole file: a retirement note anywhere else in the document must not silently swallow an
+# unrelated, still-real command mentioned elsewhere.
+CLI_ABSENCE_RE = re.compile(
+    r"\b(retired|removed|deprecated|planned|absent from|no longer|not yet"
+    r"|does not exist|doesn't exist|not a (?:real|valid) command)\b",
+    re.IGNORECASE,
+)
 URL_RE = re.compile(
     r"(?:(?P<method>GET|POST|PUT|PATCH|DELETE)\s+)?"
     r"(?P<url>"
@@ -132,6 +149,7 @@ def collect_runnable_markdown(
 def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
     facts: list[ContractFact] = []
     lines = text.splitlines()
+    paragraph_by_line = _paragraph_text_by_line(lines)
     for line_number, line in enumerate(lines, start=1):
         for match in ENV_RE.finditer(line):
             facts.append(
@@ -144,9 +162,21 @@ def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
                 )
             )
         for inline_match in INLINE_CODE_RE.finditer(line):
-            facts.extend(
-                _extract_url_facts(skill, path, line_number, inline_match.group(1))
-            )
+            span_text = inline_match.group(1)
+            facts.extend(_extract_url_facts(skill, path, line_number, span_text))
+            paragraph_text = paragraph_by_line.get(line_number - 1, line)
+            if _looks_like_cli_invocation(
+                span_text
+            ) and not CLI_ABSENCE_RE.search(paragraph_text):
+                facts.append(
+                    ContractFact(
+                        kind="cli",
+                        skill=skill,
+                        path=path,
+                        line=line_number,
+                        command=span_text.strip(),
+                    )
+                )
 
     for block in _iter_fenced_blocks(lines):
         for offset, line in enumerate(block.lines):
@@ -356,6 +386,54 @@ def _regex_import_fallback(
                         )
                     )
     return facts
+
+
+def _paragraph_text_by_line(lines: list[str]) -> dict[int, str]:
+    """Map each 0-indexed line to the text of its enclosing paragraph.
+
+    A "paragraph" here is just a maximal run of consecutive non-blank lines --
+    good enough to let a retirement/absence note that wraps across two or three
+    physical lines (as prose naturally does) still be recognized as covering an
+    inline code span on any of those lines, without letting the signal leak
+    across an unrelated paragraph elsewhere in the same file.
+    """
+    result: dict[int, str] = {}
+    start: int | None = None
+    for index, line in enumerate(lines):
+        # A bare blockquote marker (`>` with nothing else) is markdown's paragraph
+        # break WITHIN a blockquote -- every other line in a multi-paragraph `> `
+        # block is otherwise non-blank, which would merge the whole blockquote into
+        # one giant paragraph and let a retirement note anywhere in it suppress an
+        # unrelated, still-real command mentioned earlier in the same blockquote.
+        stripped = line.strip()
+        if stripped and stripped != ">":
+            if start is None:
+                start = index
+        elif start is not None:
+            block = "\n".join(lines[start:index])
+            for i in range(start, index):
+                result[i] = block
+            start = None
+    if start is not None:
+        block = "\n".join(lines[start:])
+        for i in range(start, len(lines)):
+            result[i] = block
+    return result
+
+
+def _looks_like_cli_invocation(text: str) -> bool:
+    """True when an inline code span (prose, not a fenced block) is genuinely a command.
+
+    Deliberately narrow: this feeds a test that shells out to the real `traigent`
+    CLI, so a false positive here is a spurious test failure, not just noise. Reject
+    anything containing "(" or ")" -- a strong signal of Python call syntax (e.g.
+    `` `traigent optimize()` `` refers to the decorated function's method, not the
+    CLI subcommand of the same name) rather than a shell invocation.
+    """
+    stripped = text.strip()
+    if "(" in stripped or ")" in stripped:
+        return False
+    return bool(INLINE_CLI_RE.match(stripped))
 
 
 def _extract_cli_block(skill: str, path: Path, block: CodeBlock) -> list[ContractFact]:

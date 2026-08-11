@@ -8,6 +8,8 @@ default_min_sdk_version: "0.15.0"
 current_released_sdk_version: "0.23.0"
 skills:
   traigent-setup-quickstart:
+    # the `traigent plan` command taught below ships in traigent>=0.17.0.
+    min_sdk_version: "0.17.0"
     env_version_floors:
       # TRAIGENT_LOG_LEVEL ships in traigent>=0.13.0; the reference table row
       # carries the version note in prose.
@@ -64,6 +66,8 @@ skills:
       - traigent/config/parallel.py
 
   traigent-analyze-results:
+    # the `traigent local sync` command taught below ships in traigent>=0.20.0.
+    min_sdk_version: "0.20.0"
     backend_prefixes:
       - /api/v1/experiment-groups
     modules:

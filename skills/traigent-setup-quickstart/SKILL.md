@@ -15,6 +15,8 @@ metadata:
 
 ## When to Use
 
+Requires `traigent>=0.17.0` — the `traigent plan` command below ships in that release.
+
 Use this skill when:
 
 - Setting up Traigent for the first time in a new project
@@ -649,8 +651,6 @@ traigent onboard         # guided first-run setup wizard
 | `traigent quickstart`      | Run the bundled mock-mode demo (keyless, zero-setup, always works)  |
 | `traigent onboard`         | Guided setup for Traigent in this project (API key, project, env)   |
 | `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-3-haiku-20240307` (ID-shape preflight against a shipped snapshot; confirm liveness via the provider's catalog) |
-| `traigent recommend`       | Evidence-backed TVAR recommendations for your agent/task type       |
-| `traigent recommend-eval`  | Metric and evaluator recommendations for your task type             |
 | `traigent generate-config` | Scaffold a full `@traigent.optimize()` config for your function     |
 | `traigent detect-tvars`    | Detect tuned-variable candidates in existing Python files           |
 | `traigent info`            | Show SDK version, environment, and integrations                     |

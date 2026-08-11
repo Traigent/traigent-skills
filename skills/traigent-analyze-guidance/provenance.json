@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "cd1d2ac785200d70",
+  "doc_hash": "1a9538ec844f62b6",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -181,7 +181,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "368bf51ad808152b",
       "doc_after_hash": "59464aba14a2deb3",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7 Additionally, restore this skill's thin-client boundary: it collects and relays the characterization and presents ONLY a service-authored budget \u2014 it does not compute, adjust, or recommend a budget locally, and when the service returns no economics result it says so and stops or falls back with no budget number rather than inventing one (regression-linted in tests/contract/test_economics_reference.py).",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7 Additionally, restore this skill's thin-client boundary: it collects and relays the characterization and presents ONLY a service-authored budget — it does not compute, adjust, or recommend a budget locally, and when the service returns no economics result it says so and stops or falls back with no budget number rather than inventing one (regression-linted in tests/contract/test_economics_reference.py).",
       "source_type": "human"
     },
     {
@@ -224,6 +224,17 @@
       "doc_before_hash": "beee7675380e0c9d",
       "doc_after_hash": "cd1d2ac785200d70",
       "note": "repoint Mode B from the RETIRED `traigent guidance` command group (Planner V2 next/execute/receipt/reopen, retired from the SDK on 2026-08-03; Traigent 6aff6ee7) and the RETIRED `traigent next-steps` v1 compatibility path (Traigent 9b308539) -- both absent from 0.26.0 and from origin/develop's 8 registered CLI commands (verified by grepping traigent/cli/main.py add_command on origin/develop) -- to the supported post-run surface: the backend decision brief fetched with `analytics_get_run_decision_brief(project_id, run_id, intent)` on the traigent-analytics MCP server (verified present in traigent/analytics_mcp/server.py+tools.py on origin/develop; decision_payload v0: headline/confidence/recommended_action/evidence/drilldowns/warnings). Pre-run planning stays on `traigent plan` (still registered). Per the owning ruling, the retired execution/receipt lifecycle got an honest limitation note instead of an invented alias: execution/receipt flows are not currently available from the SDK; the portal and the decision brief are the supported surface. The Planner V2 treatment/profile/certificate/receipt protocol prose was removed with the CLI that carried it.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "retired-recommendation-catalogs-2026-08-11-traigent-analyze-guidance",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-11T00:00:00Z",
+      "doc_before_hash": "cd1d2ac785200d70",
+      "doc_after_hash": "1a9538ec844f62b6",
+      "note": "repoint the plan-service fallback from `traigent recommend` to `traigent generate-config`. `recommend` and `recommend-eval` were retired from the SDK in 7eea70c9 ('retire recommendation catalogs'); introspection against SDK 0.26.0 confirms neither is in cli.commands while generate-config is. Surfaced by the prose-aware CLI fact extraction added in the same PR -- the reference sat in prose, which the extractor never scanned. Traigent/traigent-skills#254.",
       "source_type": "human"
     }
   ]

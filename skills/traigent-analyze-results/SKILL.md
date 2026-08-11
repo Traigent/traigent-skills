@@ -30,6 +30,8 @@ There are two surfaces, and this skill covers both:
 
 ## When to Use
 
+Requires `traigent>=0.20.0` — the `traigent local sync` flow below ships in that release.
+
 Use this skill when you want to understand a finished run. This covers:
 
 - "Analyze my latest run in project X" / "how did my run do?"
