@@ -105,8 +105,10 @@ static guidance: expect `phase` such as `P1_STATIC`, plus `evidence_level`,
 This requires an SDK build that ships the optimization-plan tool (the `traigent
 plan` CLI / `get_optimization_plan` MCP tool). If your installed SDK does not
 expose it yet, tell the user the plan service is not available in this build and
-fall back to `traigent recommend` for knob recommendations (see
-`traigent-optimize-config-space`) — never fabricate a plan locally.
+fall back to `traigent generate-config` for knob recommendations (see
+`traigent-optimize-config-space`) — never fabricate a plan locally. (`traigent
+recommend` used to serve this and was retired from the SDK in `7eea70c9`,
+"retire recommendation catalogs", along with `traigent recommend-eval`.)
 
 Do not embed local planning intelligence in this skill:
 
