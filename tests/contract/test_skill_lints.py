@@ -62,7 +62,7 @@ PIP_INSTALL_TRAIGENT_RE = re.compile(
 )
 
 
-def test_planner_v2_sdk_floor_names_a_releasable_final_version(
+def test_analyze_guidance_sdk_floor_names_a_releasable_final_version(
     repo_root: Path,
 ) -> None:
     sync_map = yaml.safe_load((repo_root / "sync_map.yml").read_text(encoding="utf-8"))
@@ -72,7 +72,7 @@ def test_planner_v2_sdk_floor_names_a_releasable_final_version(
     assert parsed == Version("0.21.3")
     assert not parsed.is_devrelease, (
         "a dev floor cannot distinguish an older develop build that lacks "
-        "the Planner V2 guidance surface"
+        "the taught guidance surface"
     )
 LITERAL_FIRST_RUN_HEADING_RE = re.compile(
     r"(?m)^### Literal First Run \(execution-only agents\)\s*$"
@@ -757,126 +757,116 @@ def test_next_run_skill_stays_service_decided_thin_client(repo_root: Path) -> No
     assert re.search(
         r"\bdecision comes from the Traigent service\b", text, re.IGNORECASE
     ), "traigent-analyze-guidance must state that the next-step decision comes from the service"
-    assert "traigent guidance next RUN_ID --json" in text, (
-        "traigent-analyze-guidance must fetch the Planner V2 decision"
+    # The supported surfaces (the retired `traigent guidance *` / `traigent
+    # next-steps` CLI has no successor CLI): the post-run decision comes from
+    # the backend decision brief on the traigent-analytics MCP server, and the
+    # pre-run plan comes from `traigent plan` / `get_optimization_plan`.
+    assert "analytics_get_run_decision_brief" in text, (
+        "traigent-analyze-guidance must fetch the post-run decision brief via "
+        "the traigent-analytics MCP tool"
     )
-    assert "traigent guidance execute --decision <opaque-id>" in text, (
-        "traigent-analyze-guidance must execute only an opaque decision id"
+    assert "traigent plan" in text, (
+        "traigent-analyze-guidance must fetch the pre-run plan via the "
+        "supported `traigent plan` CLI / `get_optimization_plan` MCP tool"
     )
-    assert "Do not execute a\nserver-supplied shell fragment" in text, (
-        "Planner V2 must not turn a server response into a shell command"
-    )
+    assert re.search(
+        r"Never execute a server-supplied shell fragment", text
+    ), "the decision brief must not be turned into a shell command"
 
 
-def test_next_steps_protocol_uses_portable_backend_url_flag(repo_root: Path) -> None:
-    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
+def test_retired_guidance_cli_is_not_reintroduced(repo_root: Path) -> None:
+    """The SDK retired `traigent guidance *` and `traigent next-steps` on
+    2026-08-03 (absent from 0.26.0). Skills must run the supported surfaces
+    instead — the decision brief MCP tool post-run and `traigent plan` pre-run
+    — and may describe the retirement only without presenting the retired
+    commands as runnable. docs/version-matrix.md is the one place the retired
+    command name remains, as version history."""
+    banned = ("traigent guidance", "traigent next-steps")
+    for rel in (
+        "skills/traigent-analyze-guidance/SKILL.md",
+        "skills/traigent-analyze-results/SKILL.md",
+        "skills/traigent-setup-quickstart/SKILL.md",
+        "README.md",
+    ):
+        text = (repo_root / rel).read_text(encoding="utf-8")
+        for command in banned:
+            assert command not in text, (
+                f"{rel}: teaches the retired command {command!r}; repoint to "
+                "the decision brief (analytics_get_run_decision_brief) or "
+                "`traigent plan`, or describe the retirement without the "
+                "runnable command string"
+            )
+
+
+def test_plan_cli_backend_url_resolution_stays_portable(repo_root: Path) -> None:
+    """The portable URL-resolution teaching (flag -> env -> stored auth-login
+    URL -> local default) moved with the surviving `traigent plan` command
+    when `next-steps` was retired."""
+    path = repo_root / "skills" / "traigent-setup-quickstart" / "SKILL.md"
     text = path.read_text(encoding="utf-8")
     rel = path.relative_to(repo_root).as_posix()
 
-    assert "--backend-url \"https://portal.traigent.ai\" --json" in text, (
-        f"{rel}: Mode B must show the backend URL flag on Planner V2 commands"
-    )
-    assert "traigent next-steps RUN_ID --backend-url <url> --json" in text, (
-        f"{rel}: existing v1 lifecycle compatibility must remain explicit"
-    )
-    assert "`TRAIGENT_BACKEND_URL` must be set" not in text, (
-        f"{rel}: next-steps docs must not teach env-var-only setup as mandatory"
-    )
-    assert "if `TRAIGENT_BACKEND_URL` is not set" not in text, (
-        f"{rel}: --backend-url is not just a fallback for unset env vars"
-    )
-    assert "connection-refused" not in text.lower(), (
-        f"{rel}: do not predict the old default failure mode"
-    )
+    assert re.search(
+        r"`traigent plan` CLI command resolves[\s>]+`--backend-url`", text
+    ), f"{rel}: the backend-url exception note must name `traigent plan`"
+    for guidance_path in (
+        repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md",
+        path,
+    ):
+        guidance_text = guidance_path.read_text(encoding="utf-8")
+        guidance_rel = guidance_path.relative_to(repo_root).as_posix()
+        assert "`TRAIGENT_BACKEND_URL` must be set" not in guidance_text, (
+            f"{guidance_rel}: must not teach env-var-only setup as mandatory"
+        )
+        assert "if `TRAIGENT_BACKEND_URL` is not set" not in guidance_text, (
+            f"{guidance_rel}: --backend-url is not just a fallback for unset env vars"
+        )
+        assert "connection-refused" not in guidance_text.lower(), (
+            f"{guidance_rel}: do not predict the old default failure mode"
+        )
 
 
-def test_next_steps_protocol_validates_authoritative_guidance_decision(
+def test_decision_brief_protocol_validates_backend_payload(
     repo_root: Path,
 ) -> None:
+    """Mode B's supported surface is the backend decision brief. The skill
+    must show the exact tool invocation, narrate the v0 payload fields in the
+    backend's own terms, and preserve the honest limitation that the retired
+    guidance CLI's execution/receipt lifecycle has no current SDK
+    replacement."""
     path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
     text = path.read_text(encoding="utf-8")
     rel = path.relative_to(repo_root).as_posix()
 
+    assert re.search(
+        r"analytics_get_run_decision_brief\(\s*"
+        r"project_id\s*=\s*\"[^\"]+\",\s*"
+        r"run_id\s*=\s*\"[^\"]+\",\s*"
+        r"intent\s*=\s*\"iterate\",?\s*\)",
+        text,
+    ), f"{rel}: Mode B must show the exact decision-brief tool invocation"
+
     required = (
-        "--treatment rules_control",
-        "--treatment policy_override",
-        "--profile balanced",
-        "--guidance-variant rules",
-        "--guidance-variant policy",
-        "--strict-experiment",
-        "meta.served_variant",
-        "meta.selector_engine",
-        "certified_session_utility_advantage_no_kpi_guarantee",
-        "rules_parity",
-        "rules_fallback",
-        "evidence-snapshot hash",
-        "top-level `decision`",
-        "intention-to-treat",
-        "execution receipt",
-        "result_ref",
-        "verification_status=pending",
+        "`decision_brief`",
+        "`headline`",
+        "`confidence`",
+        "`recommended_action`",
+        "`evidence`",
+        "`drilldowns`",
+        "`warnings`",
+        "never upgrade a `low`/`medium` confidence",
+        "`recommended_action.kind`",
+        "exactly as returned",
     )
     missing = [marker for marker in required if marker not in text]
-    assert not missing, f"{rel}: missing authoritative-decision protocol markers: {missing}"
+    assert not missing, f"{rel}: missing decision-brief protocol markers: {missing}"
 
     assert (
-        "Never treat `served_variant=policy_override` as proof that an override ran"
-        in text
+        "execution/receipt flows are not currently available from the SDK" in text
     ), (
-        f"{rel}: policy treatment must be verified against mode, engine, and certificate"
+        f"{rel}: the retired guidance CLI's missing lifecycle must stay an "
+        "explicit limitation, not an invented command"
     )
-    assert "Never use the first\n`next_steps[]` compatibility row" in text, (
-        f"{rel}: legacy compatibility must be forbidden in controlled experiments"
-    )
-
-
-def test_next_steps_protocol_treats_wait_as_non_executable(repo_root: Path) -> None:
-    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
-    text = path.read_text(encoding="utf-8")
-    rel = path.relative_to(repo_root).as_posix()
-
-    required = (
-        "`decision.category=wait`",
-        "mode `pending_wait`",
-        "`decision.action.kind=none`",
-        "an empty command",
-        "Do not execute, prompt for another action, or\n   immediately re-query",
-        "resume only after new evidence arrives",
-    )
-    missing = [marker for marker in required if marker not in text]
-    assert not missing, f"{rel}: missing non-executable wait protocol markers: {missing}"
-
-
-def test_next_steps_experiment_arm_is_precommitted_before_outcomes(repo_root: Path) -> None:
-    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
-    text = path.read_text(encoding="utf-8")
-    rel = path.relative_to(repo_root).as_posix()
-
-    required = (
-        "precommit both the arm and\n> utility profile in the experiment manifest before the run",
-        "Both must match the experiment\n   manifest committed before outcomes were observed",
-        "Do not select either after\n   seeing results",
-    )
-    missing = [marker for marker in required if marker not in text]
-    assert not missing, f"{rel}: missing precommitted treatment protocol: {missing}"
-
-
-def test_planner_v2_stop_and_receipt_protocol_fail_closed(repo_root: Path) -> None:
-    path = repo_root / "skills" / "traigent-analyze-guidance" / "SKILL.md"
-    text = path.read_text(encoding="utf-8")
-    rel = path.relative_to(repo_root).as_posix()
-
-    required = (
-        "`decision.category=stop`",
-        "mode `safety_stop`",
-        "`new_artifact`, `budget`, or\n   `operator` reason",
-        "`submitted` requires an opaque `result_ref`",
-        "Never translate `submitted` into `verified` locally",
-        "reject unknown top-level or nested fields and unknown enum values",
-        "Do\n     not replace a rejected v2 decision with v1 guidance",
-    )
-    missing = [marker for marker in required if marker not in text]
-    assert not missing, f"{rel}: missing V2 fail-closed markers: {missing}"
 
 
 def test_dataset_example_insights_snippet_uses_async_sdk_contract(

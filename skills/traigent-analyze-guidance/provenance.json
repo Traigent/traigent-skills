@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "beee7675380e0c9d",
+  "doc_hash": "cd1d2ac785200d70",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -213,6 +213,17 @@
       "run_id": null,
       "timestamp": "2026-07-31T00:00:00Z",
       "note": "experiment_name is an agent identity key, not a per-run label: the backend derives the agent from it and optimization history is grouped by (agent, dataset), so the prior guidance to encode variant/weights/permutation-count/date into it forked a new agent per run and shattered cross-run history into one-run fragments",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "repoint-retired-guidance-cli-2026-08-11",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-11T00:00:00Z",
+      "doc_before_hash": "beee7675380e0c9d",
+      "doc_after_hash": "cd1d2ac785200d70",
+      "note": "repoint Mode B from the RETIRED `traigent guidance` command group (Planner V2 next/execute/receipt/reopen, retired from the SDK on 2026-08-03; Traigent 6aff6ee7) and the RETIRED `traigent next-steps` v1 compatibility path (Traigent 9b308539) -- both absent from 0.26.0 and from origin/develop's 8 registered CLI commands (verified by grepping traigent/cli/main.py add_command on origin/develop) -- to the supported post-run surface: the backend decision brief fetched with `analytics_get_run_decision_brief(project_id, run_id, intent)` on the traigent-analytics MCP server (verified present in traigent/analytics_mcp/server.py+tools.py on origin/develop; decision_payload v0: headline/confidence/recommended_action/evidence/drilldowns/warnings). Pre-run planning stays on `traigent plan` (still registered). Per the owning ruling, the retired execution/receipt lifecycle got an honest limitation note instead of an invented alias: execution/receipt flows are not currently available from the SDK; the portal and the decision brief are the supported surface. The Planner V2 treatment/profile/certificate/receipt protocol prose was removed with the CLI that carried it.",
       "source_type": "human"
     }
   ]

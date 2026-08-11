@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9507b334906bf46b",
+  "doc_hash": "a1ce829d2bfbf5f7",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/environment-variables.md": "01d5b26914c28bf5",
@@ -144,6 +144,17 @@
       "doc_before_hash": "42a10c8a1146dacd",
       "doc_after_hash": "9507b334906bf46b",
       "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "plan-only-backend-url-exception-2026-08-11",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-11T00:00:00Z",
+      "doc_before_hash": "9507b334906bf46b",
+      "doc_after_hash": "a1ce829d2bfbf5f7",
+      "note": "the backend-url exception note taught `traigent next-steps` alongside `traigent plan`; next-steps was retired from the SDK on 2026-08-03 (absent from 0.26.0). The note now teaches the resolution order for `traigent plan` only and mentions the retired command purely as history for older installs.",
       "source_type": "human"
     }
   ]

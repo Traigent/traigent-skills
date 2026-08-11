@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.16"
+  version: "1.1.17"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -120,8 +120,10 @@ Use `deploy` for reading deployment-relevant result fields, `debug` for "why is 
 analysis payload without deciding the next run.
 
 Decision questions are out of scope for this read-only analysis skill. For portal-tracked runs,
-route open-ended next-step decisions to `traigent-analyze-guidance` (`traigent next-steps RUN_ID --json`);
-for offline/local runs or unavailable service payloads, route them to `traigent-analyze-guidance`.
+route open-ended next-step decisions to `traigent-analyze-guidance`, which fetches the same
+backend decision brief (`analytics_get_run_decision_brief`) with the decision-making protocol
+around it; for offline/local runs or unavailable service payloads, route them to
+`traigent-analyze-guidance`.
 
 The tool returns an `ok` flag and a `decision_brief` object. Narrate the brief in this order:
 
