@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1bfe10f4a0160f70",
+  "doc_hash": "c343887a6484b340",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -56,7 +56,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "838feefd1437899f",
       "doc_after_hash": "77ffaa88b34926ab",
-      "note": "note that the apply threshold check runs on the search slice, not a promotion decision \u2014 promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
+      "note": "note that the apply threshold check runs on the search slice, not a promotion decision — promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
       "source_type": "human"
     },
     {
@@ -122,7 +122,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "3e30b2333041940f",
       "doc_after_hash": "f2dda030a1ffec27",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -165,6 +165,17 @@
       "doc_before_hash": "bddd73a79633f84d",
       "doc_after_hash": "1bfe10f4a0160f70",
       "note": "the decision-routing note pointed readers at `traigent next-steps RUN_ID --json`, which the SDK retired on 2026-08-03 (absent from 0.26.0). Route decisions to traigent-analyze-guidance's decision-brief protocol (`analytics_get_run_decision_brief`) instead; this skill's own tool catalog already documented the brief.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "declare-true-sdk-floor-2026-08-11-traigent-analyze-results",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-11T00:00:00Z",
+      "doc_before_hash": "1bfe10f4a0160f70",
+      "doc_after_hash": "c343887a6484b340",
+      "note": "declare min_sdk_version 0.20.0 and state it in When to Use. This skill teaches `traigent local sync`, and the `local` CLI group first ships in v0.20.0 (added by Traigent 0ba0fa98, 2026-06-21; absent from v0.15.0-v0.19.1), while the skill was inheriting the 0.15.0 default floor. Surfaced by the prose-aware CLI fact extraction added in this PR. Traigent/traigent-skills#254.",
       "source_type": "human"
     }
   ]

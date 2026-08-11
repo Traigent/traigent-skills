@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "47f12f44d3b7d3c3",
+  "doc_hash": "f41343a8272f8da4",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/environment-variables.md": "01d5b26914c28bf5",
@@ -166,6 +166,17 @@
       "doc_before_hash": "a1ce829d2bfbf5f7",
       "doc_after_hash": "47f12f44d3b7d3c3",
       "note": "drop the `traigent recommend` and `traigent recommend-eval` rows from the CLI table; both were retired in 7eea70c9 ('retire recommendation catalogs') and are absent from SDK 0.26.0. `traigent generate-config`, which already has its own row, is the surviving surface for TVar recommendations. Surfaced by the prose-aware CLI fact extraction added in the same PR. Traigent/traigent-skills#254.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "declare-true-sdk-floor-2026-08-11-traigent-setup-quickstart",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-11T00:00:00Z",
+      "doc_before_hash": "47f12f44d3b7d3c3",
+      "doc_after_hash": "f41343a8272f8da4",
+      "note": "declare min_sdk_version 0.17.0 and state it in When to Use. This skill teaches `traigent plan`, which first ships in v0.17.0 (absent from v0.15.0 and v0.16.0), while the skill was inheriting the 0.15.0 default floor. Surfaced by the prose-aware CLI fact extraction added in this PR. Traigent/traigent-skills#254.",
       "source_type": "human"
     }
   ]

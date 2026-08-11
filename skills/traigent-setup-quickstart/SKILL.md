@@ -15,6 +15,8 @@ metadata:
 
 ## When to Use
 
+Requires `traigent>=0.17.0` — the `traigent plan` command below ships in that release.
+
 Use this skill when:
 
 - Setting up Traigent for the first time in a new project
