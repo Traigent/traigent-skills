@@ -757,14 +757,21 @@ def test_next_run_skill_stays_service_decided_thin_client(repo_root: Path) -> No
     assert re.search(
         r"\bdecision comes from the Traigent service\b", text, re.IGNORECASE
     ), "traigent-analyze-guidance must state that the next-step decision comes from the service"
-    assert "traigent guidance next RUN_ID --json" in text, (
-        "traigent-analyze-guidance must fetch the Planner V2 decision"
+    # `traigent guidance` / `traigent next-steps` were retired from the SDK CLI on 2026-08-03
+    # (Traigent 6aff6ee7 / 9b308539) with no CLI replacement -- confirmed by introspection
+    # against SDK 0.26.0 (`traigent.cli.main.cli.commands` lists 26 commands, neither among
+    # them; `traigent guidance --help` errors "No such command 'guidance'" even on the last
+    # released build that still had `next-steps`). The capability moved to the Python API in
+    # `traigent.generation`, so this lint now pins the successor thin-client surface instead of
+    # the retired CLI's next-action-decision protocol (Traigent/traigent-skills#254/#255).
+    assert "BackendGuidanceProvider" in text, (
+        "traigent-analyze-guidance must fetch the guidance plan via BackendGuidanceProvider"
     )
-    assert "traigent guidance execute --decision <opaque-id>" in text, (
-        "traigent-analyze-guidance must execute only an opaque decision id"
+    assert "optimize_with_guidance" in text, (
+        "traigent-analyze-guidance must run the guided round via optimize_with_guidance()"
     )
-    assert "Do not execute a\nserver-supplied shell fragment" in text, (
-        "Planner V2 must not turn a server response into a shell command"
+    assert "the plan carries selection only, never executable content" in text, (
+        "the guidance plan must stay non-executable (selection only, no shell fragment)"
     )
 
 
@@ -773,11 +780,16 @@ def test_next_steps_protocol_uses_portable_backend_url_flag(repo_root: Path) -> 
     text = path.read_text(encoding="utf-8")
     rel = path.relative_to(repo_root).as_posix()
 
-    assert "--backend-url \"https://portal.traigent.ai\" --json" in text, (
-        f"{rel}: Mode B must show the backend URL flag on Planner V2 commands"
+    # The retired CLI resolved `--backend-url` as flag -> env var -> stored auth-login URL.
+    # `BackendGuidanceProvider` has no such flag at all -- it is Python, not a CLI, and simply
+    # inherits whatever backend/credentials its `post_json`/`async_post` callable already
+    # targets. This lint now guards that the doc says so explicitly instead of teaching a flag
+    # that no longer exists.
+    assert "There is no `--backend-url` flag any more" in text, (
+        f"{rel}: Mode B must say the backend-url flag is gone, not show it on a retired command"
     )
-    assert "traigent next-steps RUN_ID --backend-url <url> --json" in text, (
-        f"{rel}: existing v1 lifecycle compatibility must remain explicit"
+    assert "with no CLI replacement for either" in text, (
+        f"{rel}: the retirement of both commands must be stated plainly, not silently dropped"
     )
     assert "`TRAIGENT_BACKEND_URL` must be set" not in text, (
         f"{rel}: next-steps docs must not teach env-var-only setup as mandatory"
@@ -797,36 +809,29 @@ def test_next_steps_protocol_validates_authoritative_guidance_decision(
     text = path.read_text(encoding="utf-8")
     rel = path.relative_to(repo_root).as_posix()
 
+    # The retired CLI's decision JSON schema (treatment/profile arms, meta.served_variant,
+    # certified_session_utility_advantage_no_kpi_guarantee, rules_parity/rules_fallback, etc.)
+    # has no successor -- it is gone, not renamed (verified: `traigent.generation.GuidancePlan`
+    # carries none of these fields). This lint now pins the REAL GuidancePlan contract the
+    # skill must validate instead.
     required = (
-        "--treatment rules_control",
-        "--treatment policy_override",
-        "--profile balanced",
-        "--guidance-variant rules",
-        "--guidance-variant policy",
-        "--strict-experiment",
-        "meta.served_variant",
-        "meta.selector_engine",
-        "certified_session_utility_advantage_no_kpi_guarantee",
-        "rules_parity",
-        "rules_fallback",
-        "evidence-snapshot hash",
-        "top-level `decision`",
-        "intention-to-treat",
-        "execution receipt",
-        "result_ref",
-        "verification_status=pending",
+        "plan_id",
+        "policy_version",
+        "plan_token",
+        "expires_at",
+        "seed_ref",
+        "BackendGuidanceError",
+        "benchmark_guide",
+        "prompt_rewrite",
     )
     missing = [marker for marker in required if marker not in text]
-    assert not missing, f"{rel}: missing authoritative-decision protocol markers: {missing}"
+    assert not missing, f"{rel}: missing GuidancePlan contract markers: {missing}"
 
-    assert (
-        "Never treat `served_variant=policy_override` as proof that an override ran"
-        in text
-    ), (
-        f"{rel}: policy treatment must be verified against mode, engine, and certificate"
+    assert "no controlled-experiment arm to precommit" in text, (
+        f"{rel}: plan_kind is a plain user choice now, not a randomized experiment arm -- say so"
     )
-    assert "Never use the first\n`next_steps[]` compatibility row" in text, (
-        f"{rel}: legacy compatibility must be forbidden in controlled experiments"
+    assert "invent a successor schema for it" in text, (
+        f"{rel}: must forbid reconstructing the retired v2 decision schema"
     )
 
 
@@ -835,13 +840,13 @@ def test_next_steps_protocol_treats_wait_as_non_executable(repo_root: Path) -> N
     text = path.read_text(encoding="utf-8")
     rel = path.relative_to(repo_root).as_posix()
 
+    # The retired CLI's `decision.category=wait` was a signal the skill had to interpret and
+    # pause on. The successor `GuidanceLoop` has no such signal to interpret at all -- it stops
+    # itself once a round adds nothing new. This lint now pins that real, verified behavior.
     required = (
-        "`decision.category=wait`",
-        "mode `pending_wait`",
-        "`decision.action.kind=none`",
-        "an empty command",
-        "Do not execute, prompt for another action, or\n   immediately re-query",
-        "resume only after new evidence arrives",
+        "The loop stops itself once a round adds no\n"
+        "   new candidates or examples (nothing left to search); there is no separate wait signal to\n"
+        "   interpret and no way to force another round past that point.",
     )
     missing = [marker for marker in required if marker not in text]
     assert not missing, f"{rel}: missing non-executable wait protocol markers: {missing}"
@@ -852,13 +857,17 @@ def test_next_steps_experiment_arm_is_precommitted_before_outcomes(repo_root: Pa
     text = path.read_text(encoding="utf-8")
     rel = path.relative_to(repo_root).as_posix()
 
+    # The retired CLI ran a precommitted, randomized rules-vs-policy experiment arm. The
+    # successor `plan_kind` (benchmark_guide / prompt_rewrite) is a plain user choice, not a
+    # controlled comparison -- there is no arm to precommit any more. This lint now pins the
+    # analogous discipline that DOES still apply: choose plan_kind from the diagnosis before
+    # running, not by cherry-picking whichever scored higher after the fact.
     required = (
-        "precommit both the arm and\n> utility profile in the experiment manifest before the run",
-        "Both must match the experiment\n   manifest committed before outcomes were observed",
-        "Do not select either after\n   seeing results",
+        "no controlled-experiment arm to precommit",
+        "choose it from the Mode C\ndiagnosis before running, not by trying both and keeping whichever scored higher after the fact.",
     )
     missing = [marker for marker in required if marker not in text]
-    assert not missing, f"{rel}: missing precommitted treatment protocol: {missing}"
+    assert not missing, f"{rel}: missing precommitted-choice protocol: {missing}"
 
 
 def test_planner_v2_stop_and_receipt_protocol_fail_closed(repo_root: Path) -> None:
@@ -866,17 +875,19 @@ def test_planner_v2_stop_and_receipt_protocol_fail_closed(repo_root: Path) -> No
     text = path.read_text(encoding="utf-8")
     rel = path.relative_to(repo_root).as_posix()
 
+    # The retired CLI's stop/receipt protocol (decision.category=stop, result_ref,
+    # verification_status=pending, ...) has no successor. `BackendGuidanceProvider`'s actual
+    # fail-closed behavior -- verified against traigent/generation/backend_provider.py -- is
+    # simpler: raise BackendGuidanceError rather than fabricate a plan. This lint now pins that
+    # real contract instead of the retired receipt/reopen machinery.
     required = (
-        "`decision.category=stop`",
-        "mode `safety_stop`",
-        "`new_artifact`, `budget`, or\n   `operator` reason",
-        "`submitted` requires an opaque `result_ref`",
-        "Never translate `submitted` into `verified` locally",
-        "reject unknown top-level or nested fields and unknown enum values",
-        "Do\n     not replace a rejected v2 decision with v1 guidance",
+        "BackendGuidanceError",
+        "fails closed (raises `BackendGuidanceError`) on a\n"
+        "   missing or malformed response rather than fabricating a plan.",
+        "It is gone, not renamed; do not reconstruct any part",
     )
     missing = [marker for marker in required if marker not in text]
-    assert not missing, f"{rel}: missing V2 fail-closed markers: {missing}"
+    assert not missing, f"{rel}: missing fail-closed markers: {missing}"
 
 
 def test_dataset_example_insights_snippet_uses_async_sdk_contract(

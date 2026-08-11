@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "beee7675380e0c9d",
+  "doc_hash": "caeba4610a9abd7e",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -181,7 +181,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "368bf51ad808152b",
       "doc_after_hash": "59464aba14a2deb3",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7 Additionally, restore this skill's thin-client boundary: it collects and relays the characterization and presents ONLY a service-authored budget \u2014 it does not compute, adjust, or recommend a budget locally, and when the service returns no economics result it says so and stops or falls back with no budget number rather than inventing one (regression-linted in tests/contract/test_economics_reference.py).",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7 Additionally, restore this skill's thin-client boundary: it collects and relays the characterization and presents ONLY a service-authored budget — it does not compute, adjust, or recommend a budget locally, and when the service returns no economics result it says so and stops or falls back with no budget number rather than inventing one (regression-linted in tests/contract/test_economics_reference.py).",
       "source_type": "human"
     },
     {
@@ -213,6 +213,17 @@
       "run_id": null,
       "timestamp": "2026-07-31T00:00:00Z",
       "note": "experiment_name is an agent identity key, not a per-run label: the backend derives the agent from it and optimization history is grouped by (agent, dataset), so the prior guidance to encode variant/weights/permutation-count/date into it forked a new agent per run and shattered cross-run history into one-run fragments",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "retired-guidance-cli-migration-2026-08-10-traigent-analyze-guidance",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-10T00:00:00Z",
+      "doc_before_hash": "beee7675380e0c9d",
+      "doc_after_hash": "caeba4610a9abd7e",
+      "note": "migrate Mode B off the retired `traigent guidance` / `traigent next-steps` CLI (SDK retired both 2026-08-03: 6aff6ee7, 9b308539) onto the surviving Python API in traigent.generation -- BackendGuidanceProvider(session_id, post_json), GuidanceLoop, and the optimize_with_guidance() method on the decorated function. Verified by introspection against SDK 0.26.0: optimize_with_guidance exists on the decorated wrapper with signature (provider, *, plan_kind='benchmark_guide', rewrite_llm=None, prompt_rewrite=None, grow_dataset=None, prompt_param=None, weak_examples=(), **optimize_kwargs); it is NOT a coroutine while optimize() IS, so the doc warns against awaiting it; GuidanceLoopResult exposes best_result/rounds; GuidancePlan carries plan_id/policy_version/plan_kind/items/plan_token/expires_at/total_generations and none of the retired decision-JSON fields. The 0.21.3 floor is unchanged and correct -- optimize_with_guidance is present at v0.21.3. Traigent/traigent-skills#251/#254.",
       "source_type": "human"
     }
   ]

@@ -22,5 +22,5 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 | `traigent-eval-build` | `traigent/api/decorators.py`, `traigent/api/types.py`, `traigent/evaluators/base.py`, `traigent/evaluators/local.py`, `traigent/evaluators/hybrid_api.py` |
 | `traigent-eval-audit` | `traigent/api/decorators.py`, `traigent/api/types.py` |
 | `traigent-ci-safety-gate` | `traigent/api/decorators.py`, `traigent/api/safety.py`, `traigent/tvl/promotion_gate.py`, `traigent/tvl/models.py`, `traigent/tvl/__main__.py` |
-| `traigent-analyze-guidance` | `traigent/api/decorators.py`, `traigent/core/optimized_function.py`, `traigent/api/types.py`, `traigent/utils/insights.py`, `traigent/utils/importance.py`, `traigent/analytics/example_insights.py` |
+| `traigent-analyze-guidance` | `traigent/api/decorators.py`, `traigent/generation/*`, `traigent/core/optimized_function.py`, `traigent/api/types.py`, `traigent/utils/insights.py`, `traigent/utils/importance.py`, `traigent/analytics/example_insights.py` |
 | `traigent-recipe-text2sql` | `traigent/__init__.py`, `traigent/api/decorators.py`, `traigent/core/objectives.py`, `traigent/evaluators/base.py`, `traigent/testing/*`, `traigent/core/optimized_function.py` |

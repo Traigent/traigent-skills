@@ -1,6 +1,6 @@
 ---
 name: traigent-analyze-guidance
-description: "What should this Traigent optimization run be, and what next? Three modes: (A) pre-run — fetch the service run-plan, present objectives/models/knobs/search/budget/offline options, apply preflight; (B) post-run, portal-tracked — fetch `traigent guidance next RUN_ID --json`, validate the Planner V2 treatment, lifecycle, certificate label, and authoritative decision, then execute only its opaque decision id; (C) offline/local fallback — diagnose flat/noisy/negative local results, which knob mattered, example evidence, form the next iteration hypothesis when offline=True or no service payload. Portal-tracked decisions come from Traigent, never local markdown."
+description: "What should this Traigent optimization run be, and what next? Three modes: (A) pre-run — fetch the service run-plan, present objectives/models/knobs/search/budget/offline options, apply preflight; (B) post-run, portal-tracked — run a guided-generation round (`optimize_with_guidance()` / `traigent.generation.BackendGuidanceProvider`) to fetch an opaque backend GuidancePlan and generate prompt rewrites or new examples with the user's own LLM, then loop back into Mode A; (C) offline/local fallback — diagnose flat/noisy/negative local results, which knob mattered, example evidence, form the next iteration hypothesis when offline=True or no service payload. Portal-tracked decisions come from Traigent, never local markdown."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -15,9 +15,16 @@ metadata:
 
 ## When to Use
 
-Requires `traigent>=0.21.3` with `traigent guidance` for Planner V2. Existing
-lifecycles pinned to v1 may continue using `traigent next-steps`; never mix v1
-and v2 decisions inside one experiment arm.
+`traigent guidance` and `traigent next-steps` were both retired from the SDK CLI on 2026-08-03
+(commits `6aff6ee7` and `9b308539`) with no CLI replacement for either — introspection against
+SDK 0.26.0 confirms neither is a real command any more, and `traigent guidance` was never a real
+CLI command even on the last released build that still had `next-steps`. Guided generation now
+runs entirely through the Python API in `traigent.generation` (`BackendGuidanceProvider`,
+`GuidanceLoop`, and the `optimize_with_guidance()` convenience method) — see Mode B below.
+
+Requires `traigent>=0.21.3`, which is the floor this skill already declared: the
+`optimize_with_guidance()` method is present at `v0.21.3` and every release since, so the
+migration off the retired CLI needs no higher floor.
 
 Use this skill whenever you need to answer "what should this optimization run
 be, and what should I do after it?" It has three strict modes and one doctrine:
@@ -74,7 +81,7 @@ required — it always is.
 | Situation | Mode |
 |---|---|
 | About to design or launch a run (any run, always) | **A** — fetch and confirm the service run-plan |
-| A portal-tracked run just completed | **B** — fetch `traigent guidance next RUN_ID --json` first |
+| A portal-tracked run just completed | **B** — run a guided-generation round via `optimize_with_guidance()` first |
 | `offline=True`, no backend access, the service payload is unavailable, or the service flagged local evidence for diagnosis | **C** — local diagnosis, one hypothesis |
 
 Portal-tracked runs go through Mode B first. Pre-run is always Mode A. Mode C
@@ -101,9 +108,12 @@ static guidance: expect `phase` such as `P1_STATIC`, plus `evidence_level`,
 
 This requires an SDK build that ships the optimization-plan tool (the `traigent
 plan` CLI / `get_optimization_plan` MCP tool). If your installed SDK does not
-expose it yet, tell the user the plan service is not available in this build and
-fall back to `traigent recommend` for knob recommendations (see
-`traigent-optimize-config-space`) — never fabricate a plan locally.
+expose it yet, tell the user the plan service is not available in this build.
+**There is no CLI or Python fallback for knob recommendations any more** — `traigent
+recommend` and its underlying recommendation catalog were retired from the SDK on
+2026-08-03 (`7eea70c9`, "retire recommendation catalogs") with no replacement, confirmed
+absent from 0.26.0. Ask the user for their own knob choices instead, or see
+`traigent-optimize-config-space` for manual knob authoring — never fabricate a plan locally.
 
 Do not embed local planning intelligence in this skill:
 
@@ -185,220 +195,131 @@ plan from Traigent using the same protocol.
 
 Use this after every portal-tracked Traigent optimization run before planning the next one.
 
-This is the canonical "what next" path for portal-tracked runs: fetch and follow the
-server-owned next-step payload first. For offline/local runs with no service payload, fall
-through to Mode C; for reading result fields or producing reports without making a decision, hand
-off to `traigent-analyze-results`.
+This is the canonical "what next" path for portal-tracked runs: fetch a guidance plan from the
+Traigent service and run a guided-generation round first. For offline/local runs with no service
+payload, fall through to Mode C; for reading result fields or producing reports without making a
+decision, hand off to `traigent-analyze-results`.
 
-Fetch the next-step payload from the Traigent service; do not substitute markdown reasoning.
+Fetch the guidance plan from the Traigent service; do not substitute markdown reasoning.
 
-This mode is a thin client. Fetch the post-run payload, validate its decision
-provenance, present the single authoritative action, then send that direction
-into Mode A as context for a fresh service plan.
+This mode is a thin client. Build a `BackendGuidanceProvider` bound to the run's session, run
+`optimize_with_guidance()` on the already-decorated function, present what it actually did, then
+send that direction into Mode A as context for a fresh service plan.
 
-This mode is inert without the backend payload. If the command cannot fetch a
-service response, report that directly and stop unless the user asks you to
-retry. Retry **at most once**; if the second attempt also fails, fall through to
-Mode C for local diagnosis instead of retrying again.
+This mode is inert without the backend payload. If the provider cannot fetch a plan, the SDK
+raises (`BackendGuidanceError`) rather than fabricating one — report that directly and stop
+unless the user asks you to retry. Retry **at most once**; if the second attempt also fails, fall
+through to Mode C for local diagnosis instead of retrying again.
 
 ### Boundary
 
-For portal-tracked runs handled by this mode, the decision comes from the
-Traigent service. Do not maintain local next-action rules, derive
-recommendations from local files, or infer what should happen next from
-markdown.
+**`traigent guidance` and `traigent next-steps` were both retired from the SDK CLI on
+2026-08-03** (commits `6aff6ee7` and `9b308539`) **with no CLI replacement for either.**
+Introspection against SDK 0.26.0 confirms neither is a real command
+(`traigent.cli.main.cli.commands` lists 26 commands, neither among them), and `traigent guidance`
+was never a real CLI command even on the last released build that still had `next-steps`
+(`traigent guidance --help` returns "Error: No such command 'guidance'."). There is also no
+Python `traigent.guidance` or `traigent.analytics.next_steps` module any more (both
+`ModuleNotFoundError`).
 
-Planner V2 is additive. Use it for newly enrolled lifecycles. Continue v1 only
-for a lifecycle already pinned to v1; never silently fall back from a v2
-controlled comparison to `next-steps`, and never pool v1 and v2 observations.
+The retired system's next-action-decision protocol — precommitted treatment/profile experiment
+arms, an HMAC-authenticated certificate, `decision.category=wait`/`stop`, execution receipts, and
+lifecycle reopen — has **no replacement**. It is gone, not renamed; do not reconstruct any part
+of it from this skill's own edit history or invent a successor schema for it.
 
-The public V2 command is intentionally static and opaque. Do not execute a
-server-supplied shell fragment. For an executable decision, pass only its
-opaque id to `traigent guidance execute --decision <opaque-id>` after the user
-approves. The authenticated SDK resolves the private, scoped execution spec.
-If the user asks for a different action, label that as a manual override and
-request a fresh server decision.
+What replaced it is architecturally simpler: `traigent.generation` — a guided-generation LOOP,
+not a next-action decision to relay and approve. The backend still owns selection (which existing
+examples or prompts to act on), but the plan carries selection only, never executable content:
+a `GuidancePlan` has `plan_id`, `policy_version`, `plan_kind` (`benchmark_guide` or
+`prompt_rewrite`), `items` (each an opaque `seed_ref` + `action` + coarse priority), `plan_token`,
+and `expires_at`. There is no `treatment`, `profile`, `certificate_ref`, or `decision.category` in
+this contract, and no controlled-experiment arm to precommit — plan kind is a plain user choice
+(grow the dataset vs. rewrite the prompt), not a randomized comparison; choose it from the Mode C
+diagnosis before running, not by trying both and keeping whichever scored higher after the fact.
+
+The generation decision comes from the Traigent service — what to rewrite or synthesize, and how;
+the plan is opaque, this skill never invents one locally. Do not maintain local next-action rules,
+derive recommendations from local files, or infer what should happen next from markdown. Content
+stays local: only the content-free `GuidancePlanRequest` reaches the backend, and seed/prompt/
+example text is only ever handed to the user's own LLM.
 
 ### Protocol
 
-> Pass the backend URL explicitly in portable scripts. Stored CLI credentials
-> and `TRAIGENT_BACKEND_URL` / `TRAIGENT_API_URL` remain valid when supported.
->
-> ```bash
-> export TRAIGENT_API_KEY="uk_..."
-> traigent guidance next RUN_ID --profile balanced --treatment policy_override \
->   --backend-url "https://portal.traigent.ai" --json
-> ```
->
-> For a controlled rules-versus-planner comparison, precommit both the arm and
-> utility profile in the experiment manifest before the run. Request exactly
-> that pair and require strict provenance:
->
-> ```bash
-> traigent guidance next RUN_ID --profile balanced --treatment rules_control \
->   --strict-experiment --backend-url "https://portal.traigent.ai" --json
-> traigent guidance next RUN_ID --profile balanced --treatment policy_override \
->   --strict-experiment --backend-url "https://portal.traigent.ai" --json
-> ```
-
-1. Collect the completed run id and the portal `View` link.
-   In SDK >= 0.18.1.dev2, `result.experiment_run_id` (and `result.experiment_id`) are
-   populated directly on the optimize result object — use `result.experiment_run_id` as
-   the `RUN_ID`. Do not ask the user to search logs; the value is on the result.
+1. Collect the completed run id. In SDK >= 0.18.1.dev2, `result.experiment_run_id` is populated
+   directly on the optimize result object — use it as the guidance session id. Do not ask the
+   user to search logs; the value is on the result.
    ```python
    results = await my_func.optimize(max_trials=10)
-   run_id = results.experiment_run_id   # available directly; pass this to guidance next
+   run_id = results.experiment_run_id   # pass this as BackendGuidanceProvider's session_id
    ```
-2. Fetch exactly one decision with
-   `traigent guidance next RUN_ID --profile PROFILE --treatment TREATMENT --backend-url <url> --json`.
-   The treatment is `rules_control` or `policy_override`; the profile is
-   `quality_first`, `balanced`, or `cost_first`. Both must match the experiment
-   manifest committed before outcomes were observed. Do not select either after
-   seeing results or rely on mutable shell state to assign them.
-3. Validate the exact public response before presenting it:
-   - Require `schema_version`, `lifecycle_id`, `run_id`, `decision`, and `meta`;
-     reject unknown top-level or nested fields and unknown enum values.
-   - Join `run_id` to the request. Treat `lifecycle_id`, `decision.id`,
-     `decision.certificate_ref`, and the evidence hash as opaque values.
-   - Require `meta.requested_variant` and `meta.served_variant` to equal the
-     precommitted treatment. Record `meta.selector_engine`, fallback reason,
-     and policy, rule, calibration, and shield versions.
-   - Require the decision's utility profile to equal the precommitted profile.
-     A `policy_override` must have source `policy`, advantage label
-     `certified_session_utility_advantage_no_kpi_guarantee`, an opaque
-     certificate reference, and high evidence. This means the exact action has
-     an HMAC-authenticated, empirically screened positive session-utility
-     advantage on its stated support; it is not a product-KPI guarantee or
-     proof of an independent issuer because the current attestation is symmetric.
-   - Treat `rules_parity` with label `no_certified_override` as the normal case
-     where no certified override applies and the safe rule action is retained;
-     do not say the policy "agreed" with the rule. Treat `rules_fallback` as
-     unavailable planner evidence, never as a policy-served sample, and retain
-     its exact `meta.fallback_reason`: `policy_unavailable`, `calibration_unavailable`,
-     `artifact_invalid`, `certificate_drift`, `exact_support_mismatch`, or
-     `override_denied`. Report parity and fallback under the experiment's
-     intention-to-treat protocol.
-   - Consume only output already validated by `traigent guidance next` or
-     `PlannerV2Client`. Do not hand-parse raw, stored, or mocked JSON: if it did
-     not pass the SDK's exact-key, enum, category/variant, mode/source/selector,
-     certificate, evidence-level, and cross-field checks, stop without a
-     decision. In particular: parity is source `rules` with selector `policy`,
-     a null certificate, medium evidence, and category equal to the baseline;
-     fallback is requested/served `policy_override` with source/selector
-     `rules`, a non-null fallback reason, and no certificate; pending WAIT is
-     source `rules` with selector `safety`; STOP uses source/selector `safety`.
-   - In strict experiments, fail closed on treatment/profile mismatch, missing
-     provenance, fallback, malformed command, or an unavailable selector. Do
-     not replace a rejected v2 decision with v1 guidance or local reasoning.
-4. Present the returned decision without re-ranking it: category, action
-   variant, templated rationale, advantage label, evidence level, treatment,
-   selector engine, fallback status, version pins, and portal link. Never expand
-   the opaque certificate or evidence reference into guessed internals.
+2. Build a `BackendGuidanceProvider` bound to that session and your own authenticated POST
+   callable. There is no `--backend-url` flag any more, since this is not a CLI:
+   `BackendGuidanceProvider` is bound to whatever backend and credentials your callable already
+   targets — the same session your `optimize()` call used.
+   ```python
+   from traigent.generation import BackendGuidanceProvider
 
-   **If `decision.category=wait`**, require mode `pending_wait`,
-   `decision.action.kind=none`, and an empty command. Present the rationale as
-   the complete recommendation. Do not execute, prompt for another action, or
-   immediately re-query; resume only after new evidence arrives.
+   def post_json(path: str, body: dict) -> dict:
+       # POST body to f"{backend_url}{path}" with your existing auth headers.
+       ...
 
-   **If `decision.category=stop`**, require mode `safety_stop`,
-   `decision.action.kind=none`, and an empty command. Stop the cycle. Reopen only
-   through the v2 reopen operation with an explicit `new_artifact`, `budget`, or
-   `operator` reason; a reopened child retains the assigned treatment and
-   profile.
-
-   ```bash
-   traigent guidance reopen LIFECYCLE_ID --reason new_artifact \
-     --expected-treatment TREATMENT --expected-profile PROFILE --json
+   provider = BackendGuidanceProvider(session_id=run_id, post_json=post_json)
+   # or, from an async client:
+   # provider = BackendGuidanceProvider.from_async_post(run_id, async_post_json)
    ```
-5. Require action kind `cli`, a variant valid for the client-safe category, and
-   the exact template `traigent guidance execute --decision DECISION_ID` for
-   every operation other than WAIT/STOP. Reject extra arguments, shell
-   operators, direct skill names, and raw optimization commands. Ask for
-   confirmation, then run the static command with the opaque id only. Internal
-   operation names appear only after authenticated private resolution.
-6. Record execution through V2 receipts:
-   - resolving the opaque decision creates the attempt, lease, reservation, and
-     initial `started` event atomically;
-   - a later `started` receipt is only a heartbeat that refreshes that same
-     active attempt lease;
-   - `submitted` requires an opaque `result_ref` and may include a successor run;
-   - `started` is always `pending`; `submitted` may be `pending`, `verified`, or
-     `rejected`; `failed` and `skipped` are always `rejected`;
-   - `verification_status=pending` is not completion. A mutation remains
-     awaiting verification until a registered revision is consumed by a
-     successor run. Never translate `submitted` into `verified` locally.
-   Use the explicit receipt surface; do not call the endpoint with ad-hoc shell
-   text:
-
-   ```bash
-   traigent guidance receipt --lifecycle LIFECYCLE_ID \
-     --decision DECISION_ID --attempt ATTEMPT_ID --status submitted \
-     --result-ref RESULT_REF --successor-run SUCCESSOR_RUN_ID --json
+   `BackendGuidanceProvider` posts the content-free request to
+   `/api/v1/sessions/{id}/guidance-plan` and fails closed (raises `BackendGuidanceError`) on a
+   missing or malformed response rather than fabricating a plan.
+3. Run a guided round on the already-decorated function — this replaces "fetch a decision,
+   present it, get approval, execute a CLI template". `optimize_with_guidance` is a plain
+   (non-async) method, unlike `optimize()` above — do not `await` it:
+   ```python
+   results = my_func.optimize_with_guidance(
+       provider=provider,
+       plan_kind="benchmark_guide",   # or "prompt_rewrite" to grow prompt candidates instead
+       rewrite_llm=my_llm_client,     # the user's OWN LLM; content never reaches Traigent
+       max_trials=10,
+   )
    ```
-7. After a verified action, loop back to Mode A with the run id, portal link,
-   and opaque decision id. The next paid run still requires a fresh service
-   plan, mock dry-run, cost approval, and explicit go. WAIT or STOP ends the
-   cycle as described above.
-
-### Existing V1 Lifecycle Compatibility
-
-Use this only when the service says the existing lifecycle is pinned to v1 and
-the work is not part of a V2 efficacy comparison:
-
-```bash
-traigent next-steps RUN_ID --backend-url <url> --json
-```
-
-For its legacy rules-versus-policy experiment, the corresponding explicit
-forms remain `--guidance-variant rules` and `--guidance-variant policy` with
-`--strict-experiment`. Require `guidance_meta.served_variant`, the actual
-`engine`, fallback reason, evidence-snapshot hash, top-level `decision`, an
-empty `next_steps` list, and a single authoritative action. Never use the first
-`next_steps[]` compatibility row in a controlled comparison. Run only the
-command template the service returns for this pre-existing v1 lifecycle, and
-record its execution receipt. Do not enroll a new lifecycle in v1.
+   `optimize_with_guidance` fetches the opaque `GuidancePlan`, resolves its seeds to local dataset
+   examples (`benchmark_guide`) or local prompt candidates (`prompt_rewrite`), generates with the
+   user's own LLM, re-optimizes, and returns the best `OptimizationResult` across rounds — the
+   same paid-run object as any other `optimize()` call. The loop stops itself once a round adds no
+   new candidates or examples (nothing left to search); there is no separate wait signal to
+   interpret and no way to force another round past that point.
+4. This is still a **paid real run**: mock/dry-run first, present the cost estimate, and require
+   explicit user approval before the guided round executes for real. The decision-fetch/approve/
+   execute CLI dance is gone; the paid-run safety gate is not.
+5. Report what the round actually did — `plan_kind`, rounds run, candidates or examples added,
+   best score across rounds (`GuidanceLoopResult.rounds`, `.best_result`) — instead of quoting a
+   decision payload the SDK no longer returns.
+6. After the guided round, loop back to Mode A with the new run id and portal link for the next
+   plan.
 
 ### Presentation Rules
 
-- Use Traigent's words for the recommendation. You may summarize for readability,
-  but do not change the ordering or imply stronger support than the payload gives.
-- Traigent-attributed recommendation (active voice): when the service payload
-  carries a Traigent `attribution` block, present it in Traigent's own voice —
-  show `attribution.headline` (Traigent as the subject of the recommended action)
-  and `attribution.why` **verbatim**. Do not re-word, re-order, or recompute the
-  rationale locally. It is provenance, not a performance claim: it does not
-  upgrade the evidence tier, and the no-guarantee and no-stronger-support rules
-  above still hold. The block is optional and version-dependent — older backends
-  and older SDK clients will not return it. When it is absent, present the
-  decision as in the bullets above and do not assert the block was there.
-- Present the single authoritative v2 decision and its templated rationale. Do
-  not reconstruct hidden evidence from local files.
-- Never treat `served_variant=policy_override` as proof that an override ran;
-  require mode `policy_override`, source `policy`, the exact
-  `certified_session_utility_advantage_no_kpi_guarantee` label, and an opaque
-  certificate reference.
-- High evidence means a valid HMAC-authenticated empirical override or a safety-complete stop. Medium
-  means complete rules/parity evidence. Low is allowed only for a
-  non-mandatory fallback or wait; never use it to promote.
-- Always include the portal link when available. The portal is the durable record
-  for best performers, tradeoffs, parameter importance, and decision context.
-- If the run is absent from the portal, treat that as a registration or
-  connectivity issue. Do not invent a next-step decision from partial local data.
-- Keep raw examples, traces, and private content local unless the user explicitly
-  approves egress.
-- Traigent recommendations (including "compare with baseline before promotion") are
-  advisory, not promotion authorizations. Promotion requires candidate-vs-incumbent
-  evaluation on the holdout slice. If the repo already has a holdout mechanism, present
-  it as that repo's implementation of this general rule, not as something Traigent
-  mandated in that exact form.
+- There is no server-authored next-step decision payload to relay verbatim any more — summarize
+  what `optimize_with_guidance` actually did instead of quoting fields (`treatment`, `profile`,
+  `certificate_ref`, `decision.category`) that no longer exist in the guidance contract.
+- Keep raw examples, traces, and private content local — generation still runs on the user's own
+  LLM (`rewrite_llm`), never a Traigent-hosted model; the plan carries selection only.
+- Always include the portal link when available. The portal is the durable record for best
+  performers, tradeoffs, and parameter importance.
+- If the run is absent from the portal, treat that as a registration or connectivity issue. Do
+  not invent a next-step decision from partial local data.
+- Traigent recommendations (including "compare with baseline before promotion") are advisory, not
+  promotion authorizations. Promotion requires candidate-vs-incumbent evaluation on the holdout
+  slice. If the repo already has a holdout mechanism, present it as that repo's implementation of
+  this general rule, not as something Traigent mandated in that exact form.
 
 ### Handoff Reference
 
-Planner V2 resolves the private execution spec after the opaque static command
-is approved. The resolved spec may route to the current skill names below;
-reject a stale or unavailable skill instead of guessing what it meant. These
-are handoff labels, not a local decision menu:
+The plan's `items[].action` names the generation move (`generate_similar`, `generate_harder`,
+`diversify_around`, `rewrite_prompt`) — this skill never invents a different one. What each
+outcome feeds into:
 
+- new or changed examples from a `benchmark_guide` round -> `traigent-dataset-curate`
+- new prompt candidates from a `prompt_rewrite` round -> `traigent-optimize-config-space`
 - evaluation-set scoring -> `traigent-dataset-curate`
 - dataset curation -> `traigent-dataset-curate`
 - hard-example reflection -> `traigent-dataset-curate`
@@ -519,14 +440,22 @@ weak_examples = [
     ("question text", "expected answer", "candidate answer"),
 ]
 
-results = await answer.optimize_with_guidance(
+results = answer.optimize_with_guidance(
     provider=provider,
+    plan_kind="prompt_rewrite",     # weak_examples only feed the prompt-rewrite path
+    prompt_param="prompt_template", # the config-space key holding the prompt Choices
+    rewrite_llm=my_llm_client,      # the user's OWN LLM; content never reaches Traigent
     weak_examples=weak_examples,
     max_trials=8,
 )
 ```
 
-`optimize_with_guidance` is a method on the decorated optimized function. Keep the provider and rewrite settings project-specific, and confirm the new candidate still improves on a heldout slice.
+`optimize_with_guidance` is a plain (non-async) method on the decorated optimized function — do
+not `await` it. `weak_examples` only feeds the `prompt_rewrite` path; pass `plan_kind="prompt_rewrite"`
+and the `prompt_param` naming your prompt's config-space key, or the weak examples are silently
+unused. `rewrite_llm` is required — with no explicit LLM the SDK fails closed rather than
+instantiating one from environment credentials. Keep the provider and rewrite settings
+project-specific, and confirm the new candidate still improves on a heldout slice.
 
 This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent` lifecycle skill).
 

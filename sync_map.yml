@@ -235,6 +235,7 @@ skills:
       - /api/v1/optimization-comparisons
       - /api/v1/analytics/example-scoring
       - /api/v1/analytics/runs
+      - /api/v1/sessions
     modules:
       - traigent.api.decorators
       - traigent.core.optimized_function
@@ -242,8 +243,10 @@ skills:
       - traigent.utils.insights
       - traigent.utils.importance
       - traigent.analytics
+      - traigent.generation
     sdk_paths:
       - traigent/api/decorators.py
+      - traigent/generation/*
       - traigent/core/optimized_function.py
       - traigent/api/types.py
       - traigent/utils/insights.py

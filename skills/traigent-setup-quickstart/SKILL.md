@@ -295,13 +295,16 @@ For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offlin
 > The SDK defaults to the cloud backend (`https://portal.traigent.ai`) when
 > `TRAIGENT_BACKEND_URL` is unset — no env var is needed for the standard cloud path.
 > Set `TRAIGENT_BACKEND_URL` only to target a dev or self-hosted backend
-> (e.g. `http://localhost:5000`). Exception: the `traigent next-steps` and `traigent plan`
-> CLI commands resolve `--backend-url` as flag → `TRAIGENT_BACKEND_URL` / the URL stored by
+> (e.g. `http://localhost:5000`). Exception: the `traigent plan`
+> CLI command resolves `--backend-url` as flag → `TRAIGENT_BACKEND_URL` / the URL stored by
 > `traigent auth login` → a local default (`http://localhost:5000`), so for cloud use log in
-> first or pass the flag/env var explicitly. `plan`/`next-steps` honor the stored auth-login URL
-> since 0.20.0 (see version-matrix: `backend-url`) — on SDK <= 0.19.x these two commands ignored
+> first or pass the flag/env var explicitly. `plan` honors the stored auth-login URL
+> since 0.20.0 (see version-matrix: `backend-url`) — on SDK <= 0.19.x this command ignored
 > the stored `traigent auth login` URL and always defaulted to localhost unless the flag or env
 > var was passed (Traigent/Traigent#1721).
+>
+> (`traigent next-steps` had the same behavior but was retired from the SDK on 2026-08-03 with no CLI replacement — see `traigent-analyze-guidance`.)
+>
 > Portal-issued API keys use the `uk_...` prefix.
 >
 > ```bash
@@ -648,13 +651,13 @@ traigent onboard         # guided first-run setup wizard
 | `traigent quickstart`      | Run the bundled mock-mode demo (keyless, zero-setup, always works)  |
 | `traigent onboard`         | Guided setup for Traigent in this project (API key, project, env)   |
 | `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-3-haiku-20240307` (ID-shape preflight against a shipped snapshot; confirm liveness via the provider's catalog) |
-| `traigent recommend`       | Evidence-backed TVAR recommendations for your agent/task type       |
-| `traigent recommend-eval`  | Metric and evaluator recommendations for your task type             |
 | `traigent generate-config` | Scaffold a full `@traigent.optimize()` config for your function     |
 | `traigent detect-tvars`    | Detect tuned-variable candidates in existing Python files           |
 | `traigent info`            | Show SDK version, environment, and integrations                     |
 | `traigent algorithms`      | List available optimization algorithms                              |
 | `traigent validate`        | Validate dataset files and configuration                            |
+
+The TVAR and evaluator recommendation commands (`traigent recommend`, `traigent recommend-eval`) were retired from the SDK on 2026-08-03 (`7eea70c9`, "retire recommendation catalogs") with no CLI or Python replacement — the whole recommendation-catalog capability is gone, not renamed, so this table no longer lists them.
 
 ## Next Steps
 

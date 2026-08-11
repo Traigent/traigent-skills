@@ -120,8 +120,11 @@ Use `deploy` for reading deployment-relevant result fields, `debug` for "why is 
 analysis payload without deciding the next run.
 
 Decision questions are out of scope for this read-only analysis skill. For portal-tracked runs,
-route open-ended next-step decisions to `traigent-analyze-guidance` (`traigent next-steps RUN_ID --json`);
-for offline/local runs or unavailable service payloads, route them to `traigent-analyze-guidance`.
+route open-ended next-step decisions to `traigent-analyze-guidance` (guided generation now runs
+through `traigent.generation.BackendGuidanceProvider` / `optimize_with_guidance()` in Python —
+both CLI commands this used to route through were retired from the SDK on 2026-08-03 with no CLI
+replacement); for offline/local runs or unavailable service payloads, route them to
+`traigent-analyze-guidance`.
 
 The tool returns an `ok` flag and a `decision_brief` object. Narrate the brief in this order:
 

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9507b334906bf46b",
+  "doc_hash": "bbea884c389a4a45",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/environment-variables.md": "01d5b26914c28bf5",
@@ -121,7 +121,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "d1fcc507af83c0ee",
       "doc_after_hash": "1bceeccc65431713",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -144,6 +144,17 @@
       "doc_before_hash": "42a10c8a1146dacd",
       "doc_after_hash": "9507b334906bf46b",
       "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "retired-guidance-cli-migration-2026-08-10-traigent-setup-quickstart",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-10T00:00:00Z",
+      "doc_before_hash": "9507b334906bf46b",
+      "doc_after_hash": "bbea884c389a4a45",
+      "note": "drop the retired `traigent next-steps` pointer and state the retirement (2026-08-03, no CLI replacement) rather than teaching a dead command. Traigent/traigent-skills#251.",
       "source_type": "human"
     }
   ]
