@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "17abd4bdcd65722d",
+  "doc_hash": "5a83d2a3b6fc907a",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
