@@ -50,7 +50,8 @@ import traigent
 from traigent.api.decorators import EvaluationOptions
 
 def exact_match_score(output, expected) -> float:
-    return 1.0 if str(output).strip() == str(expected).strip() else 0.0
+    # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
+    return 1.0 if str(output).strip().lower() == str(expected).strip().lower() else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
@@ -159,7 +160,8 @@ def evaluate_answer(func, config, example) -> ExampleResult:
     started = time.perf_counter()
     try:
         prediction = func(**example.input_data)
-        score = 1.0 if str(prediction).strip() == str(example.expected_output).strip() else 0.0
+        # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
+        score = 1.0 if str(prediction).strip().lower() == str(example.expected_output).strip().lower() else 0.0
         error_message = None
         success = True
     except Exception as exc:
@@ -221,7 +223,8 @@ class ExactMatchEvaluator(BaseEvaluator):
 
         for index, example in enumerate(dataset):
             prediction = func(**example.input_data)
-            score = 1.0 if str(prediction).strip() == str(example.expected_output).strip() else 0.0
+            # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
+            score = 1.0 if str(prediction).strip().lower() == str(example.expected_output).strip().lower() else 0.0
             result = ExampleResult(
                 example_id=str(example.metadata.get("id", index)),
                 input_data=example.input_data,
