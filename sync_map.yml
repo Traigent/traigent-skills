@@ -5,9 +5,11 @@ sdk:
 default_min_sdk_version: "0.15.0"
 # Keep this pinned and update it when a new PyPI release should be covered by
 # per-PR released-contracts. Do not resolve PyPI live in PR CI.
-current_released_sdk_version: "0.23.0"
+current_released_sdk_version: "0.26.0"
 skills:
   traigent-setup-quickstart:
+    # the `traigent plan` command taught below ships in traigent>=0.17.0.
+    min_sdk_version: "0.17.0"
     env_version_floors:
       # TRAIGENT_LOG_LEVEL ships in traigent>=0.13.0; the reference table row
       # carries the version note in prose.
@@ -43,6 +45,17 @@ skills:
       - docs/user-guide/tuned_variables.md
 
   traigent-setup-decorator:
+    # The skill itself still targets the released floor. Only the
+    # winner-stability-reps reference documents an unreleased API, so it
+    # carries a PER-FILE floor instead: raising min_sdk_version to 0.27.0
+    # would make list_buckets.py try to `pip install traigent==0.27.0`,
+    # which does not exist (same pattern as traigent-dataset-curate's
+    # references/cold-start.md floor).
+    python_version_floors:
+      # winner_stability_reps lands in 0.27.0 (Traigent/Traigent@867a7288,
+      # unreleased as of 2026-08-13); the reference states the requirement
+      # in prose at the top of the file.
+      references/winner-stability-reps.md: "0.27.0"
     modules:
       - traigent.api.decorators
     sdk_paths:
@@ -64,6 +77,8 @@ skills:
       - traigent/config/parallel.py
 
   traigent-analyze-results:
+    # the `traigent local sync` command taught below ships in traigent>=0.20.0.
+    min_sdk_version: "0.20.0"
     backend_prefixes:
       - /api/v1/experiment-groups
     modules:
@@ -112,7 +127,7 @@ skills:
     backend_prefixes:
       - /api/v1/analytics/runs
     modules:
-      - traigent.config_generator.recommendations
+      - traigent.config_generator
       - traigent.api.decorators
       - traigent.core.optimized_function
       - traigent.knobs.patterns
@@ -123,7 +138,7 @@ skills:
       - traigent.utils.env_config
       - traigent.analytics
     sdk_paths:
-      - traigent/config_generator/recommendations.py
+      - traigent/config_generator/__init__.py
       - traigent/config_generator/catalog/tvar_catalog.v1.json
       - traigent/api/decorators.py
       - traigent/core/optimized_function.py
@@ -152,12 +167,21 @@ skills:
   # (curate-dataset, plus the reflect-on-hard-examples skill), folded in
   # during the 2026-07 taxonomy consolidation.
   traigent-dataset-curate:
+    # The skill itself still targets the released floor. Only the cold-start
+    # reference documents an unreleased API, so it carries a PER-FILE floor
+    # instead: raising min_sdk_version to 0.27.0 would make list_buckets.py
+    # try to `pip install traigent==0.27.0`, which does not exist.
     min_sdk_version: "0.16.0"
+    python_version_floors:
+      # traigent.generation.coldstart lands in 0.27.0; the reference states
+      # the requirement in prose at the top of the file.
+      references/cold-start.md: "0.27.0"
     backend_prefixes:
       - /api/v1/datasets
       - /api/v1/analytics/example-scoring
       - /api/v1/analytics/experiments
       - /api/v1/analytics/runs
+      - /api/v1/guidance/cold-start-plan
     modules:
       - traigent.generation
       - traigent.analytics
@@ -233,8 +257,6 @@ skills:
       - traigent.utils.insights
       - traigent.utils.importance
       - traigent.analytics
-      - traigent.analytics.planner
-      - traigent.cli.guidance_command
     sdk_paths:
       - traigent/api/decorators.py
       - traigent/core/optimized_function.py
@@ -242,8 +264,6 @@ skills:
       - traigent/utils/insights.py
       - traigent/utils/importance.py
       - traigent/analytics/example_insights.py
-      - traigent/analytics/planner.py
-      - traigent/cli/guidance_command.py
 
   traigent-recipe-text2sql:
     min_sdk_version: "0.16.0"

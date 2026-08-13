@@ -1,11 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "479e7e43caf5632c",
+  "doc_hash": "eefb5531a7c0f0eb",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/evaluation-options.md": "64daee6c11f5940d",
     "references/execution-modes.md": "beca15259a649c4b",
-    "references/injection-modes.md": "30b94bf570e66954"
+    "references/injection-modes.md": "30b94bf570e66954",
+    "references/winner-stability-reps.md": "ba345aca3bfe6ab0"
   },
   "entries": [
     {
@@ -110,6 +111,17 @@
       "run_id": null,
       "timestamp": "2026-07-31T00:00:00Z",
       "note": "experiment_name is an agent identity key, not a per-run label: the backend derives the agent from it and optimization history is grouped by (agent, dataset), so the prior guidance to encode variant/weights/permutation-count/date into it forked a new agent per run and shattered cross-run history into one-run fragments",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "winner-stability-reps-2026-08-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-13T00:00:00Z",
+      "doc_before_hash": "479e7e43caf5632c",
+      "doc_after_hash": "eefb5531a7c0f0eb",
+      "note": "document winner_stability_reps (opt-in, measured-only post-selection winner rerun; shipped on Traigent/Traigent develop @867a7288, not yet in any tagged release) in a new references/winner-stability-reps.md, gated by a PER-FILE sync_map.yml python_version_floors entry at 0.27.0 (not a skill-wide min_sdk_version bump, per the cold-start-skill regression precedent) so the rest of this skill's already-released surface stays checked in every currently-configured bucket; both call forms and both rejected forms verified directly against a local build of origin/develop",
       "source_type": "human"
     }
   ]

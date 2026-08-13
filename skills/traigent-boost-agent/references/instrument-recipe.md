@@ -31,18 +31,23 @@ from time import perf_counter
 import traigent
 from openai import OpenAI
 from traigent.api.decorators import EvaluationOptions
-from traigent.config_generator.recommendations import (
-    RECOMMENDATION_CAVEAT,
-    recommend_configuration_space,
-)
+from traigent.config_generator import generate_config
 from traigent.knobs.patterns import self_consistency
 from traigent.knobs.runtime import StageRunner, execute_composite
 from traigent.knobs.telemetry import merge_composite_measures
 
 client = OpenAI()
 
-RAG_RECOMMENDATIONS = recommend_configuration_space("rag", min_impact="low")
-print(RAG_RECOMMENDATIONS["caveat"] or RECOMMENDATION_CAVEAT)
+# Reads the target file and proposes tuned variables from the shipped TVar
+# catalog. enrich=False keeps it offline: no LLM call, no spend.
+SUGGESTED = generate_config(__file__, function_name="answer_question", enrich=False)
+for rec in SUGGESTED.recommendations:
+    # Rows are search-space STARTING POINTS, not performance claims -- say so to
+    # the user. apply_guidance carries the manual runtime steps where a knob
+    # needs them (the coding / RAG knob packs do).
+    print(f"{rec.name}: {rec.range_type} (impact {rec.impact_estimate}) -- {rec.reasoning}")
+    if rec.apply_guidance:
+        print(f"  apply: {rec.apply_guidance}")
 
 CONSISTENCY = self_consistency(
     "qa_self_consistency",
@@ -57,8 +62,19 @@ CONSISTENCY = self_consistency(
     ),
 )
 
+# generate_config returns ROWS, not a ready configuration_space dict. Build the
+# space from the rows you actually decide to tune -- each carries range_type and
+# range_kwargs (e.g. Choices -> {"values": [...]}, IntRange -> {"low":, "high":}).
+# Take Choices rows literally; convert numeric ranges with Range/IntRange from
+# traigent, and read apply_guidance first for knobs that need runtime wiring.
+SUGGESTED_CHOICES = {
+    rec.name: rec.range_kwargs["values"]
+    for rec in SUGGESTED.recommendations
+    if rec.range_type == "Choices"
+}
+
 CONFIGURATION_SPACE = {
-    **RAG_RECOMMENDATIONS["configuration_space"],
+    **SUGGESTED_CHOICES,
     "model": ["gpt-4o-mini", "gpt-4o"],
     "temperature": [0.0, 0.2, 0.7],
     "candidate_count": [1, 2, 3],

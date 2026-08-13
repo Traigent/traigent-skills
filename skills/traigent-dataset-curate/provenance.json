@@ -1,7 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b312fe7f22ed3382",
+  "doc_hash": "4b56d7384f50327c",
   "reference_hashes": {
+    "references/cold-start.md": "2443265678d3a144",
     "references/dataset-recipes.md": "adfa250fd96c0892",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -65,7 +66,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "34eec3149f68cccd",
       "doc_after_hash": "363c38db65a63d3a",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -88,6 +89,28 @@
       "doc_before_hash": "8e5cf0be3bbec9e0",
       "doc_after_hash": "b312fe7f22ed3382",
       "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "cold-start-reference-2026-08-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-10T00:00:00Z",
+      "doc_before_hash": "b312fe7f22ed3382",
+      "doc_after_hash": "a613c4e4e671d62c",
+      "note": "add references/cold-start.md against the real (unreleased) traigent.generation.coldstart API -- ColdStartOutcome/ColdStartResult/DiscoveryGap/LocalVerifier/ScoreReceipt/build_cold_start_eval_set, verified by introspection against the traigent feature branch introducing it, not the abandoned closed-design draft (ColdStartOptions/ScenarioCandidate/SystemSpec/assert_optimizer_eligible/generate_eval_set never shipped). Add a one-line 'When to Use' pointer gated on `traigent>=0.27.0`; bump this skill's sync_map.yml min_sdk_version to match and add the /api/v1/guidance/cold-start-plan backend prefix. No change to existing sections.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "drop-retired-next-steps-cli-2026-08-10",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-08-10T00:00:00Z",
+      "doc_before_hash": "a613c4e4e671d62c",
+      "doc_after_hash": "4b56d7384f50327c",
+      "note": "stop teaching `traigent next-steps RUN_ID --json`, which the SDK RETIRED on 2026-08-03 (Traigent 9b308539 'retire legacy analytics next steps'; the sibling 6aff6ee7 retired `traigent guidance`). Verified by introspecting both SDKs: the command is PRESENT in 0.19.1.dev0 (the version this repo's contract venv installs) and ABSENT from 0.26.0 on origin/develop, whose CLI exposes 26 commands with no next-steps or guidance. It is therefore dead on any current install while this repo's own guard still sees it as live. The skill already documented the real path -- the example-scoring dataset-quality output -- but presented it as the fallback, so a reader hit the retired command first. The real path is now primary. `traigent report-example-map` (step 2) was confirmed present in both and is unchanged. Part of Traigent/traigent-skills#251; fixes only the 2 refs in this skill.",
       "source_type": "human"
     }
   ]
