@@ -379,6 +379,15 @@ example inputs/outputs/prompts. Use `offline=True` only when zero outbound traff
 To optimize an external HTTP/MCP service, put the service call in your decorated function or
 custom evaluator; keep optimization strategy on the same `algorithm`/`offline` knobs.
 
+### Winner-stability rerun — `winner_stability_reps` (unreleased)
+
+`winner_stability_reps` is an opt-in, measured-only rerun of the winning configuration after
+selection completes — for reading run-to-run dispersion, never for gating or re-ranking.
+**Requires `traigent>=0.27.0`; unreleased as of this writing** (the currently shipping SDK is
+`0.26.0` and does not accept this option at all — passing it raises `TypeError` /
+`pydantic.ValidationError`). Check the installed `traigent.__version__` before offering it.
+Full reference, call forms, defaults, and rejected forms: `references/winner-stability-reps.md`.
+
 ## Config Access Lifecycle
 
 Inside the decorated function, read the active config with `traigent.get_config()` — it returns the current trial config during optimization (thread-safe via contextvars) and, after `apply_best_config(results)`, the applied best config. Use `traigent.get_trial_config()` when you want a strict variant that raises `OptimizationStateError` outside an active trial.
@@ -435,6 +444,7 @@ answer = answer_question("What is the capital of France?")
 - `references/evaluation-options.md` - Full EvaluationOptions field reference
 - `references/injection-modes.md` - Detailed injection mode comparison
 - `references/execution-modes.md` - Full ExecutionOptions field reference
+- `references/winner-stability-reps.md` - `winner_stability_reps` opt-in post-selection winner rerun (unreleased; requires `traigent>=0.27.0`)
 - `traigent-eval-build` - Deep evaluator implementation, ExampleResult, custom evaluators, and evaluator templates
 - `traigent-eval-choose-metric` - Metric interview and objective selection before decorator wiring
 - `traigent-setup-quickstart` - Installation, API-key setup, and first cloud-smart optimization

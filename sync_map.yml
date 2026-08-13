@@ -5,7 +5,7 @@ sdk:
 default_min_sdk_version: "0.15.0"
 # Keep this pinned and update it when a new PyPI release should be covered by
 # per-PR released-contracts. Do not resolve PyPI live in PR CI.
-current_released_sdk_version: "0.23.0"
+current_released_sdk_version: "0.26.0"
 skills:
   traigent-setup-quickstart:
     # the `traigent plan` command taught below ships in traigent>=0.17.0.
@@ -45,6 +45,17 @@ skills:
       - docs/user-guide/tuned_variables.md
 
   traigent-setup-decorator:
+    # The skill itself still targets the released floor. Only the
+    # winner-stability-reps reference documents an unreleased API, so it
+    # carries a PER-FILE floor instead: raising min_sdk_version to 0.27.0
+    # would make list_buckets.py try to `pip install traigent==0.27.0`,
+    # which does not exist (same pattern as traigent-dataset-curate's
+    # references/cold-start.md floor).
+    python_version_floors:
+      # winner_stability_reps lands in 0.27.0 (Traigent/Traigent@867a7288,
+      # unreleased as of 2026-08-13); the reference states the requirement
+      # in prose at the top of the file.
+      references/winner-stability-reps.md: "0.27.0"
     modules:
       - traigent.api.decorators
     sdk_paths:
