@@ -15,7 +15,7 @@ metadata:
 
 ## When to Use
 
-Requires `traigent>=0.16.0`.
+Requires `traigent>=0.24.0`.
 
 Use this when wiring a SPIDER-style text2SQL agent with objective execution-match
 scoring and a Traigent optimization loop.

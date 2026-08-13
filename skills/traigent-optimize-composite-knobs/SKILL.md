@@ -15,7 +15,7 @@ metadata:
 
 ## When to Use
 
-Requires `traigent>=0.13.0` (the knobs API is present on all current SDK releases).
+Requires `traigent>=0.24.0` (the knobs API is present on all current SDK releases).
 
 Use this skill when:
 

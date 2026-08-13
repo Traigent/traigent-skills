@@ -15,7 +15,7 @@ metadata:
 
 ## When to Use
 
-Requires `traigent>=0.17.0` — the `traigent plan` command below ships in that release.
+Requires `traigent>=0.24.0` (the `traigent plan` command used below shipped in 0.17.0).
 
 Use this skill when:
 
