@@ -108,7 +108,8 @@ def evaluate_one(example: dict, config: dict, mode: str) -> tuple[float, float, 
     start = time.perf_counter()
     output = run_my_agent(example["input"], config)  # <- your agent call
     latency_ms = (time.perf_counter() - start) * 1000.0
-    accuracy = 1.0 if output.strip() == example["expected_output"].strip() else 0.0
+    # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
+    accuracy = 1.0 if output.strip().lower() == example["expected_output"].strip().lower() else 0.0
     return accuracy, latency_ms, 0.0  # supply real per-call cost if you track it
 
 

@@ -55,7 +55,9 @@ const answerQuestion = optimize({
       { input: 'What is the capital of France?', output: 'Paris' },
     ],
     metrics: {
-      accuracy: (output, expectedOutput) => output === expectedOutput,
+      // SDK builtin accuracy is case-insensitive + whitespace-trimmed (matches SDK since #1473)
+      accuracy: (output, expectedOutput) =>
+        String(output).trim().toLowerCase() === String(expectedOutput).trim().toLowerCase() ? 1.0 : 0.0,
       cost: (_output, _expectedOutput, _runtimeMetrics, row) =>
         row.input.includes('capital') ? 0.2 : 0.1,
     },
