@@ -2,7 +2,7 @@
   "schema": "skill-provenance/v1",
   "doc_hash": "7c97ace17a3429d5",
   "reference_hashes": {
-    "references/dspy.md": "6c899d029a43f9f6",
+    "references/dspy.md": "59680e5b6e0e1570",
     "references/langchain.md": "ffe92eb4d431f3b9",
     "references/litellm.md": "63db130850e6a2ac"
   },
