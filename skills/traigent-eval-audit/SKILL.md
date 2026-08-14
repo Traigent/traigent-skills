@@ -58,15 +58,32 @@ Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval
 paid run**, an explicit spend cap, and the recorded stop rule. The service sets
 *how much* to invest; it never affects *whether* approval is required — it always is.
 
-## Service-Side Evaluator Audit (ACET)
+## Service-Side Evaluator Audit
 
-Traigent's server-side ACET evaluator audit is available when your deployment is IP-allowlisted for the read-only backend endpoint. The platform assesses the evaluators used in a run **read-only**, computed from the optimizer's persisted config×example×evaluator tensor and anchored to a separate verifiable signal — such as execution-match, unit-test pass, or MCQ exact-match correctness — without requiring new gold-label collection. It surfaces as an evaluator-audit next-step action when the allowlisted endpoint is available (server-side; no local re-scoring). Do not recreate ACET math client-side.
+Traigent can assess the evaluators used in a completed run, server-side and **read-only**, when
+your deployment is IP-allowlisted for the backend endpoint. It reuses evidence the run already
+produced, so it needs **no new gold-label collection** and no local re-scoring. It surfaces as
+an evaluator-audit next-step action when the endpoint is available.
 
-The audit verdict is read through `GET /api/v1/analytics/runs/{run_id}/evaluator-quality` (viewer role): an IP-safe, hard-allowlisted projection of the internal audit — coarse verdict, opaque evaluator fingerprints, and a capped confidence interval. The methodology-bearing report (axes, vetoes, bias battery, tensor internals) is never returned; do not try to reconstruct it.
+**Give it something independent to check against.** The audit is only as confident as the
+run's independent correctness signal — execution match, unit-test pass, or exact match where
+the task allows one. Choosing a task shape that admits such a signal is the single biggest
+thing you control here.
 
-**Fail-closed honest confidence.** If no verifiable anchor exists for the run, the service audit abstains: no leaderboard is emitted and no promote gate passes. A proxy anchor (another model or heuristic) is accepted but capped at ≤0.30 confidence and cannot be upgraded to verifiable-level confidence. Do not treat an abstain result as a pass, and do not interpret a proxy-anchor result as equivalent to a verifiable-anchor result.
+The verdict is read through `GET /api/v1/analytics/runs/{run_id}/evaluator-quality` (viewer
+role), which returns a deliberately coarse projection: a verdict, opaque evaluator identifiers,
+and a bounded confidence figure. Internal detail is not returned — do not attempt to
+reconstruct it or to reimplement the audit client-side.
 
-The manual gold-slice protocol below and the service-side ACET audit are complementary: the gold-slice protocol gives early construction-time trust, while ACET is a retroactive quality signal computed from real optimizer runs.
+**Fail-closed honest confidence.** With no independent signal available for the run, the audit
+**abstains**: no leaderboard is emitted and no promote gate passes. A weaker substitute signal
+(another model or a heuristic) is accepted but carries a hard confidence ceiling and can never
+be promoted to the same standing. Do not read an abstain as a pass, and do not cite a
+substitute-signal result as equivalent to an independently verified one.
+
+The manual gold-slice protocol below and the service-side audit are complementary: the
+gold-slice protocol gives early construction-time trust, while the service audit is a
+retroactive quality signal computed from real runs.
 
 ## Why Audit
 
@@ -210,9 +227,9 @@ Hybrid evaluation is the default for high-risk workflows: deterministic gates pr
 
 ## Evaluator Repair (`improve_evaluator`)
 
-The service may emit `improve_evaluator` as a next-step action when the ACET audit identifies a weak or suspicious evaluator. This is a service-side repair flow, not a local prompt edit.
+The service may emit `improve_evaluator` as a next-step action when the audit identifies a weak or suspicious evaluator. This is a service-side repair flow, not a local prompt edit.
 
-The repair is accepted only when a disjoint held-out lockbox anchor shows improvement: the service proposes a revised evaluator, scores a held-out subset (the lockbox) that was not used in the proposal, and accepts the revision only if held-out anchor agreement improves and no new bias controls trip. Do not accept or apply a critic-repaired evaluator based on proposal-split results alone — the lockbox result is the acceptance gate.
+A repair is only accepted if it demonstrably improves on data that was **not** used to produce it. Do not accept or apply a repaired evaluator on the strength of the proposal alone — the held-out result is the acceptance gate.
 
 If the service emits `improve_evaluator`, present the returned action verbatim and hand off to this skill for context. Wait for the service outcome rather than rewriting the rubric locally.
 
@@ -220,7 +237,7 @@ If the service emits `improve_evaluator`, present the returned action verbatim a
 
 Audit results hold only for the audited evaluation dataset distribution, judge model version, judge prompt, output schema, sampling settings, and threshold. Re-audit on any model, prompt, schema, rubric, or dataset-distribution change.
 
-For service-side ACET audits: confidence ceiling is a hard cap, not a display hint. A proxy-anchor result cannot be cited as verifiable-level evidence. Promotion gate requires ACET gate evidence (verifiable-anchor verdict, confidence ceiling) — manual gold-slice calibration alone is not sufficient for promotion.
+For service-side audits: the confidence ceiling is a hard cap, not a display hint. A result based on a substitute signal cannot be cited as independently verified evidence. Promotion requires a service-audit verdict backed by an independent, verifiable correctness signal — an abstain, a substitute-signal result, or manual gold-slice calibration alone is not sufficient for promotion.
 
 The promotion gate itself is served by two advisory, anchor-gated endpoints over one optimization run:
 

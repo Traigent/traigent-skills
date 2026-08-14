@@ -66,7 +66,7 @@ The script writes these files into `--output-dir`:
 Never overclaim significance:
 
 - With fewer than 20 trials, importances are labelled `directional`, not statistically significant.
-- A variable is called `significant` only when its per-value spread beats a label-shuffled permutation (no-effect) null at the configured confidence. The max−min spread is non-negative by construction, so a bootstrap CI clearing 0 is not a significance test — the CI is shown for scale only.
+- A variable is called `significant` only when the report rejects a no-effect result at the configured confidence. The displayed interval is for scale only and must never be used to infer significance — an interval clearing 0 is not a significance test.
 - The video card's per-knob `accuracy_pp`/`cost_delta_pct` are that knob's own measured effect; the whole-run heldout optimized-vs-baseline delta is reported once as a card-level field, never copied onto each knob.
 - The ranking is observational: "on this fixed Spider slice, in this run." It is not proof of causal attribution.
 <!-- /PROTECTED -->

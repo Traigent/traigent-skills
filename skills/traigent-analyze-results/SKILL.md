@@ -509,8 +509,27 @@ print(df.columns.tolist())  # confirm the exact metric column names for your run
 # few-point sampling blip makes a config momentarily non-dominated and a noise artifact lands
 # on the frontier. Two guards: drop under-sampled configs, and require a config to BEAT
 # another by more than the noise floor on the quality axis before it counts as dominating.
-MIN_SAMPLES = 4     # per-config repetitions; raise for a tighter frontier
-TIE_BAND = 0.05     # accuracy gap (≈ the ±5–10 pp rerun floor) below which two configs tie
+# Set BOTH from YOUR run — there is deliberately no default, because both are properties of
+# your run, not of the tool.
+#   MIN_SAMPLES: the per-config repetition count you predeclared before running.
+#   TIE_BAND:    your measured rerun spread from "Is the Delta Real?" above, in your metric's
+#                units. A gap smaller than your own noise is not a gap.
+import math
+
+MIN_SAMPLES = None
+TIE_BAND = None
+# Validate values, not just types: a negative tie band inverts the domination test and a NaN
+# one makes every comparison False, either of which corrupts the frontier silently.
+# `isinstance(True, int)` is True in Python, so booleans are excluded explicitly.
+if not (isinstance(MIN_SAMPLES, int) and not isinstance(MIN_SAMPLES, bool) and MIN_SAMPLES > 0):
+    raise SystemExit("MIN_SAMPLES must be a positive int: your predeclared repetition count.")
+if not (
+    isinstance(TIE_BAND, (int, float))
+    and not isinstance(TIE_BAND, bool)
+    and math.isfinite(TIE_BAND)
+    and TIE_BAND >= 0
+):
+    raise SystemExit("TIE_BAND must be a finite number >= 0: your measured rerun spread.")
 df = df[df["samples_count"] >= MIN_SAMPLES]
 
 # Non-dominated (Pareto) frontier: maximize accuracy, minimize cost, within the tie-band.
