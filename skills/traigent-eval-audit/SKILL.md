@@ -237,7 +237,7 @@ If the service emits `improve_evaluator`, present the returned action verbatim a
 
 Audit results hold only for the audited evaluation dataset distribution, judge model version, judge prompt, output schema, sampling settings, and threshold. Re-audit on any model, prompt, schema, rubric, or dataset-distribution change.
 
-For service-side audits: the confidence ceiling is a hard cap, not a display hint. A result based on a substitute signal cannot be cited as independently verified evidence. The promotion gate requires service-audit evidence — manual gold-slice calibration alone is not sufficient for promotion.
+For service-side audits: the confidence ceiling is a hard cap, not a display hint. A result based on a substitute signal cannot be cited as independently verified evidence. Promotion requires a service-audit verdict backed by an independent, verifiable correctness signal — an abstain, a substitute-signal result, or manual gold-slice calibration alone is not sufficient for promotion.
 
 The promotion gate itself is served by two advisory, anchor-gated endpoints over one optimization run:
 
