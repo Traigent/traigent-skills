@@ -195,10 +195,11 @@ def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
     started = time.perf_counter()
     reps = int(config.get("eval_reps", 5))
     outputs = [func(**example.input_data) for _ in range(reps)]
-    counts = Counter(str(output).strip() for output in outputs)
+    # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
+    counts = Counter(str(output).strip().lower() for output in outputs)
     most_common, count = counts.most_common(1)[0]
     agreement = count / reps if reps else 0.0
-    expected = str(example.expected_output).strip()
+    expected = str(example.expected_output).strip().lower()
     accuracy = 1.0 if most_common == expected else 0.0
 
     return ExampleResult(

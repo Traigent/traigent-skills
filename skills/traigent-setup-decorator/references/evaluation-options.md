@@ -144,7 +144,8 @@ def metric_fn(output: Any, expected: Any, input_data: dict) -> float:
 
 ```python
 def accuracy(output, expected, input_data) -> float:
-    return 1.0 if output.strip() == expected.strip() else 0.0
+    # SDK builtin accuracy is case-insensitive + whitespace-trimmed (matches SDK since #1473)
+    return 1.0 if output.strip().lower() == expected.strip().lower() else 0.0
 
 def conciseness(output, expected, input_data) -> float:
     return max(0.0, 1.0 - len(output) / 2000)

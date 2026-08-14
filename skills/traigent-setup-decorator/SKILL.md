@@ -243,7 +243,7 @@ server-side.
 
 ```python
 def exact_match(output: str, expected: str) -> float:
-    return 1.0 if output.strip() == expected.strip() else 0.0
+    return 1.0 if output.strip().lower() == expected.strip().lower() else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
@@ -262,7 +262,7 @@ def answer(question: str) -> str:
 
 ```python
 def accuracy_metric(output, expected, input_data) -> float:
-    return 1.0 if output.strip() == expected.strip() else 0.0
+    return 1.0 if output.strip().lower() == expected.strip().lower() else 0.0
 
 def length_metric(output, expected, input_data) -> float:
     return min(len(output) / 500, 1.0)
@@ -403,7 +403,7 @@ import traigent
 from traigent.api.decorators import EvaluationOptions, ExecutionOptions
 
 def exact_match(output: str, expected: str) -> float:
-    return 1.0 if output.strip() == expected.strip() else 0.0
+    return 1.0 if output.strip().lower() == expected.strip().lower() else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(

@@ -79,9 +79,9 @@ class QAModule(dspy.Module):
     def forward(self, question):
         return self.predict(question=question)
 
-# Define metric
+# Define metric (SDK builtin accuracy is case-insensitive + whitespace-trimmed since SDK #1473)
 def exact_match(example, prediction, trace=None):
-    return example.answer.lower() == prediction.answer.lower()
+    return example.answer.strip().lower() == prediction.answer.strip().lower()
 
 # Prepare training data
 trainset = [
