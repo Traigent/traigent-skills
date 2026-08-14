@@ -514,12 +514,22 @@ print(df.columns.tolist())  # confirm the exact metric column names for your run
 #   MIN_SAMPLES: the per-config repetition count you predeclared before running.
 #   TIE_BAND:    your measured rerun spread from "Is the Delta Real?" above, in your metric's
 #                units. A gap smaller than your own noise is not a gap.
+import math
+
 MIN_SAMPLES = None
 TIE_BAND = None
-if not isinstance(MIN_SAMPLES, int) or not isinstance(TIE_BAND, (int, float)):
-    raise SystemExit(
-        "Set MIN_SAMPLES (int) and TIE_BAND (float, your measured rerun spread) before running."
-    )
+# Validate values, not just types: a negative tie band inverts the domination test and a NaN
+# one makes every comparison False, either of which corrupts the frontier silently.
+# `isinstance(True, int)` is True in Python, so booleans are excluded explicitly.
+if not (isinstance(MIN_SAMPLES, int) and not isinstance(MIN_SAMPLES, bool) and MIN_SAMPLES > 0):
+    raise SystemExit("MIN_SAMPLES must be a positive int: your predeclared repetition count.")
+if not (
+    isinstance(TIE_BAND, (int, float))
+    and not isinstance(TIE_BAND, bool)
+    and math.isfinite(TIE_BAND)
+    and TIE_BAND >= 0
+):
+    raise SystemExit("TIE_BAND must be a finite number >= 0: your measured rerun spread.")
 df = df[df["samples_count"] >= MIN_SAMPLES]
 
 # Non-dominated (Pareto) frontier: maximize accuracy, minimize cost, within the tie-band.
