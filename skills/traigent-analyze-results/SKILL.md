@@ -30,7 +30,7 @@ There are two surfaces, and this skill covers both:
 
 ## When to Use
 
-Requires `traigent>=0.20.0` — the `traigent local sync` flow below ships in that release.
+Requires `traigent>=0.24.0` (the `traigent local sync` flow used below shipped in 0.20.0).
 
 Use this skill when you want to understand a finished run. This covers:
 

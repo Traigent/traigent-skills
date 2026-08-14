@@ -15,7 +15,7 @@ metadata:
 
 ## When to Use
 
-Requires `traigent>=0.16.0`.
+Requires `traigent>=0.24.0`.
 
 Use this skill when you need to build, grow, or audit the examples that Traigent uses to evaluate an optimized function.
 
@@ -217,7 +217,7 @@ results = answer.optimize_with_guidance(
 
 ## Reflect on Hard Examples (Server-Flagged)
 
-Requires `traigent>=0.16.0`.
+Requires `traigent>=0.24.0`.
 
 Use this after a Traigent run when the server has identified hard, weak, or
 broken examples and the user wants to improve the agent, prompt, skill, or
