@@ -104,7 +104,9 @@ def test_readme_documents_plugin_install() -> None:
     readme = (repo_root() / "README.md").read_text(encoding="utf-8")
     for command in (
         "/plugin marketplace add Traigent/traigent-skills",
-        "codex plugin marketplace add",
         "copilot plugin marketplace add Traigent/traigent-skills",
     ):
         assert command in readme, f"README.md is missing plugin install command: {command}"
+    # Note: "codex plugin marketplace add" is intentionally absent from the main install
+    # section because Codex does not auto-load skills from the marketplace. Users are
+    # directed to the "Using with Codex CLI" section instead (issue #205).

@@ -84,14 +84,12 @@ agent's normal plugin-update flow.
 /plugin marketplace add Traigent/traigent-skills
 /plugin install traigent@traigent
 
-# OpenAI Codex
-codex plugin marketplace add https://github.com/Traigent/traigent-skills
-codex plugin add traigent@traigent
-
 # GitHub Copilot CLI
 copilot plugin marketplace add Traigent/traigent-skills
 copilot plugin install traigent@traigent
 ```
+
+**Note for OpenAI Codex**: Codex CLI does not auto-load a skills directory the way Claude Code does — it only reads `AGENTS.md`. See the [Codex CLI](#using-with-codex-cli) section below for the correct setup path.
 
 ### Via `npx skills` (cross-agent, pick individual skills)
 
