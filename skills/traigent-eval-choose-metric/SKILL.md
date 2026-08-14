@@ -74,7 +74,7 @@ Evaluation methods:
 | Method | Use when |
 |---|---|
 | `deterministic` | Exact match, normalized match, schema validation, tests, cost, latency, or tool-call rules can be checked directly. |
-| `llm_based` | A rubric is required and deterministic labels are insufficient. Label the result as a judge score. LLM-based evaluators are subject to service-side evaluator-quality auditing (ACET) after runs complete — the optimizer tensor is used to retroactively assess the judge, no new gold collection required. Favor a verifiable anchor (execution-match, unit-test pass, MCQ exact match) where the task allows, as it enables honest confidence from the service audit. |
+| `llm_based` | A rubric is required and deterministic labels are insufficient. Label the result as a judge score. LLM-based evaluators are subject to service-side evaluator-quality auditing after runs complete — evidence the run already produced is reused to assess the judge, so no new gold collection is required. Favor a task shape with an independent, verifiable correctness signal (execution match, unit-test pass, exact match) where possible: it is what lets the service audit report honest confidence. |
 | `statistical` | Repeated runs, variance, agreement, or confidence intervals matter. |
 | `hybrid` | A deterministic gate should run before a judge or repeated-sample score. |
 

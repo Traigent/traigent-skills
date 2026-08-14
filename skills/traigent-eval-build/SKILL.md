@@ -331,7 +331,7 @@ When a deterministic scorer compares structured outputs against a gold whose int
 
 - `traigent-eval-choose-metric` - choose objectives before building evaluator code
 - `traigent` Step 3.5 - lightweight evaluator sanity gate (run this before the first paid optimization)
-- `traigent-eval-audit` - evaluator reliability: manual gold-slice protocol + service-side evaluator-audit action (ACET from optimizer tensor, no new gold collection required)
+- `traigent-eval-audit` - evaluator reliability: manual gold-slice protocol + service-side evaluator-audit action (no new gold collection required)
 - `traigent-setup-decorator` - decorator wiring for evaluation options
 - `traigent-analyze-results` - inspect the metrics emitted by evaluator runs
 - `traigent-dataset-curate` - create and improve the evaluation dataset

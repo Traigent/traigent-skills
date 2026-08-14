@@ -24,7 +24,7 @@ Use this skill when you need to build, grow, or audit the examples that Traigent
 - Mock or zero-egress check first with `enable_mock_mode_for_quickstart()`, `offline=True`, and a small local sample.
 - Before paid provider or backend runs, estimate cost, ask for user approval, and set `TRAIGENT_RUN_COST_LIMIT`.
 - For task-shape recipes, read `references/dataset-recipes.md`.
-- Only when none of the above sources exist at all — no fixtures, golden sets, tickets, logs, traces, or labeled examples anywhere — read `references/cold-start.md`. Requires `traigent>=0.27.0`; unreleased today, and the backend planning endpoint it needs ships off by default.
+- Only when none of the above sources exist at all — no fixtures, golden sets, tickets, logs, traces, or labeled examples anywhere — a guided cold-start path is planned. It is **not available in the shipping SDK**; ask Traigent whether it is enabled for your deployment rather than building against it.
 
 ## Optimization Economics — Read This Before Sizing a Run
 
@@ -263,7 +263,7 @@ does not decide which examples are hard.
    context, retrieval miss, tool-use failure, output-format failure, prompt
    ambiguity, evaluator issue, or agent-code bug. If the classification is
    "evaluator issue", the server next-step may be a server-side evaluator
-   audit (ACET-based, read-only) or `improve_evaluator` (lockbox repair);
+   audit (read-only) or `improve_evaluator` (held-out repair);
    present the server action verbatim and hand off to
    `traigent-eval-audit` — do not manually re-rank or re-score
    evaluators.
@@ -397,7 +397,7 @@ Flag-to-curation-action guide for step 3:
 - Dataset quality statements are observations about the reviewed evaluation dataset, labels, split, and scoring method.
 - Synthetic examples are useful coverage candidates until reviewed; do not treat them as independent holdout evidence.
 - Backend example-scoring client output is non-signal metadata. Do not describe redacted proprietary signals as available.
-- Backend example-scoring (via `ExampleInsightsClient`) reports properties of examples. Evaluator-quality audit (ACET, via the server-side evaluator-audit action) reports properties of evaluators. These are separate surfaces — scoring a dataset does not validate the evaluator, and auditing the evaluator does not score the dataset.
+- Backend example-scoring (via `ExampleInsightsClient`) reports properties of examples. The evaluator-quality audit (via the server-side evaluator-audit action) reports properties of evaluators. These are separate surfaces — scoring a dataset does not validate the evaluator, and auditing the evaluator does not score the dataset.
 - Ranked and flagged "examples to review" rows (from `analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) are non-signal: they convey review urgency (`review_priority`), enum flags (`suspicious_flags`), and a suggested action (`recommended_action`) — not quality scores, formulas, or composite values.
 - A holdout result supports a claim only for the task distribution represented by that holdout slice.
 
