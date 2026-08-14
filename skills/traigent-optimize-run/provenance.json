@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c578e36da860899e",
+  "doc_hash": "87cd2c82ec0b39da",
   "reference_hashes": {
     "references/algorithms.md": "4c79ff944c78bf76",
     "references/cost-management.md": "44fca0c7fb536c36",

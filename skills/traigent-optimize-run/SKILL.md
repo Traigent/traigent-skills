@@ -260,31 +260,32 @@ The default limit is $2.00 per run.
 
 ### Handling a Cost Limit
 
-**A cost limit does *not* surface through one exception — handle all of the paths below.** A common mistake is to catch only `CostLimitExceeded`; in the current SDK that handler never fires (see the note after the table).
+**A cost limit can surface through either an exception (pre-run) or a return value (mid-run) — handle both paths:**
 
 | Surface | When it happens | How to handle |
 |---|---|---|
-| `OptimizationError` (**raised, pre-run**) | the *estimated* cost already exceeds the limit and the run wasn't pre-approved — raised **before any trial runs** | `except OptimizationError` — raise the limit, shrink the run, or set `TRAIGENT_COST_APPROVED=true` |
+| `CostLimitExceeded` (**raised, pre-run**) | the *estimated* cost already exceeds the limit and the run wasn't pre-approved — raised **before any trial runs** | `except CostLimitExceeded` (an `OptimizationError` subclass) — raise the limit, shrink the run, or set `TRAIGENT_COST_APPROVED=true` |
 | `results.stop_reason == "cost_limit"` (**returned**) | the run hits the budget **mid-run**, stops, and **returns** partial results (no exception) | check `stop_reason` after a normal return |
-| `CostLimitExceeded` (**not currently raised**) | exported & documented as the budget handler, but the current SDK never raises it (the mid-run stop returns `stop_reason="cost_limit"` instead) | keep in your `except` for forward-compatibility; do **not** rely on it as your only guard |
+| `OptimizationError` (**fallback**) | a catch-all for optimization-time errors (include pre-run cost decline) | `except OptimizationError` will catch pre-run cost limits as a subclass, and other optimization errors |
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
     results = await func.optimize(max_trials=100, algorithm="random")
-except CostLimitExceeded as e:          # kept for forward-compat; not raised today
-    print(f"Cost limit hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
-except OptimizationError as e:           # the pre-run "estimate > limit" decline
-    print(f"Run declined before starting: {e}")
+except CostLimitExceeded as e:
+    print(f"Cost limit exceeded: ${e.accumulated:.2f} / ${e.limit:.2f}")
+except OptimizationError as e:
+    print(f"Optimization error: {e}")
 else:
     if getattr(results, "stop_reason", None) == "cost_limit":
         print("Budget reached mid-run; partial results returned.")
 ```
 
 Notes:
-- The pre-run decline's underlying exception is `OptimizationAborted`, which the SDK wraps into `OptimizationError` at the `optimize()` boundary — so `except OptimizationError` catches it there. Inside framework integrations (LangChain/LiteLLM) it may instead propagate **raw** as `OptimizationAborted`.
-- The exact exception/return contract is being standardized upstream — see **Traigent/Traigent#1490**. Catching `OptimizationError` **and** `CostLimitExceeded`, **and** checking `results.stop_reason`, is robust across whichever way it resolves.
+- `CostLimitExceeded` is an `OptimizationError` subclass, so `except OptimizationError` will also catch pre-run cost declines. Catch `CostLimitExceeded` first if you want to handle cost limits differently from other optimization errors.
+- A pre-run cost decline over the limit raises `CostLimitExceeded` directly at the `optimize()` boundary. A mid-run budget exhaustion does not raise — it returns partial `results` with `stop_reason="cost_limit"` instead.
+- The exact exception/return contract is governed by **Traigent/Traigent#1490**. Catching both `CostLimitExceeded` **and** checking `results.stop_reason` is robust across cost-limit scenarios.
 
 ### Pre-Approving Costs
 
@@ -488,7 +489,8 @@ from traigent.config.parallel import ParallelConfig
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 def exact_match(output: str, expected: str) -> float:
-    return 1.0 if output.strip() == expected.strip() else 0.0
+    # SDK builtin accuracy is case-insensitive + whitespace-trimmed (matches SDK since #1473)
+    return 1.0 if output.strip().lower() == expected.strip().lower() else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
