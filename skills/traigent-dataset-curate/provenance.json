@@ -1,7 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f321d5474bafe326",
+  "doc_hash": "66f94132aa33a1c9",
   "reference_hashes": {
+    "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -111,6 +112,15 @@
       "doc_after_hash": "4b56d7384f50327c",
       "note": "stop teaching `traigent next-steps RUN_ID --json`, which the SDK RETIRED on 2026-08-03 (Traigent 9b308539 'retire legacy analytics next steps'; the sibling 6aff6ee7 retired `traigent guidance`). Verified by introspecting both SDKs: the command is PRESENT in 0.19.1.dev0 (the version this repo's contract venv installs) and ABSENT from 0.26.0 on origin/develop, whose CLI exposes 26 commands with no next-steps or guidance. It is therefore dead on any current install while this repo's own guard still sees it as live. The skill already documented the real path -- the example-scoring dataset-quality output -- but presented it as the fallback, so a reader hit the retired command first. The real path is now primary. `traigent report-example-map` (step 2) was confirmed present in both and is unchanged. Part of Traigent/traigent-skills#251; fixes only the 2 refs in this skill.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "cold-start-reachable-on-0270",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-02T00:00:00Z",
+      "note": "traigent 0.27.0 shipped to PyPI on 2026-09-02, so the cold-start eval-set generation path is real for the first time. Move docs/unreleased/cold-start.md into this skill's references/ (it already referred to \"Assess what you already have above\", which is this SKILL.md) and link it from that section, so a reader who inventories real data and finds none has somewhere to go. Its preamble said \"Unreleased today. The currently shipping SDK is 0.26.0\" -- now false. The ENABLE_COLD_START_GENERATION warning is unchanged and still load-bearing: the flag is on the backend's opt-in list, off by default, so the client half shipping does not make the path available.",
+      "source_type": "agent"
     }
   ]
 }

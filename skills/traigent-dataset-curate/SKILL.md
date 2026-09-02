@@ -77,6 +77,14 @@ Minimum starting counts:
 
 Prefer fewer well-labeled examples over many vague examples. Every row should have a reason to exist: common path, edge case, high-value customer path, known failure, or safety-critical path.
 
+**If that inventory turns up genuinely nothing** — no fixtures, golden sets, tickets,
+logs, traces, or labeled rows anywhere in reach — see
+[`references/cold-start.md`](references/cold-start.md) for generating a first eval set
+instead. Read its opening section before offering the path to anyone: it needs
+`traigent>=0.27.0` **and** a backend with `ENABLE_COLD_START_GENERATION` turned on, which
+is off by default, and it brings no generation technique or verifier of its own. Real
+curated data beats generated data every time, so exhaust this section first.
+
 ## JSONL format and holdout discipline
 
 Use one JSON object per line. Put model inputs under `input` or `input_data`, the expected answer under `expected_output` or an accepted alias, and non-label context in `metadata`.
