@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "335759569e7a1cdb",
+  "doc_hash": "e5dad9ded70ab6be",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/evaluation-options.md": "60647f49ac8b2ae3",
@@ -79,7 +79,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "7af2edc441c2c350",
       "doc_after_hash": "d0f6a46c79384fd9",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -123,6 +123,15 @@
       "doc_after_hash": "eefb5531a7c0f0eb",
       "note": "document winner_stability_reps (opt-in, measured-only post-selection winner rerun; shipped on Traigent/Traigent develop @867a7288, not yet in any tagged release) in a new references/winner-stability-reps.md, gated by a PER-FILE sync_map.yml python_version_floors entry at 0.27.0 (not a skill-wide min_sdk_version bump, per the cold-start-skill regression precedent) so the rest of this skill's already-released surface stays checked in every currently-configured bucket; both call forms and both rejected forms verified directly against a local build of origin/develop",
       "source_type": "human"
+    },
+    {
+      "edit_id": "task-type-anchor-hint-2026-09-03",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-03T00:00:00Z",
+      "note": "document EvaluationOptions.task_type (traigent>=0.28): the coarse task category the service maps to an evaluator-quality anchor. States plainly that the client never names an anchor, that unknown values resolve to no anchor, and that omitting it makes every evaluator-quality audit abstain -- which is why the field exists.",
+      "source_type": "agent"
     }
   ]
 }
