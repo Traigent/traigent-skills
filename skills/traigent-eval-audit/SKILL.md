@@ -239,6 +239,16 @@ Audit results hold only for the audited evaluation dataset distribution, judge m
 
 For service-side audits: the confidence ceiling is a hard cap, not a display hint. A result based on a substitute signal cannot be cited as independently verified evidence. Promotion requires a service-audit verdict backed by an independent, verifiable correctness signal — an abstain, a substitute-signal result, or manual gold-slice calibration alone is not sufficient for promotion.
 
+**Precondition — declare the task kind, or every audit abstains.** A service-side audit is
+anchored: it scores your evaluator against a verifiable correctness signal computed
+*independently of that evaluator*. The service will not infer which signal applies, so a run
+that never declared its task kind resolves to "no anchor" and the audit abstains with
+`no_anchor_designation`. Pass `evaluation=EvaluationOptions(task_type="multiple_choice")`
+(or `"exact_match"`) on the decorated function — see `traigent-setup-decorator`. Only
+exact-match-style anchors exist today; `text2sql` and `code_generation` are recognised but
+unbuilt, and free-form tasks have no anchor by construction, so for those an abstain is the
+honest answer rather than a fixable problem.
+
 The promotion gate itself is served by two advisory, anchor-gated endpoints over one optimization run:
 
 - `POST /api/v1/analytics/runs/{run_id}/evaluator-promotion/evaluate` (editor role) — computes and **persists** an advisory challenger-vs-incumbent promotion decision from evaluator fingerprints (`challenger_fingerprint` required, optional `incumbent_fingerprint`, `delta`, `min_pairs`). It never mutates experiments, sessions, evaluator configs, or optimization state — the decision record is advisory.

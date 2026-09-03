@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4749ffa3d07be1c9",
+  "doc_hash": "47040b9de571bb0e",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -77,6 +77,15 @@
       "doc_after_hash": "d15b6fdda96fd741",
       "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "task-type-anchor-hint-2026-09-03",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-03T00:00:00Z",
+      "note": "name the anchor precondition where a reader actually hits it: a run that never declared its task kind abstains with no_anchor_designation, because the service will not infer which verifiable signal applies. Points at EvaluationOptions.task_type and is explicit that free-form tasks have no anchor by construction, so an abstain there is the honest answer rather than a fixable problem.",
+      "source_type": "agent"
     }
   ]
 }
