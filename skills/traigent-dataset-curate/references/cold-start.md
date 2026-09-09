@@ -1,14 +1,17 @@
 # Cold start: building a first eval set when there is nothing to curate
 
-Requires `traigent>=0.27.0`. **Unreleased today.** The currently shipping SDK is
-`0.26.0` and does not contain `traigent.generation.coldstart` at all — everything
-below documents an interface that exists in source but has not shipped. The
-backend planning endpoint this path calls, `POST /api/v1/guidance/cold-start-plan`,
-also ships behind the `ENABLE_COLD_START_GENERATION` flag and is **off by default**
-even once the SDK ships it — a deployment that has not explicitly turned the flag
-on returns a fail-closed `feature_disabled` gap for every call. Check the
-installed `traigent.__version__` and confirm the flag with the deployment owner
-before pointing a user at this path; do not present it as available today.
+Requires `traigent>=0.27.0`, which **shipped to PyPI on 2026-09-02**. Before that
+date the SDK did not contain `traigent.generation.coldstart` at all, so on
+`0.26.0` and earlier every instruction below fails at import — check
+`traigent.__version__` first and say so plainly rather than debugging the import.
+
+**The client half shipping does not make this path available.** The backend
+planning endpoint it calls, `POST /api/v1/guidance/cold-start-plan`, is gated by
+`ENABLE_COLD_START_GENERATION`, which is **off by default** — it is on the
+opt-in list in the backend's feature-flag resolver, not the default-true one. A
+deployment that has not explicitly turned it on returns a fail-closed
+`feature_disabled` gap for every call. Confirm the flag with the deployment owner
+before pointing a user here; a new install will not have it on.
 
 ## When to use this — and when not to
 
