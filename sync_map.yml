@@ -166,15 +166,23 @@ skills:
   # (curate-dataset, plus the reflect-on-hard-examples skill), folded in
   # during the 2026-07 taxonomy consolidation.
   traigent-dataset-curate:
-    # The skill targets the released floor. The cold-start reference, which
-    # documented the unreleased traigent.generation.coldstart API, moved to
-    # docs/unreleased/cold-start.md so it is no longer distributed inside a
-    # customer-facing skill; its per-file 0.27.0 floor moved out with it.
-    # Restore a `python_version_floors` entry here if that reference ever
-    # returns to references/ -- a per-file floor, not a min_sdk_version bump,
-    # since raising min_sdk_version would make list_buckets.py try to
-    # `pip install traigent==0.27.0`, which does not exist.
+    # The skill targets the released floor. The cold-start reference documents
+    # traigent.generation.coldstart, which does not exist below 0.27.0, so it
+    # carries a PER-FILE floor rather than a min_sdk_version bump: raising the
+    # skill's floor would gate the whole skill -- every other fact in it is
+    # valid at 0.24.0 -- and would add a `pip install traigent==0.27.0` bucket
+    # that runs every skill's facts, which is the separate decision described
+    # by `current_released_sdk_version` in tests/README.md.
     min_sdk_version: "0.24.0"
+    python_version_floors:
+      # traigent.generation.coldstart lands in 0.27.0, published to PyPI on
+      # 2026-09-02T22:21:48Z. Below that floor every import in this reference
+      # fails, so its facts are only collected in buckets >= 0.27.0; the file
+      # states the requirement in prose at the top. Until
+      # current_released_sdk_version reaches 0.27.0 there is no such released
+      # bucket and these facts are verified by develop-contracts alone, which
+      # ignores floors.
+      references/cold-start.md: "0.27.0"
     backend_prefixes:
       - /api/v1/datasets
       - /api/v1/analytics/example-scoring
