@@ -51,7 +51,7 @@ python tools/contract/list_buckets.py
 # then run each bucket it emits, e.g. (current set):
 python -m pytest tests/contract --sdk-version=0.21.3 -q
 python -m pytest tests/contract --sdk-version=0.24.0 -q
-python -m pytest tests/contract --sdk-version=0.26.0 -q
+python -m pytest tests/contract --sdk-version=0.27.0 -q
 ```
 
 `current_released_sdk_version` is intentionally pinned in `sync_map.yml` so PR

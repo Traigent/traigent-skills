@@ -392,12 +392,12 @@ example inputs/outputs/prompts. Use `offline=True` only when zero outbound traff
 To optimize an external HTTP/MCP service, put the service call in your decorated function or
 custom evaluator; keep optimization strategy on the same `algorithm`/`offline` knobs.
 
-### Winner-stability rerun — `winner_stability_reps` (unreleased)
+### Winner-stability rerun — `winner_stability_reps`
 
 `winner_stability_reps` is an opt-in, measured-only rerun of the winning configuration after
 selection completes — for reading run-to-run dispersion, never for gating or re-ranking.
-**Requires `traigent>=0.27.0`; unreleased as of this writing** (the currently shipping SDK is
-`0.26.0` and does not accept this option at all — passing it raises `TypeError` /
+**Requires `traigent>=0.27.0`**, which shipped to PyPI on 2026-09-02 (on `0.26.0` and
+earlier the option does not exist at all — passing it raises `TypeError` /
 `pydantic.ValidationError`). Check the installed `traigent.__version__` before offering it.
 Full reference, call forms, defaults, and rejected forms: `references/winner-stability-reps.md`.
 

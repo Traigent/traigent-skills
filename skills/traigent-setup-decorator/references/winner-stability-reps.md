@@ -1,15 +1,16 @@
 # `winner_stability_reps`: opt-in post-selection winner rerun
 
-Requires `traigent>=0.27.0`. **Unreleased today.** The currently shipping SDK is
-`0.26.0` and does not accept `winner_stability_reps` anywhere — passing it to
+Requires `traigent>=0.27.0`, which **shipped to PyPI on 2026-09-02**. The
+interface below (`Traigent/Traigent` commit `867a7288`, landed 2026-08-11) is in
+that release: on `0.27.0`, `ExecutionOptions(winner_stability_reps=3)` is
+accepted, out-of-range values raise `pydantic.ValidationError`, and
+`@traigent.optimize(..., winner_stability_reps=3)` is accepted.
+
+On `0.26.0` and earlier the option does not exist anywhere — passing it to
 `@traigent.optimize(...)` raises `TypeError: Unknown keyword arguments:
 ['winner_stability_reps']`, and passing it to `ExecutionOptions(...)` raises a
-`pydantic.ValidationError` (`extra_forbidden`). Everything below documents an
-interface that exists in source (`Traigent/Traigent` `develop`, commit
-`867a7288`, landed 2026-08-11) but has not shipped in any tagged release —
-`v0.26.0` (the latest tag) is an ancestor of that commit, not a descendant.
-Check the installed `traigent.__version__` before pointing a user at this
-path; do not present it as available today.
+`pydantic.ValidationError` (`extra_forbidden`). Check the installed
+`traigent.__version__` before pointing a user at this path.
 
 ## What it does
 

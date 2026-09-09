@@ -5,7 +5,7 @@ sdk:
 default_min_sdk_version: "0.24.0"
 # Keep this pinned and update it when a new PyPI release should be covered by
 # per-PR released-contracts. Do not resolve PyPI live in PR CI.
-current_released_sdk_version: "0.26.0"
+current_released_sdk_version: "0.27.0"
 skills:
   traigent-setup-quickstart:
     # the `traigent plan` command taught below ships in traigent>=0.17.0.
@@ -170,18 +170,17 @@ skills:
     # traigent.generation.coldstart, which does not exist below 0.27.0, so it
     # carries a PER-FILE floor rather than a min_sdk_version bump: raising the
     # skill's floor would gate the whole skill -- every other fact in it is
-    # valid at 0.24.0 -- and would add a `pip install traigent==0.27.0` bucket
-    # that runs every skill's facts, which is the separate decision described
-    # by `current_released_sdk_version` in tests/README.md.
+    # valid at 0.24.0 -- and would pin a bucket to this skill's own floor,
+    # which is not what `current_released_sdk_version` in tests/README.md is
+    # for.
     min_sdk_version: "0.24.0"
     python_version_floors:
       # traigent.generation.coldstart lands in 0.27.0, published to PyPI on
       # 2026-09-02T22:21:48Z. Below that floor every import in this reference
       # fails, so its facts are only collected in buckets >= 0.27.0; the file
-      # states the requirement in prose at the top. Until
-      # current_released_sdk_version reaches 0.27.0 there is no such released
-      # bucket and these facts are verified by develop-contracts alone, which
-      # ignores floors.
+      # states the requirement in prose at the top. Since
+      # current_released_sdk_version reached 0.27.0 those facts are verified
+      # against a released wheel, not by develop-contracts alone.
       references/cold-start.md: "0.27.0"
     backend_prefixes:
       - /api/v1/datasets
