@@ -18,7 +18,14 @@ dependencies = [
     "packaging",
     "pytest",
     "pyyaml",
+    "ruff==0.15.12",
 ]
 
 [tool.uv]
 package = false
+
+[tool.traigent.safe-push]
+python-policy = "ruff-check"
+
+[tool.ruff]
+target-version = "py311"
