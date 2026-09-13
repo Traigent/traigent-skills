@@ -25,11 +25,12 @@ The eight skills that propose, size, or judge a run also carry a shared **econom
 
 ## Skills
 
-These 18 skills guide your agent through the full Traigent optimization lifecycle, grouped by the stage where you'd reach for them:
+These 19 skills guide your agent through the full Traigent optimization lifecycle, grouped by the stage where you'd reach for them:
 
 | Stage | Skill | Description |
 | ----- | ----- | ----------- |
 | Front door | [traigent-boost-agent](skills/traigent-boost-agent/) | 12-step lifecycle orchestrator for adding Traigent to an existing client agent codebase end-to-end — analyze code, curate the evaluation dataset, choose metrics, wire or audit evaluators, select TVARs and composites, instrument minimally, validate in mock mode, run approved real optimization, inspect configuration and example insights, iterate, and recommend safety/CI gates. Start here when optimizing a function for the first time. |
+| Front door | [traigent-setup-audit](skills/traigent-setup-audit/) | Free five-minute local audit of an existing agent project before anything is spent — finds the `@traigent.optimize` entry points and which declared knobs the code never reads, checks evaluation-dataset row counts, duplicates, missing gold keys and holdout disjointness against the documented minimums, classifies the scorer and repeat-scores a deterministic one, and reports SDK, key-name and `.env` setup. Makes no model calls and no Traigent calls: a socket refusal is installed and re-checked before any file is read. Ends by naming what code alone could not settle and which skill settles it. |
 | Setup | [traigent-setup-quickstart](skills/traigent-setup-quickstart/) | Install and set up the Traigent SDK — `pip install`, environment variables (`TRAIGENT_API_KEY`), mock mode, evaluation dataset creation in JSONL, and a first `@traigent.optimize` decorated function. |
 | Setup | [traigent-setup-decorator](skills/traigent-setup-decorator/) | Configure `@traigent.optimize()` beyond the basics — `EvaluationOptions` (datasets, custom evaluators, scoring), `InjectionOptions` (how optimized configs reach your function), `ExecutionOptions` (sync/async, timeouts, local-only), and multi-objective optimization. |
 | Setup | [traigent-setup-integrations](skills/traigent-setup-integrations/) | Integrate Traigent with AI frameworks — LangChain, LiteLLM, and DSPy adapter patterns, multi-provider model testing (OpenAI + Anthropic + Google), `auto_override_frameworks`, and observability via MLflow and Weights & Biases. |

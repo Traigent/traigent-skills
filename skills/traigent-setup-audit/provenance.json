@@ -1,0 +1,15 @@
+{
+  "schema": "skill-provenance/v1",
+  "doc_hash": "3de31bd52a4e9f70",
+  "entries": [
+    {
+      "edit_id": "genesis",
+      "op": "genesis",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T00:00:00Z",
+      "note": "genesis: free local Tier 1 audit front door; zero network enforced by a socket guard in the audit process and in the scorer-probe subprocess, not asserted in prose",
+      "source_type": "owner_intent"
+    }
+  ]
+}
