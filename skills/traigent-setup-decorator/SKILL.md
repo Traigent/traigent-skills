@@ -214,19 +214,17 @@ Configure how Traigent evaluates each trial using `EvaluationOptions`.
 | `surrogate_evaluator` | `Callable \| None` | Optional secondary scorer for existing outputs only; it never re-executes the decorated function. |
 | `surrogate_evaluator_name` | `str \| None` | Display/evaluator id override for `surrogate_evaluator`; runtime `optimize(surrogate_evaluator_name=...)` can override it. |
 | `metric_functions` | `dict[str, Callable] \| None` | Named metrics: `{"accuracy": fn, "relevance": fn}` |
-| `task_type` | `str \| None` | Coarse task category (`"multiple_choice"`, `"exact_match"`, `"text2sql"`, `"code_generation"`, `"summarization"`, …). Lets the service anchor an evaluator-quality audit; see below. Requires `traigent>=0.28`. |
 
-`task_type` names the KIND of task, never the dataset. The service maps it to an
-evaluator-quality **anchor** — the verifiable ground truth an audit of your evaluator is
-allowed to check against — and only exact-match-style tasks have one today
-(`multiple_choice`, `exact_match`). `text2sql` and `code_generation` are recognised but
-their anchors are not built yet, and free-form tasks (`summarization`, translation, open
-QA) legitimately have none. You never name an anchor yourself, and an unrecognised value
-is accepted and simply resolves to "no anchor".
-
-**Set it if you want `traigent-eval-audit` to return anything.** Without it the service
-cannot designate an anchor, so the audit abstains on every run — a correct refusal, not a
-failure, but an uninformative one.
+**The evaluator-quality anchor is not a client-side field.** An evaluator-quality audit
+(`traigent-eval-audit`) scores your evaluator against an **anchor** — verifiable ground truth
+computed independently of that evaluator. The anchor is designated server-side, from the
+independent correctness signal registered for the run; you never name one yourself.
+`EvaluationOptions` forbids unknown fields, so a task-category kwarg such as
+`EvaluationOptions(task_type="exact_match")` raises `ValidationError: Extra inputs are not
+permitted` at construction on traigent 0.27.0 — do not pass it. Such a field is expected in a
+later SDK release, but it is in no released version. Until then a run with no independent
+correctness signal registered resolves to "no anchor" and the audit abstains — a correct
+refusal, not a failure.
 
 `surrogate_evaluator` uses the same calling convention as `scoring_function`:
 `(output, expected_output=None, example=None) -> float` in `[0, 1]`, or a dict
