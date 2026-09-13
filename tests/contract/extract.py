@@ -35,7 +35,7 @@ URL_RE = re.compile(
     r"/api/v1beta/[^\s`\"\)]+"  # any v1beta route (explicit prefix required)
     r"|/(?:api/v1/)?"
     r"(?:datasets|analytics|experiment-runs|experiment-groups|optimization-comparisons"
-    r"|optimization/plan|sessions|hybrid|keys|best-configs|auth)"
+    r"|optimization/plan|sessions|hybrid|keys|best-configs|auth|guidance)"
     r"(?![\w-])"  # family must end here (no /authoring, /keyset, ...)
     r"[^\s`\"\)]*"
     r")"

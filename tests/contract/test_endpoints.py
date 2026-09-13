@@ -26,6 +26,7 @@ BACKEND_ROUTE_FAMILIES = (
     "keys",
     "best-configs",
     "auth",
+    "guidance",
 )
 ENDPOINT_FIX_MENU = (
     "  fix one : (a) refresh tests/data/backend_routes_snapshot.json from TraigentBackend\n"
