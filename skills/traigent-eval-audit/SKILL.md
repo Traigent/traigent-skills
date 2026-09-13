@@ -244,8 +244,9 @@ one.** A service-side audit is anchored: it scores your evaluator against a veri
 correctness signal computed *independently of that evaluator*. The anchor is designated
 **server-side**, from the independent correctness signal registered for the run; you never
 name one yourself. The service will not infer which signal applies, so a run with no such
-signal registered resolves to "no anchor" and the audit abstains with
-`no_anchor_designation`.
+signal registered resolves to "no anchor" and the audit abstains: on a real text-to-SQL run
+against the portal on 2026-09-13 the payload read `status: abstain`, `reason: audit_abstained`,
+`anchor.anchor_type: none`, `evaluators: []`.
 
 There is no client-side field for this on the released SDK. `EvaluationOptions` forbids
 unknown fields, so `EvaluationOptions(task_type="exact_match")` raises
