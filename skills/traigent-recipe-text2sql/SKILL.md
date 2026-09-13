@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -200,6 +200,24 @@ plan-then-SQL beat both the mid model and (separately) a premium Sonnet config
 - `traigent-analyze-guidance` — build the run-plan WITH the user before every run.
 - `traigent-analyze-guidance` — after each run: the portal link, which knobs to keep/drop, and the next-run recommendation.
 - `traigent-analyze-guidance/references/preflight.md` — robust setup so runs go smoothly and track to the portal.
+
+## Two scoring lessons from a real run
+A real 2026-09-13 text2SQL run (8 trials, 18 questions) plateaued at 16/18 (88.9%)
+for two checkable reasons — look for both before buying more trials:
+
+1. **Extra columns fail on purpose.** The two items the winning config never passed
+   returned correct rows with extra columns; the brief said "columns asked for, and
+   no others," and this benchmark's execution-match contract is right to fail them.
+   State whichever column contract *your* evaluator enforces, explicitly, in both the
+   prompt and the grader — and when a run plateaus below 100%, check for this kind of
+   output-contract failure before assuming the config just needs more trials.
+2. **Errors are failures, not declines.** An agent that declines every question
+   reached 4/18 (22%) for free, because some items are legitimately decline items —
+   and provider errors / parse failures the agent wrapped in a decline string were
+   miscounted as deliberate declines. Count execution failures and provider errors
+   as failures, report answer-accuracy and decline-accuracy separately, and keep a
+   decline-everything reference score in the readout so a decline-heavy config can't
+   look good by accident.
 
 <!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->
 ## Traigent Interaction Policy
