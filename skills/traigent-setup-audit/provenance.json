@@ -1,6 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e5e728ddf60626b5",
+  "doc_hash": "be9895ccc3835b1f",
+  "reference_hashes": {
+    "references/economics-characterization.v0.md": "6226ea9f4a085da7"
+  },
   "entries": [
     {
       "edit_id": "genesis",
@@ -36,6 +39,33 @@
       "run_id": null,
       "timestamp": "2026-09-13T00:00:00Z",
       "note": "second review round: classify a module named at runtime as executing and stop presenting the classifier as a boundary, read only the probe's own framed result line through a typed whitelist so a scorer cannot forge a verdict, and bind the project back into the sandbox so a project under /tmp is not reported as a broken scorer",
+      "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "tier-2-approval-gated-checks-2026-09-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T00:00:00Z",
+      "note": "add the approval-gated second tier (scripts/tier2_checks.py): offer mode prints one approval card per applicable check under the same network guard Tier 1 installs and makes no request and spawns no process; run mode touches only the approved checks' named endpoints and writes a receipt the tests compare byte-for-byte against a real listener's log. Transport is X-API-Key plus the SDK's own User-Agent, proven against that listener; the key never reaches a card, a receipt, a command line or an error, and a response echoing it is withheld. Ships the shared economics reference by pointer",
+      "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "tier-2-reader-not-computer-2026-09-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T00:00:00Z",
+      "note": "after a cross-vendor consult and a customer dogfood run: example-scoring becomes a READER (summary, then dataset-quality only on computed:true) because the compute endpoint returned HTTP 500 and a successful read establishes neither its availability nor a charging boundary; `computed:false` is relayed as not computed and never as permission to POST. Replace the 'what settles it' promises with what the services actually do -- retrieve a verdict if they have one -- and state that a completed run is necessary and not sufficient, with each card carrying what the same check returned on our own run. Add stop-here as a recommendable card so no run is ever recommended merely to make an analysis service answer. Disclose the key header on every card, and keep the agent's own pre-approval interaction-profile fetch out of Tier 1. Run discovery lists project/experiment/run context and auto-selects nothing, names the listing limit, and says a local session id 404s. Document the origin-vs-/api/v1 base-URL split and refuse a base URL carrying a path; relay the plan's evidence_level and objectives orientation verbatim with the advisory-steps warning",
+      "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "tier-2-review-fixes-2026-09-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T00:00:00Z",
+      "note": "independent tools-on review of the Tier 2 commit, six findings with executed probes: (H1) run ids and the service's own experiment ids were interpolated raw into URL paths, so a `..` walked the request to another endpoint while the receipt recorded the unsent string -- every segment is now escaped, a dots-only segment has its dots encoded too, a run id that is not run-id shaped is refused before any request, and the receipt records the path read back off the wire; (H2) one list-runs approval followed however many experiments the server returned -- it is now capped at the page it asked for, with the overflow reported; (M1) project text was printed into both cards unfiltered, so a planted escape sequence rewrote a consent line -- one `printable_text` filter now covers every rendered line of both renderers; (M2) argparse prefix matching made `--appr` an approval the argv scan missed, installing the guard and then taking the run-mode path -- abbreviations are off and the mode is read from the parsed namespace; (L1) the offer header claimed the guard proved no process was spawned, which it cannot -- the two halves are now stated separately and run mode prints the counted processes; (L2) the same field name from two scopes printed as two contradictory lines -- the nested scope is labelled",
       "source_type": "owner_intent"
     }
   ]

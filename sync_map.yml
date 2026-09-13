@@ -294,10 +294,23 @@ skills:
     # base. Floored at 0.27.0: that is the release those two commands were read
     # against, and it is already a bucket (current_released_sdk_version).
     min_sdk_version: "0.27.0"
+    # Tier 2 teaches these backend families directly: the analytics readers, the
+    # experiments listing and the experiment-runs listing that turn an experiment
+    # into the portal run id every reader needs.
+    backend_prefixes:
+      - /api/v1/analytics
+      - /api/v1/experiment-runs
+      - /api/v1/experiments
     sdk_paths:
       - traigent/cli/main.py
       - traigent/cli/function_discovery.py
       - traigent/integrations/model_discovery/*
       - traigent/evaluators/base.py
+      # Tier 2's transport mirrors these: the API-key header builder, the SDK
+      # User-Agent the portal's edge requires, and the analytics client whose
+      # base-URL convention (the ORIGIN, not the /api/v1 base) it follows.
+      - traigent/cloud/auth.py
+      - traigent/cloud/user_agent.py
+      - traigent/cloud/analytics_client.py
     docs:
       - skills/traigent-dataset-curate/SKILL.md

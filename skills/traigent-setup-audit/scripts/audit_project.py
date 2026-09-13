@@ -412,6 +412,29 @@ def guard_note(level: str) -> str:
 # --------------------------------------------------------------------------
 
 
+def printable_text(value: object) -> str:
+    """Strip terminal control characters out of text read from a project.
+
+    A model id, a dataset file name or a source line quoted into the card is the
+    audited project's text, not ours. A planted escape sequence (`\\x1b[2K\\r`)
+    inside a string literal rewrites the line the user is reading — including a
+    consent line — and nothing else in the pipeline removes it. C0 and C1
+    controls go, a tab becomes a space, and `\\n` survives because the caller
+    joins lines with it.
+
+    Imported by ``tier2_checks.py`` rather than copied: one implementation, one
+    set of tests.
+    """
+    text = value if isinstance(value, str) else str(value)
+    return "".join(
+        " " if char == "\t"
+        else char
+        if char == "\n" or not (ord(char) < 0x20 or 0x7F <= ord(char) <= 0x9F)
+        else ""
+        for char in text
+    )
+
+
 def normalize_text(value: object) -> str:
     if isinstance(value, str):
         text = value
@@ -2260,17 +2283,19 @@ def open_questions(areas: dict, datasets: list[DatasetReport]) -> list[str]:
     questions: list[str] = []
     if areas["scorer"]["status"] != "not-found":
         questions.append(
-            "Whether the scorer agrees with a human on real model output. Repeat "
-            "scoring measures repeatability, not correctness. Traigent's evaluator "
-            "quality service settles this from a completed run; `traigent-eval-audit` "
-            "is the skill that asks for it."
+            "Whether the scorer agrees with an independent signal on real model "
+            "output. Repeat scoring measures repeatability, not correctness. A "
+            "completed run lets you RETRIEVE Traigent's evaluator-quality verdict "
+            "if it has one — it may abstain, which is not a pass; "
+            "`traigent-eval-audit` is the skill that asks for it."
         )
     if datasets:
         questions.append(
-            "Which individual rows are mislabelled, redundant or too hard. That "
-            "needs per-example scores from a completed run, which Traigent's example "
-            "scoring and dataset quality services produce; `traigent-dataset-curate` "
-            "is the skill that asks for them."
+            "Which individual rows are mislabelled, redundant or too hard. A "
+            "completed run lets you RETRIEVE the examples the service flagged and "
+            "the per-example metadata it already holds — a flag is not proof, and "
+            "the result may be empty; `traigent-dataset-curate` is the skill that "
+            "asks for it."
         )
     questions.append(
         "Whether tuning moves the score at all, and which knob moves it. Only a "
@@ -2279,8 +2304,15 @@ def open_questions(areas: dict, datasets: list[DatasetReport]) -> list[str]:
     )
     questions.append(
         "What to do next given your own numbers. Traigent's planning service "
-        "returns that before a run and its decision brief after one; "
+        "returns an advisory plan before a run, and after one you can retrieve "
+        "the service's suggested next action with its own confidence; "
         "`traigent-analyze-guidance` is the skill that fetches both."
+    )
+    questions.append(
+        "A completed run is necessary for those retrievals and is not sufficient: "
+        "the service can abstain, return zero rows, or hold no computed result. "
+        "Stopping after this audit is a valid outcome, and buying a run only to "
+        "make an analysis service answer is not."
     )
     return questions
 
@@ -2555,8 +2587,9 @@ def render_card(report: dict) -> str:
     lines.append("")
     lines.append(
         "Each of those needs a Traigent service call, which sends data off this "
-        "machine and can cost money. None of them runs here: the approval-gated "
-        "second tier of this skill is where they will be offered."
+        "machine and can cost money. None of them runs here: run "
+        "`tier2_checks.py --from-audit report.json` to see the approval cards, "
+        "one per check, each naming what runs and what leaves the machine."
     )
     lines.append("")
     lines.append("## What this audit does not establish")
@@ -2564,7 +2597,11 @@ def render_card(report: dict) -> str:
     for item in report["not_established"]:
         lines.append(f"- {item}")
     lines.append("")
-    return "\n".join(lines)
+    # Every line here carries text read out of the audited project — file names,
+    # model ids, findings quoting source. `printable_text` is applied to the
+    # WHOLE card rather than at each interpolation so a new evidence line cannot
+    # be added later without it.
+    return "\n".join(printable_text(line) for line in lines)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

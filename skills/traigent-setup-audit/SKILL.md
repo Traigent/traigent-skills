@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: experimental
   author: Nimrod
-  version: "0.1.0"
+  version: "0.2.0"
 ---
 
 # Traigent Setup Audit
@@ -157,25 +157,284 @@ Repeat it rather than pushing the next step.
 ## What code alone could not tell you
 
 Each gap below is real, and each one needs a Traigent service call — which sends
-data off the machine and can cost money. **None of them runs in this tier.** The
-approval-gated second tier of this skill is where they will be offered, each
-behind an explicit approval that names what runs, what leaves the machine, the
-spend cap and the stop rule.
+data off the machine and can cost money. **None of them runs in this tier.**
+Run `tier2_checks.py --from-audit report.json` (next section) to see the
+approval cards, one per check, each naming what runs, what leaves the machine,
+the cost and the stop rule.
 
-| Question the code cannot answer | What settles it | Skill to hand over to |
+None of these is *settled* by asking Traigent. What a Tier 2 check does is
+**retrieve the service's verdict if it has one** — and on a real run it may have
+none.
+
+| Question the code cannot answer | What retrieving it gets you | Skill to hand over to |
 |---|---|---|
-| Does the scorer agree with a human on real model output? | Traigent's evaluator-quality service, computed from a completed run against an independent correctness signal | `traigent-eval-audit` |
-| Which individual rows are mislabelled, redundant or too hard? | Traigent's per-example scoring and dataset-quality services, computed from a completed run | `traigent-dataset-curate` |
-| Does tuning move the score at all, and which knob moves it? | a small bounded optimization run, then a knob ranking over its trials | `traigent-optimize-run`, then `traigent-analyze-variable-importance` |
-| What should I do next, given my own numbers? | Traigent's planning service before a run, and its decision brief after one | `traigent-analyze-guidance` |
+| Does the scorer agree with an independent signal on real model output? | whether this run has an independent correctness signal and an evaluator-quality verdict at all — the service may abstain | `traigent-eval-audit` |
+| Which individual rows are mislabelled, redundant or too hard? | any examples the service flagged for review, and the per-example scoring metadata it already holds — a flag is not proof, and the result may be empty | `traigent-dataset-curate` |
+| Does tuning move the score at all, and which knob moves it? | one separately approved bounded run within your cap and stop rule, then a knob ranking over its trials | `traigent-optimize-run`, then `traigent-analyze-variable-importance` |
+| What should I do next, given my own numbers? | an advisory run plan before a run, and the service's suggested next action with its confidence after one | `traigent-analyze-guidance` |
 
-Most of those need a **completed run** first. Say that plainly rather than
-offering a check that cannot execute yet, and offer the smallest run that
-produces one — or hand over to `traigent-optimize-run`.
+**A completed run is necessary for the readers above, and it is not
+sufficient.** The service can abstain because the task has no independent
+correctness signal it supports, return zero rows, redact a projection, or hold
+no computed result. Each Tier 2 card states what the same check returned on our
+own dogfood run, so an empty answer is expected rather than surprising, and
+**"stop here" can be the recommended card.** Never buy a run merely to make an
+analysis service answer.
+
+In this skill the live interaction-profile fetch described at the end of this
+file is a Tier 2 read: do not perform it before the first approval; use the
+static defaults.
 
 Quote the Tier 1 finding that motivates each offer, in the user's own numbers.
-"8 rows, under the 30-row tuning minimum; per-example scoring would say which of
-the 8 to fix first" is motivation. A generic pitch is not.
+"8 rows, under the 30-row tuning minimum; a per-example result would say which
+of the 8 the service flagged" is motivation. A generic pitch is not.
+
+## Tier 2 — Traigent-backed checks (approval-gated)
+
+Tier 2 is a second script in the same directory. It reads the Tier 1 JSON and
+offers, per open question, **one** named Traigent check. It has two modes, and
+the default one is the safe one.
+
+**Offer mode (no flags beyond the report).** Prints one approval card per
+applicable check and makes **zero network calls** and spawns **zero processes**.
+The two halves of that are held up by different things, and the header says
+which is which: the network half is **measured** — it installs the same network
+guard `audit_project.py` uses and then verifies it, and prints the level it got.
+The process half is **by construction**, because that guard covers sockets only
+and a subprocess still runs under it: the two checks that shell out are reachable
+only through `--approve`. In run mode the number of processes actually spawned is
+counted and printed alongside the requests.
+
+```bash
+python3 <skill-dir>/scripts/tier2_checks.py --from-audit /tmp/traigent-setup-audit.json
+```
+
+**Run mode.** Runs only the checks named with `--approve`, each touching only the
+endpoints its card named, and writes a receipt of every request and every process.
+
+```bash
+python3 <skill-dir>/scripts/tier2_checks.py \
+  --from-audit /tmp/traigent-setup-audit.json \
+  --run-id <completed-run-id> \
+  --approve evaluator-quality \
+  --approve decision-brief \
+  --receipt /tmp/tier2-receipt.json \
+  --backend-url https://portal.traigent.ai
+```
+
+Exit code is `0` whenever the approved checks ran, whatever they returned, and
+`2` on a usage error — an unknown check id, a run-dependent check with no
+`--run-id`, `plan` with no `--cost-limit`, a missing key, or a plaintext backend
+URL. Nothing is attempted before those refusals.
+
+### The approval card
+
+Every card carries the same nine lines, and the user reads them before anything
+leaves the machine:
+
+| Line | What it must say |
+|---|---|
+| Question it answers | the open question from Tier 1, in one clause |
+| What it retrieves | what the service **hands back if it has it** — never what it settles |
+| Caveat | what this same check returned on our own dogfood run, including when that was nothing |
+| Why, in your numbers | the Tier 1 finding that motivates it — counts and `file:line` from **this** project, never a generic pitch |
+| What runs | the HTTP method and path, or the CLI command and its flags |
+| Leaves this machine | every field that is sent |
+| Your API key | where the key travels — the `X-API-Key` request header — or that no key is sent at all. Present on **every** card |
+| Cost | `$0 read`, or `real provider spend` |
+| Needs | what must exist first (a portal run id, a cap, a provider key) |
+| Stop rule | how many requests, and what happens when one fails |
+
+Exactly one card is marked `(recommended)`, chosen by the same ladder Tier 1
+uses: with a run in hand, an unreliable scorer is read about before a dataset is
+grown, because the dataset would otherwise be measured with that scorer. With no
+run in hand and a local fix still open, **the recommended card is `stop-here`** —
+recommending a reader then would be recommending a paid run whose only purpose is
+to make an analysis service answer, and it may still abstain. **Stopping after
+Tier 1 is always a valid option and the offer says so. Silence is not approval** —
+nothing runs until `--approve` names it.
+
+### The catalogue
+
+| id | Open question it answers | What runs | Needs | Cost |
+|---|---|---|---|---|
+| `model-ids` | are my declared model ids real? | `traigent models --provider <provider> --check <model-id> --json`, once per declared id (provider inferred from the id prefix; an id that matches none is skipped with a line, never guessed) | a provider key | $0; egress goes to the provider, not to Traigent |
+| `plan` | what should my first run be? | `traigent plan --backend-url <url> --task-description <text> --dataset-size <n> --has-holdout/--no-holdout --objective <objective> --max-trials <n> --cost-limit <usd> --json` | a key and `--cost-limit` | $0 read |
+| `evaluator-quality` | is my scorer reliable on real model output? | `GET /api/v1/analytics/runs/{run_id}/evaluator-quality` | `--run-id` | $0 read |
+| `example-insights` | which rows are mislabelled, redundant or too hard? | `GET /api/v1/analytics/runs/{run_id}/example-insights` | `--run-id` | $0 read |
+| `example-scoring` | has per-example scoring already been computed? | `GET /api/v1/analytics/example-scoring/{run_id}/summary`, and `GET /api/v1/analytics/example-scoring/{run_id}/dataset-quality` **only if** the summary says `computed: true` | `--run-id` | $0 read; no compute is requested |
+| `decision-brief` | what should I do next, given my own numbers? | `GET /api/v1/analytics/runs/{run_id}/decision-payload` | `--run-id` | $0 read |
+| `list-runs` | which completed portal runs do I already have? | `GET /api/v1/experiments`, then `GET /api/v1/experiment-runs/{experiment_id}/runs` per experiment | `--list-runs` | $0 read |
+| `bounded-run` | does tuning move the score, and which knob? | **nothing here.** The card hands over to `traigent-optimize-run` (mock dry-run first) and you return with `--run-id` | knobs the body reads, a dataset, a scorer | real provider spend |
+| `stop-here` | is the honest next move to stop? | nothing at all | nothing | $0 |
+
+### `example-scoring` reads; it does not compute
+
+On our own dogfood run of 2026-09-13 the summary returned `computed: false` and
+the compute endpoint that would have produced a result returned **HTTP 500**.
+This skill therefore does not trigger scoring at all: it reads the summary, and
+reads dataset quality only when the summary says results already exist.
+**`computed: false` means "the scoring service has not computed results for this
+run". It is never read as permission to start a job.** Compute stays out of this
+skill until there is a successful runtime witness for that endpoint and a known,
+enforceable charging boundary for it; a successful read establishes neither.
+
+### Most of these need a completed run first — and that is not enough
+
+Four checks read a run the service already holds. Without `--run-id` their cards
+are printed with the dependency stated plainly rather than hidden: pass
+`--list-runs` and approve `list-runs` to find an existing run id, or hand over to
+`traigent-optimize-run` to produce one. A completed run is **necessary and not
+sufficient**: the service may abstain, return zero rows, redact its projection,
+or hold nothing computed. **Never approve a run merely to make one of these
+answer.**
+
+`bounded-run` is never executed by this skill; approving it is a usage error,
+because starting a paid run is that skill's job and its stop rule, not this
+one's. `stop-here` cannot be approved either — it is the option of doing nothing
+further here, and it is a complete outcome.
+
+`model-ids` is offered only when the configuration space actually declared model
+ids. `bounded-run`'s card says "define a configuration space first" when no knob
+was found, because there is nothing for a run to search yet.
+
+### Finding the portal run id
+
+`--list-runs` offers a card of its own, because the reply names your experiments
+and runs and the key travels to get it. Approved, it lists every **completed**
+portal run newest first with its project id, experiment id, experiment name and
+description, status, `completed_at`, and configuration-run count — enough to pick
+the intended run rather than the most recent one. **Nothing is auto-selected:**
+you pass the one you chose as `--run-id`. Silently taking the newest run means
+silently analysing someone else's experiment.
+
+A **local session id is not a portal run id.** The `tv0_…` id and the
+`optimization_id` in a local session file return 404 on every analytics endpoint;
+only the `run_id` from `GET /api/v1/experiment-runs/{experiment_id}/runs` works.
+The listing asks for at most 10 experiments and prints how many came back, so a
+full page is reported as possibly incomplete rather than as the whole account.
+
+### How the request is made
+
+The key is read from `TRAIGENT_API_KEY` and travels in the `X-API-Key` request
+header — the header the SDK itself sends, and the only one the portal accepts
+for an API key. Sending an API key as a bearer token instead returns 401 on every
+route, including the identity route: that header is the JWT path. The request
+also carries the SDK's own `User-Agent` — the exact value
+`traigent.cloud.user_agent.get_sdk_user_agent()` builds, which is the
+distribution name, a slash and the installed version — because the portal's edge
+refuses the standard-library default with HTTP 403 (`error code: 1010`) before
+the service ever sees it.
+
+**Base URLs differ by client, and getting it wrong fails quietly-ish:**
+
+| Caller | Base URL to give it | What the other one does |
+|---|---|---|
+| this skill's Tier 2 script, `BackendAnalyticsClient`, `traigent plan --backend-url` | the **origin**: `https://portal.traigent.ai`, no `/api/v1` | with `/api/v1` the path doubles and `traigent plan` 404s |
+| `ExampleInsightsClient` (the SDK class the dataset skill uses) | the **`/api/v1` base** | with the origin the version prefix is missing from the path it builds, and the request gets 405 |
+
+Tier 2 takes the origin and refuses a `--backend-url` carrying a path, rather
+than silently repairing it — the same URL is what you paste into the other
+skills. `--backend-url`, else `TRAIGENT_BACKEND_URL`, else
+`https://portal.traigent.ai`; a plaintext `http://` URL is refused unless the
+host is loopback, which exists so the tests can run a local server. `traigent
+plan` needs `--backend-url` explicitly when the key comes from the environment
+rather than a stored login, so Tier 2 always passes it.
+
+Transport is `httpx`, already a dependency of the Traigent SDK — Tier 2 adds no
+new install. Tier 2 never imports `traigent`; it reads the installed
+distribution's version from package metadata.
+
+### Reading a plan
+
+`plan` is advisory text to read, not a script to run. The relay prints three
+things next to the payload: that `cost_limit_usd` is **the cap you passed,
+echoed back and not a budget the service authored**; the `evidence_level`
+verbatim; and the `objectives` block as returned, so you can see each
+objective's orientation yourself. On our own dogfood run the plan came back at
+`evidence_level: low`, suggested models the account could not reach, named a
+command that had been retired from the SDK, and returned the cost objective
+oriented to maximize. Check any command a plan names against `--help` before
+running it.
+
+### Honesty rules, enforced in code and in tests
+
+- **Verdicts are relayed as returned.** `status: abstain` prints as an abstain
+  with its reason and the sentence that it is **not a pass**. `evaluators: []`
+  prints as "no evaluator was assessed". A `low` confidence stays `low` and is
+  never upgraded.
+- **A non-200 is a status, not a body.** The response body is reduced to its
+  length: an error body has been observed echoing the request back, key included.
+- **An unexpected payload is said to be unexpected.** Anything that is not a
+  `success: true` envelope with a `data` object yields "the service returned an
+  unexpected payload" and no verdict at all.
+- **`computed: false` is reported as not computed**, never as a finding about
+  your rows and never as permission to start a scoring job.
+- **A 404 is a 404.** A run id the service does not know — a local session id,
+  say — produces a status line and no verdict of any kind.
+- **An offer says what it retrieves, and what it returned for us.** No check is
+  offered without the caveat from our own run beside it.
+- **No local budget arithmetic.** Every number printed is the service's own or
+  the cap you passed. The plan's `cost_limit_usd` echoes **your** cap, and the
+  relay says so.
+- **No lift is promised.** A flat or negative result is a real outcome.
+- **The key is never printed** — not in a card, not in the receipt, not on a
+  command line, not in an error. If a response echoes a value equal to it, that
+  response is withheld rather than relayed.
+
+### The receipt is the evidence
+
+`--receipt <path>` writes every HTTP request (method, path, status, response
+bytes, elapsed) and every process spawned (argv, exit code, output sizes — the
+key is in neither). Keep it: it is the record of what left the machine, and it is
+what the tests compare against the server's own log.
+
+The path in each row is the one that was **put on the wire**, read back off the
+request, not the string the script assembled. Those can differ — an HTTP client
+resolves `..` segments and drops a fragment after the caller hands it a URL — and
+a receipt that disagrees with the server's log is worse than no receipt. Two
+further rules follow from the same place: a `--run-id` that is not run-id shaped
+(8-64 characters of letters, digits, `-` or `_`) is refused before any request,
+and every id that becomes a path segment is escaped first — including the
+experiment ids that come out of the **service's own reply**. One `list-runs`
+approval is also capped at the page it asked for, so a reply carrying more
+experiments than requested cannot turn one approval into hundreds of
+authenticated requests; the extra are reported as not fetched.
+
+## Optimization Economics — Read This Before Sizing a Run
+
+**Do not default to recommending zero spend.** The canonical Traigent posture on
+spending, the five characterization questions with their exact options, the
+tailoring rules (including the three-option paging rule), the explanation duty,
+and the local survey draft contract all live in one file that ships inside this
+skill: **`references/economics-characterization.v0.md`**. Read it from this
+skill's own directory before you propose, size, or decline a run — it is
+deliberately not restated here. It is generated from
+`docs/shared/economics-characterization.v0.md` in the traigent-skills repo,
+which is where any edit goes; the copy shipped here is byte-identical.
+
+**Characterize, never compute a budget locally.** Collect the characterization
+and relay it; the Traigent service authors the budget, exactly as it authors the
+run-plan and the next-step decision — **budget authorship belongs to the
+service.** Do not compute, adjust, or recommend a budget locally: no budget
+arithmetic in markdown, no floor/cap table, no "roughly $X/day" of your own. The
+reference describes what the service computes; it is not a local calculator, and
+when the service returns no economics result, say so plainly and continue with
+**no budget number at all** rather than inventing one.
+
+**This skill's part:** the free tier produces the counts a sizing conversation
+needs — rows, holdout size, knobs the body actually reads, scorer repeatability
+— and Tier 2 relays the service's own plan against the cap the user set. The
+cap is the user's; the plan is the service's; neither is this skill's.
+
+**Mandatory whenever you relay any of it:** show the options, recommend exactly
+one, and explain **why in the user's own numbers** — their agent, their volumes,
+their error costs. The explanation is a product requirement, not decoration.
+
+Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval
+before any paid run**, an explicit spend cap, and the recorded stop rule. The
+service sets *how much* to invest; it never affects *whether* approval is
+required — it always is.
 
 ## What this audit does not establish
 
@@ -200,7 +459,11 @@ the 8 to fix first" is motivation. A generic pitch is not.
   lines and skipped files each become a finding that forces `attention`, so a
   truncated analysis never reads as a clean one.
 - **Model ids are collected, not validated.** Checking an id against a provider
-  is a network call, which this tier does not make.
+  is a network call, which this tier does not make. Tier 2's `model-ids` check
+  is where that happens, after approval.
+- **Tier 2 relays a verdict; it does not produce one.** What the service returns
+  is the service's, and an abstain, an empty result or a `low` confidence is
+  reported as exactly that. This skill never fills a gap the service left.
 - **Only Python is inventoried in this version.** A JavaScript or TypeScript
   project is not searched for entry points or scorers; see `traigent-js`.
 - **A green audit is not a green run.** It means nothing obvious is in the way.
@@ -240,7 +503,11 @@ that its zero-network property stays provable rather than inherited.
 - A key value is never read, shown or stored — only whether a known key **name**
   is set, and in which file it is declared.
 - Anything in the second tier — every paid call and every byte that leaves the
-  machine — waits for an explicit approval. Silence is not approval.
+  machine — waits for an explicit approval. Silence is not approval. Offer mode
+  runs under the same network guard as Tier 1 and reports the level it had, so
+  "no socket was opened" is measured rather than asserted; "no process was
+  spawned" is a property of the code path, not of that guard, and every approved
+  run writes a receipt with both counts in it.
 
 ## See Also
 
