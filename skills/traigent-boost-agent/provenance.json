@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "5a83d2a3b6fc907a",
+  "doc_hash": "039ccdf59313f55e",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/insights-and-iteration.md": "60a5b223a71c0e4f",
+    "references/insights-and-iteration.md": "92d53cae73c0dae5",
     "references/instrument-recipe.md": "dd780d3c1429ba67"
   },
   "entries": [
@@ -145,6 +145,17 @@
       "doc_before_hash": "338b3994f9a77d4a",
       "doc_after_hash": "c8075d9a69ea3126",
       "note": "Step 5 taught traigent.config_generator.recommendations / recommend_configuration_space() / list_recommendation_agent_types(), which the SDK REMOVED -- tests/unit/test_recommendation_catalog_absence.py asserts they stay absent, so the snippet raised ImportError for every user. Replaced with the supported successor traigent.config_generator.generate_config(), which returns TVarRecommendation rows, infers agent_type instead of requiring a hand-picked catalog type, and runs preset-only with enrich=False (executed: llm_calls_made=0, llm_cost_usd=0.0). NOTE: TVarRecommendation has NO confidence attribute -- a first pass taught rec.confidence and would have raised AttributeError; the rows expose reasoning, impact_estimate and apply_guidance, and the PROTECTED caveat now names those. apply_guidance is surfaced explicitly because it carries the manual runtime steps the coding/RAG knob packs need. The skill description advertised the removed helper and was updated.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "example-insights-api-v1-base-url-2026-09-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T14:21:56Z",
+      "doc_before_hash": "5a83d2a3b6fc907a",
+      "doc_after_hash": "039ccdf59313f55e",
+      "note": "ExampleInsightsClient appends /analytics/... to its base, so the base must be https://portal.traigent.ai/api/v1; the skills taught the bare origin, which 405s on the live portal (observed 2026-09-13). Fix the snippet base and state which client takes the origin and which takes the /api/v1 base.",
       "source_type": "human"
     }
   ]
