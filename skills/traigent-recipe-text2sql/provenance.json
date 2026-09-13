@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "179c92cfde0f1846",
+  "doc_hash": "c2b051b0c01c944f",
   "reference_hashes": {
     "references/quickstart_text2sql.md": "f3accae2df95ec78"
   },
@@ -72,8 +72,8 @@
       "run_id": null,
       "timestamp": "2026-09-13T00:00:00Z",
       "doc_before_hash": "030cd36ac0e1e40a",
-      "doc_after_hash": "179c92cfde0f1846",
-      "note": "add 'Two scoring lessons from a real run' section from ruler-dev-001 FINDINGS.md \u00a73-5: column-contract failures and decline/error miscounting",
+      "doc_after_hash": "c2b051b0c01c944f",
+      "note": "add 'Two scoring lessons from a real run' section from ruler-dev-001 FINDINGS.md §3-5: column-contract failures and decline/error miscounting",
       "source_type": "chat_decision"
     }
   ]

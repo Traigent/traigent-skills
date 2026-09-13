@@ -205,8 +205,8 @@ plan-then-SQL beat both the mid model and (separately) a premium Sonnet config
 A real 2026-09-13 text2SQL run (8 trials, 18 questions) plateaued at 16/18 (88.9%)
 for two checkable reasons — look for both before buying more trials:
 
-1. **Extra columns fail on purpose.** The two items the winning config never passed
-   returned correct rows with extra columns; the brief said "columns asked for, and
+1. **Extra columns fail on purpose.** The two items that failed in nearly every trial
+   (0 of 8 and 1 of 8) returned correct rows with extra columns; the brief said "columns asked for, and
    no others," and this benchmark's execution-match contract is right to fail them.
    State whichever column contract *your* evaluator enforces, explicitly, in both the
    prompt and the grader — and when a run plateaus below 100%, check for this kind of
