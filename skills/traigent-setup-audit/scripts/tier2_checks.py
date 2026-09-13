@@ -36,6 +36,7 @@ import argparse
 import ipaddress
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -43,7 +44,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -52,6 +53,7 @@ if str(SCRIPT_DIR) not in sys.path:
 # The guard is imported, never copied: one implementation, one set of tests.
 from audit_project import (  # noqa: E402
     install_network_guard,
+    printable_text,
     verify_network_guard,
 )
 
@@ -70,7 +72,19 @@ DEFAULT_TIMEOUT_SECONDS = 30.0
 
 # The experiments listing is a page, not the whole account. The number is
 # printed with the result so a short list is never read as "that is all there is".
+# It is also the CEILING on how many follow-up requests one `list-runs` approval
+# may make: an approval is for a bounded number of requests, and a server that
+# answers a limit=10 page with 500 experiments must not turn that into 501
+# authenticated requests.
 EXPERIMENTS_PAGE_LIMIT = 10
+
+# A run id is interpolated into a URL path. `..` segments in one made the server
+# see a different endpoint than the receipt recorded, because httpx normalizes
+# the path AFTER this script has built it. Every id is quoted before it reaches a
+# path, and the one the USER supplies is checked against this pattern first and
+# refused outright: a run id that is not this shape is a mistake or an attack,
+# and neither should reach the wire. UUIDs satisfy it.
+RUN_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 
 # Model-id prefix -> the provider `traigent models --provider` expects. An id
 # that matches nothing here is skipped with a printed line rather than guessed:
@@ -683,6 +697,26 @@ def check_backend_url(url: str) -> str:
     )
 
 
+def segment(value: object) -> str:
+    """One URL path segment, safe to interpolate.
+
+    Everything that becomes a path segment goes through here: the run id the user
+    supplies AND the experiment id the SERVER hands back. A `..` in either walked
+    the request to a different endpoint than the receipt recorded, because httpx
+    normalizes the path after this script builds it — so the escaping happens
+    before the string is a path, not after.
+
+    Quoting alone is not enough for one case: `.` is unreserved, so `quote("..")`
+    is `".."`, still a dot segment a normalizer will resolve. A segment that is
+    nothing but dots therefore has its dots encoded too. Ordinary ids keep their
+    dots and stay readable in the receipt.
+    """
+    quoted = quote(str(value), safe="")
+    if quoted and set(quoted) == {"."}:
+        return quoted.replace(".", "%2E")
+    return quoted
+
+
 def is_loopback(host: str | None) -> bool:
     if not host:
         return False
@@ -736,9 +770,16 @@ class Transport:
             self._client = None
 
     def request(self, method: str, path: str) -> tuple[object | None, dict]:
-        """Perform one request and return ``(parsed body or None, receipt row)``."""
+        """Perform one request and return ``(parsed body or None, receipt row)``.
+
+        The receipt records the path that was actually PUT ON THE WIRE, read back
+        off the request object, not the string this script assembled. httpx
+        resolves `..` segments and drops anything after `#` after the caller
+        hands it a URL, so the two can differ — and a receipt that disagrees with
+        the server's own log is worse than no receipt.
+        """
         started = time.monotonic()
-        entry: dict = {"method": method, "path": path}
+        entry: dict = {"method": method, "path": path, "path_sent": False}
         try:
             response = self.client().request(
                 method, self.backend_url + path, headers=self.headers()
@@ -758,6 +799,8 @@ class Transport:
         body = response.content
         entry.update(
             {
+                "path": response.request.url.raw_path.decode("ascii", "replace"),
+                "path_sent": True,
                 "status": int(response.status_code),
                 "response_bytes": len(body),
                 "elapsed_ms": round((time.monotonic() - started) * 1000, 1),
@@ -824,13 +867,18 @@ def relay_lines(data: dict) -> list[str]:
     if isinstance(rows, list) and not rows:
         lines.append("no example rows were returned (`example_rows: []`).")
 
-    for scope in (data, data.get("summary")):
+    # The same field name appears at the top level AND inside `summary`, with
+    # different values. Printing both unlabelled read as one field contradicting
+    # itself, so the nested scope is named.
+    for prefix, scope in (("", data), ("summary.", data.get("summary"))):
         if not isinstance(scope, dict):
             continue
         for key in ("dataset_quality", "example_count", "recommendation",
                     "computed", "privacy_mode"):
             if key in scope:
-                lines.append(f"`{key}: {scope[key]!r}`, relayed as returned.")
+                lines.append(
+                    f"`{prefix}{key}: {scope[key]!r}`, relayed as returned."
+                )
 
     brief = data.get("decision_brief")
     if isinstance(brief, dict):
@@ -925,21 +973,21 @@ def report_result(check_id: str, entry: dict, payload: object, api_key: str,
 
 def run_evaluator_quality(transport: Transport, run_id: str, out: list[str]) -> dict:
     payload, entry = transport.request(
-        "GET", f"/api/v1/analytics/runs/{run_id}/evaluator-quality"
+        "GET", f"/api/v1/analytics/runs/{segment(run_id)}/evaluator-quality"
     )
     return report_result("evaluator-quality", entry, payload, transport.api_key, out)
 
 
 def run_example_insights(transport: Transport, run_id: str, out: list[str]) -> dict:
     payload, entry = transport.request(
-        "GET", f"/api/v1/analytics/runs/{run_id}/example-insights"
+        "GET", f"/api/v1/analytics/runs/{segment(run_id)}/example-insights"
     )
     return report_result("example-insights", entry, payload, transport.api_key, out)
 
 
 def run_decision_brief(transport: Transport, run_id: str, out: list[str]) -> dict:
     payload, entry = transport.request(
-        "GET", f"/api/v1/analytics/runs/{run_id}/decision-payload"
+        "GET", f"/api/v1/analytics/runs/{segment(run_id)}/decision-payload"
     )
     return report_result("decision-brief", entry, payload, transport.api_key, out)
 
@@ -953,7 +1001,7 @@ def run_example_scoring(transport: Transport, run_id: str, out: list[str]) -> di
     check reads what already exists and stops. ``computed: false`` means NOT
     COMPUTED — it is never read here as permission to POST.
     """
-    base = f"/api/v1/analytics/example-scoring/{run_id}"
+    base = f"/api/v1/analytics/example-scoring/{segment(run_id)}"
     payload, entry = transport.request("GET", f"{base}/summary")
     record = report_result("example-scoring", entry, payload, transport.api_key, out)
     data = envelope_data(payload)
@@ -994,13 +1042,27 @@ def run_list_runs(transport: Transport, out: list[str]) -> dict:
         )
         return record
 
+    # One approval buys a BOUNDED number of requests. A server answering a
+    # limit=10 page with 500 experiments must not turn one approval into 501
+    # authenticated requests, so the page size is enforced here as well as asked
+    # for in the query.
+    over_page = max(0, len(experiments) - EXPERIMENTS_PAGE_LIMIT)
+    if over_page:
+        out.append(
+            f"  the reply carried {len(experiments)} experiment(s) for a "
+            f"limit={EXPERIMENTS_PAGE_LIMIT} page. Only the first "
+            f"{EXPERIMENTS_PAGE_LIMIT} are read: one approval is one bounded set "
+            f"of requests, so {over_page} were not fetched."
+        )
+        experiments = experiments[:EXPERIMENTS_PAGE_LIMIT]
+
     rows: list[dict] = []
     for experiment in experiments:
         experiment_id = experiment.get("experiment_id") or experiment.get("id")
         if not experiment_id:
             continue
         payload, entry = transport.request(
-            "GET", f"/api/v1/experiment-runs/{experiment_id}/runs"
+            "GET", f"/api/v1/experiment-runs/{segment(experiment_id)}/runs"
         )
         report_result("list-runs", entry, payload, transport.api_key, out)
         for run in as_list(envelope_data(payload), ("runs", "items", "results")):
@@ -1311,8 +1373,12 @@ def render_offer(tier1: Tier1, args, backend_url: str, guard: str,
     out = [
         "# Traigent setup audit — Tier 2 offer",
         "",
-        f"Offer mode. No network call was made and no process was spawned: the "
-        f"network guard reports `{guard}`.",
+        f"Offer mode. No network call was made: the network guard is installed "
+        f"and reports `{guard}`, which is a measurement of this process, not a "
+        f"claim about it.",
+        "No process was spawned either — that half is by construction, not by "
+        "the guard, which covers sockets only: the two checks that shell out are "
+        "reachable only through `--approve`, and nothing here passed one.",
         f"Read from `{tier1.path}` ({TIER1_SCHEMA}, project `{tier1.root}`).",
         f"Backend that an approved check would call: {backend_url}",
         f"`{KEY_ENV_NAME}` is "
@@ -1355,7 +1421,11 @@ def render_offer(tier1: Tier1, args, backend_url: str, guard: str,
         ]
     )
     out.append("")
-    return "\n".join(out)
+    # Cards quote the audited project's own text — model ids, dataset file
+    # names, a source line. A planted escape sequence in any of them rewrites
+    # the line the user is reading, consent lines included, so the whole card
+    # goes through the Tier 1 filter rather than each interpolation separately.
+    return "\n".join(printable_text(line) for line in out)
 
 
 def invocation_for(check_id: str, args, script: str) -> str:
@@ -1379,6 +1449,9 @@ def invocation_for(check_id: str, args, script: str) -> str:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="tier2_checks.py",
+        # No abbreviations: `--appr <id>` must not be an approval this script
+        # only discovers after it has decided it is in offer mode.
+        allow_abbrev=False,
         description=(
             "Offer, and on explicit approval run, the Traigent-backed checks that "
             "answer what the free Tier 1 audit could not."
@@ -1409,30 +1482,41 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def wants_run_mode(argv: list[str]) -> bool:
-    return any(arg == "--approve" or arg.startswith("--approve=") for arg in argv)
-
-
 def main(argv: list[str] | None = None) -> int:
     raw = list(sys.argv[1:] if argv is None else argv)
 
-    # Offer mode must not be able to open a socket at all, so the guard goes on
-    # before anything else happens — including before the report is read.
-    guard = "not installed (run mode)"
-    if not wants_run_mode(raw):
-        install_network_guard()
-        guard = verify_network_guard()
-
+    # Parse FIRST, then decide the mode from the parsed namespace. Reading the
+    # mode out of the raw argv text was wrong twice over: argparse used to accept
+    # any unambiguous prefix, so `--appr <id>` was an approval the textual scan
+    # did not see — it installed the guard and then ran run mode, which refused
+    # its own request and wrote a receipt implying one had been attempted.
+    # `allow_abbrev=False` closes the prefix, and the namespace is the authority
+    # on what was asked for. Parsing opens no socket and spawns no process.
     try:
         args = parse_args(raw)
     except SystemExit:
         return 2
+
+    guard = "not installed (run mode)"
+    if not args.approve:
+        install_network_guard()
+        guard = verify_network_guard()
 
     try:
         tier1 = load_tier1(Path(args.from_audit).expanduser())
         backend_url = check_backend_url(resolve_backend_url(args.backend_url))
     except ValueError as exc:
         print(f"tier2_checks.py: {exc}", file=sys.stderr)
+        return 2
+
+    if args.run_id is not None and not RUN_ID_RE.match(args.run_id):
+        print(
+            "tier2_checks.py: --run-id is not a run id "
+            "(expected 8-64 characters of letters, digits, `-` or `_`, which a "
+            "portal run id always is). Nothing was requested. Find the id with "
+            "--list-runs.",
+            file=sys.stderr,
+        )
         return 2
 
     unknown = [name for name in args.approve if name not in CATALOGUE_BY_ID]
@@ -1564,8 +1648,9 @@ def execute(args, tier1: Tier1, backend_url: str, invocations: dict[str, str]) -
                         encoding="utf-8")
         out.append(
             f"Receipt written to `{args.receipt}`: "
-            f"{len(transport.requests)} request(s), {len(subprocesses)} process(es). "
-            "Keep it — it is the record of what left this machine. No key is in it."
+            f"{len(transport.requests)} request(s) and {len(subprocesses)} "
+            f"process(es) were made — both counted, not assumed. "
+            "Keep it: it is the record of what left this machine. No key is in it."
         )
     else:
         out.append(
@@ -1584,7 +1669,9 @@ def execute(args, tier1: Tier1, backend_url: str, invocations: dict[str, str]) -
             encoding="utf-8",
         )
 
-    print("\n".join(out))
+    # Same filter as the offer: these lines carry the project's text AND the
+    # service's, and neither is ours.
+    print("\n".join(printable_text(line) for line in out))
     return 0
 
 

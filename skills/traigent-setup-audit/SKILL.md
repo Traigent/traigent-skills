@@ -197,9 +197,13 @@ the default one is the safe one.
 
 **Offer mode (no flags beyond the report).** Prints one approval card per
 applicable check and makes **zero network calls** and spawns **zero processes**.
-It installs the same network guard `audit_project.py` uses and then verifies it,
-so "nothing was called" is a measurement printed in the header, not a promise in
-this file.
+The two halves of that are held up by different things, and the header says
+which is which: the network half is **measured** — it installs the same network
+guard `audit_project.py` uses and then verifies it, and prints the level it got.
+The process half is **by construction**, because that guard covers sockets only
+and a subprocess still runs under it: the two checks that shell out are reachable
+only through `--approve`. In run mode the number of processes actually spawned is
+counted and printed alongside the requests.
 
 ```bash
 python3 <skill-dir>/scripts/tier2_checks.py --from-audit /tmp/traigent-setup-audit.json
@@ -380,10 +384,22 @@ running it.
 
 ### The receipt is the evidence
 
-`--receipt <path>` writes every HTTP request (method, path with the run id,
-status, response bytes, elapsed) and every process spawned (argv, exit code,
-output sizes — the key is in neither). Keep it: it is the record of what left the
-machine, and it is what the tests compare against the server's own log.
+`--receipt <path>` writes every HTTP request (method, path, status, response
+bytes, elapsed) and every process spawned (argv, exit code, output sizes — the
+key is in neither). Keep it: it is the record of what left the machine, and it is
+what the tests compare against the server's own log.
+
+The path in each row is the one that was **put on the wire**, read back off the
+request, not the string the script assembled. Those can differ — an HTTP client
+resolves `..` segments and drops a fragment after the caller hands it a URL — and
+a receipt that disagrees with the server's log is worse than no receipt. Two
+further rules follow from the same place: a `--run-id` that is not run-id shaped
+(8-64 characters of letters, digits, `-` or `_`) is refused before any request,
+and every id that becomes a path segment is escaped first — including the
+experiment ids that come out of the **service's own reply**. One `list-runs`
+approval is also capped at the page it asked for, so a reply carrying more
+experiments than requested cannot turn one approval into hundreds of
+authenticated requests; the extra are reported as not fetched.
 
 ## Optimization Economics — Read This Before Sizing a Run
 
@@ -489,8 +505,9 @@ that its zero-network property stays provable rather than inherited.
 - Anything in the second tier — every paid call and every byte that leaves the
   machine — waits for an explicit approval. Silence is not approval. Offer mode
   runs under the same network guard as Tier 1 and reports the level it had, so
-  "nothing was called" is measured rather than asserted, and every approved run
-  writes a receipt of exactly what was.
+  "no socket was opened" is measured rather than asserted; "no process was
+  spawned" is a property of the code path, not of that guard, and every approved
+  run writes a receipt with both counts in it.
 
 ## See Also
 

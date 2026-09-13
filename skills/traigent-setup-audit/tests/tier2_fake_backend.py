@@ -126,17 +126,25 @@ def dataset_quality(computed: bool) -> tuple[int, dict]:
     }
 
 
-def experiments_page() -> dict:
+# A hostile experiment id: the reply is the SERVER's text, and it becomes a URL
+# path segment. Unquoted, this walked the next request out of the experiment-runs
+# endpoint entirely.
+HOSTILE_EXPERIMENT_ID = "../../../../api/v1/admin/secrets"
+
+
+def experiments_page(count: int = 1, experiment_id: str = EXPERIMENT_ID) -> dict:
     return {
         "success": True,
         "data": {
             "experiments": [
                 {
-                    "experiment_id": EXPERIMENT_ID,
+                    "experiment_id": experiment_id if index == 0
+                    else f"{experiment_id}-{index}",
                     "project_id": PROJECT_ID,
                     "name": "ruler-dev-001",
                     "description": "text2sql grader development",
                 }
+                for index in range(count)
             ]
         },
     }
@@ -205,14 +213,18 @@ class FakeBackend:
     """A threaded loopback server implementing exactly the Tier 2 endpoints.
 
     ``computed`` switches the example-scoring summary to its SYNTHETIC
-    "results exist" shape. ``known_run_id`` is the only run id the readers
-    answer for: anything else 404s, the way a local session id does.
+    "results exist" shape. ``run_id`` is the only run id the readers answer for:
+    anything else 404s, the way a local session id does. ``experiments_in_reply``
+    and ``experiment_id`` let a test answer a limit=10 page with 50 experiments,
+    or with an id that tries to walk out of its endpoint.
     """
 
     def __init__(
         self,
         run_id: str = RUN_ID,
         computed: bool = False,
+        experiments_in_reply: int = 1,
+        experiment_id: str = EXPERIMENT_ID,
         forge: bool = False,
         bad_envelope: bool = False,
         error_status: int | None = None,
@@ -220,6 +232,8 @@ class FakeBackend:
     ) -> None:
         self.run_id = run_id
         self.computed = computed
+        self.experiments_in_reply = experiments_in_reply
+        self.experiment_id = experiment_id
         self.forge = forge
         self.bad_envelope = bad_envelope
         self.error_status = error_status
@@ -269,7 +283,7 @@ class FakeBackend:
 
         parts = [part for part in route.strip("/").split("/") if part]
         if parts[:3] == ["api", "v1", "experiments"] and method == "GET":
-            return 200, experiments_page()
+            return 200, experiments_page(self.experiments_in_reply, self.experiment_id)
         if parts[:3] == ["api", "v1", "experiment-runs"] and parts[-1:] == ["runs"]:
             return 200, experiment_runs(self.run_id)
         if parts[:4] == ["api", "v1", "analytics", "runs"] and len(parts) == 6:

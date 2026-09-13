@@ -412,6 +412,29 @@ def guard_note(level: str) -> str:
 # --------------------------------------------------------------------------
 
 
+def printable_text(value: object) -> str:
+    """Strip terminal control characters out of text read from a project.
+
+    A model id, a dataset file name or a source line quoted into the card is the
+    audited project's text, not ours. A planted escape sequence (`\\x1b[2K\\r`)
+    inside a string literal rewrites the line the user is reading — including a
+    consent line — and nothing else in the pipeline removes it. C0 and C1
+    controls go, a tab becomes a space, and `\\n` survives because the caller
+    joins lines with it.
+
+    Imported by ``tier2_checks.py`` rather than copied: one implementation, one
+    set of tests.
+    """
+    text = value if isinstance(value, str) else str(value)
+    return "".join(
+        " " if char == "\t"
+        else char
+        if char == "\n" or not (ord(char) < 0x20 or 0x7F <= ord(char) <= 0x9F)
+        else ""
+        for char in text
+    )
+
+
 def normalize_text(value: object) -> str:
     if isinstance(value, str):
         text = value
@@ -2574,7 +2597,11 @@ def render_card(report: dict) -> str:
     for item in report["not_established"]:
         lines.append(f"- {item}")
     lines.append("")
-    return "\n".join(lines)
+    # Every line here carries text read out of the audited project — file names,
+    # model ids, findings quoting source. `printable_text` is applied to the
+    # WHOLE card rather than at each interpolation so a new evidence line cannot
+    # be added later without it.
+    return "\n".join(printable_text(line) for line in lines)
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:

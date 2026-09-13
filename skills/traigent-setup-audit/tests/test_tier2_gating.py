@@ -39,7 +39,11 @@ def test_offer_mode_makes_no_request_and_spawns_no_process(
         assert completed.returncode == 0, completed.stderr
         assert backend.log == [], backend.log
     assert recorded_argv(fake_traigent_cli) == []
-    assert "network guard reports `active`" in completed.stdout
+    # The claim is split because the evidence is: the guard measures the socket
+    # half, and the process half holds by construction (nothing that shells out
+    # is reachable without --approve) — the guard does not cover subprocesses.
+    assert "the network guard is installed and reports `active`" in completed.stdout
+    assert "that half is by construction, not by the guard" in completed.stdout
 
 
 def test_the_empty_log_is_not_vacuous(

@@ -48,8 +48,10 @@ def test_the_empty_dataset_result_is_reported_with_both_numbers(
     assert completed.returncode == 0, completed.stderr
     out = completed.stdout
     assert "no example rows were returned" in out
-    assert "`dataset_quality: 'low'`" in out
-    assert "`example_count: 0`" in out
+    # Scope-labelled: the same field name lives at the top level and inside
+    # `summary`, and two unlabelled lines read as one field contradicting itself.
+    assert "`summary.dataset_quality: 'low'`" in out
+    assert "`summary.example_count: 0`" in out
 
 
 def test_a_low_confidence_stays_low(
