@@ -127,3 +127,6 @@ def test_the_env_file_path_is_still_covered(tmp_path: Path) -> None:
     assert SENTINEL not in json.dumps(report)
     declared = report["setup"]["keys"]["names_declared_in_env_files"][".env"]
     assert declared == ["TRAIGENT_API_KEY", "OPENAI_API_KEY"]
+    # tmp_path is under /tmp: without the sandbox bind this probe never loaded,
+    # so the canary was inspecting a report with no probe output to leak.
+    assert report["scorer_probe"]["ran"] is True, report["scorer_probe"]

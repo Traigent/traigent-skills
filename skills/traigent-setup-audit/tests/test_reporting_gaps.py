@@ -374,6 +374,9 @@ def test_malformed_jsonl_lines_are_counted_not_dropped(tmp_path: Path) -> None:
     report, card = _run(root, tmp_path / "out")
     assert "not valid JSON and were skipped" in card
     assert report["areas"]["dataset"]["status"] == "attention"
+    # No scorer in this tree, so there is nothing to probe — stated rather than
+    # assumed, since a probe that silently fails to load looks the same.
+    assert report["scorer_probe"] is None
 
 
 def test_a_row_cap_prints_the_real_total(tmp_path: Path, monkeypatch) -> None:
@@ -463,3 +466,4 @@ def test_a_utf8_bom_does_not_discard_the_file(tmp_path: Path) -> None:
         "data.jsonl",
         "data.json",
     }
+    assert report["scorer_probe"] is None

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "853ee225aedc4b51",
+  "doc_hash": "e5e728ddf60626b5",
   "entries": [
     {
       "edit_id": "genesis",
@@ -27,6 +27,15 @@
       "run_id": null,
       "timestamp": "2026-09-13T00:00:00Z",
       "note": "independent tools-on review found the zero-network claim false on 5 of 8 escape routes: shrink the claim to what is enforced, add a preflighted network-namespace sandbox for the probe, close _socket and the ssl-breaking guard, refuse a non-deterministic --scorer, stop relaying exception and stderr text, and turn every silent cap into a printed finding",
+      "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "review-round-2-2026-09-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T00:00:00Z",
+      "note": "second review round: classify a module named at runtime as executing and stop presenting the classifier as a boundary, read only the probe's own framed result line through a typed whitelist so a scorer cannot forge a verdict, and bind the project back into the sandbox so a project under /tmp is not reported as a broken scorer",
       "source_type": "owner_intent"
     }
   ]

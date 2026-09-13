@@ -41,9 +41,14 @@ GUARD_PYTHON = "python-level"
 
 # Preflighted in order; the first that exits 0 on `<prefix> true` wins. Each
 # prefix puts the probe in a network namespace with no route to the host.
+# (backend, base arguments, terminator). `--tmpfs /tmp` hides the host's /tmp
+# from the probe, which is deliberate — but it also hides a PROJECT that lives
+# under /tmp (an extracted tarball, CI scratch, a pytest tmp_path), and the
+# scorer then fails to load for a reason that has nothing to do with the scorer.
+# `isolation_command` binds the project back in, read-only, after the tmpfs.
 ISOLATION_BACKENDS = (
-    ("unshare", ["unshare", "-rn"]),
-    ("unshare", ["unshare", "-rn", "--"]),
+    ("unshare", ["unshare", "-rn"], []),
+    ("unshare", ["unshare", "-rn"], ["--"]),
     (
         "bwrap",
         [
@@ -60,8 +65,8 @@ ISOLATION_BACKENDS = (
             "/proc",
             "--tmpfs",
             "/tmp",
-            "--",
         ],
+        ["--"],
     ),
 )
 ISOLATION_PREFLIGHT_SECONDS = 5
@@ -71,8 +76,9 @@ GUARD_NOTE = {
         "the audit itself makes no network call; your scorer runs in a subprocess "
         "with Python's socket entry points disabled — at the python-level guard, "
         "code that uses ctypes, a subprocess or the private `_socket` module can "
-        "still reach the network, so only scorers classified deterministic (no such "
-        "imports) are probed"
+        "still reach the network, so only scorers classified deterministic are "
+        "probed; that classification is a static read of the module's imports and "
+        "calls, not a sandbox"
     ),
     "isolated": (
         "the audit itself makes no network call; your scorer runs in a subprocess "
@@ -154,7 +160,18 @@ EXECUTING_MODULES = frozenset(
 # python-level they are the documented hole, and keeping the rule the same on
 # every machine means a project audits the same way everywhere.
 ESCAPE_MODULES = frozenset({"ctypes", "multiprocessing", "_socket", "socketserver"})
-EXECUTING_BUILTINS = frozenset({"exec", "eval", "compile"})
+EXECUTING_BUILTINS = frozenset({"exec", "eval", "compile", "__import__"})
+# Builtins whose whole purpose is to name something at runtime. A literal
+# argument is still readable; anything else is not, and an unreadable import is
+# treated as an escape rather than assumed harmless.
+DYNAMIC_NAMING_CALLS = frozenset(
+    {"getattr", "__import__", "import_module", "exec", "eval"}
+)
+# `getattr(os, ...)` on one of these is a rebinding of a dangerous surface
+# whatever the attribute name turns out to be.
+SENSITIVE_GETATTR_TARGETS = frozenset(
+    {"os", "sys", "ctypes", "socket", "_socket", "importlib", "subprocess", "builtins"}
+)
 EXECUTING_OS_ATTRS = frozenset(
     {
         "system",
@@ -175,7 +192,7 @@ EXECUTING_OS_ATTRS = frozenset(
     }
 )
 ESCAPE_CALL_ATTRS = frozenset(
-    {"reload", "create_subprocess_exec", "create_subprocess_shell"}
+    {"reload", "import_module", "create_subprocess_exec", "create_subprocess_shell"}
 )
 
 # A name that says "this function scores something" on its own.
@@ -338,16 +355,16 @@ def verify_network_guard() -> str:
     return "active"
 
 
-def detect_isolation() -> tuple[str, list[str]]:
-    """Preflight each sandbox and return ``(level, command prefix)``.
+def detect_isolation() -> tuple[str, str, list[str], list[str]]:
+    """Preflight each sandbox and return ``(level, backend, args, terminator)``.
 
     The preflight is the evidence: a backend is only claimed after
-    ``<prefix> true`` has actually exited 0 on this machine.
+    ``<command> true`` has actually exited 0 on this machine.
     """
-    for name, prefix in ISOLATION_BACKENDS:
+    for name, args, terminator in ISOLATION_BACKENDS:
         try:
             completed = subprocess.run(
-                [*prefix, "true"],
+                [*args, *terminator, "true"],
                 capture_output=True,
                 timeout=ISOLATION_PREFLIGHT_SECONDS,
                 check=False,
@@ -355,8 +372,35 @@ def detect_isolation() -> tuple[str, list[str]]:
         except (OSError, subprocess.TimeoutExpired):
             continue
         if completed.returncode == 0:
-            return f"isolated ({name})", list(prefix)
-    return GUARD_PYTHON, []
+            return f"isolated ({name})", name, list(args), list(terminator)
+    return GUARD_PYTHON, "", [], []
+
+
+def isolation_command(
+    backend: str, args: list[str], terminator: list[str], readable: list[Path]
+) -> list[str]:
+    """The sandbox prefix, with the paths the probe must still be able to read.
+
+    Under bwrap the binds come AFTER ``--tmpfs /tmp`` so a project under /tmp is
+    restored read-only inside the sandbox; without them the probe reports the
+    audit's own containment as a fault in the user's scorer.
+    """
+    if not args:
+        return []
+    command = list(args)
+    if backend == "bwrap":
+        seen: set[str] = set()
+        for path in readable:
+            try:
+                resolved = path.resolve(strict=True)
+            except (OSError, RuntimeError):
+                continue
+            text = str(resolved)
+            if text == os.sep or text in seen:
+                continue
+            seen.add(text)
+            command += ["--ro-bind", text, text]
+    return command + list(terminator)
 
 
 def guard_note(level: str) -> str:
@@ -754,43 +798,67 @@ def scorer_candidate_verdict(
     return False, SKIP_WEAK_MATCH
 
 
+def _dynamic_naming_signal(child: ast.Call, callee: str) -> str | None:
+    """A runtime-named import/attribute/eval this audit cannot read.
+
+    Fail closed. Naming ctypes through the import builtin, reaching a shell
+    helper through a computed `getattr` on `os`, and asking importlib for
+    `subprocess` by string all reached the network while being classified
+    deterministic, because the module name never appears as an import.
+    """
+    if callee not in DYNAMIC_NAMING_CALLS:
+        return None
+    if callee == "getattr":
+        target = child.args[0] if child.args else None
+        if isinstance(target, ast.Name) and target.id in SENSITIVE_GETATTR_TARGETS:
+            return f"getattr on {target.id}"
+        named = child.args[1] if len(child.args) > 1 else None
+    else:
+        named = child.args[0] if child.args else None
+    if not (isinstance(named, ast.Constant) and isinstance(named.value, str)):
+        return f"{callee} with a name the audit cannot read"
+    return None
+
+
 def classify_scorer(tree: ast.AST, node: ast.AST) -> tuple[str, list[str]]:
     """Classify one scorer, counting anything that leaves the Python socket
-    layer as ``executing`` so it is never run."""
+    layer as ``executing`` so it is never run.
+
+    The WHOLE module is inspected, not just the function: ``runpy.run_path``
+    executes every module-level statement, and any other function in the file
+    can be called by the scorer.
+    """
     modules = module_imports(tree)
     signals: list[str] = []
     judge = sorted(modules & JUDGE_MODULES)
     executing = sorted(modules & EXECUTING_MODULES)
     escapes = sorted(modules & ESCAPE_MODULES)
 
-    for child in ast.walk(node):
-        if isinstance(child, ast.Call) and isinstance(child.func, ast.Name):
-            if child.func.id in EXECUTING_BUILTINS:
-                executing.append(f"builtin {child.func.id}")
-            if child.func.id in ESCAPE_CALL_ATTRS:
-                escapes.append(child.func.id)
-        if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
-            value = child.func.value
-            if isinstance(value, ast.Name) and value.id == "os":
-                if child.func.attr in EXECUTING_OS_ATTRS:
-                    executing.append(f"os.{child.func.attr}")
-            if child.func.attr in ESCAPE_CALL_ATTRS:
-                owner = value.id if isinstance(value, ast.Name) else "?"
-                escapes.append(f"{owner}.{child.func.attr}")
-
-    # Module-level escape calls count too: reloading `socket` at import time is
-    # as effective as doing it inside the function. So does touching the module
-    # table at all: popping a module and importing it again rebuilds the real
-    # entry points, which is a reload spelled differently.
     for child in ast.walk(tree):
-        if isinstance(child, ast.Call) and isinstance(child.func, ast.Attribute):
-            if child.func.attr in ESCAPE_CALL_ATTRS:
-                owner = (
-                    child.func.value.id
-                    if isinstance(child.func.value, ast.Name)
-                    else "?"
-                )
-                escapes.append(f"{owner}.{child.func.attr}")
+        if isinstance(child, ast.Call):
+            callee = None
+            if isinstance(child.func, ast.Name):
+                callee = child.func.id
+                if callee in EXECUTING_BUILTINS:
+                    executing.append(f"builtin {callee}")
+            elif isinstance(child.func, ast.Attribute):
+                callee = child.func.attr
+                owner = child.func.value
+                if isinstance(owner, ast.Name) and owner.id == "os":
+                    if callee in EXECUTING_OS_ATTRS:
+                        executing.append(f"os.{callee}")
+                if callee in ESCAPE_CALL_ATTRS:
+                    owner_name = owner.id if isinstance(owner, ast.Name) else "?"
+                    escapes.append(f"{owner_name}.{callee}")
+            if isinstance(child.func, ast.Name) and callee in ESCAPE_CALL_ATTRS:
+                escapes.append(callee)
+            if callee is not None:
+                dynamic = _dynamic_naming_signal(child, callee)
+                if dynamic:
+                    escapes.append(dynamic)
+        # Touching the module table at all: popping a module and importing it
+        # again rebuilds the real entry points, which is a reload spelled
+        # differently.
         if (
             isinstance(child, ast.Attribute)
             and child.attr == "modules"
@@ -804,7 +872,9 @@ def classify_scorer(tree: ast.AST, node: ast.AST) -> tuple[str, list[str]]:
     if executing:
         signals.append("uses " + ", ".join(sorted(set(executing))))
     if escapes:
-        signals.append("steps outside the socket layer via " + ", ".join(sorted(set(escapes))))
+        signals.append(
+            "steps outside the socket layer via " + ", ".join(sorted(set(escapes)))
+        )
 
     if judge and (executing or escapes):
         return "hybrid", signals
@@ -1277,18 +1347,135 @@ def perturb(text: str) -> str:
     return text[:-1] if len(text) > 1 else text + "?"
 
 
+RESULT_MARKER = "<<<TRAIGENT_SETUP_AUDIT_RESULT>>>"
+PROBE_STAGES = frozenset(
+    {
+        "load",
+        "call",
+        "timeout",
+        "launch",
+        "no-result",
+        "unreadable-request",
+        "tampered-result",
+    }
+)
+GUARD_STATES = frozenset({"active", "inactive", "uncertain"})
+SCORE_CASES = frozenset({"good", "partial", "bad"})
+ERROR_TYPE_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+ERROR_SITE_RE = re.compile(r"^[\w./\\-]{1,200}:[0-9]{1,7}$")
+
+
+def _numbers(value: object) -> list[float] | None:
+    if not isinstance(value, list) or len(value) > 1000:
+        return None
+    out: list[float] = []
+    for item in value:
+        if isinstance(item, bool) or not isinstance(item, (int, float)):
+            return None
+        out.append(float(item))
+    return out
+
+
+def _clean_error(value: object) -> dict | None:
+    if not isinstance(value, dict):
+        return None
+    kind = value.get("error_type")
+    site = value.get("error_site")
+    case = value.get("case")
+    cleaned: dict = {}
+    if not (isinstance(kind, str) and ERROR_TYPE_RE.match(kind)):
+        return None
+    cleaned["error_type"] = kind
+    if site is None:
+        cleaned["error_site"] = None
+    elif isinstance(site, str) and ERROR_SITE_RE.match(site):
+        cleaned["error_site"] = site
+    else:
+        cleaned["error_site"] = None
+    if case in SCORE_CASES:
+        cleaned["case"] = case
+    return cleaned
+
+
+def validate_probe_payload(payload: object) -> tuple[dict, int]:
+    """Copy only known keys of known shape out of the child's result.
+
+    The parent used to merge the child's whole JSON object into the report, so a
+    scorer with an ``atexit`` handler that printed a JSON line could forge
+    ``ran``, its own scores and a free-text field carrying an API key. Nothing
+    is copied now unless it is on this list AND passes its type check; every
+    other key is dropped and counted.
+    """
+    if not isinstance(payload, dict):
+        return {"ran": False, "stage": "tampered-result"}, 0
+
+    clean: dict = {}
+    known = 0
+
+    if isinstance(payload.get("ran"), bool):
+        clean["ran"] = payload["ran"]
+        known += 1
+    if isinstance(payload.get("network_blocked"), bool):
+        clean["network_blocked"] = payload["network_blocked"]
+        known += 1
+    if payload.get("network_guard") in GUARD_STATES:
+        clean["network_guard"] = payload["network_guard"]
+        known += 1
+    if payload.get("stage") in PROBE_STAGES:
+        clean["stage"] = payload["stage"]
+        known += 1
+    if isinstance(payload.get("repeats"), int) and not isinstance(
+        payload.get("repeats"), bool
+    ):
+        clean["repeats"] = payload["repeats"]
+        known += 1
+
+    scores = payload.get("scores")
+    if isinstance(scores, dict) and set(scores) <= SCORE_CASES:
+        converted = {name: _numbers(value) for name, value in scores.items()}
+        if all(value is not None for value in converted.values()):
+            clean["scores"] = converted
+            known += 1
+
+    errors = payload.get("errors")
+    if isinstance(errors, list) and len(errors) <= 100:
+        cleaned = [_clean_error(item) for item in errors]
+        if all(item is not None for item in cleaned):
+            clean["errors"] = cleaned
+            known += 1
+
+    top_fault = _clean_error(payload)
+    if top_fault is not None and "error_type" in payload:
+        clean["error_type"] = top_fault["error_type"]
+        clean["error_site"] = top_fault["error_site"]
+        known += 1
+
+    if "ran" not in clean:
+        return {"ran": False, "stage": "tampered-result"}, len(payload)
+    return clean, max(0, len(payload) - known)
+
+
+def _framed_lines(stdout: str) -> list[str]:
+    return [
+        line[len(RESULT_MARKER) :]
+        for line in stdout.splitlines()
+        if line.startswith(RESULT_MARKER)
+    ]
+
+
 def run_scorer_probe(
     interpreter: str,
     scorer: ScorerCandidate,
     root: Path,
     payload: tuple[str, str, str, str],
     repeats: int,
-    isolation_prefix: list[str],
+    isolation: list[str],
 ) -> dict:
     probe_script = Path(__file__).resolve().parent / "scorer_probe.py"
     good, partial, bad, source = payload
+    module_path = (root / scorer.file).resolve()
     request = {
-        "module": str((root / scorer.file).resolve()),
+        "module": str(module_path),
         "root": str(root.resolve()),
         "function": scorer.function,
         "good": good,
@@ -1296,7 +1483,7 @@ def run_scorer_probe(
         "bad": bad,
         "repeats": repeats,
     }
-    command = [*isolation_prefix, interpreter, str(probe_script), "--request-stdin"]
+    command = [*isolation, interpreter, str(probe_script), "--request-stdin"]
     try:
         completed = subprocess.run(
             command,
@@ -1307,11 +1494,7 @@ def run_scorer_probe(
             check=False,
         )
     except subprocess.TimeoutExpired:
-        return {
-            "ran": False,
-            "stage": "timeout",
-            "payload_source": source,
-        }
+        return {"ran": False, "stage": "timeout", "payload_source": source}
     except OSError as exc:
         return {
             "ran": False,
@@ -1323,17 +1506,33 @@ def run_scorer_probe(
     # Never relay the child's stderr text: a scorer that prints a key to stderr
     # before dying would put it in the report. Only its size is recorded.
     stderr_bytes = len(completed.stderr.encode("utf-8", errors="replace"))
-    try:
-        result = json.loads(completed.stdout.strip().splitlines()[-1])
-    except (ValueError, IndexError):
+    framed = _framed_lines(completed.stdout)
+    if len(framed) != 1:
+        # Zero: the probe never got to print. More than one: something else in
+        # the process printed a result line, so no line can be trusted.
+        stage = "no-result" if not framed else "tampered-result"
         return {
             "ran": False,
-            "stage": "no-result",
+            "stage": stage,
             "stderr_bytes": stderr_bytes,
+            "framed_result_lines": len(framed),
             "payload_source": source,
         }
+    try:
+        parsed = json.loads(framed[0])
+    except ValueError:
+        return {
+            "ran": False,
+            "stage": "tampered-result",
+            "stderr_bytes": stderr_bytes,
+            "framed_result_lines": 1,
+            "payload_source": source,
+        }
+    result, dropped = validate_probe_payload(parsed)
     result["payload_source"] = source
     result["stderr_bytes"] = stderr_bytes
+    result["framed_result_lines"] = 1
+    result["dropped_keys"] = dropped
     return result
 
 
@@ -1361,6 +1560,10 @@ PROBE_FAILURE_SENTENCE = {
     "no-result": (
         "the probe produced no readable result (the scorer module most likely "
         "ended the process itself)"
+    ),
+    "tampered-result": (
+        "the probe's result line was absent, duplicated or malformed, so nothing "
+        "the scorer process printed is trusted"
     ),
     "no-scores": "every probe call raised {fault}, so no score was produced",
 }
@@ -2111,7 +2314,7 @@ def not_established(guard_level: str) -> list[str]:
 
 
 def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
-    guard_level, isolation_prefix = detect_isolation()
+    guard_level, backend, isolation_args, isolation_terminator = detect_isolation()
     files = iter_project_files(root)
     python_files = [path for path in files if path.suffix == ".py"]
     inventory = scan_python(python_files, root)
@@ -2178,10 +2381,17 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
 
     interpreter = project_interpreter(root)
     probe: dict | None = None
+    isolation: list[str] = []
     if probed is not None:
         payload = build_probe_payload(reports, root)
+        # The probe must still be able to READ the project and the scorer's own
+        # directory inside the sandbox, or the sandbox looks like a broken scorer.
+        readable = [root, (root / probed.file).resolve().parent]
+        isolation = isolation_command(
+            backend, isolation_args, isolation_terminator, readable
+        )
         probe = run_scorer_probe(
-            interpreter, probed, root, payload, args.repeats, isolation_prefix
+            interpreter, probed, root, payload, args.repeats, isolation
         )
 
     model_ids: list[str] = []
@@ -2209,7 +2419,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         "network_guard": guard_level,
         "network_guard_note": guard_note(guard_level),
         "audit_process_guard": guard,
-        "isolation_command": isolation_prefix,
+        "isolation_command": isolation,
         "root": str(root.resolve()),
         "files": {
             "python_parsed": inventory.files_scanned,

@@ -201,12 +201,17 @@ def test_a_scorer_not_in_the_inventory_is_classified_not_assumed(
 # --------------------------------------------------------------------------
 
 
-ISOLATION_LEVEL, ISOLATION_PREFIX = audit.detect_isolation()
+ISOLATION_LEVEL, ISOLATION_BACKEND, ISOLATION_ARGS, ISOLATION_TERMINATOR = (
+    audit.detect_isolation()
+)
 
 
 @pytest.mark.skipif(
-    not ISOLATION_PREFIX,
-    reason="no network namespace backend preflighted on this machine",
+    not ISOLATION_ARGS,
+    reason=(
+        "no network namespace backend preflighted on this machine: neither "
+        "`unshare -rn true` nor `bwrap --unshare-net ... true` exited 0"
+    ),
 )
 @pytest.mark.parametrize("route", ESCAPE_ROUTES)
 def test_the_sandbox_blocks_every_escape_route(
@@ -227,8 +232,11 @@ def test_the_sandbox_blocks_every_escape_route(
         "bad": "another value",
         "repeats": 1,
     }
+    sandbox = audit.isolation_command(
+        ISOLATION_BACKEND, ISOLATION_ARGS, ISOLATION_TERMINATOR, [root]
+    )
     completed = subprocess.run(
-        [*ISOLATION_PREFIX, sys.executable, str(PROBE), "--request-stdin"],
+        [*sandbox, sys.executable, str(PROBE), "--request-stdin"],
         input=json.dumps(request),
         capture_output=True,
         text=True,

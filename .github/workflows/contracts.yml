@@ -50,6 +50,16 @@ jobs:
           uv export --frozen --no-emit-project --no-hashes -o harness-requirements.txt
           uv pip install --system -r harness-requirements.txt
 
+      - name: Install bubblewrap (sandbox for the skill network tests)
+        # Gives traigent-setup-audit's probe a real network namespace so its
+        # sandbox cases run instead of self-skipping. Tolerated failure: if the
+        # package or the runner's AppArmor policy refuses, those cases skip
+        # exactly as they did before and nothing else is affected.
+        run: |
+          sudo apt-get update -qq \
+            && sudo apt-get install -y --no-install-recommends bubblewrap \
+            || echo "bubblewrap unavailable; sandbox tests will skip"
+
       - name: Run released SDK buckets
         run: |
           set -euo pipefail

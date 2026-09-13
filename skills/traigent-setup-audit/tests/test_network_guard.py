@@ -22,6 +22,22 @@ SCRIPTS_DIR = SKILL_DIR / "scripts"
 FIXTURES = Path(__file__).resolve().parent / "fixtures"
 
 
+def _framed_result(stdout: str) -> dict:
+    """The probe's own result line, found by its framing prefix.
+
+    Reading the LAST line instead let a scorer's own output be read as the
+    probe's result, so the marker is how the line is identified now.
+    """
+    audit = _load_audit_module()
+    framed = [
+        line[len(audit.RESULT_MARKER) :]
+        for line in stdout.splitlines()
+        if line.startswith(audit.RESULT_MARKER)
+    ]
+    assert len(framed) == 1, stdout
+    return json.loads(framed[0])
+
+
 def _load_audit_module():
     if str(SCRIPTS_DIR) not in sys.path:
         sys.path.insert(0, str(SCRIPTS_DIR))
@@ -96,7 +112,7 @@ def test_scorer_probe_blocks_a_scorer_that_opens_a_socket() -> None:
         check=False,
     )
     assert completed.returncode == 0, completed.stderr
-    result = json.loads(completed.stdout.strip().splitlines()[-1])
+    result = _framed_result(completed.stdout)
     assert result["network_guard"] == "active"
     assert result["network_blocked"] is True
     assert result["ran"] is False
@@ -121,7 +137,7 @@ def test_scorer_probe_runs_a_local_scorer_unharmed() -> None:
         timeout=120,
         check=False,
     )
-    result = json.loads(completed.stdout.strip().splitlines()[-1])
+    result = _framed_result(completed.stdout)
     assert result["ran"] is True
     assert result["network_guard"] == "active"
     assert result["scores"]["good"] == [1.0, 1.0, 1.0]

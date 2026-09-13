@@ -225,6 +225,10 @@ def test_a_key_value_never_reaches_the_card_or_the_json(tmp_path: Path) -> None:
     declared = report["setup"]["keys"]["names_declared_in_env_files"][".env"]
     assert declared == ["TRAIGENT_API_KEY", "OPENAI_API_KEY"]
     assert ".env" in card
+    # The project lives under tmp_path, i.e. under /tmp. Before the sandbox
+    # bound it back in, the probe here silently failed to load and this canary
+    # was checking a card with no scores in it at all.
+    assert report["scorer_probe"]["ran"] is True, report["scorer_probe"]
 
 
 def test_a_missing_root_is_a_usage_error(tmp_path: Path) -> None:

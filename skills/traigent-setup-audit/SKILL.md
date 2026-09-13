@@ -48,13 +48,17 @@ without the level.
 | `network_guard` | What holds | What it means |
 |---|---|---|
 | `isolated (unshare)` / `isolated (bwrap)` | a Linux network namespace with no route to the host network | ctypes, a subprocess, the private `_socket` module and a reloaded `socket` all reach nothing |
-| `python-level` | Python's socket entry points replaced with a refusal inside the probe | ordinary socket use is stopped, but code using ctypes, a subprocess or `_socket` is **not** stopped by it |
+| `python-level` | Python's socket entry points replaced with a refusal inside the probe | ordinary socket use is stopped, but code using ctypes, a subprocess or `_socket` is **not** stopped by it — what keeps those from running is the classifier, which is a static read, not a boundary |
 
 At the python-level guard: the audit itself makes no network call; your scorer
 runs in a subprocess with Python's socket entry points disabled — code that uses
 ctypes, a subprocess or the private `_socket` module can still reach the network,
-so only scorers classified deterministic (no such imports) are probed. A scorer
-importing any of those is classified `executing` and never run, at every level.
+so only scorers classified deterministic are probed; **that classification is a
+static read of the module's imports and calls, not a sandbox.** It reads imports,
+`getattr` on a sensitive module, a module named at runtime through the import
+builtin or importlib, `sys.modules`, and the `os.exec*` family — and it fails
+closed, so a name it cannot read counts as executing. It is still a reading of
+source, not a boundary. Where a namespace is available, that is the boundary.
 
 The level is preflighted, not guessed: a sandbox is only claimed after running
 `<sandbox> true` on this machine and seeing it exit 0.
@@ -186,7 +190,12 @@ the 8 to fix first" is motivation. A generic pitch is not.
   absent. Neither is a clean verdict; confirm those by hand.
 - **The containment depends on the machine.** At `python-level` there is no
   namespace, so the classifier is what keeps ctypes and subprocess scorers from
-  running — not the guard. The card names the level it had.
+  running — not the guard, and a static read of source is not a boundary. The
+  card names the level it had.
+- **A scorer's own output is not the probe's result.** The probe frames its
+  result line and the audit reads only that line, copies only known keys of
+  known shape, and drops and counts everything else. A scorer that prints a
+  convincing result line makes the probe report `tampered-result`, never a pass.
 - **Every cap is printed.** Row, file-size and file-count ceilings, unparsable
   lines and skipped files each become a finding that forces `attention`, so a
   truncated analysis never reads as a clean one.

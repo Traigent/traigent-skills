@@ -24,6 +24,10 @@ import os
 import sys
 
 GUARD_MESSAGE = "traigent-setup-audit: network disabled in the free audit"
+# The parent reads ONLY a line carrying this prefix, and only if there is
+# exactly one. Anything else the scorer prints is ignored, which is what stops a
+# scorer's own JSON output from being read as the probe's result.
+RESULT_MARKER = "<<<TRAIGENT_SETUP_AUDIT_RESULT>>>"
 
 
 class NetworkDisabled(RuntimeError):
@@ -203,6 +207,12 @@ def probe(request: dict) -> dict:
     }
 
 
+def _emit(result: dict) -> None:
+    """One framed line, flushed, so the parent can find it among user output."""
+    sys.stdout.write(RESULT_MARKER + json.dumps(result, sort_keys=True) + "\n")
+    sys.stdout.flush()
+
+
 def main(argv: list[str] | None = None) -> int:
     install_network_guard()
     parser = argparse.ArgumentParser(
@@ -221,9 +231,9 @@ def main(argv: list[str] | None = None) -> int:
     try:
         request = json.loads(sys.stdin.read())
     except ValueError:
-        print(json.dumps({"ran": False, "stage": "unreadable-request"}))
+        _emit({"ran": False, "stage": "unreadable-request"})
         return 0
-    print(json.dumps(probe(request), sort_keys=True))
+    _emit(probe(request))
     return 0
 
 
