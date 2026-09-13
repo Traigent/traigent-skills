@@ -12,6 +12,7 @@ from pathlib import Path
 
 from conftest import run_tier2
 from tier2_fake_backend import EXPERIMENT_ID, RUN_ID, FakeBackend
+from urllib.parse import urlsplit
 
 
 def test_every_request_carries_the_api_key_header_and_the_sdk_user_agent(
@@ -71,7 +72,16 @@ def test_an_https_backend_is_accepted_without_being_called(
         "--backend-url", "https://portal.traigent.ai",
     )
     assert completed.returncode == 0, completed.stderr
-    assert "https://portal.traigent.ai" in completed.stdout
+    # Compare the announced backend as a parsed URL, not as a substring: the
+    # header names exactly one origin, and its scheme and host must match.
+    announced = [
+        line.split(":", 1)[1].strip()
+        for line in completed.stdout.splitlines()
+        if line.startswith("Backend that an approved check would call:")
+    ]
+    assert len(announced) == 1, completed.stdout
+    parts = urlsplit(announced[0])
+    assert (parts.scheme, parts.netloc, parts.path) == ("https", "portal.traigent.ai", "")
 
 
 def test_every_request_url_the_script_builds_is_pinned(
