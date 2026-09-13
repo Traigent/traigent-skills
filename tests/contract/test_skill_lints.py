@@ -44,9 +44,11 @@ import inspect
 import re
 from pathlib import Path
 
+import pytest
 import yaml
 from packaging.version import Version
 
+from .conftest import _python_version_floor_ok
 from .extract import _iter_fenced_blocks, _paragraph_text_by_line
 
 # .optimize(dataset=  /  .optimize_sync( dataset = ...   (robust to whitespace;
@@ -314,6 +316,29 @@ def _skill_doc_files(repo_root: Path) -> list[tuple[str, Path]]:
                 for ref in sorted(p for p in references.iterdir() if p.is_file())
             )
     return out
+
+
+def _skill_markdown_files_in_bucket(
+    repo_root: Path, sync_map: dict, config: pytest.Config
+) -> list[tuple[str, Path]]:
+    """``_skill_markdown_files``, filtered by ``python_version_floors`` exactly
+    the way ``pytest_generate_tests`` filters ``python_fact``/``runnable_snippet``
+    in conftest.py (see ``_python_version_floor_ok``): a reference file floored
+    to a newer SDK than the selected ``--sdk-version`` bucket is not ready to be
+    checked yet and must be SKIPPED, not failed, below its floor.
+
+    The prose/table scans (and the EvaluationOptions/InjectionOptions fenced
+    twins) read skill markdown directly rather than going through the
+    fact-extraction pipeline that already does this filtering, so each of
+    their tests must apply it explicitly -- otherwise a legitimately-floored
+    kwarg (e.g. ``winner_stability_reps``, which shipped in 0.27.0 and does
+    not exist on 0.21.3/0.24.0) fails every older released-contracts bucket.
+    """
+    return [
+        (name, path)
+        for name, path in _skill_markdown_files(repo_root)
+        if _python_version_floor_ok(name, path, sync_map, config, repo_root)
+    ]
 
 
 def _token_re(token: str) -> re.Pattern[str]:
@@ -930,9 +955,11 @@ def test_executionoptions_kwargs_are_real_fields(repo_root: Path) -> None:
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
-def test_evaluationoptions_kwargs_are_real_fields(repo_root: Path) -> None:
+def test_evaluationoptions_kwargs_are_real_fields(
+    repo_root: Path, sync_map: dict, pytestconfig: pytest.Config
+) -> None:
     violations: list[str] = []
-    for name, path in _skill_markdown_files(repo_root):
+    for name, path in _skill_markdown_files_in_bucket(repo_root, sync_map, pytestconfig):
         violations.extend(
             _scan_evaluationoptions_kwargs(
                 name, path, path.read_text(encoding="utf-8"), repo_root
@@ -941,9 +968,11 @@ def test_evaluationoptions_kwargs_are_real_fields(repo_root: Path) -> None:
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
-def test_injectionoptions_kwargs_are_real_fields(repo_root: Path) -> None:
+def test_injectionoptions_kwargs_are_real_fields(
+    repo_root: Path, sync_map: dict, pytestconfig: pytest.Config
+) -> None:
     violations: list[str] = []
-    for name, path in _skill_markdown_files(repo_root):
+    for name, path in _skill_markdown_files_in_bucket(repo_root, sync_map, pytestconfig):
         violations.extend(
             _scan_injectionoptions_kwargs(
                 name, path, path.read_text(encoding="utf-8"), repo_root
@@ -952,12 +981,16 @@ def test_injectionoptions_kwargs_are_real_fields(repo_root: Path) -> None:
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
-def test_option_prose_kwargs_are_real_fields(repo_root: Path) -> None:
+def test_option_prose_kwargs_are_real_fields(
+    repo_root: Path, sync_map: dict, pytestconfig: pytest.Config
+) -> None:
     """The #274 gap: EvaluationOptions(task_type=...) shipped as an inline-backtick
     call in a paragraph, which no fenced-block scan reads. Same validation, applied
-    to prose outside fenced code."""
+    to prose outside fenced code, and filtered by ``python_version_floors`` exactly
+    like the fact pipeline (a floored reference file is skipped, not failed, below
+    its floor -- see ``_skill_markdown_files_in_bucket``)."""
     violations: list[str] = []
-    for name, path in _skill_markdown_files(repo_root):
+    for name, path in _skill_markdown_files_in_bucket(repo_root, sync_map, pytestconfig):
         violations.extend(
             _scan_option_prose_kwargs(
                 name, path, path.read_text(encoding="utf-8"), repo_root
@@ -966,12 +999,15 @@ def test_option_prose_kwargs_are_real_fields(repo_root: Path) -> None:
     assert not violations, "\n\n".join(["", *violations, ""])
 
 
-def test_option_field_tables_are_real_fields(repo_root: Path) -> None:
+def test_option_field_tables_are_real_fields(
+    repo_root: Path, sync_map: dict, pytestconfig: pytest.Config
+) -> None:
     """The other #274 gap: task_type shipped as a row in a markdown "Fields"
     reference table. Same validation, applied to table rows scoped to a section
-    that unambiguously names one of the three option classes."""
+    that unambiguously names one of the three option classes, and filtered by
+    ``python_version_floors`` the same way (see ``_skill_markdown_files_in_bucket``)."""
     violations: list[str] = []
-    for name, path in _skill_markdown_files(repo_root):
+    for name, path in _skill_markdown_files_in_bucket(repo_root, sync_map, pytestconfig):
         violations.extend(
             _scan_option_field_tables(
                 name, path, path.read_text(encoding="utf-8"), repo_root
@@ -1405,7 +1441,12 @@ def test_lifecycle_vocab_lint_has_teeth(tmp_path: Path) -> None:
 def test_evaluationoptions_and_injectionoptions_kwargs_lints_have_teeth(
     tmp_path: Path,
 ) -> None:
-    """Fenced-python twins of test_executionoptions_kwargs_are_real_fields (#274)."""
+    """Fenced-python twins of test_executionoptions_kwargs_are_real_fields (#274).
+
+    Uses a kwarg name that exists on NO SDK version (``definitely_not_an_option_field_zz``),
+    not the historical ``task_type=`` -- ``task_type`` became a real ``EvaluationOptions``
+    field on SDK develop (the 0.28 feature #274 was about), so planting it here proved
+    nothing under ``--sdk-version=develop`` and failed the develop-contracts lane."""
     bad = tmp_path / "skills" / "bad" / "SKILL.md"
     bad.parent.mkdir(parents=True)
     bad.write_text(
@@ -1413,8 +1454,10 @@ def test_evaluationoptions_and_injectionoptions_kwargs_lints_have_teeth(
         "import traigent\n"
         "from traigent.api.decorators import EvaluationOptions, InjectionOptions\n"
         "@traigent.optimize(\n"
-        '    evaluation=EvaluationOptions(eval_dataset="d.jsonl", task_type="exact_match"),\n'
-        '    injection=InjectionOptions(injection_mode="context", tags=["x"]),\n'
+        '    evaluation=EvaluationOptions(eval_dataset="d.jsonl", '
+        'definitely_not_an_option_field_zz="x"),\n'
+        '    injection=InjectionOptions(injection_mode="context", '
+        'definitely_not_an_option_field_zz="x"),\n'
         ")\n"
         "def f(x):\n"
         "    return x\n"
@@ -1423,11 +1466,11 @@ def test_evaluationoptions_and_injectionoptions_kwargs_lints_have_teeth(
     )
     if _EVALUATION_OPTIONS_FIELDS is not None:
         assert _scan_evaluationoptions_kwargs("bad", bad, bad.read_text(), tmp_path), (
-            "EvaluationOptions lint missed task_type="
+            "EvaluationOptions lint missed definitely_not_an_option_field_zz="
         )
     if _INJECTION_OPTIONS_FIELDS is not None:
         assert _scan_injectionoptions_kwargs("bad", bad, bad.read_text(), tmp_path), (
-            "InjectionOptions lint missed tags="
+            "InjectionOptions lint missed definitely_not_an_option_field_zz="
         )
 
     good = tmp_path / "skills" / "good" / "SKILL.md"
@@ -1454,23 +1497,34 @@ def test_evaluationoptions_and_injectionoptions_kwargs_lints_have_teeth(
 
 
 def test_option_prose_kwargs_lint_has_teeth(tmp_path: Path) -> None:
-    """The actual #274 gap: a bad kwarg taught in prose, not fenced code."""
+    """The actual #274 gap: a bad kwarg taught in prose, not fenced code.
+
+    Uses ``definitely_not_an_option_field_zz``, a name that exists on NO SDK
+    version -- not the historical ``task_type=``, which the develop-contracts
+    lane installs as a real ``EvaluationOptions`` field (SDK develop, the 0.28
+    feature #274 was about), so planting it here proved nothing there."""
     bad = tmp_path / "skills" / "bad" / "SKILL.md"
     bad.parent.mkdir(parents=True)
     bad.write_text(
         "## Anchoring\n\n"
-        "Pass `evaluation=EvaluationOptions(task_type=\"exact_match\")` on the "
-        "decorated function to anchor the audit.\n",
+        'Pass `evaluation=EvaluationOptions(definitely_not_an_option_field_zz="x")` '
+        "on the decorated function to anchor the audit.\n",
         encoding="utf-8",
     )
     if _EVALUATION_OPTIONS_FIELDS is not None:
         violations = _scan_option_prose_kwargs("bad", bad, bad.read_text(), tmp_path)
-        assert violations, "prose kwarg lint missed task_type= taught as runnable"
-        assert "task_type" in violations[0] and ":3" in violations[0]
+        assert violations, (
+            "prose kwarg lint missed definitely_not_an_option_field_zz= taught as runnable"
+        )
+        assert "definitely_not_an_option_field_zz" in violations[0] and ":3" in violations[0]
 
-    # Same bad kwarg, but documented as failing -- must NOT be flagged (this is
-    # exactly what traigent-eval-audit/SKILL.md and traigent-setup-decorator/SKILL.md
-    # do today after #274, and it must stay green).
+    # Same bad kwarg, but documented as failing -- must NOT be flagged. This is
+    # the historical #274 shape (traigent-eval-audit/SKILL.md and
+    # traigent-setup-decorator/SKILL.md say exactly this about `task_type` today)
+    # kept with the real `task_type` name deliberately: the absence markers
+    # ("forbids", "raises", "do not pass") make this a false-positive check, not
+    # a violation check, so it must stay green regardless of whether `task_type`
+    # is real on the SDK bucket under test.
     hedged = tmp_path / "skills" / "hedged" / "SKILL.md"
     hedged.parent.mkdir(parents=True)
     hedged.write_text(
@@ -1500,7 +1554,12 @@ def test_option_prose_kwargs_lint_has_teeth(tmp_path: Path) -> None:
 def test_option_field_table_lint_has_teeth(tmp_path: Path) -> None:
     """The other #274 gap: a bad field taught as a row in a Fields reference
     table. Scoped to a section that names the class; unrelated tables must not
-    be flagged even when their header also says "Field"."""
+    be flagged even when their header also says "Field".
+
+    Uses ``definitely_not_an_option_field_zz``, a name that exists on NO SDK
+    version -- not the historical ``task_type``, which SDK develop ships as a
+    real ``EvaluationOptions`` field, so planting it here proved nothing under
+    the develop-contracts lane."""
     bad = tmp_path / "skills" / "bad" / "SKILL.md"
     bad.parent.mkdir(parents=True)
     bad.write_text(
@@ -1510,13 +1569,13 @@ def test_option_field_table_lint_has_teeth(tmp_path: Path) -> None:
         "| Field | Type | Description |\n"
         "|---|---|---|\n"
         "| `eval_dataset` | `str` | Path to a JSONL dataset |\n"
-        '| `task_type` | `str` | Coarse task category |\n',
+        "| `definitely_not_an_option_field_zz` | `str` | Bogus field |\n",
         encoding="utf-8",
     )
     if _EVALUATION_OPTIONS_FIELDS is not None:
         violations = _scan_option_field_tables("bad", bad, bad.read_text(), tmp_path)
-        assert violations, "field-table lint missed a task_type row"
-        assert "task_type" in violations[0]
+        assert violations, "field-table lint missed a definitely_not_an_option_field_zz row"
+        assert "definitely_not_an_option_field_zz" in violations[0]
 
     good = tmp_path / "skills" / "good" / "SKILL.md"
     good.parent.mkdir(parents=True)
@@ -1546,3 +1605,74 @@ def test_option_field_table_lint_has_teeth(tmp_path: Path) -> None:
     assert not _scan_option_field_tables(
         "unrelated", unrelated, unrelated.read_text(), tmp_path
     ), "field-table lint false-positive on a table not about any option class"
+
+
+class _FakeSdkVersionConfig:
+    """Minimal stand-in for pytest.Config -- only ``getoption`` is used (mirrors
+    test_python_version_floors._FakeConfig)."""
+
+    def __init__(self, sdk_version: str | None) -> None:
+        self._sdk_version = sdk_version
+
+    def getoption(self, name: str) -> str | None:
+        assert name == "--sdk-version"
+        return self._sdk_version
+
+
+def test_prose_and_table_scans_honor_python_version_floors(tmp_path: Path) -> None:
+    """The actual released-contracts CI failure this fixes: `winner_stability_reps`
+    shipped in 0.27.0 and does not exist on 0.21.3/0.24.0, and
+    skills/traigent-setup-decorator/references/winner-stability-reps.md is floored
+    to 0.27.0 in sync_map.yml for exactly that reason. The fenced-block/fact
+    pipeline already skips a floored file below its floor
+    (test_python_version_floors.py); the prose and table scans read files
+    directly and must apply the same floor via
+    ``_skill_markdown_files_in_bucket``, or a legitimately-floored kwarg fails
+    every older bucket."""
+    skill_dir = tmp_path / "skills" / "demo"
+    references_dir = skill_dir / "references"
+    references_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("# Demo skill\n", encoding="utf-8")
+    floored = references_dir / "unreleased.md"
+    floored.write_text(
+        "Requires `traigent>=0.99.0`.\n\n"
+        "Once available, pass "
+        "`execution=ExecutionOptions(newer_only_field=1)` on the decorator.\n",
+        encoding="utf-8",
+    )
+    sync_map = {
+        "skills": {
+            "demo": {"python_version_floors": {"references/unreleased.md": "0.99.0"}}
+        }
+    }
+
+    if _EXECUTION_OPTIONS_FIELDS is not None:
+        # Below the floor: the floored file is excluded entirely -- not scanned,
+        # not failed -- even though "newer_only_field" is not a real field today.
+        below = _skill_markdown_files_in_bucket(
+            tmp_path, sync_map, _FakeSdkVersionConfig("0.23.0")
+        )
+        assert floored not in {path for _, path in below}, (
+            "a file below its declared floor must be excluded from the bucket"
+        )
+
+        # At the floor: the file is included, and the scan still catches the
+        # (still-bogus) kwarg -- flooring a fact never weakens verification.
+        at_floor = _skill_markdown_files_in_bucket(
+            tmp_path, sync_map, _FakeSdkVersionConfig("0.99.0")
+        )
+        assert floored in {path for _, path in at_floor}, (
+            "a file at its declared floor must be included in the bucket"
+        )
+        violations = _scan_option_prose_kwargs(
+            "demo", floored, floored.read_text(), tmp_path
+        )
+        assert violations, "a bogus kwarg floored at its own version must still fail"
+
+        # develop always includes every floor, per _python_version_floor_ok.
+        develop = _skill_markdown_files_in_bucket(
+            tmp_path, sync_map, _FakeSdkVersionConfig("develop")
+        )
+        assert floored in {path for _, path in develop}, (
+            "develop must always include a floored file"
+        )
