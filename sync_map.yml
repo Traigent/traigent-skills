@@ -285,3 +285,19 @@ skills:
       - traigent/evaluators/base.py
       - traigent/testing/*
       - traigent/core/optimized_function.py
+
+  traigent-setup-audit:
+    # The audit script imports no traigent module (standard library only), so
+    # there are no `modules:` to import. The SKILL.md names `traigent check` and
+    # `traigent models`, whose shape and network behaviour are read out of these
+    # SDK sources, and mirrors the gold-key alias order from the SDK evaluator
+    # base. Floored at 0.27.0: that is the release those two commands were read
+    # against, and it is already a bucket (current_released_sdk_version).
+    min_sdk_version: "0.27.0"
+    sdk_paths:
+      - traigent/cli/main.py
+      - traigent/cli/function_discovery.py
+      - traigent/integrations/model_discovery/*
+      - traigent/evaluators/base.py
+    docs:
+      - skills/traigent-dataset-curate/SKILL.md

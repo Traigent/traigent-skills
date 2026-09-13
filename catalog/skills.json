@@ -7,6 +7,7 @@
   "topic": "agent-optimization",
   "skills": [
     {"name": "traigent-boost-agent", "stage": "front-door", "maturity": "stable"},
+    {"name": "traigent-setup-audit", "stage": "front-door", "maturity": "experimental"},
     {"name": "traigent-setup-quickstart", "stage": "setup", "maturity": "stable"},
     {"name": "traigent-setup-decorator", "stage": "setup", "maturity": "stable"},
     {"name": "traigent-setup-integrations", "stage": "setup", "maturity": "stable"},

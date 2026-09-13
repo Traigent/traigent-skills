@@ -1,0 +1,8 @@
+{"expected_output": "The refund window rule is thirty days.", "input": {"question": "Explain the refund window rule."}}
+{"expected_output": "The refund window rule is thirty days.", "input": {"question": "Explain the refund window rule."}}
+{"expected_output": "Download a csv from the billing page.", "input": {"question": "How do I export an invoice?"}}
+{"expected_output": "From the keys page in settings.", "input": {"question": "Where do I rotate an api token?"}}
+{"expected_output": "The workspace owner approves it.", "input": {"question": "Who approves a contractor seat?"}}
+{"expected_output": "Uploads are refused until space is freed.", "input": {"question": "What happens when storage runs out?"}}
+{"input": {"question": "Can a trial be extended twice?"}}
+{"expected_output": "Backups stay in the project region.", "input": {"question": "Which regions hold customer backups?"}}

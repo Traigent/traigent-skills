@@ -1,0 +1,70 @@
+{"expected_output": "The refund window rule is thirty days.", "input": {"question": "Explain the refund window rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The billing cycle rule is monthly on the first.", "input": {"question": "Explain the billing cycle rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The seat licence rule is one per named user.", "input": {"question": "Explain the seat licence rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The audit trail rule is kept for seven years.", "input": {"question": "Explain the audit trail rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The data residency rule is chosen at project creation.", "input": {"question": "Explain the data residency rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The session timeout rule is sixty minutes idle.", "input": {"question": "Explain the session timeout rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The password rotation rule is every ninety days.", "input": {"question": "Explain the password rotation rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The invoice export rule is csv from the billing page.", "input": {"question": "Explain the invoice export rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The usage alert rule is at eighty percent of plan.", "input": {"question": "Explain the usage alert rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The rate limit rule is sixty requests a minute.", "input": {"question": "Explain the rate limit rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The sandbox tenant rule is one free per organisation.", "input": {"question": "Explain the sandbox tenant rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The webhook retry rule is five attempts over an hour.", "input": {"question": "Explain the webhook retry rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The sso metadata rule is downloaded from the sso page.", "input": {"question": "Explain the sso metadata rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The scim provisioning rule is enabled per directory.", "input": {"question": "Explain the scim provisioning rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The trial length rule is fourteen days.", "input": {"question": "Explain the trial length rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The storage quota rule is fifty gigabytes on the standard plan.", "input": {"question": "Explain the storage quota rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The backup schedule rule is nightly at two in the morning.", "input": {"question": "Explain the backup schedule rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The region failover rule is manual and operator initiated.", "input": {"question": "Explain the region failover rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The support tier rule is chosen per contract.", "input": {"question": "Explain the support tier rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The uptime credit rule is issued for breaches of the target.", "input": {"question": "Explain the uptime credit rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The custom domain rule is one per tenant.", "input": {"question": "Explain the custom domain rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The email sender rule is verified by a dns record.", "input": {"question": "Explain the email sender rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The api token rule is rotated from the keys page.", "input": {"question": "Explain the api token rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The role template rule is cloned from an existing role.", "input": {"question": "Explain the role template rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The group mapping rule is matched on group name.", "input": {"question": "Explain the group mapping rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The log retention rule is kept for thirty days.", "input": {"question": "Explain the log retention rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The metric rollup rule is aggregated every five minutes.", "input": {"question": "Explain the metric rollup rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The alert channel rule is email or an outgoing webhook.", "input": {"question": "Explain the alert channel rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The maintenance window rule is announced ten days ahead.", "input": {"question": "Explain the maintenance window rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The change freeze rule is declared by the account owner.", "input": {"question": "Explain the change freeze rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The beta program rule is opt in per organisation.", "input": {"question": "Explain the beta program rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The feature flag rule is toggled per environment.", "input": {"question": "Explain the feature flag rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The release train rule is shipped every two weeks.", "input": {"question": "Explain the release train rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The patch cadence rule is monthly for supported versions.", "input": {"question": "Explain the patch cadence rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The deprecation notice rule is sent six months ahead.", "input": {"question": "Explain the deprecation notice rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The migration guide rule is published with each major version.", "input": {"question": "Explain the migration guide rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The import limit rule is ten thousand rows per upload.", "input": {"question": "Explain the import limit rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The export format rule is json lines or csv.", "input": {"question": "Explain the export format rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The column mapping rule is saved with the import profile.", "input": {"question": "Explain the column mapping rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The schema drift rule is reported on the datasets page.", "input": {"question": "Explain the schema drift rule."}, "metadata": {"source": "policy-golden", "split": "tune"}}
+{"expected_output": "The encryption key rule is supplied by the customer.", "input": {"question": "Explain the encryption key rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The signing cert rule is issued by the platform.", "input": {"question": "Explain the signing cert rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The ip allowlist rule is up to fifty entries.", "input": {"question": "Explain the ip allowlist rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The device posture rule is checked at sign in.", "input": {"question": "Explain the device posture rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The mfa enrolment rule is required for administrators.", "input": {"question": "Explain the mfa enrolment rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The guest account rule is expires after seven days.", "input": {"question": "Explain the guest account rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The contractor seat rule is billed as a full seat.", "input": {"question": "Explain the contractor seat rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The offboarding flow rule is triggered by the directory.", "input": {"question": "Explain the offboarding flow rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The delegation rule rule is set per workspace.", "input": {"question": "Explain the delegation rule rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The approval chain rule is up to four approvers.", "input": {"question": "Explain the approval chain rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The cost centre rule is attached to every order.", "input": {"question": "Explain the cost centre rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The budget alert rule is set per cost centre.", "input": {"question": "Explain the budget alert rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The spend report rule is generated monthly.", "input": {"question": "Explain the spend report rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The reseller order rule is placed through the partner portal.", "input": {"question": "Explain the reseller order rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The purchase order rule is referenced on the invoice.", "input": {"question": "Explain the purchase order rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The tax profile rule is stored per legal entity.", "input": {"question": "Explain the tax profile rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The currency setting rule is fixed for the contract term.", "input": {"question": "Explain the currency setting rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The payment method rule is card or bank transfer.", "input": {"question": "Explain the payment method rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The dunning email rule is sent three times.", "input": {"question": "Explain the dunning email rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The credit note rule is issued against the next invoice.", "input": {"question": "Explain the credit note rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The contract term rule is twelve months by default.", "input": {"question": "Explain the contract term rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The renewal date rule is shown on the contract page.", "input": {"question": "Explain the renewal date rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The amendment form rule is signed by both parties.", "input": {"question": "Explain the amendment form rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The cancellation fee rule is waived for annual plans.", "input": {"question": "Explain the cancellation fee rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The notice period rule is thirty days before renewal.", "input": {"question": "Explain the notice period rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The service credit rule is calculated from the monthly fee.", "input": {"question": "Explain the service credit rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The escalation path rule is the named account manager.", "input": {"question": "Explain the escalation path rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The incident review rule is held within five business days.", "input": {"question": "Explain the incident review rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The status page rule is updated every ten minutes.", "input": {"question": "Explain the status page rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}
+{"expected_output": "The postmortem policy rule is published within five business days.", "input": {"question": "Explain the postmortem policy rule."}, "metadata": {"source": "policy-golden", "split": "holdout"}}

@@ -50,6 +50,16 @@ jobs:
           uv export --frozen --no-emit-project --no-hashes -o harness-requirements.txt
           uv pip install --system -r harness-requirements.txt
 
+      - name: Install bubblewrap (sandbox for the skill network tests)
+        # Gives traigent-setup-audit's probe a real network namespace so its
+        # sandbox cases run instead of self-skipping. Tolerated failure: if the
+        # package or the runner's AppArmor policy refuses, those cases skip
+        # exactly as they did before and nothing else is affected.
+        run: |
+          sudo apt-get update -qq \
+            && sudo apt-get install -y --no-install-recommends bubblewrap \
+            || echo "bubblewrap unavailable; sandbox tests will skip"
+
       - name: Run released SDK buckets
         run: |
           set -euo pipefail
@@ -62,6 +72,17 @@ jobs:
             uv pip install --python ".bucket-$version/bin/python" \
               -r harness-requirements.txt "traigent==$version"
             ".bucket-$version/bin/python" -m pytest tests/contract --sdk-version="$version" -q
+            # The bundled per-skill suites (skills/<name>/tests). They need only
+            # the locked harness tooling already installed in this bucket venv --
+            # both current suites are standard library plus pytest -- so they add
+            # no dependency and run in the venv that is already built. They take
+            # well under a minute, against a contract run of well over a minute
+            # per bucket; the network-escape harness is the slow part, and its
+            # sandbox cases skip themselves where no namespace backend exists.
+            # A future skill whose tests need a
+            # third-party package must either vendor a stub or get its own lane;
+            # do not add the package here.
+            ".bucket-$version/bin/python" -m pytest skills/*/tests -q
           done < <(python tools/contract/list_buckets.py)
 
   develop-contracts:

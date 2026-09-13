@@ -24,3 +24,4 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 | `traigent-ci-safety-gate` | `traigent/api/decorators.py`, `traigent/api/safety.py`, `traigent/tvl/promotion_gate.py`, `traigent/tvl/models.py`, `traigent/tvl/__main__.py` |
 | `traigent-analyze-guidance` | `traigent/api/decorators.py`, `traigent/core/optimized_function.py`, `traigent/api/types.py`, `traigent/utils/insights.py`, `traigent/utils/importance.py`, `traigent/analytics/example_insights.py` |
 | `traigent-recipe-text2sql` | `traigent/__init__.py`, `traigent/api/decorators.py`, `traigent/core/objectives.py`, `traigent/evaluators/base.py`, `traigent/testing/*`, `traigent/core/optimized_function.py` |
+| `traigent-setup-audit` | `traigent/cli/main.py`, `traigent/cli/function_discovery.py`, `traigent/integrations/model_discovery/*`, `traigent/evaluators/base.py`, `skills/traigent-dataset-curate/SKILL.md` |
