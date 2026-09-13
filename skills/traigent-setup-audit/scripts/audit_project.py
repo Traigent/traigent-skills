@@ -849,6 +849,13 @@ def run_scorer_probe(
     return result
 
 
+def _show(scores: list[float]) -> str:
+    """One probe score, rounded for reading. The JSON keeps the full value."""
+    if not scores:
+        return "n/a"
+    return f"{scores[0]:.4g}"
+
+
 def summarize_probe(result: dict) -> tuple[str, list[str]]:
     if result.get("network_blocked"):
         return "blocked", [
@@ -873,8 +880,7 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
         ordered = ordered and good[0] >= partial[0] >= bad[0]
     evidence.append(
         "known-good / partial / known-bad probes scored "
-        f"{good[0] if good else 'n/a'} / {partial[0] if partial else 'n/a'} / "
-        f"{bad[0] if bad else 'n/a'}"
+        f"{_show(good)} / {_show(partial)} / {_show(bad)}"
         + (" (ordered as expected)" if ordered else " (not ordered as expected)")
     )
     if result.get("errors"):
