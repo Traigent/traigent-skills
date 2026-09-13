@@ -90,8 +90,19 @@ error. A finding is not a failure.
 Row minimums come from `traigent-dataset-curate`: 10-20 for a smoke check, 30-100
 for a first tuning slice, 30+ for a holdout slice, 100+ for a high-variance task.
 
-An LLM-judge or code-executing scorer is **never run**. The audit says which one
-it found, why it did not run it, and routes it to `traigent-eval-audit`.
+An LLM-judge or code-executing scorer is **never run**. The audit groups those by
+reason and prints one counted line per reason — not one line per file — and
+routes them to `traigent-eval-audit`.
+
+A function is reported as a scorer when its **name** says so (`score*`,
+`evaluate*`, `grade*`, `metric*`, `*_score`, `*_scorer`). A second parameter
+named `expected` is only a hint: validators such as `check_stage(body, expected)`
+and test helpers share that shape, so a signature-only match is reported only
+when its first parameter is `output` — the SDK's own binding contract — or the
+module is named like an evaluator. Private names and test files are excluded.
+Every near-miss is counted on the card and listed in the JSON, so a real scorer
+ruled out this way is visible rather than silently dropped; point `--scorer` at
+it if the filter got it wrong.
 
 The key check reads names only. No key value is read, printed or written, in the
 card or in the JSON.
@@ -106,9 +117,26 @@ The script already writes the card. When relaying it:
 - For anything not present, say what was searched for and where: "searched for
   `@traigent.optimize` in 41 Python files, found none". Never "you don't have a
   decorated function" — the user may have one the search did not reach.
-- Recommend exactly **one** next step, with the reason in one sentence.
-- Stopping after this audit is always a valid outcome. Say so.
 - Never promise an improvement. This audit measures nothing about outcome.
+
+The card's own `## Next step` section already picks **one** step and quotes the
+finding that forced it, in the user's numbers. Relay that one; do not add a
+second, and do not reorder it. It is chosen by the first of these that fires —
+the order is what stops a bigger dataset being recommended while the scorer it
+would be measured with is still unreliable:
+
+| Finding | Next step |
+|---|---|
+| no `@traigent.optimize` anywhere | `traigent-setup-quickstart`, then `traigent-setup-decorator` |
+| a decorated function with no knobs, or no knob its body reads | `traigent-optimize-config-space` |
+| no scorer found | `traigent-eval-build` |
+| the probed scorer is not repeatable, or ranks a known-bad answer above a known-good one | `traigent-eval-build`, then `traigent-eval-audit` |
+| a scorer exists but none could be measured here | `traigent-eval-audit` |
+| a dataset under the tuning or holdout minimum | `traigent-dataset-curate` |
+| nothing above fires | `traigent-optimize-run`, mock dry-run first |
+
+Stopping after the free audit is always a valid outcome, and the card says so.
+Repeat it rather than pushing the next step.
 
 ## What code alone could not tell you
 

@@ -186,19 +186,20 @@ def test_bare_runs_no_scorer_probe(bare) -> None:
 # --------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize("name", ["healthy", "weak", "bare", "netscorer"])
+@pytest.mark.parametrize("name", ["healthy", "weak", "bare", "netscorer", "skipped"])
 def test_every_card_carries_the_four_areas_and_both_honesty_sections(
     name: str, tmp_path: Path
 ) -> None:
     _, card = run_audit(FIXTURES / name, tmp_path)
     for heading in ("## Agent — ", "## Dataset — ", "## Scorer — ", "## Setup — "):
         assert heading in card
+    assert "## Next step" in card
     assert "## What code alone could not tell you" in card
     assert "## What this audit does not establish" in card
     assert "No lift is promised." in card
 
 
-@pytest.mark.parametrize("name", ["healthy", "weak", "bare", "netscorer"])
+@pytest.mark.parametrize("name", ["healthy", "weak", "bare", "netscorer", "skipped"])
 def test_every_run_reports_the_guard_as_active(name: str, tmp_path: Path) -> None:
     report, card = run_audit(FIXTURES / name, tmp_path)
     assert report["network_guard"] == "active"

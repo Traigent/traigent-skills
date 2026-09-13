@@ -100,7 +100,25 @@ EXECUTING_MODULES = frozenset(
 EXECUTING_BUILTINS = frozenset({"exec", "eval", "compile"})
 EXECUTING_OS_ATTRS = frozenset({"system", "popen", "execv", "spawnl"})
 
+# A name that says "this function scores something" on its own.
 SCORER_NAME_RE = re.compile(r"(?i)^(score|evaluate|grade|metric)|_(score|scorer)$")
+# A second parameter named like a gold value. On its own this is a weak signal:
+# validators such as `check_stage(body, expected)` share the shape, so it needs
+# corroboration (see `scorer_candidate_verdict`).
+EXPECTED_PARAM_NAMES = frozenset({"expected", "expected_output"})
+# The SDK binds a scoring callback by parameter NAME and the first one must be
+# `output` (traigent-skills#8 P1), so `output` first is real corroboration.
+SCORER_FIRST_PARAM = "output"
+EVALUATOR_MODULE_RE = re.compile(r"(?i)(eval|scor|grad|metric|judge|assess)")
+TEST_FILE_RE = re.compile(r"(?i)^(test_.+|.+_test|conftest)\.py$")
+TEST_DIR_NAMES = frozenset({"test", "tests"})
+
+SKIP_PRIVATE = "a name starting with `_`"
+SKIP_TEST_FILE = "a test-file path"
+SKIP_WEAK_MATCH = (
+    "only a second parameter named `expected`, with neither `output` as its "
+    "first parameter nor an evaluator-like module name"
+)
 KEY_ENV_NAMES = (
     "TRAIGENT_API_KEY",
     "OPENAI_API_KEY",
@@ -126,6 +144,7 @@ PROBE_TIMEOUT_SECONDS = 30
 # The JSON report keeps every dataset; the printed card stops here so one tree
 # with dozens of eval files stays readable.
 MAX_DATASETS_IN_CARD = 10
+MAX_SCORERS_IN_CARD = 8
 
 _VERSION_PROBE_SOURCE = """
 import json
@@ -392,12 +411,28 @@ class ScorerCandidate:
 
 
 @dataclass
+class SkippedScorer:
+    """A function that matched the scorer search and was then ruled out.
+
+    Kept and counted rather than dropped silently: a user whose real scorer is
+    missing from the card needs to see that it was considered and why it was
+    not reported.
+    """
+
+    function: str
+    file: str
+    line: int
+    reason: str
+
+
+@dataclass
 class PythonInventory:
     files_scanned: int = 0
     files_unparsed: list[str] = field(default_factory=list)
     entry_points: list[EntryPoint] = field(default_factory=list)
     llm_call_sites: list[dict] = field(default_factory=list)
     scorers: list[ScorerCandidate] = field(default_factory=list)
+    skipped_scorers: list[SkippedScorer] = field(default_factory=list)
 
 
 def module_imports(tree: ast.AST) -> set[str]:
@@ -413,6 +448,49 @@ def module_imports(tree: ast.AST) -> set[str]:
                 modules.add(module)
                 modules.add(module.split(".", 1)[0])
     return modules
+
+
+def _is_test_path(rel_path: str) -> bool:
+    parts = rel_path.split("/")
+    if any(part.lower() in TEST_DIR_NAMES for part in parts[:-1]):
+        return True
+    return bool(TEST_FILE_RE.match(parts[-1]))
+
+
+def _module_looks_like_evaluator(rel_path: str) -> bool:
+    return bool(EVALUATOR_MODULE_RE.search(Path(rel_path).stem))
+
+
+def scorer_candidate_verdict(
+    name: str, parameters: list[str], rel_path: str
+) -> tuple[bool, str | None]:
+    """Is this function a scorer worth reporting, and if not, why not?
+
+    Returns ``(is_candidate, skip_reason)``. ``skip_reason`` is ``None`` when the
+    function never matched the search at all, and a sentence when it matched and
+    was then ruled out — those are counted on the card.
+
+    A strong NAME (`score*`/`evaluate*`/`grade*`/`metric*`/`*_score`/`*_scorer`)
+    is enough on its own. The signature shape alone is not: `check_stage(body,
+    expected)` and `_read_lines_once_settled(broker, expected, timeout_s)` are
+    validators and test helpers, not scorers, and both were reported as scorers
+    before this rule existed. Signature-only matches therefore need either
+    `output` as the first parameter (the SDK's own binding contract) or a module
+    named like an evaluator.
+    """
+    strong_name = bool(SCORER_NAME_RE.search(name))
+    signature_shape = len(parameters) >= 2 and parameters[1] in EXPECTED_PARAM_NAMES
+    if not (strong_name or signature_shape):
+        return False, None
+    if name.startswith("_"):
+        return False, SKIP_PRIVATE
+    if _is_test_path(rel_path):
+        return False, SKIP_TEST_FILE
+    if strong_name:
+        return True, None
+    if parameters[0] == SCORER_FIRST_PARAM or _module_looks_like_evaluator(rel_path):
+        return True, None
+    return False, SKIP_WEAK_MATCH
 
 
 def classify_scorer(tree: ast.AST, node: ast.AST) -> tuple[str, list[str]]:
@@ -464,10 +542,10 @@ def scan_python(files: list[Path], root: Path) -> PythonInventory:
             if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 continue
             parameters = [arg.arg for arg in node.args.args]
-            looks_like_scorer = bool(SCORER_NAME_RE.search(node.name)) or (
-                len(parameters) >= 2 and parameters[1] == "expected"
+            is_candidate, skip_reason = scorer_candidate_verdict(
+                node.name, parameters, rel
             )
-            if looks_like_scorer:
+            if is_candidate:
                 kind, signals = classify_scorer(tree, node)
                 inventory.scorers.append(
                     ScorerCandidate(
@@ -477,6 +555,15 @@ def scan_python(files: list[Path], root: Path) -> PythonInventory:
                         kind=kind,
                         signals=signals,
                         parameters=parameters,
+                    )
+                )
+            elif skip_reason is not None:
+                inventory.skipped_scorers.append(
+                    SkippedScorer(
+                        function=node.name,
+                        file=rel,
+                        line=node.lineno,
+                        reason=skip_reason,
                     )
                 )
             if providers and not node.name.startswith("_"):
@@ -489,6 +576,7 @@ def scan_python(files: list[Path], root: Path) -> PythonInventory:
                     }
                 )
     inventory.scorers.sort(key=lambda item: (item.file, item.line))
+    inventory.skipped_scorers.sort(key=lambda item: (item.file, item.line))
     inventory.llm_call_sites.sort(key=lambda item: (item["file"], item["line"]))
     return inventory
 
@@ -856,36 +944,76 @@ def _show(scores: list[float]) -> str:
     return f"{scores[0]:.4g}"
 
 
-def summarize_probe(result: dict) -> tuple[str, list[str]]:
+def probe_metrics(result: dict | None) -> dict:
+    """One reading of a probe result, shared by the card and the next step.
+
+    ``verdict`` is one of ``none`` (no probe attempted), ``blocked`` (the network
+    guard refused the scorer), ``not-run`` (the probe could not run), or ``ran``.
+    """
+    if result is None:
+        return {"verdict": "none"}
     if result.get("network_blocked"):
+        return {"verdict": "blocked"}
+    if not result.get("ran"):
+        return {
+            "verdict": "not-run",
+            "reason": str(result.get("reason", "the probe did not run")),
+        }
+    scores = result.get("scores") or {}
+    good = list(scores.get("good") or [])
+    partial = list(scores.get("partial") or [])
+    bad = list(scores.get("bad") or [])
+    ordered = bool(good and bad) and good[0] > bad[0]
+    if partial:
+        ordered = ordered and good[0] >= partial[0] >= bad[0]
+    return {
+        "verdict": "ran",
+        "good": good,
+        "partial": partial,
+        "bad": bad,
+        "repeats": len(good),
+        "distinct": len(set(good)),
+        "stable": bool(good) and len(set(good)) == 1,
+        "ordered": ordered,
+        "errors": list(result.get("errors") or []),
+    }
+
+
+def summarize_probe(result: dict) -> tuple[str, list[str]]:
+    metrics = probe_metrics(result)
+    if metrics["verdict"] == "blocked":
         return "blocked", [
             "the scorer tried to open a network connection and the audit's "
             "network guard refused it, so no score was produced",
         ]
-    if not result.get("ran"):
-        return "not-run", [str(result.get("reason", "the probe did not run"))]
+    if metrics["verdict"] != "ran":
+        return "not-run", [metrics.get("reason", "the probe did not run")]
 
-    evidence: list[str] = []
-    scores = result.get("scores") or {}
-    good = scores.get("good") or []
-    partial = scores.get("partial") or []
-    bad = scores.get("bad") or []
-    stable = bool(good) and len(set(good)) == 1
-    evidence.append(
-        f"repeat-scoring the same pair {len(good)} times returned "
-        + ("one identical score" if stable else f"{len(set(good))} different scores")
-    )
-    ordered = bool(good and bad) and good[0] > bad[0]
-    if partial:
-        ordered = ordered and good[0] >= partial[0] >= bad[0]
-    evidence.append(
+    evidence = [
+        f"repeat-scoring the same pair {metrics['repeats']} times returned "
+        + (
+            "one identical score"
+            if metrics["stable"]
+            else f"{metrics['distinct']} different scores"
+        ),
         "known-good / partial / known-bad probes scored "
-        f"{_show(good)} / {_show(partial)} / {_show(bad)}"
-        + (" (ordered as expected)" if ordered else " (not ordered as expected)")
+        f"{_show(metrics['good'])} / {_show(metrics['partial'])} / "
+        f"{_show(metrics['bad'])}"
+        + (
+            " (ordered as expected)"
+            if metrics["ordered"]
+            else " (not ordered as expected)"
+        ),
+    ]
+    if metrics["errors"]:
+        evidence.append(
+            f"{len(metrics['errors'])} probe call(s) raised an exception"
+        )
+    status = (
+        "ok"
+        if metrics["stable"] and metrics["ordered"] and not metrics["errors"]
+        else "attention"
     )
-    if result.get("errors"):
-        evidence.append(f"{len(result['errors'])} probe call(s) raised an exception")
-    status = "ok" if stable and ordered and not result.get("errors") else "attention"
     return status, evidence
 
 
@@ -1093,6 +1221,72 @@ def dataset_area(reports: list[DatasetReport], candidates: int) -> dict:
     return {"status": status, "evidence": evidence, "meaning": meaning}
 
 
+KIND_LABEL = {
+    "llm-judge": "LLM-judge",
+    "executing": "executing",
+    "hybrid": "hybrid",
+    "deterministic": "deterministic",
+}
+KIND_REASON = {
+    "llm-judge": "this audit makes no provider calls",
+    "executing": "this audit runs no user code that itself executes code",
+    "hybrid": "this audit neither calls a provider nor executes generated code",
+}
+
+
+def _handles(items, limit: int = 3) -> str:
+    """Up to `limit` `file:line` handles, then a count of the rest."""
+    shown = [f"{item.file}:{item.line}" for item in items[:limit]]
+    if len(items) > limit:
+        shown.append(f"and {len(items) - limit} more")
+    return ", ".join(shown)
+
+
+def not_run_lines(candidates) -> list[str]:
+    """One line per REASON, not one per scorer.
+
+    On a real tree this collapsed 16 near-identical lines into one: repeating
+    the same sentence per file is noise the reader has to diff by eye.
+    """
+    by_kind: dict[str, list[ScorerCandidate]] = defaultdict(list)
+    for candidate in candidates:
+        by_kind[candidate.kind].append(candidate)
+    lines: list[str] = []
+    for kind in sorted(by_kind):
+        group = by_kind[kind]
+        signals = Counter(
+            signal for candidate in group for signal in candidate.signals
+        )
+        detail = ", ".join(
+            f"{signal} \u00d7{count}" for signal, count in sorted(signals.items())
+        )
+        lines.append(
+            f"{len(group)} scorer(s) classified {KIND_LABEL.get(kind, kind)} were "
+            f"not run{f' ({detail})' if detail else ''}: {_handles(group)} — "
+            f"{KIND_REASON.get(kind, 'this audit does not run them')}; "
+            "`traigent-eval-audit` assesses those"
+        )
+    return lines
+
+
+def skipped_scorer_lines(skipped: list[SkippedScorer]) -> list[str]:
+    """One collapsed line saying how many near-matches were ruled out, and why."""
+    if not skipped:
+        return []
+    by_reason: dict[str, list[SkippedScorer]] = defaultdict(list)
+    for item in skipped:
+        by_reason[item.reason].append(item)
+    parts = [
+        f"{len(group)} with {reason}" for reason, group in sorted(by_reason.items())
+    ]
+    return [
+        f"skipped {len(skipped)} function(s) that matched the search but are not "
+        f"scorers ({'; '.join(parts)}): {_handles(skipped)} — every one is in the "
+        "JSON report, so a real scorer ruled out here is visible, not silently "
+        "dropped"
+    ]
+
+
 def scorer_area(
     inventory: PythonInventory, probe: dict | None, probed: ScorerCandidate | None
 ) -> dict:
@@ -1102,26 +1296,30 @@ def scorer_area(
             "evidence": [
                 "searched for functions named score*/evaluate*/grade*/metric* or "
                 f"taking `expected` as a second parameter in "
-                f"{inventory.files_scanned} Python file(s), found none"
+                f"{inventory.files_scanned} Python file(s), found none",
+                *skipped_scorer_lines(inventory.skipped_scorers),
             ],
             "meaning": (
                 "Without a scorer there is no objective, so no configuration can be "
                 "ranked; `traigent-eval-build` covers wiring one."
             ),
         }
+    shown = inventory.scorers[:MAX_SCORERS_IN_CARD]
     evidence = [
         f"`{candidate.function}` at {candidate.file}:{candidate.line} "
         f"classified {candidate.kind}"
         + (f" ({'; '.join(candidate.signals)})" if candidate.signals else "")
-        for candidate in inventory.scorers
+        for candidate in shown
     ]
-    not_probed = [c for c in inventory.scorers if c.kind != "deterministic"]
-    for candidate in not_probed:
+    if len(inventory.scorers) > len(shown):
         evidence.append(
-            f"`{candidate.function}` was not run: a {candidate.kind} scorer either "
-            "calls a provider or executes code, and this audit does neither — "
-            "`traigent-eval-audit` is the skill that assesses one"
+            f"{len(inventory.scorers) - len(shown)} further scorer(s) are in the "
+            "JSON report and not printed here"
         )
+    evidence.extend(skipped_scorer_lines(inventory.skipped_scorers))
+    evidence.extend(
+        not_run_lines(c for c in inventory.scorers if c.kind != "deterministic")
+    )
     if probe is None or probed is None:
         status = "attention"
         evidence.append(
@@ -1209,6 +1407,146 @@ def setup_area(sdk: dict, keys: dict, ignored: str, model_ids: list[str]) -> dic
             if problems
             else "The SDK, a key name and `.env` handling are all in place for a "
             "first run."
+        ),
+    }
+
+
+STOP_LINE = (
+    "Stopping after this free audit is a valid choice; nothing here has left "
+    "your machine."
+)
+
+
+def next_step(
+    inventory: PythonInventory,
+    reports: list[DatasetReport],
+    probe: dict | None,
+    probed: ScorerCandidate | None,
+) -> dict:
+    """Exactly one next step, chosen by the most blocking finding.
+
+    The branches are ordered so the recommendation names the thing that would
+    make every later check meaningless if left alone: nothing to search beats a
+    search space that cannot move, which beats an objective that cannot be
+    trusted, which beats a dataset too small to resolve a difference.
+    """
+    metrics = probe_metrics(probe)
+
+    if not inventory.entry_points:
+        return {
+            "branch": "a",
+            "skills": ["traigent-setup-quickstart", "traigent-setup-decorator"],
+            "line": (
+                f"No `@traigent.optimize` was found in {inventory.files_scanned} "
+                "Python file(s), so there is no search space yet — install and "
+                "configure the SDK with `traigent-setup-quickstart`, then wire one "
+                "decorated function with `traigent-setup-decorator`."
+            ),
+        }
+
+    blank = next((e for e in inventory.entry_points if not e.knobs), None)
+    all_unread = next(
+        (
+            e
+            for e in inventory.entry_points
+            if e.knobs and all(k.status == "declared, never read" for k in e.knobs)
+        ),
+        None,
+    )
+    if blank is not None:
+        return {
+            "branch": "b",
+            "skills": ["traigent-optimize-config-space"],
+            "line": (
+                f"`{blank.function}` at {blank.file}:{blank.line} declares 0 knobs, "
+                "so every trial would evaluate the same configuration — define a "
+                "real configuration space with `traigent-optimize-config-space`."
+            ),
+        }
+    if all_unread is not None:
+        return {
+            "branch": "b",
+            "skills": ["traigent-optimize-config-space"],
+            "line": (
+                f"`{all_unread.function}` at {all_unread.file}:{all_unread.line} "
+                f"declares {len(all_unread.knobs)} knob(s) and the body reads none "
+                "of them, so varying them cannot change the output — rework the "
+                "configuration space with `traigent-optimize-config-space`."
+            ),
+        }
+
+    if not inventory.scorers:
+        return {
+            "branch": "c",
+            "skills": ["traigent-eval-build"],
+            "line": (
+                f"No scorer was found in {inventory.files_scanned} Python file(s), "
+                "so no configuration can be ranked — wire one with "
+                "`traigent-eval-build`."
+            ),
+        }
+
+    if metrics["verdict"] == "ran" and not (metrics["stable"] and metrics["ordered"]):
+        if not metrics["stable"]:
+            symptom = (
+                f"returned {metrics['distinct']} different scores for the same "
+                f"pair across {metrics['repeats']} repeats"
+            )
+        else:
+            symptom = (
+                "did not rank a known-good answer above a known-bad one "
+                f"({_show(metrics['good'])} vs {_show(metrics['bad'])})"
+            )
+        return {
+            "branch": "d",
+            "skills": ["traigent-eval-build", "traigent-eval-audit"],
+            "line": (
+                f"`{probed.function}` at {probed.file}:{probed.line} {symptom}, so a "
+                "configuration comparison would be measuring the scorer — make it "
+                "repeatable with `traigent-eval-build`, then assess it with "
+                "`traigent-eval-audit`."
+            ),
+        }
+
+    if metrics["verdict"] != "ran":
+        kinds = Counter(candidate.kind for candidate in inventory.scorers)
+        summary = ", ".join(f"{count} {kind}" for kind, count in sorted(kinds.items()))
+        return {
+            "branch": "e",
+            "skills": ["traigent-eval-audit"],
+            "line": (
+                f"{len(inventory.scorers)} scorer(s) were found ({summary}) and none "
+                "was measured here, so their reliability is unknown — assess them "
+                "with `traigent-eval-audit`."
+            ),
+        }
+
+    short = [
+        report
+        for report in reports
+        if report.rows < MIN_TUNING or report.holdout_rows < MIN_HOLDOUT
+    ]
+    if short:
+        worst = min(short, key=lambda report: report.rows)
+        return {
+            "branch": "f",
+            "skills": ["traigent-dataset-curate"],
+            "line": (
+                f"{worst.file} has {worst.rows} row(s) and a {worst.holdout_rows}-row "
+                f"holdout slice, under the {MIN_TUNING}-row tuning and "
+                f"{MIN_HOLDOUT}-row holdout minimums, so a small score movement "
+                "would not be resolvable — grow and split it with "
+                "`traigent-dataset-curate`."
+            ),
+        }
+
+    return {
+        "branch": "g",
+        "skills": ["traigent-optimize-run"],
+        "line": (
+            "Entry point, knobs, dataset and scorer all check out, so the open "
+            "question is whether tuning moves anything — run a mock dry-run first, "
+            "then one small bounded run, with `traigent-optimize-run`."
         ),
     }
 
@@ -1386,7 +1724,17 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             }
             for candidate in inventory.scorers
         ],
+        "skipped_scorer_candidates": [
+            {
+                "function": item.function,
+                "file": item.file,
+                "line": item.line,
+                "reason": item.reason,
+            }
+            for item in inventory.skipped_scorers
+        ],
         "scorer_probe": probe,
+        "next_step": next_step(inventory, reports, probe, probed),
         "setup": {
             "sdk": sdk,
             "keys": keys,
@@ -1433,6 +1781,12 @@ def render_card(report: dict) -> str:
         lines.append(f"What this means for optimization: {area['meaning']}")
         lines.append("")
 
+    lines.append("## Next step")
+    lines.append("")
+    lines.append(report["next_step"]["line"])
+    lines.append("")
+    lines.append(STOP_LINE)
+    lines.append("")
     lines.append("## What code alone could not tell you")
     lines.append("")
     for question in report["open_questions"]:

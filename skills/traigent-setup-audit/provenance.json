@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3de31bd52a4e9f70",
+  "doc_hash": "2a24df62c20922cb",
   "entries": [
     {
       "edit_id": "genesis",
@@ -9,6 +9,15 @@
       "run_id": null,
       "timestamp": "2026-09-13T00:00:00Z",
       "note": "genesis: free local Tier 1 audit front door; zero network enforced by a socket guard in the audit process and in the scorer-probe subprocess, not asserted in prose",
+      "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "dogfood-round-2-2026-09-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T00:00:00Z",
+      "note": "from the first run on a real 103-file project: collapse repeated not-run lines to one per reason, tighten the scorer-candidate filter so validators and test helpers are counted as ruled out rather than reported as scorers, and add the single recommended next step the brief requires",
       "source_type": "owner_intent"
     }
   ]
