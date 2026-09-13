@@ -200,10 +200,15 @@ def test_every_card_carries_the_four_areas_and_both_honesty_sections(
 
 
 @pytest.mark.parametrize("name", ["healthy", "weak", "bare", "netscorer", "skipped"])
-def test_every_run_reports_the_guard_as_active(name: str, tmp_path: Path) -> None:
+def test_every_run_names_the_guard_level_it_actually_had(
+    name: str, tmp_path: Path
+) -> None:
+    """The header never says "no network" without the level that backs it."""
     report, card = run_audit(FIXTURES / name, tmp_path)
-    assert report["network_guard"] == "active"
-    assert "`network_guard: active`" in card
+    level = report["network_guard"]
+    assert level == "python-level" or level.startswith("isolated (")
+    assert f"`network_guard: {level}`" in card
+    assert report["audit_process_guard"] == "active"
 
 
 def test_a_key_value_never_reaches_the_card_or_the_json(tmp_path: Path) -> None:
@@ -283,5 +288,6 @@ def test_the_report_carries_the_thresholds_it_judged_against(healthy) -> None:
         "first_tuning_slice": 30,
         "holdout_slice": 30,
         "high_variance_task": 100,
+        "near_duplicate_row_ceiling": 5000,
         "source": "skills/traigent-dataset-curate/SKILL.md",
     }

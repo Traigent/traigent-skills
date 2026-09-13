@@ -118,7 +118,14 @@ def _entry(knobs):
 
 
 def _knob(name, status):
-    return audit.Knob(name=name, values=[], status=status, file="agent.py", line=5)
+    return audit.Knob(
+        name=name,
+        values=[],
+        values_readable=True,
+        status=status,
+        file="agent.py",
+        line=5,
+    )
 
 
 def _scorer(kind="deterministic"):

@@ -147,7 +147,7 @@ def test_audit_reports_the_blocked_scorer_in_the_card(tmp_path: Path) -> None:
     )
     assert completed.returncode == 0, completed.stderr
     report = json.loads(report_path.read_text(encoding="utf-8"))
-    assert report["network_guard"] == "active"
+    assert report["audit_process_guard"] == "active"
     assert report["scorer_probe"]["network_blocked"] is True
     assert report["areas"]["scorer"]["status"] == "attention"
     assert "network guard refused it" in completed.stdout

@@ -1,42 +1,71 @@
 #!/usr/bin/env python3
-"""Run one of the user's deterministic scorers in a separate process, with the
-network guard installed before the user's module is loaded.
+"""Run one of the user's deterministic scorers in a separate process.
+
+The parent (``audit_project.py``) never loads user code itself. How strongly
+this process is contained is the parent's decision: it launches this script
+inside a network namespace when one is available, and this script additionally
+replaces Python's socket entry points with a refusal before the user's module
+is loaded.
+
+Nothing here relays text produced by user code. A failure is reported as the
+exception TYPE plus a ``file:line`` inside the user's project — never the
+exception message, never the child's stderr — because a scorer that raises
+"bad key sk-..." would otherwise put that value in the audit report.
 
 Reads one JSON request on standard input and writes one JSON result line on
-standard output. The parent (``audit_project.py``) never loads user code itself.
-
-Request:
-    {"module": "/abs/path/scorer.py", "function": "score",
-     "good": "...", "partial": "...", "bad": "...", "repeats": 5}
-
-Result:
-    {"ran": true, "network_guard": "active",
-     "scores": {"good": [...], "partial": [...], "bad": [...]}, "errors": [...]}
-    {"ran": false, "network_blocked": true, "reason": "..."}
-
-Standard library only, Python 3.11+.
+standard output. Standard library only, Python 3.11+.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 
 GUARD_MESSAGE = "traigent-setup-audit: network disabled in the free audit"
 
 
+class NetworkDisabled(RuntimeError):
+    """Raised in place of opening a socket."""
+
+
+class _RefusingSocket:
+    """Stands in for ``socket.socket``.
+
+    A CLASS, not a function: ``ssl`` declares ``class SSLSocket(socket)``, so a
+    function here made ``import ssl`` raise a TypeError, which the parent then
+    reported as scorer instability.
+    """
+
+    def __init__(self, *args, **kwargs):
+        raise NetworkDisabled(GUARD_MESSAGE)
+
+
 def install_network_guard() -> None:
-    """Replace the socket entry points with a refusal. Runs before any user code."""
+    """Replace the socket entry points, in both ``socket`` and ``_socket``."""
     import socket
 
     def _refuse(*args, **kwargs):
-        raise RuntimeError(GUARD_MESSAGE)
+        raise NetworkDisabled(GUARD_MESSAGE)
 
-    socket.socket = _refuse
-    socket.create_connection = _refuse
-    socket.getaddrinfo = _refuse
-    socket.gethostbyname = _refuse
+    for name in ("socket", "socketpair", "fromfd"):
+        if hasattr(socket, name):
+            setattr(socket, name, _RefusingSocket if name == "socket" else _refuse)
+    for name in ("create_connection", "getaddrinfo", "gethostbyname"):
+        if hasattr(socket, name):
+            setattr(socket, name, _refuse)
+
+    try:
+        import _socket
+    except ImportError:  # pragma: no cover - _socket is always present on CPython
+        return
+    for name in ("socket", "socketpair", "dup"):
+        if hasattr(_socket, name):
+            setattr(_socket, name, _RefusingSocket if name == "socket" else _refuse)
+    for name in ("getaddrinfo", "gethostbyname", "create_connection"):
+        if hasattr(_socket, name):
+            setattr(_socket, name, _refuse)
 
 
 def verify_network_guard() -> str:
@@ -51,9 +80,8 @@ def verify_network_guard() -> str:
     for attempt in attempts:
         try:
             attempt()
-        except RuntimeError as exc:
-            if str(exc) != GUARD_MESSAGE:
-                return "uncertain"
+        except NetworkDisabled:
+            continue
         except Exception:
             return "uncertain"
         else:
@@ -66,10 +94,29 @@ def is_guard_refusal(exc: BaseException) -> bool:
     current: BaseException | None = exc
     while current is not None and id(current) not in seen:
         seen.add(id(current))
+        if isinstance(current, NetworkDisabled):
+            return True
         if isinstance(current, RuntimeError) and str(current) == GUARD_MESSAGE:
             return True
         current = current.__cause__ or current.__context__
     return False
+
+
+def fault(exc: BaseException, root: str) -> dict:
+    """Exception TYPE and the last frame inside the user's project.
+
+    Deliberately message-free: ``str(exc)`` is attacker- and accident-controlled
+    text that has already been observed carrying an API key.
+    """
+    site = None
+    traceback = exc.__traceback__
+    root_prefix = os.path.abspath(root) + os.sep
+    while traceback is not None:
+        filename = os.path.abspath(traceback.tb_frame.f_code.co_filename)
+        if filename.startswith(root_prefix):
+            site = f"{os.path.relpath(filename, root)}:{traceback.tb_lineno}"
+        traceback = traceback.tb_next
+    return {"error_type": type(exc).__name__, "error_site": site}
 
 
 def load_callable(module_path: str, function_name: str):
@@ -79,7 +126,6 @@ def load_callable(module_path: str, function_name: str):
     and does not run it as ``__main__``, so a script guard in the user's file
     stays unexecuted.
     """
-    import os
     import runpy
 
     parent = os.path.dirname(os.path.abspath(module_path))
@@ -88,9 +134,7 @@ def load_callable(module_path: str, function_name: str):
     namespace = runpy.run_path(module_path)
     target = namespace.get(function_name)
     if target is None or not callable(target):
-        raise LookupError(
-            f"{function_name!r} is not a callable in {module_path}"
-        )
+        raise LookupError("the named function is not a callable in that module")
     return target
 
 
@@ -104,11 +148,12 @@ def call_scorer(target, output_value: str, expected_value: str) -> float:
         for key in ("score", "value", "result"):
             if isinstance(result.get(key), (int, float)):
                 return float(result[key])
-    raise TypeError(f"scorer returned {type(result).__name__}, not a number")
+    raise TypeError("the scorer returned a value that is not a number")
 
 
 def probe(request: dict) -> dict:
     guard = verify_network_guard()
+    root = request.get("root") or os.path.dirname(request["module"])
     try:
         target = load_callable(request["module"], request["function"])
     except BaseException as exc:  # noqa: BLE001 - user code decides what it raises
@@ -117,12 +162,13 @@ def probe(request: dict) -> dict:
                 "ran": False,
                 "network_blocked": True,
                 "network_guard": guard,
-                "reason": "loading the scorer module tried to open a network connection",
+                "stage": "load",
             }
         return {
             "ran": False,
             "network_guard": guard,
-            "reason": f"could not load the scorer: {type(exc).__name__}: {exc}",
+            "stage": "load",
+            **fault(exc, root),
         }
 
     repeats = max(1, int(request.get("repeats", 5)))
@@ -132,7 +178,7 @@ def probe(request: dict) -> dict:
         ("bad", request["bad"], request["good"], 1),
     )
     scores: dict[str, list[float]] = {}
-    errors: list[str] = []
+    errors: list[dict] = []
     for name, output_value, expected_value, times in cases:
         collected: list[float] = []
         for _ in range(times):
@@ -144,12 +190,9 @@ def probe(request: dict) -> dict:
                         "ran": False,
                         "network_blocked": True,
                         "network_guard": guard,
-                        "reason": (
-                            "the scorer tried to open a network connection while "
-                            "scoring"
-                        ),
+                        "stage": "call",
                     }
-                errors.append(f"{name}: {type(exc).__name__}: {exc}")
+                errors.append({"case": name, **fault(exc, root)})
                 break
         scores[name] = collected
     return {
@@ -177,8 +220,8 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         request = json.loads(sys.stdin.read())
-    except ValueError as exc:
-        print(json.dumps({"ran": False, "reason": f"unreadable request: {exc}"}))
+    except ValueError:
+        print(json.dumps({"ran": False, "stage": "unreadable-request"}))
         return 0
     print(json.dumps(probe(request), sort_keys=True))
     return 0

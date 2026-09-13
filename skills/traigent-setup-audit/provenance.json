@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "2a24df62c20922cb",
+  "doc_hash": "853ee225aedc4b51",
   "entries": [
     {
       "edit_id": "genesis",
@@ -18,6 +18,15 @@
       "run_id": null,
       "timestamp": "2026-09-13T00:00:00Z",
       "note": "from the first run on a real 103-file project: collapse repeated not-run lines to one per reason, tighten the scorer-candidate filter so validators and test helpers are counted as ruled out rather than reported as scorers, and add the single recommended next step the brief requires",
+      "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "review-round-1-2026-09-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T00:00:00Z",
+      "note": "independent tools-on review found the zero-network claim false on 5 of 8 escape routes: shrink the claim to what is enforced, add a preflighted network-namespace sandbox for the probe, close _socket and the ssl-breaking guard, refuse a non-deterministic --scorer, stop relaying exception and stderr text, and turn every silent cap into a printed finding",
       "source_type": "owner_intent"
     }
   ]

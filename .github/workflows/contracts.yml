@@ -65,9 +65,11 @@ jobs:
             # The bundled per-skill suites (skills/<name>/tests). They need only
             # the locked harness tooling already installed in this bucket venv --
             # both current suites are standard library plus pytest -- so they add
-            # no dependency and run in the venv that is already built. Measured
-            # locally 2026-09-13: 72 tests, 3.3 s wall for both suites, on top of
-            # a ~90 s contract run per bucket. A future skill whose tests need a
+            # no dependency and run in the venv that is already built. They take
+            # well under a minute, against a contract run of well over a minute
+            # per bucket; the network-escape harness is the slow part, and its
+            # sandbox cases skip themselves where no namespace backend exists.
+            # A future skill whose tests need a
             # third-party package must either vendor a stub or get its own lane;
             # do not add the package here.
             ".bucket-$version/bin/python" -m pytest skills/*/tests -q

@@ -37,15 +37,27 @@ service. This tier calls nothing.
 ## What it does, and what it costs
 
 Everything here is static inspection of the project's own files, plus one
-sandboxed call of the user's own deterministic scorer. Nothing leaves the
-machine and nothing is charged.
+sandboxed call of the user's own deterministic scorer. Nothing is charged.
 
-The zero-network property is enforced, not asserted. Before any project file is
-read, the audit process replaces the socket entry points with a refusal, then
-proves the refusal fires and reports the result as `network_guard: active` in its
-output. Every subprocess it starts — the scorer probe and the SDK-version read —
-installs the same refusal as its first statement. A scorer that reaches for a
-socket is stopped and reported as stopped, rather than silently succeeding.
+**Say what is enforced, with the level next to it.** The audit process itself
+opens no socket. Your scorer runs in a separate process, and how strongly that
+process is contained depends on the machine — the audit measures it, reports it
+as `network_guard`, and repeats it in the card header. Never relay "no network"
+without the level.
+
+| `network_guard` | What holds | What it means |
+|---|---|---|
+| `isolated (unshare)` / `isolated (bwrap)` | a Linux network namespace with no route to the host network | ctypes, a subprocess, the private `_socket` module and a reloaded `socket` all reach nothing |
+| `python-level` | Python's socket entry points replaced with a refusal inside the probe | ordinary socket use is stopped, but code using ctypes, a subprocess or `_socket` is **not** stopped by it |
+
+At the python-level guard: the audit itself makes no network call; your scorer
+runs in a subprocess with Python's socket entry points disabled — code that uses
+ctypes, a subprocess or the private `_socket` module can still reach the network,
+so only scorers classified deterministic (no such imports) are probed. A scorer
+importing any of those is classified `executing` and never run, at every level.
+
+The level is preflighted, not guessed: a sandbox is only claimed after running
+`<sandbox> true` on this machine and seeing it exit 0.
 
 ## Run it
 
@@ -169,7 +181,15 @@ the 8 to fix first" is motivation. A generic pitch is not.
 - **No lift is promised.** Nothing here says optimization will improve the agent.
   A flat or negative result is a real outcome and gets reported as one.
 - **Knob wiring is detected statically.** A knob read through a mapping the
-  parser cannot follow is reported as *possibly read*, never as unread.
+  parser cannot follow is reported as *possibly read*, never as unread, and a
+  configuration space the parser cannot read is reported as unread, never as
+  absent. Neither is a clean verdict; confirm those by hand.
+- **The containment depends on the machine.** At `python-level` there is no
+  namespace, so the classifier is what keeps ctypes and subprocess scorers from
+  running — not the guard. The card names the level it had.
+- **Every cap is printed.** Row, file-size and file-count ceilings, unparsable
+  lines and skipped files each become a finding that forces `attention`, so a
+  truncated analysis never reads as a clean one.
 - **Model ids are collected, not validated.** Checking an id against a provider
   is a network call, which this tier does not make.
 - **Only Python is inventoried in this version.** A JavaScript or TypeScript
@@ -196,11 +216,18 @@ that its zero-network property stays provable rather than inherited.
 
 ## Safety
 
-- Tier 1 contacts no provider and no Traigent service. The socket refusal is
-  installed before any project file is read, and re-checked rather than assumed.
+- Tier 1 contacts no provider and no Traigent service. The audit process
+  installs the socket refusal before any project file is read, and re-checks it
+  rather than assuming it.
 - User code runs only in the probe subprocess, only for a scorer classified
-  deterministic, under a 30-second timeout. A judge or code-executing scorer is
-  disclosed and routed, never sandboxed here.
+  deterministic, under a 30-second timeout — inside a network namespace where one
+  is available. A judge, a code-executing scorer, or anything importing ctypes,
+  `subprocess`, `multiprocessing` or `_socket` is disclosed and routed, never run.
+  Naming one with `--scorer` does not override that; the audit refuses it and
+  says so.
+- A failure inside your scorer is reported as the exception TYPE and a
+  `file:line`. Its message and the process's stderr are never relayed, because
+  both have been observed carrying an API key.
 - A key value is never read, shown or stored — only whether a known key **name**
   is set, and in which file it is declared.
 - Anything in the second tier — every paid call and every byte that leaves the
