@@ -6,8 +6,6 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import pytest
-
 
 START_MARKER = "<!-- INTERACTION_POLICY v1 (synced — do not edit inline; edit docs/shared/interaction-policy.v1.md) -->"
 END_MARKER = "<!-- /INTERACTION_POLICY v1 -->"

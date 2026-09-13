@@ -36,7 +36,6 @@ from pathlib import Path
 import pytest
 from packaging.version import InvalidVersion, Version
 import yaml
-from packaging.version import Version
 
 from .facts import ContractFact
 from .conftest import (

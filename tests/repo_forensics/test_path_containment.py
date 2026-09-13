@@ -10,10 +10,10 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT / "tools" / "repo-forensics"))
 
-import forensics_core as core
-import scan_integrity
-import scan_openclaw_skills
-import verify_install
+import forensics_core as core  # noqa: E402
+import scan_integrity  # noqa: E402
+import scan_openclaw_skills  # noqa: E402
+import verify_install  # noqa: E402
 
 
 def test_core_resolve_path_within_root_allows_in_root_file(tmp_path: Path) -> None:
