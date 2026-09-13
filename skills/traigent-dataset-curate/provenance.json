@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "66f94132aa33a1c9",
+  "doc_hash": "11471c8f3b1772d2",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
@@ -121,6 +121,17 @@
       "timestamp": "2026-09-02T00:00:00Z",
       "note": "traigent 0.27.0 shipped to PyPI on 2026-09-02, so the cold-start eval-set generation path is real for the first time. Move docs/unreleased/cold-start.md into this skill's references/ (it already referred to \"Assess what you already have above\", which is this SKILL.md) and link it from that section, so a reader who inventories real data and finds none has somewhere to go. Its preamble said \"Unreleased today. The currently shipping SDK is 0.26.0\" -- now false. The ENABLE_COLD_START_GENERATION warning is unchanged and still load-bearing: the flag is on the backend's opt-in list, off by default, so the client half shipping does not make the path available.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "example-insights-api-v1-base-url-2026-09-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T14:21:56Z",
+      "doc_before_hash": "66f94132aa33a1c9",
+      "doc_after_hash": "11471c8f3b1772d2",
+      "note": "ExampleInsightsClient appends /analytics/... to its base, so the base must be https://portal.traigent.ai/api/v1; the skills taught the bare origin, which 405s on the live portal (observed 2026-09-13). Fix the snippet base and state which client takes the origin and which takes the /api/v1 base.",
+      "source_type": "human"
     }
   ]
 }

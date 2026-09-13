@@ -76,7 +76,7 @@ These skills were renamed or merged as part of a taxonomy consolidation. No prio
 ### As a plugin (recommended — one step, stays in sync)
 
 This repo is a plugin marketplace for Claude Code, OpenAI Codex, and GitHub
-Copilot CLI. Installing the `traigent` plugin gives you all 18 skills at once,
+Copilot CLI. Installing the `traigent` plugin gives you all 19 skills at once,
 namespaced as `traigent:<skill-name>`, with updates delivered through your
 agent's normal plugin-update flow.
 

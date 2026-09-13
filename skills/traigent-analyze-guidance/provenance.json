@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "5418a7b27f43de56",
+  "doc_hash": "65a778ec91bc3ee7",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -235,6 +235,17 @@
       "doc_before_hash": "cd1d2ac785200d70",
       "doc_after_hash": "1a9538ec844f62b6",
       "note": "repoint the plan-service fallback from `traigent recommend` to `traigent generate-config`. `recommend` and `recommend-eval` were retired from the SDK in 7eea70c9 ('retire recommendation catalogs'); introspection against SDK 0.26.0 confirms neither is in cli.commands while generate-config is. Surfaced by the prose-aware CLI fact extraction added in the same PR -- the reference sat in prose, which the extractor never scanned. Traigent/traigent-skills#254.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "example-insights-api-v1-base-url-2026-09-13",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-13T14:21:56Z",
+      "doc_before_hash": "5418a7b27f43de56",
+      "doc_after_hash": "65a778ec91bc3ee7",
+      "note": "ExampleInsightsClient appends /analytics/... to its base, so the base must be https://portal.traigent.ai/api/v1; the skills taught the bare origin, which 405s on the live portal (observed 2026-09-13). Fix the snippet base and state which client takes the origin and which takes the /api/v1 base.",
       "source_type": "human"
     }
   ]
