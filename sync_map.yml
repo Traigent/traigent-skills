@@ -187,6 +187,12 @@ skills:
       - /api/v1/analytics/example-scoring
       - /api/v1/analytics/experiments
       - /api/v1/analytics/runs
+      # references/cold-start.md teaches POST /api/v1/guidance/cold-start-plan as
+      # the backend half of build_cold_start_eval_set. Declaring the prefix makes
+      # that endpoint claim blocking against the route snapshot instead of an
+      # advisory skip (the intent recorded in provenance.json when the reference
+      # was added).
+      - /api/v1/guidance/cold-start-plan
     modules:
       - traigent.generation
       - traigent.analytics

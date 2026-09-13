@@ -814,3 +814,167 @@ waivers:
   "py:EvaluationOptions#evaluator_id":
     reason: first shipped in SDK 0.21.3; first surfaced in the released snapshot by the 0.23.0 oracle bump (hosted evaluator-binding surface; compatibility alias of evaluator_definition_id); teach-vs-waive decision deferred to owner — flagged in the #219 fix PR
     owner: nimrodbusany
+  # Backend route snapshot refreshed to TraigentBackend origin/develop 06002ee9e and the
+  # Python API snapshot to released SDK v0.27.0 (6b129dd1) on 2026-09-13. The one new route a
+  # skill already teaches -- POST /api/v1/guidance/cold-start-plan, in
+  # skills/traigent-dataset-curate/references/cold-start.md -- is deliberately NOT waived.
+  # Each waiver below carries its own reason; remove one when a skill starts teaching it.
+  "be:GET /api/v1/analytics/runs/<string:run_id>/provenance":
+    reason: Evaluation Provenance Attestation v0 (trust tier 2, read-only); portal/attestation surface with no SDK or CLI accessor — teach when an SDK client method ships
+    owner: nimrodbusany
+  "be:GET /api/v1/billing/dead-letter-events":
+    reason: Paddle billing dead-letter operations feed; platform-ops surface, no SDK/skill path
+    owner: nimrodbusany
+  "be:GET /api/v1/certification/process-records/<build_session_row_id>":
+    reason: Process Record V1 issuance surface (thread R); certificate programme still in build, no SDK/CLI accessor yet
+    owner: nimrodbusany
+  "be:GET /api/v1/keys/notifications":
+    reason: per-user API-key rotation notification feed polled by the portal Security Alerts tab; portal-first, skills teach key creation only
+    owner: nimrodbusany
+  "be:GET /api/v1beta/analytics/runs/<string:run_id>/provenance":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/analysis/insights":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/analysis/tools":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/issues":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/issues/<issue_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces/<trace_id>/analysis":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces/<trace_id>/lineage":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/traces/<trace_id>/projection":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/variants":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/observability/variants/<variant_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/agent-lifecycle/agent-revisions/<string:agent_revision_ref>/record":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/provenance":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/analysis/insights":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/analysis/tools":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/issues":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/issues/<issue_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/analysis":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/lineage":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/projection":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/variants":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:GET /api/v1beta/projects/<string:project_id>/observability/variants/<variant_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/observability/issues/<issue_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:PATCH /api/v1beta/projects/<string:project_id>/observability/issues/<issue_id>":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1/admin/lead-access-grants/<run_id>/extend":
+    reason: platform-staff-only lead-grant extension (JWT + DB-backed staff identity); deliberately unreachable from customer credentials, never a skill path
+    owner: nimrodbusany
+  "be:POST /api/v1/analytics/experiments/<experiment_run_id>/next-steps/<decision_id>/receipt":
+    reason: decision-receipt half of the next-steps surface whose CLI (`traigent next-steps`) the SDK retired on 2026-08-03; skills route decisions through the decision brief instead
+    owner: nimrodbusany
+  "be:POST /api/v1/billing/dead-letter-events/<int:billing_event_id>/reprocess":
+    reason: Paddle billing dead-letter reprocess; platform-ops surface, no SDK/skill path
+    owner: nimrodbusany
+  "be:POST /api/v1/certification/process-records":
+    reason: Process Record V1 issuance surface (thread R); certificate programme still in build, no SDK/CLI accessor yet
+    owner: nimrodbusany
+  "be:POST /api/v1/certification/process-records/<build_session_row_id>/finalize":
+    reason: Process Record V1 issuance surface (thread R); certificate programme still in build, no SDK/CLI accessor yet
+    owner: nimrodbusany
+  "be:POST /api/v1/certification/process-records/verify":
+    reason: Process Record V1 issuance surface (thread R); certificate programme still in build, no SDK/CLI accessor yet
+    owner: nimrodbusany
+  "be:POST /api/v1/economics/telemetry":
+    reason: economics telemetry ingest (WI-B); emitted by the runtime, never called from skill-taught code
+    owner: nimrodbusany
+  "be:POST /api/v1/experiment-groups/<group_id>/configuration-runs/query":
+    reason: portal cohort-table query endpoint for an experiment group; skills teach the group report surface, not the query body
+    owner: nimrodbusany
+  "be:POST /api/v1/keys/admin/auto-rotate":
+    reason: administrative API-key auto-rotation trigger; platform-ops surface, not a user-facing SDK path
+    owner: nimrodbusany
+  "be:POST /api/v1/leads":
+    reason: unauthenticated self-serve lead onboarding funnel consumed by the marketing site, not by agents or the SDK
+    owner: nimrodbusany
+  "be:POST /api/v1/leads/verify":
+    reason: unauthenticated self-serve lead onboarding funnel consumed by the marketing site, not by agents or the SDK
+    owner: nimrodbusany
+  "be:POST /api/v1beta/observability/analysis/cohorts/compare":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/agent-lifecycle/agent-revisions":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/agent-lifecycle/measurement-contracts":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v1beta/projects/<string:project_id>/observability/analysis/cohorts/compare":
+    reason: v1beta hosted evaluation/observability/prompts surface; portal-first, skills teach the SDK local/hybrid path — revisit when v1beta is promoted to v1
+    owner: nimrodbusany
+  "be:POST /api/v2/experiment-runs/<run_id>/next-decision":
+    reason: SmartOps Planner V2 (/api/v2) lifecycle surface; not yet promoted to a taught path — revisit when v2 has an SDK client
+    owner: nimrodbusany
+  "be:POST /api/v2/guidance/decisions/<decision_id>/resolve":
+    reason: SmartOps Planner V2 (/api/v2) lifecycle surface; not yet promoted to a taught path — revisit when v2 has an SDK client
+    owner: nimrodbusany
+  "be:POST /api/v2/internal/smartops/lifecycles/<lifecycle_id>/results":
+    reason: internal SmartOps service-to-service route (/api/v2/internal); not a customer surface
+    owner: nimrodbusany
+  "be:POST /api/v2/internal/smartops/lifecycles/<lifecycle_id>/revisions":
+    reason: internal SmartOps service-to-service route (/api/v2/internal); not a customer surface
+    owner: nimrodbusany
+  "be:POST /api/v2/internal/smartops/revisions/<revision_ref>/consume":
+    reason: internal SmartOps service-to-service route (/api/v2/internal); not a customer surface
+    owner: nimrodbusany
+  "be:POST /api/v2/internal/smartops/shadow-evaluate":
+    reason: internal SmartOps service-to-service route (/api/v2/internal); not a customer surface
+    owner: nimrodbusany
+  "be:POST /api/v2/lifecycles/<lifecycle_id>/decisions/<decision_id>/receipts":
+    reason: SmartOps Planner V2 (/api/v2) lifecycle surface; not yet promoted to a taught path — revisit when v2 has an SDK client
+    owner: nimrodbusany
+  "be:POST /api/v2/lifecycles/<lifecycle_id>/reopen":
+    reason: SmartOps Planner V2 (/api/v2) lifecycle surface; not yet promoted to a taught path — revisit when v2 has an SDK client
+    owner: nimrodbusany
+  "py:optimize#agent_name":
+    reason: 0.27.0 preferred spelling of experiment_name (which stays as a deprecated alias); skills still teach experiment_name — remove this waiver when they migrate
+    owner: nimrodbusany
+  "py:optimize#run_description":
+    reason: optional per-run display description surfaced in the portal; skills teach agent/experiment naming only, no run-label surface yet
+    owner: nimrodbusany
+  "py:optimize#run_title":
+    reason: optional per-run display label surfaced in the portal; skills teach agent/experiment naming only, no run-label surface yet
+    owner: nimrodbusany

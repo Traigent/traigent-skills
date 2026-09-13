@@ -16,11 +16,6 @@
     "first-prompt",
     "generate",
     "generate-config",
-    "guidance",
-    "guidance execute",
-    "guidance next",
-    "guidance receipt",
-    "guidance reopen",
     "hooks",
     "hooks check",
     "hooks init",
@@ -43,7 +38,6 @@
     "mcp",
     "mcp serve",
     "models",
-    "next-steps",
     "onboard",
     "optimize",
     "plan",
@@ -53,8 +47,6 @@
     "playbook validate",
     "plot",
     "quickstart",
-    "recommend",
-    "recommend-eval",
     "report-example-map",
     "results",
     "results compare",
@@ -134,10 +126,11 @@
     "reps_aggregation",
     "reps_per_trial",
     "samples_include_pruned",
-    "smart_pruning"
+    "smart_pruning",
+    "winner_stability_reps"
   ],
   "generated_from": {
-    "commit_sha": "a55a38a3ad797fa741f4478d129686470e2b630f",
+    "commit_sha": "6b129dd1acd62ad3e026e35c53273d7c955e4082",
     "ref": "HEAD",
     "repo": "Traigent/Traigent"
   },
@@ -150,6 +143,7 @@
   ],
   "optimize_kwargs": [
     "agent_measures",
+    "agent_name",
     "agent_prefixes",
     "agents",
     "algorithm",
@@ -203,6 +197,8 @@
     "plateau_epsilon",
     "plateau_window",
     "prompt_rewrite",
+    "run_description",
+    "run_title",
     "safety_constraints",
     "samples_include_pruned",
     "scoring_function",
@@ -216,6 +212,7 @@
     "tvl_environment",
     "tvl_parameter_agents",
     "tvl_spec",
-    "warm_start_from"
+    "warm_start_from",
+    "winner_stability_reps"
   ]
 }
