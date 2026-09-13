@@ -47,7 +47,7 @@ from pathlib import Path
 import yaml
 from packaging.version import Version
 
-from .extract import _iter_fenced_blocks
+from .extract import _iter_fenced_blocks, _paragraph_text_by_line
 
 # .optimize(dataset=  /  .optimize_sync( dataset = ...   (robust to whitespace;
 # works on unparseable illustrative blocks too, since it is line-based)
@@ -250,6 +250,40 @@ try:
     ) - {"self"}
 except Exception:  # pragma: no cover - SDK shape/availability guard
     _EXECUTION_OPTIONS_FIELDS = None
+
+# Fields of the INSTALLED EvaluationOptions (extra="forbid" -> any other kwarg is invalid).
+# Twin of the ExecutionOptions guard above -- added after #274 shipped
+# `EvaluationOptions(task_type=...)`, a kwarg the released SDK rejects, in prose and a
+# markdown table row that neither this fenced-python scan nor the fact-extraction contract
+# ever read.
+try:
+    from traigent.api.decorators import EvaluationOptions as _EvaluationOptions
+
+    _EVALUATION_OPTIONS_FIELDS: set[str] | None = set(
+        inspect.signature(_EvaluationOptions).parameters
+    ) - {"self"}
+except Exception:  # pragma: no cover - SDK shape/availability guard
+    _EVALUATION_OPTIONS_FIELDS = None
+
+# Fields of the INSTALLED InjectionOptions -- same shape, cheap twin.
+try:
+    from traigent.api.decorators import InjectionOptions as _InjectionOptions
+
+    _INJECTION_OPTIONS_FIELDS: set[str] | None = set(
+        inspect.signature(_InjectionOptions).parameters
+    ) - {"self"}
+except Exception:  # pragma: no cover - SDK shape/availability guard
+    _INJECTION_OPTIONS_FIELDS = None
+
+# Name -> installed-fields lookup shared by the fenced-python, prose, and table scans below.
+# A None value means the symbol could not be imported from the installed SDK, in which case
+# every scan keyed off it no-ops for this run (matches the ExecutionOptions guard).
+_OPTION_CLASS_NAMES = ("EvaluationOptions", "ExecutionOptions", "InjectionOptions")
+_OPTION_CLASS_FIELDS: dict[str, set[str] | None] = {
+    "EvaluationOptions": _EVALUATION_OPTIONS_FIELDS,
+    "ExecutionOptions": _EXECUTION_OPTIONS_FIELDS,
+    "InjectionOptions": _INJECTION_OPTIONS_FIELDS,
+}
 
 
 def _skill_markdown_files(repo_root: Path) -> list[tuple[str, Path]]:
@@ -496,6 +530,281 @@ def _scan_executionoptions_kwargs(
     return violations
 
 
+def _scan_evaluationoptions_kwargs(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
+    if _EVALUATION_OPTIONS_FIELDS is None:
+        return []
+    violations: list[str] = []
+    for block in _python_blocks(text):
+        try:
+            tree = ast.parse(block.text)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not (
+                isinstance(node, ast.Call)
+                and _callee_name(node.func) == "EvaluationOptions"
+            ):
+                continue
+            bad = [
+                kw.arg
+                for kw in node.keywords
+                if kw.arg and kw.arg not in _EVALUATION_OPTIONS_FIELDS
+            ]
+            if not bad:
+                continue
+            lineno = block.start_line + node.lineno - 1
+            rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
+            violations.append(
+                f"DEAD TEACHING  {rel}:{lineno}\n"
+                f"  teaches : EvaluationOptions({', '.join(b + '=' for b in bad)}...)\n"
+                f"  problem : not a field of the installed EvaluationOptions (extra='forbid' "
+                f"→ ValidationError at construction).\n"
+                f"  fix     : remove the field; see references/evaluation-options.md for "
+                f"the real fields."
+            )
+    return violations
+
+
+def _scan_injectionoptions_kwargs(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
+    if _INJECTION_OPTIONS_FIELDS is None:
+        return []
+    violations: list[str] = []
+    for block in _python_blocks(text):
+        try:
+            tree = ast.parse(block.text)
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if not (
+                isinstance(node, ast.Call)
+                and _callee_name(node.func) == "InjectionOptions"
+            ):
+                continue
+            bad = [
+                kw.arg
+                for kw in node.keywords
+                if kw.arg and kw.arg not in _INJECTION_OPTIONS_FIELDS
+            ]
+            if not bad:
+                continue
+            lineno = block.start_line + node.lineno - 1
+            rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
+            violations.append(
+                f"DEAD TEACHING  {rel}:{lineno}\n"
+                f"  teaches : InjectionOptions({', '.join(b + '=' for b in bad)}...)\n"
+                f"  problem : not a field of the installed InjectionOptions (extra='forbid' "
+                f"→ ValidationError at construction).\n"
+                f"  fix     : remove the field; see references/injection-modes.md for "
+                f"the real fields."
+            )
+    return violations
+
+
+# --- prose/table coverage -----------------------------------------------------
+#
+# The three scans above only see fenced ```python blocks. #274 shipped
+# `EvaluationOptions(task_type=...)` as *prose* (an inline-backtick call in a
+# paragraph) and as a markdown reference-table row -- neither is a fenced code
+# block, so neither existing scan nor the fact-extraction contract in
+# extract.py (which is also fenced-block-only for Python) ever reads them.
+# These two scans are deliberately conservative: a false positive here is a
+# spurious CI failure on legitimate "X raises/forbids Y" documentation, so
+# both require a strong, local, unambiguous signal before flagging.
+
+_OPTION_CALL_RE = re.compile(r"\b(" + "|".join(_OPTION_CLASS_NAMES) + r")\s*\(")
+_KWARG_NAME_IN_SPAN_RE = re.compile(r"(?<![.\w])([A-Za-z_][A-Za-z0-9_]*)\s*=(?!=)")
+# Same-context signal that a call span is being cited as INVALID (it raises, is
+# forbidden, isn't a real field, ...) rather than taught as runnable -- mirrors
+# extract.CLI_ABSENCE_RE's role for CLI mentions. Deliberately broad: any of
+# these near the span means "do not flag", which only weakens detection in the
+# safe direction (a missed real violation, never a false one).
+_OPTION_ABSENCE_RE = re.compile(
+    r"(?i)\b("
+    r"raise[sd]?|rejects?|rejected|forbids?|invalid|"
+    r"not\s+a\s+(?:real\s+)?(?:field|kwarg|parameter|argument)|"
+    r"no\s+(?:client-side\s+)?field|"
+    r"not\s+(?:currently\s+)?(?:supported|available)|"
+    r"does(?:n't|\s+not)\s+exist|"
+    r"extra\s+inputs\s+are\s+not\s+permitted|"
+    r"validationerror|removed|retired|no\s+longer|"
+    r"do\s+not\s+pass|never\s+pass|not\s+a\s+valid\b"
+    r")\b"
+)
+
+
+def _fenced_line_numbers(text: str) -> set[int]:
+    """1-indexed line numbers belonging to ANY fenced block (incl. its fences).
+
+    Prose/table coverage must skip fenced python (already covered by the
+    ast-based scans above, which parse it more precisely) and every other
+    fenced language, so it only ever looks at true prose/table markdown.
+    """
+    fenced: set[int] = set()
+    lines = text.splitlines()
+    for block in _iter_fenced_blocks(lines):
+        fenced.update(
+            range(block.start_line - 1, block.start_line + len(block.lines) + 1)
+        )
+    return fenced
+
+
+def _extract_call_span(
+    lines: list[str], start_idx: int, open_pos: int, max_lines: int = 8
+) -> str | None:
+    """Text strictly between the '(' at (start_idx, open_pos) and its matching
+    ')', scanning forward at most ``max_lines`` physical lines. ``None`` if the
+    parens never balance within that bound (illustrative/truncated prose)."""
+    depth = 0
+    collected: list[str] = []
+    for li in range(start_idx, min(start_idx + max_lines, len(lines))):
+        segment = lines[li][open_pos:] if li == start_idx else lines[li]
+        for ci, ch in enumerate(segment):
+            if ch == "(":
+                depth += 1
+            elif ch == ")":
+                depth -= 1
+                if depth == 0:
+                    collected.append(segment[:ci])
+                    return "\n".join(collected)
+        collected.append(segment)
+    return None
+
+
+def _scan_option_prose_kwargs(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
+    violations: list[str] = []
+    lines = text.splitlines()
+    fenced = _fenced_line_numbers(text)
+    paragraph_by_line = _paragraph_text_by_line(lines)
+    for idx, line in enumerate(lines):
+        lineno = idx + 1
+        if lineno in fenced:
+            continue
+        for match in _OPTION_CALL_RE.finditer(line):
+            cls_name = match.group(1)
+            fields = _OPTION_CLASS_FIELDS.get(cls_name)
+            if fields is None:
+                continue
+            open_pos = match.end() - 1
+            span = _extract_call_span(lines, idx, open_pos)
+            if span is None:
+                continue
+            kwarg_names = set(_KWARG_NAME_IN_SPAN_RE.findall(span))
+            bad = sorted(k for k in kwarg_names if k not in fields)
+            if not bad:
+                continue
+            paragraph = paragraph_by_line.get(idx, line)
+            if _OPTION_ABSENCE_RE.search(paragraph):
+                continue
+            rel = path.resolve().relative_to(repo_root.resolve()).as_posix()
+            violations.append(
+                f"DEAD TEACHING  {rel}:{lineno}\n"
+                f"  teaches : {cls_name}({', '.join(b + '=' for b in bad)}...) in prose\n"
+                f"  problem : not a field of the installed {cls_name} (extra='forbid' "
+                f"→ ValidationError at construction), and the surrounding text does not "
+                f"say so.\n"
+                f"  fix     : remove the kwarg, or state plainly that it raises/is not a "
+                f"field so the prose cannot be read as a runnable instruction."
+            )
+    return violations
+
+
+_TABLE_HEADER_TRIGGER_RE = re.compile(r"(?i)\b(field|kwarg|parameter)s?\b")
+_TABLE_ROW_RE = re.compile(r"^\s*\|(.*)\|\s*$")
+_TABLE_SEP_RE = re.compile(r"^\s*\|?(?:\s*:?-{2,}:?\s*\|)+\s*:?-{2,}:?\s*\|?\s*$")
+_MD_HEADING_RE = re.compile(r"^(#{1,6})\s+(.*)$")
+_BACKTICK_IDENT_RE = re.compile(r"^`([A-Za-z_][A-Za-z0-9_]*)`$")
+
+
+def _table_cells(row: str) -> list[str]:
+    return [c.strip() for c in row.strip().strip("|").split("|")]
+
+
+def _scan_option_field_tables(
+    name: str, path: Path, text: str, repo_root: Path
+) -> list[str]:
+    """A reference table (header row says Field/Kwarg/Parameter) in a section
+    that names exactly one of the three option classes must only list real
+    fields of that class. Scoped to the innermost heading plus its immediate
+    parent (at most two levels) so an unrelated mention elsewhere in a long
+    document can never supply the class -- ambiguous or absent context means
+    "skip", never "guess"."""
+    violations: list[str] = []
+    lines = text.splitlines()
+    fenced = _fenced_line_numbers(text)
+    stack: list[list] = []  # [level, [text parts]]
+
+    idx = 0
+    n = len(lines)
+    while idx < n:
+        lineno = idx + 1
+        line = lines[idx]
+        if lineno in fenced:
+            idx += 1
+            continue
+
+        heading_match = _MD_HEADING_RE.match(line)
+        if heading_match:
+            level = len(heading_match.group(1))
+            while stack and stack[-1][0] >= level:
+                stack.pop()
+            stack.append([level, [heading_match.group(2)]])
+            idx += 1
+            continue
+
+        if stack and line.strip():
+            for entry in stack:
+                entry[1].append(line)
+
+        if (
+            idx + 1 < n
+            and _TABLE_ROW_RE.match(line)
+            and _TABLE_SEP_RE.match(lines[idx + 1])
+        ):
+            header_cells = _table_cells(line)
+            if any(_TABLE_HEADER_TRIGGER_RE.search(c) for c in header_cells):
+                candidates = stack[-2:]
+                combined = "\n".join(" ".join(t) for _, t in candidates)
+                mentioned = [c for c in _OPTION_CLASS_NAMES if c in combined]
+                if len(mentioned) == 1 and _OPTION_CLASS_FIELDS.get(mentioned[0]) is not None:
+                    cls_name = mentioned[0]
+                    fields = _OPTION_CLASS_FIELDS[cls_name]
+                    row_idx = idx + 2
+                    while row_idx < n and _TABLE_ROW_RE.match(lines[row_idx]):
+                        row_cells = _table_cells(lines[row_idx])
+                        if row_cells:
+                            ident_match = _BACKTICK_IDENT_RE.match(row_cells[0])
+                            if ident_match:
+                                field_name = ident_match.group(1)
+                                row_text = " ".join(row_cells)
+                                if (
+                                    field_name not in fields
+                                    and not _OPTION_ABSENCE_RE.search(row_text)
+                                ):
+                                    rel = path.resolve().relative_to(
+                                        repo_root.resolve()
+                                    ).as_posix()
+                                    violations.append(
+                                        f"DEAD TEACHING  {rel}:{row_idx + 1}\n"
+                                        f"  teaches : {cls_name} field `{field_name}` "
+                                        f"in a reference table\n"
+                                        f"  problem : not a field of the installed "
+                                        f"{cls_name} (extra='forbid' -> ValidationError "
+                                        f"at construction).\n"
+                                        f"  fix     : remove the row, or state plainly "
+                                        f"that the field does not exist on the "
+                                        f"installed SDK."
+                                    )
+                        row_idx += 1
+        idx += 1
+    return violations
+
+
 def _scan_reps_per_trial(
     name: str, path: Path, text: str, repo_root: Path
 ) -> list[str]:
@@ -615,6 +924,56 @@ def test_executionoptions_kwargs_are_real_fields(repo_root: Path) -> None:
     for name, path in _skill_markdown_files(repo_root):
         violations.extend(
             _scan_executionoptions_kwargs(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
+    assert not violations, "\n\n".join(["", *violations, ""])
+
+
+def test_evaluationoptions_kwargs_are_real_fields(repo_root: Path) -> None:
+    violations: list[str] = []
+    for name, path in _skill_markdown_files(repo_root):
+        violations.extend(
+            _scan_evaluationoptions_kwargs(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
+    assert not violations, "\n\n".join(["", *violations, ""])
+
+
+def test_injectionoptions_kwargs_are_real_fields(repo_root: Path) -> None:
+    violations: list[str] = []
+    for name, path in _skill_markdown_files(repo_root):
+        violations.extend(
+            _scan_injectionoptions_kwargs(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
+    assert not violations, "\n\n".join(["", *violations, ""])
+
+
+def test_option_prose_kwargs_are_real_fields(repo_root: Path) -> None:
+    """The #274 gap: EvaluationOptions(task_type=...) shipped as an inline-backtick
+    call in a paragraph, which no fenced-block scan reads. Same validation, applied
+    to prose outside fenced code."""
+    violations: list[str] = []
+    for name, path in _skill_markdown_files(repo_root):
+        violations.extend(
+            _scan_option_prose_kwargs(
+                name, path, path.read_text(encoding="utf-8"), repo_root
+            )
+        )
+    assert not violations, "\n\n".join(["", *violations, ""])
+
+
+def test_option_field_tables_are_real_fields(repo_root: Path) -> None:
+    """The other #274 gap: task_type shipped as a row in a markdown "Fields"
+    reference table. Same validation, applied to table rows scoped to a section
+    that unambiguously names one of the three option classes."""
+    violations: list[str] = []
+    for name, path in _skill_markdown_files(repo_root):
+        violations.extend(
+            _scan_option_field_tables(
                 name, path, path.read_text(encoding="utf-8"), repo_root
             )
         )
@@ -1041,3 +1400,149 @@ def test_lifecycle_vocab_lint_has_teeth(tmp_path: Path) -> None:
     assert not _scan_lifecycle_vocab_leaks("good", good, good.read_text(), tmp_path), (
         "lifecycle vocabulary lint false-positive on allowed next-step labels"
     )
+
+
+def test_evaluationoptions_and_injectionoptions_kwargs_lints_have_teeth(
+    tmp_path: Path,
+) -> None:
+    """Fenced-python twins of test_executionoptions_kwargs_are_real_fields (#274)."""
+    bad = tmp_path / "skills" / "bad" / "SKILL.md"
+    bad.parent.mkdir(parents=True)
+    bad.write_text(
+        "```python\n"
+        "import traigent\n"
+        "from traigent.api.decorators import EvaluationOptions, InjectionOptions\n"
+        "@traigent.optimize(\n"
+        '    evaluation=EvaluationOptions(eval_dataset="d.jsonl", task_type="exact_match"),\n'
+        '    injection=InjectionOptions(injection_mode="context", tags=["x"]),\n'
+        ")\n"
+        "def f(x):\n"
+        "    return x\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    if _EVALUATION_OPTIONS_FIELDS is not None:
+        assert _scan_evaluationoptions_kwargs("bad", bad, bad.read_text(), tmp_path), (
+            "EvaluationOptions lint missed task_type="
+        )
+    if _INJECTION_OPTIONS_FIELDS is not None:
+        assert _scan_injectionoptions_kwargs("bad", bad, bad.read_text(), tmp_path), (
+            "InjectionOptions lint missed tags="
+        )
+
+    good = tmp_path / "skills" / "good" / "SKILL.md"
+    good.parent.mkdir(parents=True)
+    good.write_text(
+        "```python\n"
+        "import traigent\n"
+        "from traigent.api.decorators import EvaluationOptions, InjectionOptions\n"
+        "@traigent.optimize(\n"
+        '    evaluation=EvaluationOptions(eval_dataset="d.jsonl"),\n'
+        '    injection=InjectionOptions(injection_mode="context"),\n'
+        ")\n"
+        "def f(x):\n"
+        "    return x\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    assert not _scan_evaluationoptions_kwargs("good", good, good.read_text(), tmp_path), (
+        "EvaluationOptions lint false-positive"
+    )
+    assert not _scan_injectionoptions_kwargs("good", good, good.read_text(), tmp_path), (
+        "InjectionOptions lint false-positive"
+    )
+
+
+def test_option_prose_kwargs_lint_has_teeth(tmp_path: Path) -> None:
+    """The actual #274 gap: a bad kwarg taught in prose, not fenced code."""
+    bad = tmp_path / "skills" / "bad" / "SKILL.md"
+    bad.parent.mkdir(parents=True)
+    bad.write_text(
+        "## Anchoring\n\n"
+        "Pass `evaluation=EvaluationOptions(task_type=\"exact_match\")` on the "
+        "decorated function to anchor the audit.\n",
+        encoding="utf-8",
+    )
+    if _EVALUATION_OPTIONS_FIELDS is not None:
+        violations = _scan_option_prose_kwargs("bad", bad, bad.read_text(), tmp_path)
+        assert violations, "prose kwarg lint missed task_type= taught as runnable"
+        assert "task_type" in violations[0] and ":3" in violations[0]
+
+    # Same bad kwarg, but documented as failing -- must NOT be flagged (this is
+    # exactly what traigent-eval-audit/SKILL.md and traigent-setup-decorator/SKILL.md
+    # do today after #274, and it must stay green).
+    hedged = tmp_path / "skills" / "hedged" / "SKILL.md"
+    hedged.parent.mkdir(parents=True)
+    hedged.write_text(
+        "## Anchoring\n\n"
+        "`EvaluationOptions` forbids unknown fields, so "
+        "`EvaluationOptions(task_type=\"exact_match\")` raises "
+        "`ValidationError: Extra inputs are not permitted` -- do not pass it.\n",
+        encoding="utf-8",
+    )
+    assert not _scan_option_prose_kwargs(
+        "hedged", hedged, hedged.read_text(), tmp_path
+    ), "prose kwarg lint false-positive on a documented-as-failing example"
+
+    good = tmp_path / "skills" / "good" / "SKILL.md"
+    good.parent.mkdir(parents=True)
+    good.write_text(
+        "## Anchoring\n\n"
+        "Pass `evaluation=EvaluationOptions(eval_dataset=\"d.jsonl\")` on the "
+        "decorated function.\n",
+        encoding="utf-8",
+    )
+    assert not _scan_option_prose_kwargs("good", good, good.read_text(), tmp_path), (
+        "prose kwarg lint false-positive on a real field"
+    )
+
+
+def test_option_field_table_lint_has_teeth(tmp_path: Path) -> None:
+    """The other #274 gap: a bad field taught as a row in a Fields reference
+    table. Scoped to a section that names the class; unrelated tables must not
+    be flagged even when their header also says "Field"."""
+    bad = tmp_path / "skills" / "bad" / "SKILL.md"
+    bad.parent.mkdir(parents=True)
+    bad.write_text(
+        "## Evaluation Setup\n\n"
+        "Configure how Traigent evaluates each trial using `EvaluationOptions`.\n\n"
+        "### Fields\n\n"
+        "| Field | Type | Description |\n"
+        "|---|---|---|\n"
+        "| `eval_dataset` | `str` | Path to a JSONL dataset |\n"
+        '| `task_type` | `str` | Coarse task category |\n',
+        encoding="utf-8",
+    )
+    if _EVALUATION_OPTIONS_FIELDS is not None:
+        violations = _scan_option_field_tables("bad", bad, bad.read_text(), tmp_path)
+        assert violations, "field-table lint missed a task_type row"
+        assert "task_type" in violations[0]
+
+    good = tmp_path / "skills" / "good" / "SKILL.md"
+    good.parent.mkdir(parents=True)
+    good.write_text(
+        "## Evaluation Setup\n\n"
+        "Configure how Traigent evaluates each trial using `EvaluationOptions`.\n\n"
+        "### Fields\n\n"
+        "| Field | Type | Description |\n"
+        "|---|---|---|\n"
+        "| `eval_dataset` | `str` | Path to a JSONL dataset |\n"
+        "| `scoring_function` | `Callable` | A lightweight scorer |\n",
+        encoding="utf-8",
+    )
+    assert not _scan_option_field_tables("good", good, good.read_text(), tmp_path), (
+        "field-table lint false-positive on real fields"
+    )
+
+    unrelated = tmp_path / "skills" / "unrelated" / "SKILL.md"
+    unrelated.parent.mkdir(parents=True)
+    unrelated.write_text(
+        "## Choosing a Model\n\n"
+        "| Field | Recommendation |\n"
+        "|---|---|\n"
+        "| Cheap tasks | `gpt-4o-mini` |\n",
+        encoding="utf-8",
+    )
+    assert not _scan_option_field_tables(
+        "unrelated", unrelated, unrelated.read_text(), tmp_path
+    ), "field-table lint false-positive on a table not about any option class"
