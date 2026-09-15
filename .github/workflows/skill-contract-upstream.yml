@@ -18,11 +18,6 @@ name: Skill Contract (upstream caller)
 
 on:
   workflow_call:
-    inputs:
-      skills_ref:
-        description: Ref of traigent-skills to run the contract from.
-        type: string
-        default: main
     secrets:
       skills_token:
         description: Read-only token with access to Traigent/traigent-skills.
@@ -58,12 +53,25 @@ jobs:
         with:
           persist-credentials: false
 
+      # Pinned to the trusted `main` branch of THIS repo, never to a
+      # caller-supplied ref. The previous version of this step took
+      # `ref: ${{ inputs.skills_ref }}` -- an input the CALLING workflow
+      # file sets, and for a `pull_request`-triggered caller that file is
+      # read from the PR's own branch (non-privileged pull_request runs use
+      # the PR's copy of the workflow YAML). That made `skills_ref`
+      # attacker-influenced: a PR could override it to point this
+      # `skills_token`-bearing checkout at an arbitrary ref, in the same job
+      # that installs and executes the caller's own untrusted PR SDK
+      # (previous step). CodeQL flagged exactly this. No caller currently
+      # overrides skills_ref (grepped: no workspace repo passes it), so
+      # hardcoding removes an unused, exploitable knob rather than breaking
+      # anything.
       - name: Checkout skills contract harness
         if: steps.guard.outputs.armed == 'true'
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           repository: Traigent/traigent-skills
-          ref: ${{ inputs.skills_ref }}
+          ref: main
           token: ${{ secrets.skills_token }}
           path: _skills
           persist-credentials: false
