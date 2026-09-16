@@ -175,10 +175,13 @@ the SDK's code-editing family), cross-reference `traigent-optimize-config-space`
 extends that structural vocabulary with composite control flow; it does not
 replace it. The public Knob Explorer (https://traigent.ai/#/knob-explorer)
 groups this skill's patterns under "Composite / control-flow"; every name it
-lists there (`router`, `cascade`, `best_of_n`, `self_refine`, `self_debug`,
+lists there (`router`, `cascade`, `best_of_n`, `self_refine`,
 `react_tool_loop`, `mixture_of_experts`, `verification_gate`) maps to a factory
 in the table above (`cascade` splits into `binary_cascade`/`n_cascade` by arm
-count; `mixture_of_experts` is `moe`; the rest share the Explorer's name).
+count; `mixture_of_experts` is `moe`; the rest share the Explorer's name) --
+plus the taxonomy's `self_debug` and `self_consistency`, which the Explorer's
+own composite/control-flow list does not name but which also map to factories
+here.
 
 ## Telemetry
 

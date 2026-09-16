@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a86f9590cd89c488",
+  "doc_hash": "50bb8bdcca8ff9fc",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1",
@@ -76,7 +76,7 @@
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "f9a13d9a52df48b9",
-      "doc_after_hash": "a86f9590cd89c488",
+      "doc_after_hash": "50bb8bdcca8ff9fc",
       "note": "cross-link back to structural-spine.md's code-editing family and map the Knob Explorer's composite/control-flow names onto the pattern-catalog factories (Traigent/traigent-skills#111)",
       "source_type": "agent"
     }
