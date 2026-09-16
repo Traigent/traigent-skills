@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0011944cb143c512",
+  "doc_hash": "579de6c5423829d4",
   "reference_hashes": {
-    "references/quickstart_text2sql.md": "b6a31cc4d8e8f3ca"
+    "references/quickstart_text2sql.md": "b52af51b16591418"
   },
   "entries": [
     {
@@ -83,8 +83,8 @@
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "c2b051b0c01c944f",
-      "doc_after_hash": "0011944cb143c512",
-      "note": "Fix #177: drop non-objective exec_accuracy metric, add cloud_url gate, make config-space type-consistency a correctness rule. Fix #193: add vanilla-single-call-agent bridge to §3 config space, cross-linking traigent-boost-agent's 12-Step Lifecycle Playbook step 5.",
+      "doc_after_hash": "579de6c5423829d4",
+      "note": "Fix #177: drop non-objective exec_accuracy metric, add cloud_url gate, make config-space type-consistency a correctness rule. Fix #193: add vanilla-single-call-agent bridge to §3 config space, cross-linking traigent-boost-agent's 12-Step Lifecycle Playbook step 5. Review round: cloud_url gate now surfaces persistence_rejection_reason/fallback_reason from result.metadata instead of blaming key/connectivity; example_id uniqueness documented in §2; result/results naming aligned; pip line bumped to >=0.24.0; softened 'SILENT' wording.",
       "source_type": "agent"
     }
   ]

@@ -17,7 +17,7 @@ it runs end-to-end with only a Traigent key + an LLM key, in minutes.
     python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 
 Env (from .env): TRAIGENT_API_KEY, and an LLM key (OPENROUTER_API_KEY is easiest).
-Requires: pip install -U "traigent>=0.19" litellm  (Python 3.12).
+Requires: pip install -U "traigent>=0.24.0" litellm  (Python 3.12).
 
 To scale up: swap the embedded DB + questions for the real SPIDER dev set (each
 example carries a db_id; resolve schema/connection per db_id) — the wiring below
@@ -322,17 +322,33 @@ def main() -> int:
           "/", getattr(result, "trials", None))
     if args.real:
         # cloud_url GATE: with offline=False the run should be portal-tracked.
-        # A missing cloud_url on a --real run is a SILENT local-only fallback —
-        # it looks like a success (trials ran, a best_config came back) but
-        # never reached the portal. Verify the link exists before calling the
-        # run "cloud-tracked"; don't just print the flag you passed in.
+        # A missing cloud_url on a --real run is EASY TO MISS — it looks like a
+        # success (trials ran, a best_config came back, and the SDK's own
+        # fallback warning banner is easy to scroll past) but never reached the
+        # portal. Verify the link exists before calling the run "cloud-tracked".
         cloud_url = getattr(result, "cloud_url", None)
         if cloud_url:
             print(f"[traigent] Portal run: {cloud_url}")
         else:
-            print("[traigent] WARNING: --real run has no cloud_url — it fell back to "
-                  "local-only and was NOT synced to the portal. Check TRAIGENT_API_KEY "
-                  "and connectivity before trusting this as a cloud-tracked run.")
+            metadata = getattr(result, "metadata", None) or {}
+            rejection = metadata.get("persistence_rejection_reason")
+            fallback = metadata.get("fallback_reason")
+            source = metadata.get("source")
+            if rejection:
+                # A backend rejection (e.g. duplicate example_id) — not a key
+                # or connectivity problem. Fix the request, not the credentials.
+                print(f"[traigent] WARNING: --real run has no cloud_url — the backend "
+                      f"REJECTED the submission: persistence_rejection_reason={rejection!r} "
+                      f"(source={source!r}). Fix the request; this is not a key or "
+                      f"connectivity issue.")
+            elif fallback:
+                print(f"[traigent] WARNING: --real run has no cloud_url — it fell back to "
+                      f"local-only: fallback_reason={fallback!r} (source={source!r}). "
+                      f"Check TRAIGENT_API_KEY and connectivity.")
+            else:
+                print(f"[traigent] WARNING: --real run has no cloud_url and was NOT synced "
+                      f"to the portal (source={source!r}). Check TRAIGENT_API_KEY and "
+                      f"connectivity before trusting this as a cloud-tracked run.")
     return 0
 
 
