@@ -7,7 +7,7 @@
 > enable_mock_mode_for_quickstart()
 > ```
 >
-> The legacy `TRAIGENT_MOCK_LLM=true` env var still works in non-production environments for backward compatibility, but **is hard-blocked when `ENVIRONMENT=production`** (raises `OSError` at SDK import). All examples below that set `TRAIGENT_MOCK_LLM=true` continue to work in dev/test; new code should use the in-code API for clarity and code-review visibility.
+> The legacy `TRAIGENT_MOCK_LLM=true` env var still works in non-production environments for backward compatibility, but **is hard-blocked when `ENVIRONMENT=production`** (raises `OSError`). The block does **not** fire at `import traigent` — a bare import succeeds even with both set. It fires the first time env config is loaded (decoration/CLI/`optimize()`), so the earliest you'll see it is at `@traigent.optimize(...)` or the first `optimize()`/`optimize_sync()` call. All examples below that set `TRAIGENT_MOCK_LLM=true` continue to work in dev/test; new code should use the in-code API for clarity and code-review visibility.
 
 ## Overview
 

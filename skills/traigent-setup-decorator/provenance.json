@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b9d67ab09e868cf5",
+  "doc_hash": "13444704c11fd47b",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/evaluation-options.md": "60647f49ac8b2ae3",
-    "references/execution-modes.md": "beca15259a649c4b",
+    "references/evaluation-options.md": "6ddebf1de9dd5838",
+    "references/execution-modes.md": "e90d1e0e52ec2d2d",
     "references/injection-modes.md": "30b94bf570e66954",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
   },
@@ -142,6 +142,17 @@
       "doc_before_hash": "8e34812e7e96968d",
       "doc_after_hash": "b9d67ab09e868cf5",
       "note": "remove the task_type row from the EvaluationOptions field table and the two paragraphs teaching readers to set it. task_type is not a field of EvaluationOptions on traigent 0.27.0 (extra='forbid' -> ValidationError: Extra inputs are not permitted), and the 'Requires traigent>=0.28' stamp named a version that is not a released tag, so the table documented a field no reader could construct. Replaced with a statement of what is true at the released floor: the evaluator-quality anchor is designated server-side, there is no client-side field for it, and passing task_type raises. A per-file python_version_floors entry was not an option -- floors are refused on SKILL.md.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issue-195-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "b9d67ab09e868cf5",
+      "doc_after_hash": "13444704c11fd47b",
+      "note": "Fix SDK-0.21/0.27 doc inaccuracy from issue #195 audit (verified against installed traigent SDK).",
       "source_type": "agent"
     }
   ]

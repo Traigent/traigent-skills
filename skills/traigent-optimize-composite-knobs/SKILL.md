@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Traigent Composite Knobs
@@ -118,11 +118,18 @@ mirrors the primary objective on SDKs after 0.21.3
 (see version-matrix: `score-relocation`), so it is also 0.0 here and the sane built-in value is
 relocated to `exact_match_default` — check that key instead, and look for the
 run-level "custom scoring_function defines the 'accuracy' objective" log line.
-**Escape hatch:** if you need custom scoring on this
-path, compute the metric inside the function and return it in the tuple's
-metrics dict (as the Quick Start's `accuracy` does) — do not wire a
-`scoring_function` and wonder why it never fires. If neither works for your
-case, stop and surface the SDK limitation to the user rather than iterating.
+**Escape hatch:** if you need custom scoring on this path, compute the metric
+inside the function and return it in the tuple's metrics dict under a
+**non-reserved key** with a matching `objectives=` entry (e.g.
+`objectives=["custom_match"]`, `metrics = {"custom_match": ...}`) — do not
+wire a `scoring_function` and wonder why it never fires, and do not name the
+key `accuracy` (or any other name in `RESERVED_METRIC_KEYS`, e.g. `cost`,
+`latency`, `score`, `success`). A returned value under a reserved key is
+silently dropped in favor of the built-in evaluator's own value for that key
+(logged as "Skipping user metric '<key>' ... is a reserved evaluator-computed
+key and cannot be overwritten") — it will not raise, and your custom score is
+never used. If neither works for your case, stop and surface the SDK
+limitation to the user rather than iterating.
 
 Before any paid run, assert the gate CVAR is actually resolvable — an
 undeclared threshold is a per-trial `KeyError` after money is spent:

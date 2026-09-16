@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "acde24064b27156b",
+  "doc_hash": "6b7f6f55a7abd7d0",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/mcp-analytics-tools.md": "4c68385be07782a7",
-    "references/optimization-result-api.md": "5d902e1d910d1a81"
+    "references/optimization-result-api.md": "e7fec14eb5fa8acc"
   },
   "entries": [
     {
@@ -177,6 +177,17 @@
       "doc_after_hash": "c343887a6484b340",
       "note": "declare min_sdk_version 0.20.0 and state it in When to Use. This skill teaches `traigent local sync`, and the `local` CLI group first ships in v0.20.0 (added by Traigent 0ba0fa98, 2026-06-21; absent from v0.15.0-v0.19.1), while the skill was inheriting the 0.15.0 default floor. Surfaced by the prose-aware CLI fact extraction added in this PR. Traigent/traigent-skills#254.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-195-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "acde24064b27156b",
+      "doc_after_hash": "6b7f6f55a7abd7d0",
+      "note": "issue #195 audit: optimization-result-api.md — best_config is dict | None (None when no trial succeeded, not an empty dict); OptimizationStatus and TrialStatus enums include UNKNOWN (verified on 0.27.0). The stop-reason rows from the same audit are fixed in PR #285, not here.",
+      "source_type": "agent"
     }
   ]
 }

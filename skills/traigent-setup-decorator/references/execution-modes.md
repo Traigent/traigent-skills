@@ -123,34 +123,40 @@ def my_func(query: str) -> str:
     return prompt_model(query, model=cfg["model"])
 ```
 
-## Legacy mode selector (deprecated)
+## Legacy mode selector (deprecated, and two values now fail closed)
 
 Earlier SDK versions accepted a string mode selector as an additional keyword argument
-to `@traigent.optimize` or `ExecutionOptions`. That parameter is deprecated as of
-SDK v0.14.2 — every value now emits a `DeprecationWarning` and remaps to the
-`algorithm`/`offline` equivalents:
+to `@traigent.optimize` or `ExecutionOptions`. That keyword argument is deprecated as of
+SDK v0.14.2, but the values do **not** all behave the same way today:
 
 | Old string value | Behavior on current SDK | Modern equivalent |
 |---|---|---|
-| `"cloud"` | DeprecationWarning → cloud-first (semantic flip — no longer means local) | `algorithm="auto"` |
-| `"privacy"` | DeprecationWarning → cloud-first, **no no-egress guarantee** | `algorithm="auto", offline=True` for no egress |
-| `"hybrid"` / `"standard"` | DeprecationWarning → cloud-first | `algorithm="auto"` |
-| `"local"` | DeprecationWarning → local-only | `offline=True` |
+| `"cloud"` | **Raises `ConfigurationError` at decoration time** — fails closed, no warning-and-remap | `algorithm="auto"` |
+| `"privacy"` | **Raises `ConfigurationError` at decoration time** — fails closed, no warning-and-remap | `algorithm="auto", offline=True` for no egress |
+| `"hybrid"` / `"standard"` | `DeprecationWarning` → remaps to cloud-first | `algorithm="auto"` |
+| `"local"` | `DeprecationWarning` → remaps to local-only | `offline=True` |
 
-> **Key correction for `"cloud"` and `"privacy"`:** On the public `@traigent.optimize` path,
-> passing these string values does **not** raise an error and does **not** activate a separate
-> "full remote execution" mode — they remap to cloud-first with a warning. There is no
-> `CloudRemoteExecutionUnavailableError` on the public decorator path; that error lives on a
-> reserved cloud-client RPC surface unreachable from a decorated run.
+> **Key correction for `"cloud"` and `"privacy"`:** these two values do **not** warn-and-remap.
+> The SDK now treats them as fail-closed legacy selectors (`traigent/config/types.py`), and
+> passing either one as that legacy keyword argument on `@traigent.optimize(...)` **raises
+> `ConfigurationError` at decoration time**, because compatibility normalization for them could
+> otherwise route to cloud egress. There is no `CloudRemoteExecutionUnavailableError` on the
+> public decorator path; that error lives on a reserved cloud-client RPC surface unreachable
+> from a decorated run. Only `"hybrid"`, `"standard"`, and `"local"` still warn-and-remap.
 >
 > **No-egress is `offline=True`, not any string mode value.** The `"privacy"` value
-> previously implied no-egress, but on current SDK it maps to cloud-first and may egress.
-> Use `offline=True` explicitly for zero Traigent backend traffic.
+> previously implied no-egress; on current SDK it no longer decorates at all — remove it and
+> use `offline=True` explicitly for zero Traigent backend traffic.
 >
-> (Verified against `_warn_for_legacy_execution_options` in `traigent/api/decorators.py` (≈:650) and the mode-remap logic in `traigent/config/types.py:308-405`, SDK `origin/develop`.)
+> Repro: decorating with that legacy keyword argument set to `"cloud"` (objectives, a tiny
+> configuration space, no other execution knobs) raises `ConfigurationError` at decoration
+> time instead of decorating with a warning.
+>
+> (Verified against the SDK's fail-closed legacy-selector set in `traigent/config/types.py`, SDK 0.27.0.)
 
-If you encounter these string values in legacy code, replace them with the `algorithm` and
-`offline` equivalents from the table above.
+If you encounter `"hybrid"`/`"standard"`/`"local"` in legacy code, replace them with the
+`algorithm`/`offline` equivalents above. If you encounter `"cloud"` or `"privacy"`, decoration
+will already be failing — remove the argument and use the modern equivalent.
 
 ## JavaScript / TypeScript Applications
 
