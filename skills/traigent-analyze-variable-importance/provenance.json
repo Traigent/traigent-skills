@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d6a76300a735a4ed",
+  "doc_hash": "ee36de6a42579463",
   "entries": [
     {
       "edit_id": "genesis",
@@ -41,6 +41,17 @@
       "doc_after_hash": "05a4232224a1fbda",
       "note": "replace the bootstrap-CI significance gate (a non-negative spread whose CI clears zero even under pure noise) with a label-shuffled permutation null, and report a per-knob effect instead of copying the run-level heldout delta onto every knob",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-150-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "d6a76300a735a4ed",
+      "doc_after_hash": "ee36de6a42579463",
+      "note": "State that --objective must exactly match the trial's metric key (e.g. exec_accuracy on text2SQL runs), and that an empty/all-directional importance.json means insufficient variation, not 'no knob matters'.",
+      "source_type": "agent"
     }
   ]
 }

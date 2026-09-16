@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.10"
+  version: "2.1.11"
 ---
 
 # Traigent Boost Agent
@@ -342,20 +342,20 @@ answer = my_function("What is Python?")
    - Keep tuning and holdout slices separate, stratify by known input classes, and report sample count, source, label quality, and exclusions.
    - Use JSONL with scoreable `input` and `output` fields when a built-in evaluator can score the task.
    - Mock/offline-check a tiny slice before any backend generation or paid provider work.
-   - DELEGATE: `traigent-dataset-curate` owns dataset recipes, growth, example scoring, and quality loops.
+   - DELEGATE (required): `traigent-dataset-curate` owns dataset recipes, growth, example scoring, and quality loops.
 
 3. CHOOSE the metric.
    - Decide what "good" means before writing optimizer code: task success, correctness, cost, latency, safety, reliability, or a measured combination.
    - Prefer built-in objective names when they match the product decision; use custom metric functions only when domain logic is checkable and necessary.
    - Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept and note why accuracy was skipped.
    - Treat must-not-violate behavior as a safety constraint or promotion gate, not as an ordinary objective to trade away.
-   - DELEGATE: `traigent-eval-choose-metric` owns the metric interview and objective vocabulary.
+   - DELEGATE (required): `traigent-eval-choose-metric` owns the metric interview and objective vocabulary.
 
 4. WIRE OR BUILD the evaluator.
    - Use the wire-first ladder: `eval_dataset` -> `scoring_function` -> `metric_functions` -> `custom_evaluator` -> `BaseEvaluator`.
    - Start deterministic when the task has ground truth or checkable domain logic; use LLM judges only when deterministic scoring cannot express the quality target.
    - Audit any LLM judge before trusting it to drive optimization.
-   - DELEGATE: `traigent-eval-build` owns evaluator code; `traigent-eval-audit` owns judge reliability checks.
+   - DELEGATE (required): `traigent-eval-build` owns evaluator code. DELEGATE (deep-dive, optional — only when an LLM judge is used): `traigent-eval-audit` owns judge reliability checks.
 
 5. SELECT TVARS with `generate_config`.
    - Use only the real SDK helper:
@@ -409,7 +409,7 @@ for rec in suggested.recommendations:
 | Iterative draft improvement | `self_refine` / `bounded_refine_loop` | Improve a threaded draft until an acceptance signal passes or a literal iteration cap is hit. |
 
    - For exact factory signatures, `StageRunner`/`LoopBodyRunner` wiring, `execute_composite`, and telemetry, cross-reference `traigent-optimize-composite-knobs`; do not duplicate its catalog.
-   - DELEGATE: `traigent-optimize-composite-knobs` owns composite factory details and runtime wiring.
+   - DELEGATE (deep-dive, optional — only when Step 6 selects a composite pattern): `traigent-optimize-composite-knobs` owns composite factory details and runtime wiring.
 
 7. INSTRUMENT minimally and preserve behavior.
    - Wrap the chosen scoreable function with `@traigent.optimize`.
@@ -426,6 +426,12 @@ CONFIGURATION_SPACE = {
 }
 ```
 
+   - **Key-collision precedence:** this is plain dict-unpacking order — a later `**spread` or literal
+     key silently overwrites an earlier one with the same name. As written above, `**COMPOSITE.members`
+     wins over `recommendations["configuration_space"]` and the local knobs on any name collision. If
+     the catalog recommendation for a knob must win instead, reorder so `**COMPOSITE.members` is spread
+     first, or rename the colliding key in one of the two sources.
+
    - Inside the function, read `cfg = traigent.get_config()`, route tuned values into the real prompt/retriever/tool/model call, execute the composite if selected, and return exactly `(output, metrics)` when you need per-trial numeric measures.
    <!-- PROTECTED -->
    - Keep metrics content-free where required: accuracy, pass rate, cost, latency, token counts, route ids, iteration counts, and composite telemetry are fine. Do not put prompts, answers, retrieved documents, secrets, or PII into metrics.
@@ -439,21 +445,21 @@ CONFIGURATION_SPACE = {
    - Machine-checkable success contract — assert this instead of eyeballing the table:
      `assert results.trials, "no trials ran"` · `assert not getattr(results, "failed_trials", []), f"failed trials: {results.failed_trials}"` · `assert results.best_config is not None, "no best config selected"`.
    - Mock reality: mock still consumes `optimization_samples` quota; exact/execution-match scorers read uniform 0.0 under mock (expected, not broken); raw `openai`/`anthropic` clients are not intercepted and still bill.
-   - DELEGATE: `traigent-setup-quickstart` owns first-run setup; `traigent-debugging` owns mock/offline failure diagnosis.
+   - DELEGATE (required): `traigent-setup-quickstart` owns first-run setup. DELEGATE (deep-dive, optional — only on mock/offline failure): `traigent-debugging` owns failure diagnosis.
 
 9. OPTIMIZE for real only with cost limits and explicit approval.
    - Cross-reference `traigent-optimize-run` for `func.optimize()`, `optimize_sync()`, algorithms, `max_trials`, parallelism, and `CostLimitExceeded`.
    - Set an explicit `TRAIGENT_RUN_COST_LIMIT` and verify provider keys before the real run. If a Traigent backend is used, set `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL` as appropriate for the client environment. See [Getting your Traigent API key](../traigent-setup-quickstart/SKILL.md#get-your-traigent-api-key) if you have not yet obtained `TRAIGENT_API_KEY`.
    - Present a cost estimate and get the user's explicit approval before any paid run. The approval signal depends on context: interactive real runs are gated by `TRAIGENT_COST_APPROVED=true` (set only after the user approves the estimate); CI/offline runs (including mock wiring checks under `CI=true`) require `TRAIGENT_RUN_APPROVED=1` instead — see `traigent-ci-safety-gate`.
    - Start with a bounded trial budget, keep the current production baseline in the search space, and save results artifacts for audit.
-   - DELEGATE: `traigent-optimize-run` owns algorithms, budgets, and execution controls.
+   - DELEGATE (required): `traigent-optimize-run` owns algorithms, budgets, and execution controls.
 
 10. INSIGHT: configurations AND examples.
-   - Configuration side: start with `get_optimization_insights(results)`, then use `traigent-analyze-variable-importance` for importance-backed knob ranking.
+   - Configuration side: start with `get_optimization_insights(results)`; for importance-backed knob ranking beyond that, deep-dive into `traigent-analyze-variable-importance` (optional).
    - Example side: use `ExampleInsightsClient` to compute example scores, read scores, and read dataset-quality metadata. Its reportable scope is non-signal metadata; do not claim hidden difficulty, informativeness, ambiguity, or causal signal values. `ExampleInsightsClient` takes the **`/api/v1` base** (`https://portal.traigent.ai/api/v1`), while `BackendAnalyticsClient` and `traigent plan --backend-url` take the **origin** (`https://portal.traigent.ai`) — mixing the two gives a 405 or a doubled path (full table in `traigent-setup-audit`).
    - Core `ExampleInsightsClient` import warns deprecated since 0.13.x (see version-matrix: `exampleinsights-deprecation`): importing it from core `traigent.analytics` emits a `DeprecationWarning` pointing at the `traigent-analytics` plugin — but the plugin does not export this class, so keep the core import and ignore the warning for this class. If the plugin IS installed, the core shim stops exposing the class; use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (see the verified import note in `traigent-dataset-curate`).
    - Report baseline vs `results.best_config` delta for the agreed metrics, cost, token use, trial count, failed trials, and `results.stop_reason`.
-   - Use `traigent-analyze-results` for `OptimizationResult` inspection and `traigent-analyze-variable-importance` to explain which knobs mattered.
+   - Use `traigent-analyze-results` for `OptimizationResult` inspection; deep-dive into `traigent-analyze-variable-importance` (optional) for a richer explanation of which knobs mattered.
    <!-- PROTECTED -->
    - If results are flat, noisy, failed, or negative, call it a no-boost result. Do not hide it or promote a winner that does not beat the baseline on the evaluation dataset.
    <!-- /PROTECTED -->
@@ -464,19 +470,19 @@ CONFIGURATION_SPACE = {
      that aggregate `results.total_cost` can be `None` even when per-trial
      cost measures are `0.0`.
    - Full code lives in `references/insights-and-iteration.md`.
-   - DELEGATE: `traigent-analyze-results` owns result-object depth; `traigent-analyze-variable-importance` owns richer TVAR importance reporting.
+   - DELEGATE (required): `traigent-analyze-results` owns result-object depth. DELEGATE (deep-dive, optional — richer TVAR importance reporting beyond what analyze-results gives): `traigent-analyze-variable-importance`.
 
 11. RECOMMEND the most promising next steps.
    - When the service payload carries a Traigent `attribution` block (active-voice provenance), that block is the Traigent-authored next action: present its `headline` (active voice, Traigent as the subject) and `why` **verbatim** through `traigent-analyze-guidance`, without re-wording or recomputing it locally. It is provenance, not a performance claim — no guarantee, no evidence upgrade.
    - Offline, or when the payload carries no `attribution` block (older backend or older SDK client): fall back to the symptom-to-action table in `references/insights-and-iteration.md` and choose one next hypothesis, not a bundle of unrelated changes.
    - Use example-side findings only as evidence for targeted curation or heldout checks.
-   - DELEGATE: `traigent-analyze-guidance` owns post-run next-action selection.
+   - DELEGATE (required): `traigent-analyze-guidance` owns post-run next-action selection.
 
 12. COMPLETE: recommend the safety gate and CI checks.
    - In-run `safety_constraints` is planned but not yet implemented (raises `NotImplementedError` at decoration time — see `traigent-ci-safety-gate`); do not teach it as usable today.
    - Use `PromotionGate` for candidate-vs-incumbent decisions on the same holdout — the working gating mechanism today.
    - Recommend SAFETY and EFFICIENCY CI jobs before promotion: holdout regression for safety, plus cost and latency budget checks for efficiency.
-   - DELEGATE: `traigent-ci-safety-gate` owns safety constraints, promotion gates, and CI recipes.
+   - DELEGATE (required): `traigent-ci-safety-gate` owns safety constraints, promotion gates, and CI recipes.
 
 <!-- PROTECTED -->
 ## Claim scope

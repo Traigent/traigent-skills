@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "24e58af61829eb8a",
+  "doc_hash": "64e428f6ac77c79a",
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
     "references/parameter-types.md": "eab8e4595ec71fd9",
@@ -57,6 +57,17 @@
       "doc_after_hash": "24e58af61829eb8a",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "issue-150-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "24e58af61829eb8a",
+      "doc_after_hash": "64e428f6ac77c79a",
+      "note": "Interpret check_satisfiability()'s return correctly: SatResult is a frozen dataclass with no __bool__ (always truthy), so check sat.status is SatStatus.UNSAT (from traigent_validation) and read sat.unsat_core, not 'if sat:'.",
+      "source_type": "agent"
     }
   ]
 }

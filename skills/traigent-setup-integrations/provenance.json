@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7c97ace17a3429d5",
+  "doc_hash": "b1e564073069d28b",
   "reference_hashes": {
     "references/dspy.md": "59680e5b6e0e1570",
     "references/langchain.md": "ffe92eb4d431f3b9",
@@ -33,7 +33,7 @@
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "2bf7d398b0a7dc94",
       "doc_after_hash": "c136eb9cba89e3f5",
-      "note": "warn that reasoning models' hidden tokens consume max_tokens before answer text \u2014 give >=1024-2048 headroom in sweeps (Traigent/traigent-skills#179)",
+      "note": "warn that reasoning models' hidden tokens consume max_tokens before answer text — give >=1024-2048 headroom in sweeps (Traigent/traigent-skills#179)",
       "source_type": "human"
     },
     {
@@ -68,6 +68,17 @@
       "doc_after_hash": "7c97ace17a3429d5",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "issue-150-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "7c97ace17a3429d5",
+      "doc_after_hash": "b1e564073069d28b",
+      "note": "Align the langchain-openai/-anthropic pin advice with the SDK's own integrations-extra floors (langchain-openai>=1.1.14); mark the dspy pin as unverified rather than asserting a specific range; guard the W&B logging example's best_score/total_cost against None.",
+      "source_type": "agent"
     }
   ]
 }
