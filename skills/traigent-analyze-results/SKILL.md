@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.17"
+  version: "1.1.18"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -486,6 +486,9 @@ print(f"Best metrics: {results.best_metrics}")
 > on SDKs after 0.22.0 (see version-matrix: `cost-unit`) — it reconciles with `total_cost`, and the
 > per-example mean moved to `"cost_per_example_mean"`. On 0.22.0 and earlier, local runs reported
 > `"cost"` as the per-example mean — ~N× smaller than hybrid runs of the same config.
+> **A per-trial total is not comparable across runs with a different eval-dataset example count** —
+> more examples means a bigger total for the same per-example cost. Use `"cost_per_example_mean"`
+> (or divide the total by the example count) whenever you compare cost across runs, not the raw total.
 
 ## The Quality / Cost / Latency Trade-off (multi-objective)
 

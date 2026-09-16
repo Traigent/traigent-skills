@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Traigent Configuration Space
@@ -380,6 +380,10 @@ print(result.is_valid)  # True
 # Check satisfiability (are there any valid configs?)
 sat = space.check_satisfiability()
 print(sat)
+# If this is falsy, the constraints rule out every combination in the space — no trial can
+# ever run. Loosen or drop a constraint (widen a `Range`, remove an `implies`/mutual-exclusion
+# rule) and re-check before wiring the decorator; do not proceed to `@traigent.optimize` with
+# an unsatisfiable space.
 
 # Use with decorator
 @traigent.optimize(

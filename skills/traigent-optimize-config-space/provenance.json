@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "24e58af61829eb8a",
+  "doc_hash": "6622ffddea50313c",
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
     "references/parameter-types.md": "eab8e4595ec71fd9",
@@ -57,6 +57,17 @@
       "doc_after_hash": "24e58af61829eb8a",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "issue-150-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "24e58af61829eb8a",
+      "doc_after_hash": "6622ffddea50313c",
+      "note": "PR-VERIFY per-item table on issue #150: fix the live instruction-quality finding(s) for this skill",
+      "source_type": "agent"
     }
   ]
 }

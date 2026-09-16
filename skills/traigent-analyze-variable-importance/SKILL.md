@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Show Significant Tuned Variables
@@ -42,7 +42,9 @@ The script accepts:
 - `--trials`: required JSONL, one trial per line. Each row must contain `config` and a numeric objective such as `accuracy`.
 - `--config-space`: optional JSON object `{knob: [values...]}`. If absent, the script infers knobs and values observed in trials.
 - `--heldout`: optional heldout report JSON with `baseline`, `optimized`, and `delta`. When present, the video card uses the heldout optimized-vs-baseline accuracy and cost deltas for context.
-- `--objective`: objective field to maximize, typically `accuracy`.
+- `--objective`: objective field to maximize. This must exactly match the metric key present in each
+  trial row of `--trials` (typically `accuracy`, but a text2SQL run may score under `exec_accuracy` or
+  another custom `metric_functions` key) — it is not a fixed literal.
 
 Expected trial shape:
 
@@ -70,6 +72,12 @@ Never overclaim significance:
 - The video card's per-knob `accuracy_pp`/`cost_delta_pct` are that knob's own measured effect; the whole-run heldout optimized-vs-baseline delta is reported once as a card-level field, never copied onto each knob.
 - The ranking is observational: "on this fixed Spider slice, in this run." It is not proof of causal attribution.
 <!-- /PROTECTED -->
+
+**An empty or all-`directional` `importance.json` means insufficient variation in the trials, not
+"no knob matters."** It happens when a knob was held constant across the run, when `--config-space`
+lists values that were never actually sampled, or when there are too few trials per value to
+separate signal from rerun noise. Check trial counts per knob value before concluding a knob is
+unimportant.
 
 The primary importance is the spread between the best and worst per-value mean objective. The script also reports variance-decomposition share: between-group variance divided by total variance.
 

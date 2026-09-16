@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "acde24064b27156b",
+  "doc_hash": "d8a4b13f978f8c81",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -177,6 +177,17 @@
       "doc_after_hash": "c343887a6484b340",
       "note": "declare min_sdk_version 0.20.0 and state it in When to Use. This skill teaches `traigent local sync`, and the `local` CLI group first ships in v0.20.0 (added by Traigent 0ba0fa98, 2026-06-21; absent from v0.15.0-v0.19.1), while the skill was inheriting the 0.15.0 default floor. Surfaced by the prose-aware CLI fact extraction added in this PR. Traigent/traigent-skills#254.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-150-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "acde24064b27156b",
+      "doc_after_hash": "d8a4b13f978f8c81",
+      "note": "PR-VERIFY per-item table on issue #150: fix the live instruction-quality finding(s) for this skill",
+      "source_type": "agent"
     }
   ]
 }
