@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "acde24064b27156b",
+  "doc_hash": "df01fba0cf84046c",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -177,6 +177,17 @@
       "doc_after_hash": "c343887a6484b340",
       "note": "declare min_sdk_version 0.20.0 and state it in When to Use. This skill teaches `traigent local sync`, and the `local` CLI group first ships in v0.20.0 (added by Traigent 0ba0fa98, 2026-06-21; absent from v0.15.0-v0.19.1), while the skill was inheriting the 0.15.0 default floor. Surfaced by the prose-aware CLI fact extraction added in this PR. Traigent/traigent-skills#254.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "portal-list-order-is-arrival-time-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "acde24064b27156b",
+      "doc_after_hash": "df01fba0cf84046c",
+      "note": "document that the portal Experiments list's default sort reflects when the backend received and finalized a run, not local execution time -- there is no client-supplied execution timestamp in that ordering, so a deferred or retried sync (traigent local sync, or a finalize retry) can list a run out of actual execution order. Point readers at results.timestamp and results.cloud_url/experiment_id instead of list position (Traigent/traigent-skills#119).",
+      "source_type": "agent"
     }
   ]
 }
