@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: experimental
   author: Nimrod
-  version: "0.2.0"
+  version: "0.2.1"
 ---
 
 # Traigent Setup Audit
@@ -109,6 +109,17 @@ for a first tuning slice, 30+ for a holdout slice, 100+ for a high-variance task
 An LLM-judge or code-executing scorer is **never run**. The audit groups those by
 reason and prints one counted line per reason — not one line per file — and
 routes them to `traigent-eval-audit`.
+
+**Arriving from `traigent-first-run`.** Files under `traigent-runs/` are walkthrough
+artifacts (a substitute agent, working-copy datasets, the run record): the card counts them
+on one line, tagged as first-run material, and never takes one as the project's entry
+point, dataset or scorer — the next step is chosen from the project's own material. A
+dataset file named `holdout`/`heldout`/`validation`/`val` beside another
+dataset file in the same directory (`eval`/`test` in a file name usually mean the tuning set and are not read as a holdout) — the two-file layout the first run writes — is read as
+a declared holdout slice: its rows are the holdout count for both files and the overlap
+check runs across the pair by normalized input; per-row split markers, when present, win.
+The SDK version is probed in `.venv`, then `.venv-traigent`, then the audit's own
+interpreter, and the card names which one answered.
 
 A function is reported as a scorer when its **name** says so (`score*`,
 `evaluate*`, `grade*`, `metric*`, `*_score`, `*_scorer`). A second parameter

@@ -49,6 +49,15 @@ ALLOWLIST = {
     # (`.github/workflows/traigent-safety-gate.yml`) in traigent-ci-safety-gate's
     # reference doc — a filename for the user's own repo, not a skill dir.
     "traigent-safety-gate",
+    # Sibling public repo / skill (`Traigent/traigent-first-run`, the guided
+    # onboarding funnel that hands users to these skills), referenced by name
+    # as the arrival point several skills give an entry for; not a skill dir
+    # here.
+    "traigent-first-run",
+    # The `traigent-runs/` directory that guided first run writes into the
+    # user's project (run-plan.md, tuning/holdout files, calibration records,
+    # optimized-results.json); a path, not a skill dir.
+    "traigent-runs",
 }
 
 # The 16 retired names from the 2026-07 taxonomy consolidation (12 renames +

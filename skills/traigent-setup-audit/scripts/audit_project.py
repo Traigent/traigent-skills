@@ -106,6 +106,19 @@ SKIP_DIRS = frozenset(
 INPUT_KEYS = ("input", "input_data", "question", "prompt", "query", "messages")
 EXPECTED_KEYS = ("output", "expected", "expected_output", "answer", "target", "label")
 HOLDOUT_VALUES = frozenset({"holdout", "test", "validation", "val", "eval"})
+# A dataset file whose name carries one of these tokens, beside another dataset
+# file in the same directory, declares the holdout slice by file name — the
+# two-file layout the guided first run writes (`eval/tuning.jsonl` +
+# `eval/holdout.jsonl`), which keeps a reserved row out of the search by never
+# handing the file to `eval_dataset` at all. Narrower than HOLDOUT_VALUES on
+# purpose: in a file name, `eval` and `test` usually name the tuning set
+# (`eval_dataset.jsonl`, `test_cases.jsonl`), not a reserved slice.
+HOLDOUT_FILE_TOKENS = frozenset({"holdout", "heldout", "validation", "val"})
+FILE_TOKEN_RE = re.compile(r"[^a-z0-9]+")
+# The directory the guided first run (`traigent-first-run`) writes its
+# walkthrough artifacts into: substitute agents, working-copy datasets, the run
+# record. They are listed, never counted as the project's own material.
+WALKTHROUGH_DIR = "traigent-runs"
 
 # Row-count minimums mirrored from skills/traigent-dataset-curate/SKILL.md.
 MIN_SMOKE = 10
@@ -462,6 +475,26 @@ def iter_project_files(root: Path) -> list[Path]:
         for name in sorted(filenames):
             found.append(Path(dirpath) / name)
     return found
+
+
+def split_walkthrough_files(
+    files: list[Path], root: Path
+) -> tuple[list[Path], list[Path]]:
+    """Separate first-run walkthrough artifacts from the project's own files."""
+    project: list[Path] = []
+    walkthrough: list[Path] = []
+    for path in files:
+        first = relative(path, root).split("/", 1)[0]
+        (walkthrough if first == WALKTHROUGH_DIR else project).append(path)
+    return project, walkthrough
+
+
+def file_names_holdout(rel_file: str) -> bool:
+    stem = Path(rel_file).stem.lower()
+    tokens = [token for token in FILE_TOKEN_RE.split(stem) if token]
+    if any(token in HOLDOUT_FILE_TOKENS for token in tokens):
+        return True
+    return any(a == "held" and b == "out" for a, b in zip(tokens, tokens[1:]))
 
 
 def _expr_text(node: ast.AST, limit: int = 80) -> str:
@@ -1029,6 +1062,12 @@ class DatasetReport:
     holdout_overlap: list[int]
     label_counts: dict[str, int]
     findings: list[str]
+    # Row indexes by normalized input: kept for the cross-file overlap check,
+    # never serialised into the report.
+    input_index: dict[str, list[int]] = field(default_factory=dict, repr=False)
+
+
+NO_HOLDOUT_FINDING = "no split marker on any row, so no holdout slice is declared"
 
 
 def _row_split(row: dict) -> str | None:
@@ -1259,7 +1298,7 @@ def analyse_dataset(
         value for key, value in split_counts.items() if key in HOLDOUT_VALUES
     )
     if not split_counts:
-        findings.append("no split marker on any row, so no holdout slice is declared")
+        findings.append(NO_HOLDOUT_FINDING)
     elif holdout_rows == 0:
         findings.append(
             "split markers present but none name a holdout slice "
@@ -1293,7 +1332,62 @@ def analyse_dataset(
         holdout_overlap=holdout_overlap[:20],
         label_counts=label_counts,
         findings=findings,
+        input_index=dict(by_input),
     )
+
+
+def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
+    """Read the two-file holdout layout: a holdout-named file beside a tuning
+    file in one directory declares the holdout slice for both, and the overlap
+    check runs across the pair. Per-row split markers, when present, win."""
+    by_dir: dict[str, list[DatasetReport]] = defaultdict(list)
+    for report in reports:
+        by_dir[str(Path(report.file).parent)].append(report)
+    for group in by_dir.values():
+        holdouts = [r for r in group if file_names_holdout(r.file) and not r.split_counts]
+        tuning = [r for r in group if r not in holdouts and not r.split_counts]
+        if not holdouts or not tuning:
+            continue
+        holdout_inputs: set[str] = set()
+        for report in holdouts:
+            holdout_inputs.update(report.input_index)
+            report.holdout_rows = report.rows
+            # A holdout file is judged against the holdout minimum below, not
+            # the tuning-slice minimum meant for the file the search reads.
+            report.findings = [
+                f
+                for f in report.findings
+                if f != NO_HOLDOUT_FINDING and "first-tuning-slice minimum" not in f
+            ]
+            report.findings.append(
+                f"holdout slice declared by file name: {report.rows} row(s), "
+                "no per-row split marker"
+            )
+            if report.rows < MIN_HOLDOUT:
+                report.findings.append(
+                    f"holdout slice has {report.rows} rows, under the "
+                    f"{MIN_HOLDOUT}-row minimum"
+                )
+        names = ", ".join(r.file for r in holdouts)
+        total = sum(r.rows for r in holdouts)
+        for report in tuning:
+            report.holdout_rows = total
+            report.findings = [f for f in report.findings if f != NO_HOLDOUT_FINDING]
+            report.findings.append(
+                f"holdout slice declared by sibling file {names} ({total} row(s))"
+            )
+            overlap = sorted(
+                index
+                for text, indexes in report.input_index.items()
+                if text in holdout_inputs
+                for index in indexes
+            )
+            report.holdout_overlap = overlap[:20]
+            if overlap:
+                report.findings.append(
+                    f"{len(overlap)} row(s) appear in both this file and the "
+                    f"sibling holdout file"
+                )
 
 
 def scan_datasets(
@@ -1325,6 +1419,7 @@ def scan_datasets(
             continue
         reports.append(analyse_dataset(path, root, raw))
     reports.sort(key=lambda report: report.file)
+    apply_sibling_holdouts(reports)
     return reports, len(candidates), notes, sorted(skipped)
 
 
@@ -1686,9 +1781,12 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
 
 
 def project_interpreter(root: Path) -> str:
-    candidate = root / ".venv" / "bin" / "python"
-    if candidate.exists():
-        return str(candidate)
+    # `.venv` first; then `.venv-traigent`, the throwaway environment a guided
+    # first run creates when the project has none; then this audit's own.
+    for name in (".venv", ".venv-traigent"):
+        candidate = root / name / "bin" / "python"
+        if candidate.exists():
+            return str(candidate)
     return sys.executable
 
 
@@ -2347,7 +2445,7 @@ def not_established(guard_level: str) -> list[str]:
 
 def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
     guard_level, backend, isolation_args, isolation_terminator = detect_isolation()
-    files = iter_project_files(root)
+    files, walkthrough_files = split_walkthrough_files(iter_project_files(root), root)
     python_files = [path for path in files if path.suffix == ".py"]
     inventory = scan_python(python_files, root)
 
@@ -2460,6 +2558,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             "dataset_candidates": dataset_candidates,
             "dataset_files_not_analysed": skipped_files,
             "notes": inventory.notes + dataset_notes,
+            "walkthrough": {"dir": WALKTHROUGH_DIR, "count": len(walkthrough_files)},
         },
         "areas": areas,
         "entry_points": [
@@ -2556,6 +2655,13 @@ def render_card(report: dict) -> str:
         f"{report['files']['dataset_candidates']} JSONL/JSON/CSV file(s) under "
         f"`{report['root']}`."
     )
+    walkthrough = report["files"].get("walkthrough") or {}
+    if walkthrough.get("count"):
+        lines.append("")
+        lines.append(
+            f"{walkthrough['dir']}/: {walkthrough['count']} walkthrough file(s) from "
+            "traigent-first-run — not counted as project material."
+        )
     lines.append("")
 
     titles = {

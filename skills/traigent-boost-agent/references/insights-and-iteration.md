@@ -53,17 +53,17 @@ async def fetch_example_insights(
         api_key=api_key,
         timeout=60.0,
     ) as client:
-        job = await client.compute_scores(experiment_run_id=run_id)
-        status = await client.get_job_status(job_id=job["job_id"])
+        # Read first; reads never compute.
         scores = await client.get_example_scores(experiment_run_id=run_id)
         quality = await client.get_dataset_quality(experiment_run_id=run_id)
-        return {
-            "job": job,
-            "status": status,
-            "scores": scores,
-            "quality": quality,
-        }
+        return {"scores": scores, "quality": quality}
 ```
+
+Trigger a compute only on the user's explicit approval for that call, and say when asking that
+the compute endpoint has no successful runtime witness yet (on the 2026-09-13 dogfood run it
+returned HTTP 500 — see `traigent-setup-audit`, "`example-scoring` reads; it does not compute").
+With that approval: `job = await client.compute_scores(experiment_run_id=run_id)` then
+`status = await client.get_job_status(job_id=job["job_id"])`, and re-read the scores.
 
 Use these outputs to target curation or audit work, not to claim hidden causal explanations.
 

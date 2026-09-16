@@ -240,3 +240,18 @@ def test_the_dataset_branch_never_outranks_an_unreliable_scorer() -> None:
         _inventory([entry], [_scorer()]), [_dataset(5, 0)], unstable, _scorer()
     )
     assert step["branch"] == "d"
+
+
+def test_interpreter_probe_order_is_venv_then_venv_traigent(tmp_path: Path) -> None:
+    """`.venv-traigent` (the throwaway environment a guided first run may create)
+    is probed after `.venv` and before the audit's own interpreter."""
+    root = tmp_path / "proj"
+    (root / ".venv-traigent" / "bin").mkdir(parents=True)
+    fallback = root / ".venv-traigent" / "bin" / "python"
+    fallback.write_text("")
+    assert audit.project_interpreter(root) == str(fallback)
+    (root / ".venv" / "bin").mkdir(parents=True)
+    preferred = root / ".venv" / "bin" / "python"
+    preferred.write_text("")
+    assert audit.project_interpreter(root) == str(preferred)
+    assert audit.project_interpreter(tmp_path / "empty") == sys.executable

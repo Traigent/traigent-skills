@@ -295,3 +295,73 @@ def test_the_report_carries_the_thresholds_it_judged_against(healthy) -> None:
         "near_duplicate_row_ceiling": 5000,
         "source": "skills/traigent-dataset-curate/SKILL.md",
     }
+
+
+# --------------------------------------------------------------------------
+# first-run-graduate: a project after a completed guided first run
+# --------------------------------------------------------------------------
+
+
+@pytest.fixture(scope="module")
+def graduate(tmp_path_factory):
+    return run_audit(
+        FIXTURES / "first-run-graduate", tmp_path_factory.mktemp("graduate")
+    )
+
+
+def test_graduate_two_file_layout_is_read_as_a_declared_holdout(graduate) -> None:
+    """`eval/holdout.jsonl` beside `eval/tuning.jsonl` declares the holdout by
+    file name; neither file is reported as having no holdout slice."""
+    report, _ = graduate
+    by_file = {item["file"]: item for item in report["datasets"]}
+    tuning = by_file["eval/tuning.jsonl"]
+    holdout = by_file["eval/holdout.jsonl"]
+    assert holdout["holdout_rows"] == 10
+    assert tuning["holdout_rows"] == 10
+    for item in (tuning, holdout):
+        assert not any("no holdout slice is declared" in f for f in item["findings"])
+    assert any("eval/holdout.jsonl" in f for f in tuning["findings"])
+
+
+def test_graduate_overlap_is_checked_across_the_pair(graduate) -> None:
+    """One question (the refund-window rule, tuning row 0) sits in both files:
+    the tuning file names the overlap by row index."""
+    report, _ = graduate
+    by_file = {item["file"]: item for item in report["datasets"]}
+    tuning = by_file["eval/tuning.jsonl"]
+    assert tuning["holdout_overlap_rows"] == [0]
+    assert any(
+        "sibling holdout file" in f and "1 row" in f for f in tuning["findings"]
+    )
+
+
+def test_graduate_walkthrough_artifacts_are_noted_and_not_counted(graduate) -> None:
+    """Files under `traigent-runs/` are first-run walkthrough material: never the
+    project's entry point, dataset or scorer, and named as such on the card."""
+    report, card = graduate
+    entry_files = {entry["file"] for entry in report["entry_points"]}
+    assert entry_files == {"agent.py"}
+    assert not any(
+        item["file"].startswith("traigent-runs/") for item in report["datasets"]
+    )
+    assert not any(
+        item["file"].startswith("traigent-runs/") for item in report["scorers"]
+    )
+    assert report["files"]["walkthrough"] == {"dir": "traigent-runs", "count": 3}
+    assert "traigent-runs/: 3 walkthrough file(s) from traigent-first-run" in card
+
+
+def test_eval_or_test_in_a_file_name_does_not_declare_a_holdout(tmp_path: Path) -> None:
+    """`eval_dataset.jsonl` beside `examples.jsonl` is two tuning files, not a
+    tuning/holdout pair: `eval` and `test` name the tuning set in ordinary
+    projects, so only `holdout`/`heldout`/`validation`/`val` declare one by name."""
+    project = tmp_path / "project"
+    shutil.copytree(FIXTURES / "first-run-graduate", project)
+    shutil.rmtree(project / "traigent-runs")
+    (project / "eval" / "tuning.jsonl").rename(project / "eval" / "examples.jsonl")
+    (project / "eval" / "holdout.jsonl").rename(project / "eval" / "eval_dataset.jsonl")
+    report, _ = run_audit(project, tmp_path / "out")
+    by_file = {item["file"]: item for item in report["datasets"]}
+    for name in ("eval/examples.jsonl", "eval/eval_dataset.jsonl"):
+        assert by_file[name]["holdout_rows"] == 0, name
+        assert any("no holdout slice is declared" in f for f in by_file[name]["findings"]), name

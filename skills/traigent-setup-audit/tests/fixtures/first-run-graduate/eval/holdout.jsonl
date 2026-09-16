@@ -1,0 +1,10 @@
+{"input": {"question": "Explain the late payment rule."}, "expected_output": "The late payment rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the refund window rule."}, "expected_output": "The refund window rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the account merge rule."}, "expected_output": "The account merge rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the seat transfer rule."}, "expected_output": "The seat transfer rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the downgrade timing rule."}, "expected_output": "The downgrade timing rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the credit notes rule."}, "expected_output": "The credit notes rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the audit log rule."}, "expected_output": "The audit log rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the sso enforcement rule."}, "expected_output": "The sso enforcement rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the api rate rule."}, "expected_output": "The api rate rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the region move rule."}, "expected_output": "The region move rule is documented.", "metadata": {"source": "reviewed-policy"}}

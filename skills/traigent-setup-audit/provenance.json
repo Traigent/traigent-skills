@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "be9895ccc3835b1f",
+  "doc_hash": "4486a14874acffaf",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -67,6 +67,17 @@
       "timestamp": "2026-09-13T00:00:00Z",
       "note": "independent tools-on review of the Tier 2 commit, six findings with executed probes: (H1) run ids and the service's own experiment ids were interpolated raw into URL paths, so a `..` walked the request to another endpoint while the receipt recorded the unsent string -- every segment is now escaped, a dots-only segment has its dots encoded too, a run id that is not run-id shaped is refused before any request, and the receipt records the path read back off the wire; (H2) one list-runs approval followed however many experiments the server returned -- it is now capped at the page it asked for, with the overflow reported; (M1) project text was printed into both cards unfiltered, so a planted escape sequence rewrote a consent line -- one `printable_text` filter now covers every rendered line of both renderers; (M2) argparse prefix matching made `--appr` an approval the argv scan missed, installing the guard and then taking the run-mode path -- abbreviations are off and the mode is read from the parsed namespace; (L1) the offer header claimed the guard proved no process was spawned, which it cannot -- the two halves are now stated separately and run mode prints the counted processes; (L2) the same field name from two scopes printed as two contradictory lines -- the nested scope is labelled",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "be9895ccc3835b1f",
+      "doc_after_hash": "4486a14874acffaf",
+      "note": "read a completed traigent-first-run correctly: files under traigent-runs/ are counted on one card line as walkthrough material and never taken as the project's entry point, dataset or scorer (split_walkthrough_files); the two-file holdout layout the first run writes (a holdout/heldout/validation/test/val/eval-named dataset file beside a tuning file in one directory) is read as a declared holdout slice for both files with the overlap check run across the pair by normalized input, per-row split markers winning when present (apply_sibling_holdouts); the interpreter probe tries .venv, then .venv-traigent, then the audit's own. New fixture tests/fixtures/first-run-graduate plus four tests shown red before the change. File-name holdout tokens are narrower than the per-row markers: `eval`/`test` in a file name usually name the tuning set, so only holdout/heldout/validation/val declare a holdout by name.",
+      "source_type": "agent"
     }
   ]
 }

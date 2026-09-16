@@ -180,6 +180,7 @@ Development/mock mode:
 
 ```bash
 export TRAIGENT_OFFLINE_MODE=true
+export LITELLM_LOCAL_MODEL_COST_MAP=true   # stops LiteLLM's import-time pricing fetch
 ```
 
 ```python
@@ -205,11 +206,12 @@ Use `TRAIGENT_BACKEND_URL` only when the client has a non-default backend endpoi
   `optimize()` time. Write/generate the JSONL before the module defining the
   decorated function is imported, or import fails with a path
   `ValidationError`.
-- **Cloud-tracked runs enforce dataset path containment**: the dataset file must
-  reside under the SDK working directory of the process running the
-  optimization. Offline runs (`offline=True`) accept absolute paths anywhere; a
-  cloud-tracked run rejects them. Keep the JSONL in a scratch dir under the
-  project root (e.g. `.boost-scratch/tickets.jsonl`).
+- **Every run enforces dataset path containment**, offline or connected: the
+  file must sit under the working directory of the optimizing process, or under
+  `TRAIGENT_DATASET_ROOT`. An absolute path elsewhere is accepted at decoration
+  and rejected when the run loads the dataset (`Dataset path must reside under
+  …`). Keep the JSONL under the project root (e.g. `.boost-scratch/tickets.jsonl`)
+  and run from that root.
 
 ## Per-shape variations
 

@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "039ccdf59313f55e",
+  "doc_hash": "d130de0e5bd2771f",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/insights-and-iteration.md": "92d53cae73c0dae5",
-    "references/instrument-recipe.md": "dd780d3c1429ba67"
+    "references/insights-and-iteration.md": "2fbc6034f8bd71d2",
+    "references/instrument-recipe.md": "3f2fa48719c9220c"
   },
   "entries": [
     {
@@ -56,7 +56,7 @@
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "d383427cef704ca1",
       "doc_after_hash": "3f0f4cc4a8be4e45",
-      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class \u2014 keep core import or deep-import traigent.analytics.example_insights when plugin installed",
+      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class — keep core import or deep-import traigent.analytics.example_insights when plugin installed",
       "source_type": "human"
     },
     {
@@ -100,7 +100,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "4665b7cf92bd385a",
       "doc_after_hash": "be83fe17856839da",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -157,6 +157,17 @@
       "doc_after_hash": "039ccdf59313f55e",
       "note": "ExampleInsightsClient appends /analytics/... to its base, so the base must be https://portal.traigent.ai/api/v1; the skills taught the bare origin, which 405s on the live portal (observed 2026-09-13). Fix the snippet base and state which client takes the origin and which takes the /api/v1 base.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "039ccdf59313f55e",
+      "doc_after_hash": "d130de0e5bd2771f",
+      "note": "fold traigent-first-run's field-tested lessons into the front door: new 'Inspect what is already there before Step 1' entry (read existing run records such as traigent-runs/ or save_to= files, name the target before quoting a number, substitutes stay substitutes, never re-run a paid phase to move a number, setup-audit first for a project with no run); Step 3.6 real probe is paid so it is priced on the Step 4 card and launched only after the Step 5 go, never before; the real-run snippet no longer sets TRAIGENT_COST_APPROVED as a gate (verified on 0.27.0: check_and_approve admits any estimate under the limit with no prompt; the variable only skips the SDK's over-limit and unpriced-model refusals) and reads stop_reason=='cost_limit' as a partial result plus best_config_margin['verdict'] (0.26.0+) so a statistical_tie is a no-boost result; Step 3.5 sanity gate runs only for a scorer read and classified deterministic (judge = paid, executing = disclosed); LITELLM_LOCAL_MODEL_COST_MAP set beside TRAIGENT_OFFLINE_MODE in the mock block and Step 8 (offline mode alone does not stop LiteLLM's import-time pricing fetch, first-run #132); Step 9 states the SDK handshake is conditional and the approval card is the gate. References: instrument-recipe.md dataset-path containment applies to every run, offline included (verified: no offline exemption in evaluators/base.py) and sets the LiteLLM flag; insights-and-iteration.md reads example scores and dataset quality first and triggers compute_scores only on explicit approval, citing the 2026-09-13 HTTP 500 witness recorded in traigent-setup-audit.",
+      "source_type": "agent"
     }
   ]
 }
