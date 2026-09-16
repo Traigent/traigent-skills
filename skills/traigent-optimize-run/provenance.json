@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "2eaea2a13c4c48ce",
+  "doc_hash": "cc7deb90d72779b0",
   "reference_hashes": {
     "references/algorithms.md": "4c79ff944c78bf76",
     "references/cost-management.md": "44fca0c7fb536c36",
@@ -154,8 +154,8 @@
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "87cd2c82ec0b39da",
-      "doc_after_hash": "2eaea2a13c4c48ce",
-      "note": "add greppable literal/raises docstamps for ConfigurationError offline claim (contract harness, #175)",
+      "doc_after_hash": "cc7deb90d72779b0",
+      "note": "drop below-floor @ SDK 0.21.0 suffix from literal/raises docstamps (contract harness, #175, review fix)",
       "source_type": "agent"
     }
   ]

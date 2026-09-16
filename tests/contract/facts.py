@@ -48,22 +48,26 @@ class ContractFact:
         if self.kind == "js_import":
             return f"import {{ {self.symbol} }} from '{self.module}'"
         if self.kind == "docstamp":
-            if self.name == "literal":
-                claim = f'literal "{self.target or ""}"'
-            elif self.name == "path":
-                claim = f"path {self.target or ''}"
-            elif self.name == "raises":
-                claim = f"raises {self.target or ''}"
-            else:
-                claim = self.name or ""
-            suffix = (
-                f" @ SDK {self.stamped_sdk_version}" if self.stamped_sdk_version else ""
-            )
-            return f"{claim} in {self.module}{suffix}"
+            return _docstamp_display(self)
         return self.kind
 
     def identifier(self, repo_root: Path | None = None) -> str:
         return f"{self.rel_path(repo_root)}:{self.line}::{self.display()}"
+
+
+def _docstamp_display(fact: ContractFact) -> str:
+    if fact.name == "malformed":
+        return f"malformed stamp: {fact.target or ''}"
+    if fact.name == "literal":
+        claim = f'literal "{fact.target or ""}"'
+    elif fact.name == "path":
+        claim = f"path {fact.target or ''}"
+    elif fact.name == "raises":
+        claim = f"raises {fact.target or ''}"
+    else:
+        claim = fact.name or ""
+    suffix = f" @ SDK {fact.stamped_sdk_version}" if fact.stamped_sdk_version else ""
+    return f"{claim} in {fact.module}{suffix}"
 
 
 @lru_cache(maxsize=8)

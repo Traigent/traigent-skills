@@ -197,8 +197,8 @@ results = await func.optimize(max_trials=20, algorithm="random")
 ### Smart Algorithms (Bayesian / Optuna / TPE / CMA-ES / NSGA-II) — Connected-Only
 
 > **Named smart selectors execute on connected runs since 0.20.1** (see version-matrix: `smart-selector-exec`). On an authenticated connected run, the supported names — `algorithm="bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"` — bind to the typed backend Optuna strategy and are serialized on session creation; unsupported smart names such as `"nsga2"`/`"cmaes"` fail fast before session creation with a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no named smart selector executed end-to-end). They never run locally on any version: with `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*), and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). `algorithm="auto"` (the default) remains the connected smart path when you do not need a specific strategy.
-<!-- contract: literal "requires managed optimization" in traigent.config.types @ SDK 0.21.0 -->
-<!-- contract: raises ConfigurationError in traigent.core.optimized_function @ SDK 0.21.0 -->
+<!-- contract: literal "requires managed optimization" in traigent.config.types -->
+<!-- contract: raises ConfigurationError in traigent.core.optimized_function -->
 
 ```python
 # Connected-only — requires TRAIGENT_API_KEY and offline=False; on SDK 0.20.1+
