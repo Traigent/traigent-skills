@@ -1,0 +1,15 @@
+{
+  "schema": "agent-setup-prompt-provenance/v1",
+  "doc_hash": "6c93b0f874b28004",
+  "entries": [
+    {
+      "edit_id": "genesis",
+      "op": "genesis",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "note": "pin the first checksum baseline for docs/agent-setup/prompt.md (issue #234): the canonical body as merged in #241, the state the TraigentFrontend vendored copy was hand-synced against (see docs/agent-setup/README.md's bump protocol for the current list of downstream copies and what this checksum does and does not guard).",
+      "source_type": "agent"
+    }
+  ]
+}
