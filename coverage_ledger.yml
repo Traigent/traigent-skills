@@ -978,3 +978,385 @@ waivers:
   "py:optimize#run_title":
     reason: optional per-run display label surfaced in the portal; skills teach agent/experiment naming only, no run-label surface yet
     owner: nimrodbusany
+
+  # JS API snapshot refresh 2026-09-16 (issue #113): tools/contract/refresh_js_api.py against
+  # traigent-js origin/develop @ 7b7cd076babdc4e39af68c75f90b7fdeaa8f1388 (765 symbols, up from 641).
+  # All 125 new exports are hosted-portal/backend surfaces outside traigent-js's taught scope
+  # (optimize()/param.*/evaluation/budget/execution/trial-context/offline-mode); grouped below by
+  # feature area with a shared reason per group. Full teach/waive table is in the PR body for
+  # owner review — flip any row to "teach" by removing its waiver and adding it to skills/traigent-js.
+  "js:@traigent/sdk#CHARACTERIZATION_BAND_FIELDS":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#CHARACTERIZATION_FIELD_NAMES":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#CHARACTERIZATION_OVERRIDE_FIELDS":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#CharacterizationFieldName":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#CharacterizationForEgress":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#ECONOMICS_TELEMETRY_CONTRACT":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#ECONOMICS_TELEMETRY_CONTRACT_VERSION":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsFunnelEvent":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsReceiptEvent":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsRunEvent":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsTelemetryClient":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsTelemetryClientOptions":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsTelemetryCounts":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsTelemetryEvent":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsTelemetryOutcome":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsTelemetryRejection":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsTelemetryResult":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsTelemetrySource":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#EconomicsTelemetrySourceKind":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#SubmitEconomicsTelemetryInput":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#enforceCharacterizationEgress":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsCharacterizationVocabularySchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsCommonSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsFunnelEventSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsReceiptEventSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsRecommendationRequestSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsRecommendationResponseSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsRunEventSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsTelemetryEventSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsTelemetryIngestRequestSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsTelemetryIngestResponseInitialSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsTelemetryIngestResponseReplaySchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EconomicsTelemetryIngestResponseSchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#TimingMetricVocabularySchema":
+    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    owner: nimrodbusany
+  "js:@traigent/sdk#ObservabilityExecutionContext":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk#ObservabilityExecutionContextInput":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk#ObservabilityStatus":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/observability#ObservabilityExecutionContext":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/observability#ObservabilityExecutionContextInput":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/observability#ObservabilityStatus":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AnalysisInsightsResponseSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#DerivationProvenanceSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ExecutionContextSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ObservabilityLineageResponseSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ObservabilityV2ErrorSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ObservabilityV2EventSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ObservabilityV2IngestRequestSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ObservabilityV2IngestStatusResponseSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ObservabilityV2ObjectReferenceSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ObservationIngestSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#SessionIngestSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#StructuralFingerprintSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ToolAnalysisResponseSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#TraceAnalysisResponseSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#TraceIngestSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#TraceProjectionResponseSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#TraceVariantDetailResponseSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#TraceVariantListResponseSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#TraceVariantSchema":
+    reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
+    owner: nimrodbusany
+  "js:@traigent/sdk#AnalyticsPagination":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ExperimentGroupConfigurationRow":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ExperimentGroupConfigurationRunListResponse":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ExperimentGroupDetail":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ExperimentGroupDetailResponse":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ExperimentGroupListResponse":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ExperimentGroupOverview":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ExperimentGroupSourceExperiment":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ExperimentGroupStatusSummary":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ListExperimentGroupConfigurationRunsOptions":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk#ListExperimentGroupsOptions":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#CohortComparisonRequestSchema":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#CohortComparisonResponseSchema":
+    reason: portal experiment-group and cohort analytics/reporting surface; no JS skill teaches result analysis yet (Python has traigent-analyze-results, JS has no parity skill)
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#BillingEnforcementControlsResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#BillingLimitsSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#BillingPortalResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#PaddleWebhookRequestSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#QuotaPreflightRequestSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#QuotaPreflightResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#SpendApprovalRequestSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#SpendApprovalsResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#SpendPolicyResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#SpendPolicyUpdateRequestSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#SubscriptionCancelResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#SubscriptionResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#UsageCheckResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#UsageHistoryResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#UsageResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#UsageSummaryResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#WalletAdminAdjustmentRequestSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#WalletLedgerResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#WalletResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#WalletTopUpRequestSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#WalletTopUpResponseSchema":
+    reason: hosted billing/wallet/subscription/quota/spend-policy surface (portal account management); not part of the optimize() flow taught here
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#IssueDetailResponseSchema":
+    reason: hosted issue-tracking/observability-triage surface (portal feature); no JS SDK client for it yet
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#IssueEvidenceRefSchema":
+    reason: hosted issue-tracking/observability-triage surface (portal feature); no JS SDK client for it yet
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#IssueListResponseSchema":
+    reason: hosted issue-tracking/observability-triage surface (portal feature); no JS SDK client for it yet
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#IssueOccurrenceSchema":
+    reason: hosted issue-tracking/observability-triage surface (portal feature); no JS SDK client for it yet
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#IssueSchema":
+    reason: hosted issue-tracking/observability-triage surface (portal feature); no JS SDK client for it yet
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#IssueStateUpdateRequestSchema":
+    reason: hosted issue-tracking/observability-triage surface (portal feature); no JS SDK client for it yet
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EvaluatorDefinitionCreateRequestSchema":
+    reason: hosted evaluator-definition/run-management registry surface; traigent-js teaches only local evaluation.data/metrics, not the hosted evaluator registry
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#EvaluatorRunRetryRequestSchema":
+    reason: hosted evaluator-definition/run-management registry surface; traigent-js teaches only local evaluation.data/metrics, not the hosted evaluator registry
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentCreateRequestSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentDeploymentSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleAgentRevisionRegisterRequestSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleAgentRevisionRegisterResponseSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleCommonSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleMeasurementContractRegisterRequestSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleMeasurementContractRegisterResponseSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleReceiptSubmitRequestSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleReceiptSubmitResponseSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleRecordResponseSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleRunPlanIssueRequestSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentLifecycleRunPlanIssueResponseSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentResponseSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#AgentTypesSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#MeasureCreateRequestSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#MeasureSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ModelParametersCreateRequestSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ModelParametersSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ModelSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#RetrieverCreateRequestSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#RetrieverSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#ScoreSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
+  "js:@traigent/sdk/schema#StatusSchema":
+    reason: hosted agent-lifecycle registry surface (agents, model params, retrievers, measures, scores, receipts, revisions); no JS client for it yet — not part of the JS optimize() flow
+    owner: nimrodbusany
