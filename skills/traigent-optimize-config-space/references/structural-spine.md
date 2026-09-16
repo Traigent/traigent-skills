@@ -45,6 +45,34 @@ the task instead of forcing one global recipe.
 
 ## Structural knob taxonomy
 
+Two knob families exist and each is catalogued in exactly one place:
+
+- **Domain-specific atomic knobs** (schema presence, retrieval strategy, generation path, few-shot
+  policy, repair policy, and similar per-task value-picks) are catalogued here. `@traigent.optimize`'s
+  `configuration_space` accepts any key you choose -- there is no fixed acceptance list -- but some
+  names below are *also* proposed by the installed SDK's guidance catalog
+  (`traigent/config_generator/catalog/tvar_catalog.v1.json`, traigent>=0.27.0), a set of
+  measured/observational suggestions, not a required or exhaustive one: `schema_context`,
+  `generation_path`, `fewshot_selector`, `fewshot_k`, `candidate_count`, `repair_policy` (text2SQL),
+  and `retrieval_k` (RAG) all match a catalog entry name. `retriever`, `query_strategy`,
+  `answer_path`, `example_organization`, and `self_consistency` below come from the TraigentDemo
+  recipes, not the catalog -- no catalog entry proposes them under any agent type. `context_order`
+  is a special case: the catalog *does* have a `rag.context_order.v1` entry by that name, but with a
+  different value set (`relevance_desc`/`primacy_recency`/`question_then_evidence`/
+  `key_evidence_edges`) than the recipe below uses (`as_retrieved`/`score_desc`/`score_asc`) -- treat
+  them as two distinct value vocabularies sharing a name, not interchangeable.
+- **Composite / control-flow patterns** are catalogued in `traigent-optimize-composite-knobs`'s
+  `references/pattern-catalog.md` (factory signatures) and its `SKILL.md` (the Explorer-name-to-
+  factory map) -- not restated here. They carry sub-parameters (an escalation margin, a cardinality,
+  a judge stage) instead of a single value-pick, so read `candidate_count` and `self_consistency`
+  below as the atomic, manually-wired form of the idea; use the composite factories when you want the
+  calibrated, telemetry-emitting version (majority vote, judge-scored best-of-n, or a bounded retry
+  loop).
+- The public **Knob Explorer** (https://traigent.ai/#/knob-explorer) is the canonical public
+  taxonomy customers see. Where an Explorer label has no counterpart in either the catalog or a
+  recipe above, it is a naming proposal, not an available knob (see "Other domains" below for the
+  full map).
+
 ### text2SQL
 
 Use this family for the TraigentDemo path:
@@ -118,6 +146,62 @@ RAG_STRUCTURAL_SPACE = {
 | `answer_path` | Whether the answerer responds directly, extracts evidence first, or uses CoT. |
 | `fewshot_k` | How many multi-hop exemplars are supplied. |
 | `self_consistency` | How many answer candidates are sampled before selection. |
+
+### Other domains
+
+The Knob Explorer also groups public knobs by classification/extraction, code/math, and web/GUI
+agents. As of traigent>=0.27.0 the installed guidance catalog
+(`traigent/config_generator/catalog/tvar_catalog.v1.json`) backs one more named family beyond the
+text2SQL and RAG recipes above: a **code-editing** group. It shares the text2SQL family's
+`code_gen` agent type in the catalog -- it is not a separate agent type -- but a different
+`category` (`agent_computer_interface` instead of `structural`/`prompting`/`repair`/`generation`),
+so treat it as a distinct knob family within the same agent type, not a separate domain.
+
+```python
+CODE_EDITING_STRUCTURAL_SPACE = {
+    "repo_context_strategy": ["issue_locality_first", "focused_search", "call_graph_plus_tests", "repo_index"],
+    "file_view_window": [50, 120, 400],
+    "edit_granularity": ["minimal_patch", "function_scope", "file_scope", "multi_file_plan"],
+    "test_selection_strategy": ["none", "focused_changed_files", "related_unit_tests", "full_regression_budgeted"],
+    "patch_review_mode": ["off", "self_review", "diff_then_test_review", "reviewer_agent"],
+}
+```
+
+| Knob | What it changes |
+|---|---|
+| `repo_context_strategy` | How the agent navigates the repository before editing (issue-linked files, targeted search, call-graph/test expansion, or a broader repo index). |
+| `file_view_window` | How many lines of surrounding file context the agent sees per view. |
+| `edit_granularity` | The size of the edit unit the agent may propose, from a minimal patch to a multi-file plan. |
+| `test_selection_strategy` | Which tests run to validate a patch, from none to a budgeted full regression. |
+| `patch_review_mode` | Whether and how the patch is reviewed (self-review, diff+test review, or a separate reviewer stage) before it is returned. |
+
+The rest of the Explorer's public taxonomy has no counterpart in the installed guidance catalog or
+in a recipe above yet. Full Explorer-id-to-taxonomy map for what is not already covered by the
+text2SQL, RAG, or code-editing tables above:
+
+| Explorer id | Domain | Maps to |
+|---|---|---|
+| `sql_guidance` | text2SQL | no counterpart yet (Explorer-only) |
+| `value_retrieval` | text2SQL | no counterpart yet (Explorer-only) |
+| grounding/abstention policy | RAG / multi-hop QA | no counterpart yet (Explorer-only) |
+| rubric / label-definition hint | classification / extraction | no counterpart yet (Explorer-only) |
+| ontology / taxonomy conformance | classification / extraction | no counterpart yet (Explorer-only) |
+| execution-verified repair | code / math | maps to the composite `self_debug` factory (retry a stage until an external predicate passes) when the retry needs loop state, or to the atomic `repair_policy` knob above when a single fixed retry is enough -- pick based on whether you need calibrated loop state, not the label alone |
+| program-aided reasoning (PAL) | code / math | no counterpart yet (Explorer-only) |
+| `verifier_critic` | code / math | no counterpart yet (Explorer-only) |
+| `observation_modality` | web / GUI agents | no counterpart yet (Explorer-only) |
+| `action_space_modality` | web / GUI agents | no counterpart yet (Explorer-only) |
+| domain idiom / style hint | code / writing | no counterpart yet (Explorer-only) |
+
+The Explorer's own `schema_context` values (`ddl_fk`/`ddl_fk_rows`/`compact`/`m_schema`) are a
+*third* value vocabulary, different from both the catalog's (`full_ddl_fk`/`linked_top6`/
+`linked_top10`) and the text2SQL recipe's above (same three catalog values) -- do not assume the
+Explorer's public value names are what the installed SDK takes.
+
+Define any "no counterpart yet" row as an ordinary `configuration_space` entry using the same
+topology-then-value pattern as the families above rather than treating an Explorer label as a
+pre-verified SDK name, and run `traigent-analyze-guidance` against your own evaluator to see what the
+catalog currently proposes for your agent type.
 
 ## Evaluator to optimizer
 
