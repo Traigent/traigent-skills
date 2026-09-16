@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.0"
+  version: "1.1.1"
 ---
 
 # Traigent Composite Knobs
@@ -169,11 +169,16 @@ Spread `.members` into the surrounding configuration space **only when the facto
 
 The vocabulary, in one line: **TVARs are searched, CVARs are calibrated,
 policies govern control flow, KPIs/objectives score outcomes.** For
-domain-specific structural knob vocabularies (text2SQL, RAG/multi-hop QA),
-cross-reference `traigent-optimize-config-space` and
+domain-specific structural knob vocabularies (text2SQL, RAG/multi-hop QA, and
+the SDK's code-editing family), cross-reference `traigent-optimize-config-space` and
 `traigent-optimize-config-space/references/structural-spine.md` -- this skill
 extends that structural vocabulary with composite control flow; it does not
-replace it.
+replace it. The public Knob Explorer (https://traigent.ai/#/knob-explorer)
+groups this skill's patterns under "Composite / control-flow"; every name it
+lists there (`router`, `cascade`, `best_of_n`, `self_refine`, `self_debug`,
+`react_tool_loop`, `mixture_of_experts`, `verification_gate`) maps to a factory
+in the table above (`cascade` splits into `binary_cascade`/`n_cascade` by arm
+count; `mixture_of_experts` is `moe`; the rest share the Explorer's name).
 
 ## Telemetry
 

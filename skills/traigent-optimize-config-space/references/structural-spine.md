@@ -45,6 +45,25 @@ the task instead of forcing one global recipe.
 
 ## Structural knob taxonomy
 
+Two knob families exist and each is catalogued in exactly one place:
+
+- **Domain-specific atomic knobs** (schema presence, retrieval strategy, generation path, few-shot
+  policy, repair policy, and similar per-task value-picks) are catalogued here, verified against the
+  installed SDK's guidance catalog (`traigent.config_generator.catalog.tvar_catalog`, SDK 0.27.0).
+- **Composite / control-flow patterns** -- `router`, `binary_cascade` / `n_cascade`,
+  `self_consistency`, `best_of_n`, `self_debug`, `self_refine`, `react_tool_loop`,
+  `verification_gate`, `moe` (mixture-of-experts), and `fallback` from `traigent.knobs.patterns` --
+  are catalogued in `traigent-optimize-composite-knobs`'s `references/pattern-catalog.md`, not
+  restated here. They carry sub-parameters (an escalation margin, a cardinality, a judge stage)
+  instead of a single value-pick, so read `candidate_count` and `self_consistency` below as the
+  atomic, manually-wired form of the idea; use the composite factories when you want the calibrated,
+  telemetry-emitting version (majority vote with `vote_agreement`/`vote_margin`, judge-scored
+  best-of-n, or a bounded retry loop).
+- The public **Knob Explorer** (https://traigent.ai/#/knob-explorer) is the canonical public
+  taxonomy customers see. This file's names are what the installed SDK actually accepts; where an
+  Explorer label has no counterpart in the installed catalog it is a naming proposal, not an
+  available knob, until it ships (see "Other domains" below).
+
 ### text2SQL
 
 Use this family for the TraigentDemo path:
@@ -118,6 +137,40 @@ RAG_STRUCTURAL_SPACE = {
 | `answer_path` | Whether the answerer responds directly, extracts evidence first, or uses CoT. |
 | `fewshot_k` | How many multi-hop exemplars are supplied. |
 | `self_consistency` | How many answer candidates are sampled before selection. |
+
+### Other domains
+
+The Knob Explorer also groups public knobs by classification/extraction, code/math, and web/GUI
+agents. As of SDK 0.27.0 the installed guidance catalog
+(`traigent.config_generator.catalog.tvar_catalog`) backs one of those groups with verified, named
+entries: a **code-editing** family, distinct from the text2SQL family above.
+
+```python
+CODE_EDITING_STRUCTURAL_SPACE = {
+    "repo_context_strategy": ["issue_locality_first", "focused_search", "call_graph_plus_tests", "repo_index"],
+    "file_view_window": [50, 120, 400],
+    "edit_granularity": ["minimal_patch", "function_scope", "file_scope", "multi_file_plan"],
+    "test_selection_strategy": ["none", "focused_changed_files", "related_unit_tests", "full_regression_budgeted"],
+    "patch_review_mode": ["off", "self_review", "diff_then_test_review", "reviewer_agent"],
+}
+```
+
+| Knob | What it changes |
+|---|---|
+| `repo_context_strategy` | How the agent navigates the repository before editing (issue-linked files, targeted search, call-graph/test expansion, or a broader repo index). |
+| `file_view_window` | How many lines of surrounding file context the agent sees per view. |
+| `edit_granularity` | The size of the edit unit the agent may propose, from a minimal patch to a multi-file plan. |
+| `test_selection_strategy` | Which tests run to validate a patch, from none to a budgeted full regression. |
+| `patch_review_mode` | Whether and how the patch is reviewed (self-review, diff+test review, or a separate reviewer stage) before it is returned. |
+
+Classification/extraction, web/GUI-agent, and non-editing code/math knobs (rubric or
+label-definition hints, ontology/grammar conformance, an `observation_modality` or
+`action_space_modality` choice for a GUI agent, a `verifier_critic` reward model) are Explorer public
+labels with no counterpart in the installed guidance catalog yet. Define them as ordinary
+`configuration_space` entries using the same topology-then-value pattern as the families above
+rather than treating an Explorer label as a pre-verified SDK name, and run
+`traigent-analyze-guidance` against your own evaluator to see what the catalog currently proposes for
+your agent type.
 
 ## Evaluator to optimizer
 
