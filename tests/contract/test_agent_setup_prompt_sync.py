@@ -1,17 +1,19 @@
 """Contract test: docs/agent-setup/prompt.md must carry a pinned checksum.
 
-Issue #234: the canonical agent-setup prompt exists in three places — this file (the
-source of truth), the TraigentFrontend vendored constant, and the traigent-web static
-copy. Cross-repo CI fetches to compare all three are brittle, so this repo's guard is
+Issue #234: this file is the source of truth for the canonical agent-setup prompt; at
+least one consumer (the TraigentFrontend portal) vendors it into its own constant.
+Cross-repo CI fetches to compare copies live are brittle, so this repo's guard is
 narrower: pin a checksum of the canonical body in docs/agent-setup/provenance.json
 (schema mirrors the per-skill provenance.json convention in test_provenance.py) and
 fail loudly whenever prompt.md changes without that checksum being bumped. That forces
 every edit through the bump protocol documented in docs/agent-setup/README.md, which is
-where a human re-syncs the two downstream copies and records why.
+where a human re-syncs known downstream copies and records why — see that doc for which
+copies currently need re-syncing (the list has drifted before: a copy once thought
+canonical can be deliberately replaced upstream of this repo).
 
-This test does NOT reach into TraigentFrontend or traigent-web — those consumer repos
-need their own local guard asserting their copy matches this pinned checksum, tracked
-separately from this issue.
+This test does NOT reach into any consumer repo — each one needs its own local guard
+asserting its copy matches this pinned checksum; see docs/agent-setup/README.md for
+what is and isn't tracked yet.
 """
 from __future__ import annotations
 
@@ -45,9 +47,9 @@ def test_agent_setup_prompt_doc_hash_matches_provenance() -> None:
         f"(provenance.json doc_hash={actual!r}, live file hash={expected!r}). "
         "Run `python3 tools/contract/update_agent_setup_prompt_hash.py --note "
         '"<what changed and why>"` and follow the bump protocol in '
-        "docs/agent-setup/README.md — including re-syncing the two downstream "
-        "vendored copies (TraigentFrontend agentSetupPrompt.ts, traigent-web "
-        "public/agent-setup/prompt.md) before merging."
+        "docs/agent-setup/README.md — including re-syncing whichever downstream "
+        "copies it currently lists (verify each is still a copy before touching it) "
+        "before merging."
     )
 
 

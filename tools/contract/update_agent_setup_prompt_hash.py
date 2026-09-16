@@ -4,10 +4,11 @@ docs/agent-setup/prompt.md (issue #234's bump protocol).
 
 Recomputes doc_hash (first 16 hex chars of the file's SHA-256, matching the
 per-skill provenance.json convention) and appends a dated manual_edit entry.
-Reminds the operator that the two downstream vendored copies (TraigentFrontend
-agentSetupPrompt.ts, traigent-web public/agent-setup/prompt.md) still need to be
-re-synced by hand in their own repos/PRs — this script only pins the canonical
-source's checksum.
+Reminds the operator to follow docs/agent-setup/README.md's bump protocol for
+which downstream copies still need re-syncing by hand — this script only pins
+the canonical source's checksum, and the copy list has drifted before (a copy
+once thought canonical can be deliberately replaced upstream of this repo), so
+it is kept in exactly one place (the README) rather than repeated here.
 
 Usage:
   python3 tools/contract/update_agent_setup_prompt_hash.py --note "<what changed and why>"
@@ -51,6 +52,14 @@ def main() -> int:
     prompt_path = root / "docs" / "agent-setup" / "prompt.md"
     provenance_path = root / "docs" / "agent-setup" / "provenance.json"
 
+    if not prompt_path.is_file():
+        raise SystemExit(f"missing {prompt_path}")
+    if not provenance_path.is_file():
+        raise SystemExit(f"missing {provenance_path}")
+
+    if args.check and (args.note or args.edit_id):
+        raise SystemExit("--note/--edit-id have no effect with --check (check never writes)")
+
     provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
     before = provenance.get("doc_hash")
     after = hash_prefix(prompt_path)
@@ -71,7 +80,11 @@ def main() -> int:
     if not args.note:
         raise SystemExit("--note is required to record why prompt.md changed")
 
-    edit_id = args.edit_id or f"prompt-edit-{datetime.now(timezone.utc):%Y-%m-%d}"
+    # Default edit_id is date-stamped, not fully unique: two bumps on the same UTC
+    # day would otherwise collide and silently overwrite each other's entry (a
+    # dict keyed by edit_id upstream, or a human re-running the command, could
+    # both do this). Suffixing the after-hash makes each entry's id distinct.
+    edit_id = args.edit_id or f"prompt-edit-{datetime.now(timezone.utc):%Y-%m-%d}-{after[:8]}"
     provenance["doc_hash"] = after
     entries = provenance.setdefault("entries", [])
     entries.append(
@@ -90,9 +103,9 @@ def main() -> int:
     provenance_path.write_text(json.dumps(provenance, indent=2) + "\n", encoding="utf-8")
     print(f"Updated docs/agent-setup/provenance.json: {before!r} -> {after!r}")
     print(
-        "Reminder: re-sync the two downstream copies in their own repos/PRs — "
-        "TraigentFrontend agentSetupPrompt.ts and traigent-web public/agent-setup/prompt.md — "
-        "per docs/agent-setup/README.md's bump protocol."
+        "Reminder: follow docs/agent-setup/README.md's bump protocol to re-sync "
+        "whichever downstream copies it currently lists — verify each is still a "
+        "copy of this file before touching it."
     )
     return 0
 
