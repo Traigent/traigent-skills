@@ -21,7 +21,7 @@ def prompt_model(prompt: str, *, model: str, temperature: float) -> str:
 |---|---|---|---|
 | `"context"` (default) | Add `traigent.get_config()` call | Yes (contextvars) | Most use cases. Clean, explicit config access. |
 | `"parameter"` | Add a config parameter to function signature | Yes (per-call argument) | When you want the config as a visible function argument. |
-| `"seamless"` | None | Yes (AST transform) | Existing codebases where you cannot modify the function body. |
+| `"seamless"` | A local assignment (or parameter) named after each config key | Yes (AST transform) | Existing codebases where the config values already sit in named locals; a literal kwarg in the call is **not** rewritten. |
 
 ## Context Mode (Default)
 
@@ -99,7 +99,7 @@ def answer_question(question: str, config: dict = None) -> str:
 
 ## Seamless Mode
 
-Zero code change required. Traigent uses AST (Abstract Syntax Tree) transformation to automatically inject configuration values into LLM API calls inside your function.
+No `get_config()` call. Traigent uses AST (Abstract Syntax Tree) transformation to rewrite **local assignments and parameters whose name equals a configuration key** with the trial's values.
 
 ```python
 @traigent.optimize(
@@ -110,10 +110,11 @@ Zero code change required. Traigent uses AST (Abstract Syntax Tree) transformati
     },
 )
 def answer_question(question: str) -> str:
-    # Traigent will override 'model' and 'temperature' in this call
+    model = "gpt-4o-mini"      # rewritten per trial: the name matches a config key
+    temperature = 0.7          # rewritten per trial
     response = openai.chat.completions.create(
-        model="gpt-4o-mini",
-        temperature=0.7,
+        model=model,
+        temperature=temperature,
         messages=[{"role": "user", "content": question}],
     )
     return response.choices[0].message.content
@@ -122,8 +123,8 @@ def answer_question(question: str) -> str:
 ### How It Works
 
 1. At decoration time, Traigent inspects the function's AST.
-2. It identifies LLM API calls (OpenAI, Anthropic, LiteLLM, etc.).
-3. During trials, it transforms the AST to inject trial config values into matching keyword arguments.
+2. During trials, it rewrites `Assign` / `AnnAssign` statements (and parameters) whose target name is a configuration key; nothing else is touched — not keyword arguments in a call, not `os.environ.get(...)`, not a dict built for `**kwargs`.
+3. When no local name matches, the SDK logs `Seamless provider found no injectable targets … the function ran with original values` and every trial runs the original configuration. A mock dry-run still passes in that state, so prove the value reaching the provider call changes across two configurations before any paid run.
 4. The original function source is never modified on disk.
 
 ### When to Use Seamless Mode
@@ -144,8 +145,8 @@ def answer_question(question: str) -> str:
 |---|---|---|---|
 | `injection_mode` | `str \| InjectionMode` | `"context"` | How to deliver config: `"context"`, `"parameter"`, or `"seamless"`. |
 | `config_param` | `str \| None` | `None` | Parameter name for `injection_mode="parameter"`. Required when using parameter mode. |
-| `auto_override_frameworks` | `bool` | `False` | Auto-override framework calls (LangChain, LlamaIndex, etc.). Requires `traigent-setup-integrations` plugin. |
-| `framework_targets` | `list[str] \| None` | `None` | Specific frameworks to target for auto-override (e.g., `["langchain", "llamaindex"]`). |
+| `auto_override_frameworks` | `bool` | `False` | Auto-override framework constructor calls. Nothing extra to install: `traigent.integrations.enable_framework_overrides` is in the core package. |
+| `framework_targets` | `list[str] \| None` | `None` | Dotted `module.Class` paths to override (e.g., `["langchain_openai.ChatOpenAI"]`); the package must be importable. A bare framework name such as `"langchain"` is skipped silently (Traigent/Traigent#2299). |
 
 ## Removed Modes
 
@@ -153,14 +154,14 @@ The `"attribute"` and `"decorator"` injection modes were removed in Traigent v2.
 
 ## Framework Auto-Override
 
-When using `auto_override_frameworks=True`, Traigent intercepts calls to supported LLM frameworks and applies the trial configuration automatically. This requires the `traigent-setup-integrations` plugin.
+When using `auto_override_frameworks=True`, Traigent intercepts the listed framework constructors and applies the trial configuration automatically. Targets are dotted `module.Class` paths whose package is importable; a bare framework name is skipped silently. Nothing extra to install (`traigent.integrations.enable_framework_overrides` is in core).
 
 ```python
 @traigent.optimize(
     injection=InjectionOptions(
         injection_mode="context",
         auto_override_frameworks=True,
-        framework_targets=["langchain"],
+        framework_targets=["langchain_openai.ChatOpenAI"],
     ),
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )

@@ -8,8 +8,14 @@ Common environment variables for Traigent quickstart workflows.
 | ---------------------------------- | --------------- | --------------------------------------------------------------------------------------------------- |
 | `TRAIGENT_MOCK_LLM`               | `false`         | **Legacy** — when `true`, mocks all LLM API calls. Honored only outside production; **hard-blocked when `ENVIRONMENT=production`** (raises `OSError` at import). Prefer the in-code API `traigent.testing.enable_mock_mode_for_quickstart()` for new code. |
 | `TRAIGENT_RUN_COST_LIMIT`         | `2.0`           | Maximum cost budget (in USD) per optimization run. Optimization stops when this limit is reached.    |
-| `TRAIGENT_COST_APPROVED`          | `false`         | When `true`, skips the interactive cost confirmation prompt before starting optimization.            |
-| `TRAIGENT_SKIP_PROVIDER_VALIDATION`| `false`        | When `true`, skips API key validation at decoration time. Useful in CI environments.                |
+| `TRAIGENT_COST_APPROVED`          | `false`         | When `true`, skips the SDK's pre-run cost handshake (which fires only when the estimate exceeds `TRAIGENT_RUN_COST_LIMIT` or a model is unpriced) and downgrades the unpriced-model refusal to a warning. Set it per approved process, never as a standing export. |
+| `TRAIGENT_SKIP_PROVIDER_VALIDATION`| `false`        | Gates only your own call to `traigent.providers.validate_providers`; the SDK runs no automatic provider validation at decoration time. |
+| `TRAIGENT_OFFLINE_MODE`           | `false`         | When `true` (alias `TRAIGENT_OFFLINE`), zero backend egress: no session, no portal rows. Set it **before** importing `traigent`. |
+| `LITELLM_LOCAL_MODEL_COST_MAP`    | (unset)         | Set to `True` to stop LiteLLM's import-time pricing-map fetch; offline mode alone does not suppress it. Set it before importing. |
+| `TRAIGENT_REQUIRE_CLOUD`          | (unset)         | When `1`, a connected run fails before any trial if the backend session cannot be created, instead of silently falling back to a local random search. |
+| `TRAIGENT_LOG_EXAMPLE_CONTENT`    | `true`          | The SDK writes per-example prompt/response/expected text to its local run logs by default; set to `false` to keep ids and metrics only. |
+| `TRAIGENT_BACKEND_URL`            | `https://portal.traigent.ai` | Backend the SDK talks to. Set only for a dev or self-hosted backend; a key issued by one backend is a 401 on another. |
+| `TRAIGENT_DATASET_ROOT`           | (cwd)           | Directory every `eval_dataset` path must sit under (offline runs included); a path elsewhere is rejected when the run loads the dataset. |
 | `TRAIGENT_VALIDATION_TIMEOUT`     | `5.0`           | Timeout in seconds for provider API key validation checks.                                          |
 | `TRAIGENT_STRICT_COST_ACCOUNTING` | `false`         | When `true`, enables strict cost tracking. Cost overruns raise errors instead of warnings.          |
 | `TRAIGENT_LOG_LEVEL`              | `INFO`          | Logging verbosity. Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`. |
@@ -28,8 +34,8 @@ These are standard provider API keys consumed by the respective LLM SDKs. Traige
 | `OPENAI_API_KEY`      | OpenAI (GPT models)     |
 | `ANTHROPIC_API_KEY`   | Anthropic (Claude models)|
 | `GROQ_API_KEY`        | Groq (fast inference)   |
-| `GOOGLE_API_KEY`      | Google (Gemini via google-genai SDK) |
-| `GEMINI_API_KEY`      | Google (Gemini via LiteLLM `gemini/*` models) |
+| `GOOGLE_API_KEY`      | Google — read **first** by LiteLLM for `gemini/*` models (and by the google-genai SDK); an unrelated `GOOGLE_API_KEY` in the shell wins over `GEMINI_API_KEY` |
+| `GEMINI_API_KEY`      | Google (Gemini via LiteLLM `gemini/*` models) — read only when `GOOGLE_API_KEY` is unset; `PALM_API_KEY` is also accepted |
 | `WANDB_API_KEY`       | Weights & Biases        |
 | `MLFLOW_TRACKING_URI` | MLflow tracking server  |
 
@@ -56,7 +62,7 @@ python my_optimization.py
 CI environments typically already have a conftest or fixture that calls `enable_mock_mode_for_quickstart()`. The legacy `TRAIGENT_MOCK_LLM=true` env var still works in CI (`ENVIRONMENT` is normally not `production` in CI), but the in-code path is preferred.
 
 ```bash
-export TRAIGENT_COST_APPROVED=true
+export TRAIGENT_RUN_APPROVED=1            # CI approval gate: GitHub Actions requires it even for mock/offline runs
 export TRAIGENT_SKIP_PROVIDER_VALIDATION=true
 pytest tests/
 ```
@@ -65,11 +71,12 @@ pytest tests/
 
 ```bash
 export OPENAI_API_KEY=sk-...
-export TRAIGENT_RUN_COST_LIMIT=5.0
+export TRAIGENT_RUN_COST_LIMIT=5.0        # the figure the user approved for this run
 export TRAIGENT_STRICT_COST_ACCOUNTING=true
-export TRAIGENT_COST_APPROVED=true
 export TRAIGENT_LOG_LEVEL=WARNING
 python optimize_production.py
+# TRAIGENT_COST_APPROVED is deliberately not exported here: set it only in the
+# process of a run whose estimate the user has already seen and approved.
 ```
 
 ### Debug Mode
@@ -82,7 +89,7 @@ python my_optimization.py
 
 ## .env File Support
 
-When `python-dotenv` is installed (included in the `integrations` extra), Traigent automatically loads variables from a `.env` file in the current working directory.
+The SDK does not load your project's `.env`: at import it looks only for a `.env` beside its own installed package. `python-dotenv` ships with `litellm` (a core dependency), so load the file yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` — rather than relying on `litellm`'s own import-time lookup, which searches upward from wherever the venv sits.
 
 Example `.env` file:
 

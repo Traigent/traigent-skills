@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Traigent Framework Integrations
@@ -192,9 +192,9 @@ LiteLLM handles API key routing automatically based on the model prefix. Set pro
 ```bash
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
-export GEMINI_API_KEY="..."      # LiteLLM reads GEMINI_API_KEY for gemini/* models
+export GEMINI_API_KEY="..."      # LiteLLM reads GOOGLE_API_KEY first, then GEMINI_API_KEY (PALM_API_KEY also accepted) for gemini/* models
 export OPENROUTER_API_KEY="sk-or-..."  # LiteLLM reads OPENROUTER_API_KEY for openrouter/* models
-# Note: google-genai SDK reads GOOGLE_API_KEY; LiteLLM reads GEMINI_API_KEY — they are different env vars
+# Note: an unrelated GOOGLE_API_KEY already in the shell (any Google service) silently wins over GEMINI_API_KEY — unset it or put the Gemini key there
 ```
 
 See [LiteLLM reference](references/litellm.md) for the full provider list and cost tracking details.

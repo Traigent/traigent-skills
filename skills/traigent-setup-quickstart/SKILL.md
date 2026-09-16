@@ -1,6 +1,6 @@
 ---
 name: traigent-setup-quickstart
-description: "Install, set up, and get first value from the Traigent SDK for LLM optimization. The cold-start path: use when the user is new to traigent, wants their first run, has no dataset yet, or wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize. Covers pip install, API-key setup, mock mode, a linear first-value walkthrough, and running a first optimization."
+description: "Install and wire the Traigent SDK in an existing project, and get first value from it. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize; a brand-new user with an agent to optimize is better served by the guided first run (Traigent/traigent-first-run), which this skill points at. Covers pip install, API-key setup, mock mode, a linear first-value walkthrough, and running a first optimization."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.22"
+  version: "1.0.23"
 ---
 
 # Traigent Quickstart
@@ -57,6 +57,13 @@ paid run**, an explicit spend cap, and the recorded stop rule. The service sets
 *how much* to invest; it never affects *whether* approval is required — it always is.
 
 ## Cold Start — First Value, One Step at a Time
+
+**Brand-new to Traigent with an agent to optimize?** Use the guided first run, the funnel
+traigent.ai hands out: `npx skills add Traigent/traigent-first-run`, then ask
+`Use traigent-first-run to run my first Traigent optimization.` It scores the project's
+readiness, preserves the real agent, dataset and evaluator, and marks what it had to
+generate. This skill is the install-and-wire reference that run and `traigent-boost-agent`
+call into; the path below is for when the guided run is not available.
 
 **When there's no prior run to look at**, do not open with menus, methodology, or the
 advanced sections below. Detect cold start — the user is new to Traigent, has never
@@ -272,8 +279,8 @@ Backend-connected features (the default cloud smart optimizer, dataset synthesis
 ### Portal key (experiments-scoped)
 
 1. Sign up at the Traigent portal and create a project.
-2. In your project settings, go to **API Keys** and click **Create key**.
-3. This issues a `user`-type key scoped to `experiments:read experiments:write` — sufficient for SDK optimizations and analytics.
+2. In your project settings, go to **API Keys → Create key** and choose **Full access**. The dialog's default preset is **read-only**: a read-only key is refused at session creation (nothing spent), or, if accepted and then rejected mid-run, drops the run to local-only tracking while it keeps spending.
+3. The key is `user`-type with the `uk_` prefix; with full access it covers SDK optimizations and analytics.
 
 ```bash
 export TRAIGENT_API_KEY="uk_..."   # portal keys use the uk_ prefix
@@ -292,6 +299,8 @@ export TRAIGENT_API_KEY="sk_..."
 **Which key to use?** The portal experiments-scoped key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
 For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero egress is required.
+
+For a run the user approved *as* managed optimization, set `TRAIGENT_REQUIRE_CLOUD=1`: without it, a run that finds no key in its process, or hits a connectivity failure, 5xx or HTTP 400 at session creation, does not fail — the SDK prints one warning and runs a **local random search** whose result reads like the managed one (a key the backend rejects raises instead). After the run, check `results.cloud_url` before telling the user to open the portal; `None` (with `results.metadata.get("source") == "local_fallback"`) means the run was never tracked and is a failure to investigate, not a result to report.
 
 > **Prereq for real (non-offline) runs: set `TRAIGENT_API_KEY`.**
 > The SDK defaults to the cloud backend (`https://portal.traigent.ai`) when
@@ -343,7 +352,7 @@ enable_mock_mode_for_quickstart()
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.19"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.19"`.)
-- **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` (or run with no key). `enable_mock_mode_for_quickstart()` alone does **not** make a run local.
+- **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local.
 - **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer).
 
 ### Legacy Env-Var Path
@@ -354,7 +363,7 @@ The previous quickstart docs taught `export TRAIGENT_MOCK_LLM=true`. That env va
 
 ### Using a .env File
 
-Traigent supports `.env` files via `python-dotenv` (included in the `integrations` extra). Create a `.env` file in your project root:
+Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). The SDK does **not** read your project's `.env` (it only looks beside its own installed package); whether `litellm`'s import happens to find yours depends on where the venv sits. Create a `.env` file in your project root:
 
 ```
 TRAIGENT_API_KEY=uk_...   # portal key; use your sk_... key here if you used the CLI device flow
@@ -400,7 +409,7 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    `openai` / `anthropic` / `litellm` / Bedrock imports or config). If the vendor is
    ambiguous, undetectable, or the project uses **multiple** providers (e.g. OpenAI *and*
    Bedrock), **ask the user which provider(s)** and label the matching key(s) in `.env`.
-5. **Wait** for the user to paste and save. Confirm `.env` is in `.gitignore`.
+5. **Wait** for the user to paste and save. Then run `chmod 600 .env`, `git ls-files --error-unmatch -- .env` (must exit 1 — a tracked `.env` stays tracked whatever `.gitignore` says) and `git check-ignore -q -- .env` (must exit 0) before any key is pasted.
 6. **Fallback:** if no standalone editor opens (or the user says no window appeared), have
    them open the printed path manually; only as a last resort use a terminal `export VAR=...`
    (less private than the file).
@@ -432,12 +441,15 @@ See `references/environment-variables.md` for all available environment variable
 
 > **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
 >
-> **Real LLM runs require cost approval.** A real (non-mock) optimization is blocked by a cost
-> gate. To confirm you accept the cost, set `TRAIGENT_COST_APPROVED=true` in the environment
-> (the verified path); some SDK versions also accept `cost_approved=True` in the
-> `@traigent.optimize()` decorator. The SDK prints an estimate
-> before any trial executes; the estimate may be high (fallback pricing is conservative), but the
-> gate is a safety confirmation — nothing runs until you approve.
+> **Real LLM runs require the user's approval — the SDK's cost handshake is conditional, not a
+> gate you can lean on.** The SDK prompts only when its pre-run estimate exceeds
+> `TRAIGENT_RUN_COST_LIMIT` (default **$2.00**) or a model is unpriced; a priced run whose
+> estimate is under the cap starts real calls immediately, with no prompt. Your explicit
+> approval of a stated ceiling is the gate. Set `TRAIGENT_COST_APPROVED=true` (or
+> `cost_approved=True` in the decorator) only in the process of an approved run, never in
+> `.env` or a shell profile — it also turns the unpriced-model refusal into a warning. The
+> estimate may be high (fallback pricing is conservative); read `results.stop_reason` after
+> the run.
 
 ### Tiny Real Cost and KPI Probe
 
