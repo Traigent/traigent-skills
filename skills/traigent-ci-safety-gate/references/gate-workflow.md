@@ -97,20 +97,24 @@ import time
 from pathlib import Path
 
 
-def evaluate_one(example: dict, config: dict, mode: str) -> tuple[float, float, float]:
+def evaluate_one(example: dict, config: dict, mode: str) -> tuple[float, float, float | None]:
     """Return (accuracy, latency_ms, cost) for one holdout example.
 
     ADAPT THIS: apply `config` to your agent and call it. In --mode mock
     return canned values without touching any provider (zero spend).
+    In --mode real, cost must be the MEASURED USD of this call (for a
+    LiteLLM agent: `litellm.completion_cost(response)`; otherwise price the
+    usage the provider returned) or None when it could not be measured —
+    never a 0.0 placeholder, which would make the budget check pass on nothing.
     """
     if mode == "mock":
         return 1.0, 0.0, 0.0
     start = time.perf_counter()
-    output = run_my_agent(example["input"], config)  # <- your agent call
+    output, cost = run_my_agent(example["input"], config)  # <- your agent call; return its measured cost too
     latency_ms = (time.perf_counter() - start) * 1000.0
     # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
     accuracy = 1.0 if output.strip().lower() == example["expected_output"].strip().lower() else 0.0
-    return accuracy, latency_ms, 0.0  # supply real per-call cost if you track it
+    return accuracy, latency_ms, cost
 
 
 def main() -> None:
@@ -129,6 +133,8 @@ def main() -> None:
         if not line.strip():
             continue
         score, ms, cost = evaluate_one(json.loads(line), config, args.mode)
+        if cost is None:
+            raise SystemExit("unmeasured call cost: the efficiency check cannot pass on a guess")
         accuracy.append(score)
         latency.append(ms)
         total_cost += cost
@@ -154,6 +160,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import statistics
 import sys
 from pathlib import Path
@@ -188,8 +195,13 @@ def metric_series(payload: dict[str, Any], name: str) -> list[float]:
     return series
 
 def cost(payload: dict[str, Any]) -> float:
-    value = payload.get("total_cost", payload.get("cost", 0.0))
-    return float(value or 0.0)
+    value = payload.get("total_cost", payload.get("cost"))
+    if value is None:
+        raise SystemExit("missing total_cost: the budget check cannot pass on an unmeasured cost")
+    value = float(value)
+    if not math.isfinite(value) or value < 0:
+        raise SystemExit(f"non-finite or negative total_cost: {value!r}")
+    return value
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -245,4 +257,4 @@ if __name__ == "__main__":
     raise SystemExit(main())
 ```
 
-The PR job verifies wiring in offline/mock mode. The scheduled job runs the real holdout under `TRAIGENT_RUN_COST_LIMIT` and fails on promotion rejection, required-promotion no-decision, regression, budget breach, missing metrics, or latency breach.
+The PR job verifies wiring in offline/mock mode. The scheduled job runs the real holdout under `TRAIGENT_RUN_COST_LIMIT` and fails on promotion rejection, required-promotion no-decision, regression, budget breach, missing or unmeasured cost, missing metrics, or latency breach.

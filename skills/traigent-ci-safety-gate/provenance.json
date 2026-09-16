@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d58186cf81ede09e",
+  "doc_hash": "0f6a18dc2407e353",
   "reference_hashes": {
-    "references/gate-workflow.md": "e222916f019a66df"
+    "references/gate-workflow.md": "9aee30f037c76821"
   },
   "entries": [
     {
@@ -55,6 +55,17 @@
       "doc_after_hash": "d58186cf81ede09e",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "d58186cf81ede09e",
+      "doc_after_hash": "0f6a18dc2407e353",
+      "note": "state what the holdout may be (rows the optimization's eval_dataset never scored; not the guided first run's ten-row held-back split; one committed candidate, never re-gated until one promotes; Traigent does not manage the split); TRAIGENT_RUN_COST_LIMIT bounds only SDK-placed calls, so the holdout script must write a measured total_cost; references/gate-workflow.md: cost() refuses a missing, non-finite or negative total_cost (a missing/NaN cost promoted under --max-cost 0.01 before), evaluate_one returns the measured per-call cost or None and main() fails closed on None. Lesson from traigent-first-run run-safety.md (a path the controls cannot observe is not a dollar-limited path).",
+      "source_type": "agent"
     }
   ]
 }

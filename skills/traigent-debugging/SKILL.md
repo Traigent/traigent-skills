@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -73,6 +73,34 @@ Valid `TRAIGENT_API_KEY` formats — prefix → exact total length, then only `A
 
 Any space, wrong length, surrounding quotes, or other character → rejected. Confirm the value is a **Traigent** key (one of the prefixes above), not a provider key; then re-copy it cleanly (nothing before/after it), or trim at the first whitespace.
 
+### Connected run ended local-only (`cloud_url` is None, nothing on the portal)
+
+Read `results.metadata.get("source")` first. `"local_fallback"` means `algorithm="auto"` could not
+create a backend session — no key was found in the process, or session creation hit a
+connectivity failure, a 5xx, or an HTTP 400 — and the SDK ran a **local** search after one warning
+(an unresolvable backend host raises `CloudUrlUnreachableError` instead); `results.metadata["fallback_reason"]` and
+`["fallback_reason_code"]` say which. That result is not the managed run: do not present it as
+one and do not pay for it again. Set `TRAIGENT_REQUIRE_CLOUD=1` so the next run raises
+(`ConfigurationError: Cloud execution is required, but backend session creation failed …`) before
+any trial is paid for.
+
+A key the backend **rejects** never falls back — the run stops with a category in the message:
+
+- `invalid API key (HTTP 401 from POST <backend>/keys/validate)` — the `<backend>` URL names the
+  server that judged the key. A key issued by another deployment needs `TRAIGENT_BACKEND_URL`
+  pointed there (the default is `https://portal.traigent.ai`). A key exported in the shell shadows
+  the one in `.env` — `load_dotenv` keeps the process value — so a 401 can be the shell's key, not
+  the one you pasted: run once with `env -u TRAIGENT_API_KEY <command>` to tell them apart.
+- `insufficient scope (HTTP 403 …)` — a manually created portal key defaults to read-only. Create a
+  full-access key in the same project; never register a new account for it.
+- `expired API key` / `rate limited` / `edge blocked` — the text is the diagnosis; retrying blindly
+  changes nothing.
+
+A run that raised **after** paid trials carries `exc.sync_session_id`: `traigent sync <session_id>`
+uploads what was logged locally. For a run that returned but did not persist, read
+`results.metadata["persistence_status"]` — `traigent-analyze-results` → "Verify the Run Actually
+Persisted" owns that table (degraded is kept, failed is synced, neither is re-paid).
+
 ### ConfigurationError
 
 **When raised**: Invalid or malformed configuration values, unsupported features, missing required configuration.
@@ -116,10 +144,16 @@ Set `TRAIGENT_DEBUG=1` to see the full traceback instead of the clean error mess
 
 ### CostLimitExceeded
 
-**When raised**: Accumulated API cost exceeds the configured budget. Has `accumulated` and `limit` attributes.
+**When raised**: only **before the first trial**, when the pre-run cost estimate exceeds
+`cost_limit` / `TRAIGENT_RUN_COST_LIMIT` and approval was declined (a non-interactive shell without
+`TRAIGENT_COST_APPROVED=true`). Nothing was spent. A budget hit **mid-run never raises**:
+`optimize_sync()` returns normally with the paid trials kept and `results.stop_reason ==
+"cost_limit"` — report that partial result as a result, never as a failure. `CostLimitExceeded`
+is an `OptimizationError` subclass (`except OptimizationError` also catches it). Attributes:
+`estimated`, `limit`, `accumulated` (reads `0.0` on the pre-run decline).
 
 ```
-traigent.utils.exceptions.CostLimitExceeded: Cost limit exceeded: $0.52 >= $0.50 USD
+traigent.utils.exceptions.CostLimitExceeded: Cost limit exceeded: estimated $0.52 >= $0.50 USD; spent $0.00
 ```
 
 **Fixes**:
@@ -151,8 +185,12 @@ from traigent.utils.exceptions import CostLimitExceeded
 try:
     results = func.optimize_sync()
 except CostLimitExceeded as e:
-    print(f"Budget exceeded: spent ${e.accumulated:.2f} of ${e.limit:.2f} limit")
-    # Check if partial results are available
+    # Pre-run decline: nothing ran, nothing was spent — take the estimate back to the user.
+    print(f"Refused before spending: estimated ${e.estimated or 0:.2f} > limit ${e.limit:.2f}")
+    raise
+if results.stop_reason == "cost_limit":
+    # Mid-run budget hit: the paid trials are in `results`; this is a partial result, not an error.
+    print(f"Budget reached after {len(results.successful_trials)} trials — partial result kept")
 ```
 
 ### OptimizationStateError
@@ -321,10 +359,9 @@ The backend's canonical signal is HTTP **429** with `error_code: "quota_exceeded
   than a clean 429, so a run that "looks like bad input" may actually be a quota block. If
   session-create fails right at the start of a cloud run, check quota before assuming the
   config or dataset is malformed.
-- **Offline / mock dry-runs currently consume `optimization_samples` quota too** — a small
-  (~12-example) dry-run was observed to burn ~32 samples. So a dry-run is not "free" against
-  quota: either check your remaining headroom first, or budget for the dry-run itself when
-  you are near the ceiling. (This is a current implementation detail, not a guarantee.)
+- A **connected** mock run (`offline=False` with a key) creates a session and consumes
+  `optimization_samples` like any other run. An `offline=True` run makes no backend call and
+  touches no quota.
 
 ### FeatureNotAvailableError
 
@@ -360,7 +397,7 @@ pip install "traigent[dev]>=0.19"             # Development tools
 Test your optimization setup without making real API calls or connecting to the backend. The recommended activation is in-code (production-blocked, visible in code review); the env-var path below remains as a legacy fallback that works in non-production.
 <!-- /PROTECTED -->
 
-> **Mock is free of LLM spend, not free of quota:** mock/offline runs still consume `optimization_samples` (see the quota-exhaustion entry above). And exact/execution-match scorers read a uniform 0.0 under mock — see "Scores are all 0.0" below before concluding the pipeline is broken.
+> **Mock is free of LLM spend. It is free of quota only when `offline=True`** (no backend call is made); a connected mock run (`offline=False` with a key) creates a session and consumes `optimization_samples` (see the quota-exhaustion entry above). And exact/execution-match scorers read a uniform 0.0 under mock — see "Scores are all 0.0" below before concluding the pipeline is broken.
 
 **Recommended (in-code):**
 
@@ -445,6 +482,10 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 0. **Are you in mock mode?** If scores are **uniformly 0.0 / identical** and `TRAIGENT_MOCK_LLM`
    or `enable_mock_mode_for_quickstart()` is active, stop — that is the constant mock string, not
    a real result (see the Mock Mode note above). Re-run without mock before debugging the items below.
+0b. **Uniform 0.0 / 1.0 on a REAL run?** Stop paying. Print the raw model output and the value the
+   scorer actually received for two rows, and run every gold answer through the scorer once: a parse
+   bug (a markdown fence the comparator never strips) or a degenerate gold (empty, unparseable)
+   scores every configuration the same, and more trials cannot separate what the scorer cannot.
 1. Check your evaluator: does it correctly score good vs bad outputs?
 2. Check your dataset: are expected outputs correct?
 3. Check configuration space: does it include good model/parameter combinations?
@@ -530,7 +571,9 @@ try:
         print(f"Score {results.best_score} too low, using default config")
 
 except CostLimitExceeded as e:
-    print(f"Budget exceeded (${e.accumulated:.2f}/${e.limit:.2f}), using default config")
+    # Pre-run decline only: nothing ran. A mid-run budget hit does not land here — it returns
+    # normally with results.stop_reason == "cost_limit" and the paid trials kept.
+    print(f"Refused before spending (estimate ${e.estimated or 0:.2f} > ${e.limit:.2f}), using default config")
 
 except TraigentError as e:
     print(f"Optimization failed: {e.message}, using default config")

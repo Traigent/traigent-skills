@@ -117,8 +117,12 @@ def schema_ddl() -> str:
 
 
 def _run(sql: str):
+    # Candidate SQL is model output: run it on a READ-ONLY handle (a DELETE or DROP
+    # fails instead of mutating the DB the next trial reads) with a watchdog that
+    # aborts a runaway statement (a recursive CTE would otherwise hang the trial).
     try:
-        con = sqlite3.connect(DB_PATH)
+        con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+        con.set_progress_handler(lambda: 1, 100_000)  # non-zero return aborts after ~100k VM steps
         rows = con.execute(sql).fetchall()
         con.close()
         return True, rows
@@ -137,7 +141,9 @@ def _result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
     if len(pred_rows) != len(gold_rows):
         return False
     if not gold_rows:
-        return True
+        # An empty gold hands a free point to every wrong query that also returns
+        # nothing; such rows are excluded upstream (run every gold once first).
+        return False
     n = len(gold_rows[0])
     if len(pred_rows[0]) != n:
         return False
@@ -146,6 +152,19 @@ def _result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
         if (p == gold_rows) if gold_has_order_by else (Counter(p) == Counter(gold_rows)):
             return True
     return False
+
+
+def check_golds() -> None:
+    # Run every gold once before spending: a gold that errors scores 0.0 for every
+    # candidate and an empty gold would score 1.0 for every wrong-but-empty query,
+    # so neither can separate configurations. Fail loudly instead of scoring them.
+    bad = []
+    for i, (_, gold) in enumerate(TESTBED):
+        ok, rows = _run(gold)
+        if not ok or not rows:
+            bad.append((f"store_q{i}", "errors" if not ok else "returns zero rows"))
+    if bad:
+        raise SystemExit(f"gold SQL cannot separate configurations, exclude these rows first: {bad}")
 
 
 def exec_match(pred_sql: str, gold_sql: str) -> float:
@@ -269,6 +288,7 @@ def main() -> int:
         return 2
 
     build_db()
+    check_golds()
     write_dataset()
 
     if args.mock:

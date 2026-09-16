@@ -1,6 +1,6 @@
 ---
 name: traigent-recipe-text2sql
-description: "End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 66.7% -> 90% on the cheap model."
+description: "End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 20/30 -> 27/30 on its tuning slice on the cheap model."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -21,15 +21,16 @@ Use this when wiring a SPIDER-style text2SQL agent with objective execution-matc
 scoring and a Traigent optimization loop.
 
 A field-tested, end-to-end recipe that took a plain `gpt-4o-mini` NL->SQL agent
-from **66.7% -> 90.0%** execution-match accuracy on a 30-question SPIDER slice
-**while staying on the cheapest model** (~$0.00009/query). The gains came from
-**prompt-structure knobs on a cheap model**, not from a premium model.
+from **20 of 30 -> 27 of 30** execution-match on the 30-question SPIDER slice it was
+tuned on, **while staying on the cheapest model** (~$0.00009/query). The gains came from
+**prompt-structure knobs on a cheap model**, not from a premium model. Those are counts on
+the tuning slice, not a held-out result — see "The winner on this slice" below.
 
 ## The two-run lesson arc (the demo that lands)
 > **Scope: this minimal-first teaching arc is for the text2SQL EXAMPLE only.** It starts
 > small on purpose so the *lesson* lands. For a customer's **real agent** (usually a given),
 > do the opposite — push for model variety (hi/med/low + ≥2 vendors) and SIGNIFICANT,
-> low-latency knobs from run 1. See `traigent-analyze-guidance` → "The EXAMPLE vs. the REAL agent."
+> low-latency knobs from run 1, sized with `traigent-analyze-guidance` (Mode A).
 
 **Always state the permutation count** — when you present the plan, when you launch,
 and when you report results. Repeat it every time; it's how the user sees the space
@@ -98,6 +99,13 @@ multi-DB — each example carries a `db_id`; resolve schema + connection per `db
   (`SELECT CountryCode, max(Percentage)` when only codes were asked). The
   convention forgives column *order*, never missing/extra columns.
 
+Before the first paid run, execute every gold once and exclude, by id, any that errors or
+returns zero rows: an empty gold scores 1.0 for every wrong query that also returns nothing,
+and a gold that fails to run scores 0.0 for every candidate, so neither separates
+configurations. Report accuracy on the scoreable subset with that count. Run candidate SQL
+only on a read-only handle with a watchdog — never on the writable DB the agent could mutate
+(the runnable reference below does both).
+
 ```python
 from collections import Counter
 from itertools import permutations
@@ -106,7 +114,7 @@ def result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
     if len(pred_rows) != len(gold_rows):
         return False
     if not gold_rows:
-        return True
+        return False  # an empty gold was excluded upstream; never a free point
     n = len(gold_rows[0])
     if len(pred_rows[0]) != n:
         return False
@@ -126,9 +134,12 @@ results constrain the permutation space per-column as test-suite eval's
 
 ## 2. Multi-field inputs (db_id + gold)
 Traigent maps only `input`/`output` dataset fields. Put the gold SQL under
-`output` and carry `db_id` as an extra field; read everything in a
-**custom_evaluator** `(func, config, example) -> ExampleResult` (it can call the
-agent with both `question` and `db_id`). See `traigent-eval-build`.
+`output` and carry `db_id` as an extra **top-level** field, which lands in
+`example.metadata["db_id"]`; a row that wraps it in its own `metadata` object lands
+one level down (`example.metadata["metadata"]["db_id"]`) on 0.27.0 (Traigent/Traigent#1768), so read both
+shapes. Read everything in a **custom_evaluator** `(func, config, example) ->
+ExampleResult` (it can call the agent with both `question` and `db_id`). See
+`traigent-eval-build`.
 
 ## 3. Configuration space — model + STRUCTURAL knobs
 Don't stop at model+temperature. The high-value text2SQL knobs:
@@ -175,7 +186,7 @@ decorated = traigent.optimize(
 results = decorated.optimize_sync(max_trials=25, algorithm="auto")  # or: await decorated.optimize(...)
 ```
 - **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. With `offline=False`, omit `algorithm` or use `algorithm="auto"` for the default connected path to real cloud Optuna TPE. Use `"grid"`/`"random"` only for explicit local/offline search; `offline=True` keeps everything local (zero egress), `offline=False` syncs trials to the portal. Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): supported names (`bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random`) bind to the typed backend Optuna strategy on authenticated connected runs; unsupported names (`nsga2`/`cmaes`) fail fast (Traigent/Traigent#1752, #1758). They never run locally: `offline=True` raises `ConfigurationError` and the local registry raises `OptimizationError`.
-- **Mock first (free of LLM spend):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms never run offline — connected only). **Expect all-zero accuracy in mock**: this recipe scores by execution match, and every mock call returns the same canned text, so uniform 0.0 is the expected mock signature, not a broken pipeline (wiring, sampling, and scoring paths are what the mock validates). Mock also still consumes `optimization_samples` quota.
+- **Mock first (free of LLM spend):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms never run offline — connected only). **Expect all-zero accuracy in mock**: this recipe scores by execution match, and every mock call returns the same canned text, so uniform 0.0 is the expected mock signature, not a broken pipeline (wiring, sampling, and scoring paths are what the mock validates). An offline mock touches no quota; a connected mock run (`offline=False` with a key) does.
 - **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, omit `algorithm` or use `algorithm="auto"`; named smart selectors (`bayesian`/`tpe`/`optuna`) are selectable on authenticated connected runs on SDK 0.20.1+ (see the Selector bullet above).
 - **Dataset path:** `eval_dataset` must live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.
 
@@ -189,11 +200,15 @@ python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 ```
 Swap the embedded DB + questions for the real SPIDER dev set to scale up — the wiring is identical.
 
-## The proven winner (this slice)
+## The winner on this slice (tuning score — not a held-out result)
 `gpt-4o-mini · temp 0.2 · fewshot_k 2 · fewshot_selector=similar · generation_path=plan_then_sql · repair off`
--> **90.0%** @ ~$0.00009/query. The cheap model + similarity-selected few-shot +
-plan-then-SQL beat both the mid model and (separately) a premium Sonnet config
-(86.7% at 20-50x the cost).
+scored **27 of 30** on the rows it was selected on, from a 20-of-30 baseline, at
+~$0.00009/query; the cheap model + similarity-selected few-shot + plan-then-SQL beat
+both the mid model and (separately) a premium Sonnet config (26 of 30 at 20-50x the
+cost). That is a selection score on public Spider data: the winner was picked on these
+rows, so the number is optimistic and carries no held-out check. Expect the direction on
+your own agent, and score one recommended config on rows the search never saw before
+quoting a lift.
 
 ## See also
 - `traigent-analyze-guidance/references/optimization-principles.md` — the key recommendations to apply on every run.
