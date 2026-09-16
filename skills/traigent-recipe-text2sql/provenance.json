@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c2b051b0c01c944f",
+  "doc_hash": "0011944cb143c512",
   "reference_hashes": {
-    "references/quickstart_text2sql.md": "f3accae2df95ec78"
+    "references/quickstart_text2sql.md": "b6a31cc4d8e8f3ca"
   },
   "entries": [
     {
@@ -75,6 +75,17 @@
       "doc_after_hash": "c2b051b0c01c944f",
       "note": "add 'Two scoring lessons from a real run' section from ruler-dev-001 FINDINGS.md §3-5: column-contract failures and decline/error miscounting",
       "source_type": "chat_decision"
+    },
+    {
+      "edit_id": "issue-177-193-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "c2b051b0c01c944f",
+      "doc_after_hash": "0011944cb143c512",
+      "note": "Fix #177: drop non-objective exec_accuracy metric, add cloud_url gate, make config-space type-consistency a correctness rule. Fix #193: add vanilla-single-call-agent bridge to §3 config space, cross-linking traigent-boost-agent's 12-Step Lifecycle Playbook step 5.",
+      "source_type": "agent"
     }
   ]
 }
