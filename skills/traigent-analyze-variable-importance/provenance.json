@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d6a76300a735a4ed",
+  "doc_hash": "b75c8079424d8dbf",
   "entries": [
     {
       "edit_id": "genesis",
@@ -41,6 +41,17 @@
       "doc_after_hash": "05a4232224a1fbda",
       "note": "replace the bootstrap-CI significance gate (a non-negative spread whose CI clears zero even under pure noise) with a label-shuffled permutation null, and report a per-knob effect instead of copying the run-level heldout delta onto every knob",
       "source_type": "human"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "d6a76300a735a4ed",
+      "doc_after_hash": "b75c8079424d8dbf",
+      "note": "entry point for a guided first run's traigent-runs/optimized-results.json (save_to dump -> one trial per line) and an explicit rule for the under-20-trial arrival state: every knob is directional, present as knobs to test next, never rerun the search to reach 20, and leave --heldout off when only one selected configuration was scored on the held-out rows. Script unchanged.",
+      "source_type": "agent"
     }
   ]
 }

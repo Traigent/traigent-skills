@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.0"
+  version: "1.2.1"
 ---
 
 # Traigent Analyze Guidance
@@ -310,6 +310,12 @@ and fetch a fresh brief.
   evaluation on the holdout slice. If the repo already has a holdout mechanism, present
   it as that repo's implementation of this general rule, not as something Traigent
   mandated in that exact form.
+- The brief knows the numbers, not where the data came from. A run whose dataset,
+  evaluator, or agent was a generated substitute (check the project's own run record; the
+  guided first run leaves one under `traigent-runs/`) is walkthrough evidence: say
+  so before the headline, relay a `promote_winner` action as advisory on generated
+  material — promotion still needs real components and the holdout check above — and
+  keep that disclosure attached to every number quoted from the brief.
 
 ### Handoff Reference
 
@@ -380,6 +386,11 @@ print(analyzer.get_top_parameters(importance, top_k=5))
 
 If importance is empty, do not infer that no knob matters. Common reasons are too few successful trials, flat objective variance, missing objective metrics, or a configuration space that did not vary enough.
 
+Below about 20 completed trials — a first-run search is 12 — read `importance_score`,
+`optimization_priority`, and the insights `recommendations` as directional, the label the
+`traigent-analyze-variable-importance` script gives the same data; none of them carry a
+sample-size gate, and "focus on these parameters" is a hypothesis to test, not a finding.
+
 ### Example-Side Evidence
 
 <!-- PROTECTED -->
@@ -439,14 +450,14 @@ weak_examples = [
     ("question text", "expected answer", "candidate answer"),
 ]
 
-results = await answer.optimize_with_guidance(
+results = answer.optimize_with_guidance(
     provider=provider,
     weak_examples=weak_examples,
     max_trials=8,
 )
 ```
 
-`optimize_with_guidance` is a method on the decorated optimized function. Keep the provider and rewrite settings project-specific, and confirm the new candidate still improves on a heldout slice.
+`optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). Keep the provider and rewrite settings project-specific, and confirm the new candidate still improves on a heldout slice.
 
 This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent` lifecycle skill).
 
@@ -491,8 +502,7 @@ Iteration decisions are local to the current evaluation dataset, holdout, object
 ## See Also
 
 - `traigent-optimize-run` - execute approved optimization runs; adjust algorithms, trial budgets, and cost controls.
-- `traigent-dataset-curate` - build or improve local evaluation data; follow a returned curation command.
-- `traigent-dataset-curate` - join server-flagged example ids to local content.
+- `traigent-dataset-curate` - build or improve local evaluation data, follow a returned curation command, and join server-flagged example ids to local content.
 - `traigent-eval-audit` - diagnose noisy or biased judge metrics; follow a returned evaluator command.
 - `traigent-ci-safety-gate` - follow a returned gate command.
 - `traigent-analyze-results` - field-level result reading and stop-reason interpretation.
