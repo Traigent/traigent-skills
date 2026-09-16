@@ -291,19 +291,10 @@ export TRAIGENT_RUN_COST_LIMIT=5.00  # $5 max per optimization run
 The default limit is $2.00 per run.
 
 Several paid phases under one approved total (a baseline, then the search, then holdout scoring)
-share a cumulative cap through `ExecutionBudget` (experimental, SDK 0.26.0+):
-
-```python
-from traigent import ExecutionBudget
-
-cap = ExecutionBudget(max_cost_usd=5.00)  # the figure the user approved, once
-baseline = await fn.optimize(algorithm="grid", max_trials=N, budget=cap)
-search = await fn.optimize(algorithm="auto", max_trials=12, budget=cap)  # spends what is left
-```
-
-Per-run `cost_limit` still applies inside each call; the shared cap is the binding one, and a run it
-stops reports `stop_reason="execution_budget"`. It sees only SDK-tracked spend — calls your evaluator
-or a judge places directly are outside it.
+can share one cumulative cap on SDK 0.26.0+ — see
+[`references/execution-budget.md`](references/execution-budget.md). Per-run `cost_limit` still
+applies inside each call; the shared cap is the binding one, and a run it stops reports
+`stop_reason="execution_budget"`. Neither cap sees calls your evaluator or a judge places directly.
 
 ### Handling a Cost Limit
 

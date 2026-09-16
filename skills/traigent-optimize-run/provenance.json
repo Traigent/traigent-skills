@@ -1,10 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "25b2eefe5a05ecee",
+  "doc_hash": "6d2474288716da2b",
   "reference_hashes": {
     "references/algorithms.md": "1f1b85e715a30b9a",
     "references/cost-management.md": "8d64103e83f4fb7f",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
+    "references/execution-budget.md": "7ff28012ef7e162c",
     "references/parallel-config.md": "f0979cbb952b3cf3"
   },
   "entries": [
@@ -154,7 +155,7 @@
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "87cd2c82ec0b39da",
-      "doc_after_hash": "25b2eefe5a05ecee",
+      "doc_after_hash": "6d2474288716da2b",
       "note": "fold traigent-first-run's field-tested run lessons in: algorithm=auto with no live backend session degrades to a local random search that still returns a result, so a run approved as managed search launches with TRAIGENT_REQUIRE_CLOUD=1 and a results.metadata source of local_fallback (or cloud_url None) is a failure to investigate, never a result to report (mirrored in references/algorithms.md); warm_start_from is a decorator argument and raises TypeError at .optimize() call time on 0.19.1+ (#1683), so its row leaves the optimize() table; budget=ExecutionBudget row plus a multi-phase example holding one approved cap across baseline, search and holdout, with the execution_budget and vendor_error stop reasons; a paid run outlives a coding-agent shell's foreground timeout, so long runs launch detached with TRAIGENT_RESULTS_FOLDER and optionally TRAIGENT_LOG_EXAMPLE_CONTENT=false; the complete example drops timeout=300.0 (run-level default is no wall clock) and its CostLimitExceeded comment names the real pre-run condition; references/cost-management.md states the SDK cost gate is conditional (prompts only over the limit or on an unpriced model), so explicit user approval is the gate.",
       "source_type": "agent"
     }
