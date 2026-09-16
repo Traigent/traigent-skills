@@ -1,6 +1,6 @@
 {
   "generated_from": {
-    "commit_sha": "06002ee9ea3baccc34d7023be2a685044df9d7c0",
+    "commit_sha": "aa0f1a1438a2acf8d045f5a4e91335b7b4632dd6",
     "ref": "origin/develop",
     "repo": "Traigent/TraigentBackend"
   },
@@ -861,6 +861,12 @@
       "blueprint": "dataset_version",
       "method": "GET",
       "path_template": "/api/v1/datasets/<dataset_id>/versions/<version_id>",
+      "source_file": "src/routes/dataset_version_routes.py"
+    },
+    {
+      "blueprint": "dataset_version",
+      "method": "GET",
+      "path_template": "/api/v1/datasets/<dataset_id>/versions/<version_id>/snapshot",
       "source_file": "src/routes/dataset_version_routes.py"
     },
     {
