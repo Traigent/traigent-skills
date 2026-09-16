@@ -48,6 +48,8 @@
       "status": "accepted",
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "d6a76300a735a4ed",
+      "doc_after_hash": "73ba2865d761d409",
       "note": "sync interaction-policy v1: gate next-skill recommendations to result-bearing steps/decision points, cap at 3, attach eligibility reasons (policy v2, issue #238)",
       "source_type": "human"
     }
