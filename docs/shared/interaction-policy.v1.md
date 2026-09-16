@@ -34,7 +34,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
 - Hard gates — always confirm regardless of persona: paid or provider model calls, sending data or
   private content off the machine, destructive edits, decisions the Traigent service is meant to
   return, and any missing fact the step truly requires.
-- Always end by recommending the next Traigent skill or action to take.
+- Recommend the next skill only after a result-bearing step (a run finishes, an analysis
+  completes, a configuration validates) or an explicit decision point. Omit recommendations
+  during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
+  with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
+  "traigent-optimize-run — ✓ config validated").
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

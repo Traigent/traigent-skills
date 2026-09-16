@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d58186cf81ede09e",
+  "doc_hash": "b657bad96d606703",
   "reference_hashes": {
     "references/gate-workflow.md": "e222916f019a66df"
   },
@@ -55,6 +55,17 @@
       "doc_after_hash": "d58186cf81ede09e",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-gate-cap-traigent-ci-safety-gate",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "d58186cf81ede09e",
+      "doc_after_hash": "b657bad96d606703",
+      "note": "sync interaction-policy v1: gate next-skill recommendations to result-bearing steps/decision points, cap at 3, attach eligibility reasons (policy v2, issue #238)",
+      "source_type": "human"
     }
   ]
 }

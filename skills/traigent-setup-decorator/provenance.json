@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b9d67ab09e868cf5",
+  "doc_hash": "4f46a6a04fcc331c",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/evaluation-options.md": "60647f49ac8b2ae3",
@@ -143,6 +143,17 @@
       "doc_after_hash": "b9d67ab09e868cf5",
       "note": "remove the task_type row from the EvaluationOptions field table and the two paragraphs teaching readers to set it. task_type is not a field of EvaluationOptions on traigent 0.27.0 (extra='forbid' -> ValidationError: Extra inputs are not permitted), and the 'Requires traigent>=0.28' stamp named a version that is not a released tag, so the table documented a field no reader could construct. Replaced with a statement of what is true at the released floor: the evaluator-quality anchor is designated server-side, there is no client-side field for it, and passing task_type raises. A per-file python_version_floors entry was not an option -- floors are refused on SKILL.md.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-gate-cap-traigent-setup-decorator",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "b9d67ab09e868cf5",
+      "doc_after_hash": "4f46a6a04fcc331c",
+      "note": "sync interaction-policy v1: gate next-skill recommendations to result-bearing steps/decision points, cap at 3, attach eligibility reasons (policy v2, issue #238)",
+      "source_type": "human"
     }
   ]
 }

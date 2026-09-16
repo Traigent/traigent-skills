@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7c97ace17a3429d5",
+  "doc_hash": "46d1dae279731443",
   "reference_hashes": {
     "references/dspy.md": "59680e5b6e0e1570",
     "references/langchain.md": "ffe92eb4d431f3b9",
@@ -68,6 +68,17 @@
       "doc_after_hash": "7c97ace17a3429d5",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-gate-cap-traigent-setup-integrations",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "7c97ace17a3429d5",
+      "doc_after_hash": "46d1dae279731443",
+      "note": "sync interaction-policy v1: gate next-skill recommendations to result-bearing steps/decision points, cap at 3, attach eligibility reasons (policy v2, issue #238)",
+      "source_type": "human"
     }
   ]
 }

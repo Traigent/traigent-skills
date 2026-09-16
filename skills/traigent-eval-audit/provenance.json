@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e837799ff92d8b04",
+  "doc_hash": "af01ce7b77585bce",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -97,6 +97,17 @@
       "doc_after_hash": "e837799ff92d8b04",
       "note": "stop teaching EvaluationOptions(task_type=...) as a runnable instruction. On traigent 0.27.0 -- the current released SDK per sync_map.current_released_sdk_version -- EvaluationOptions sets extra='forbid' and has no task_type field, so the taught call raises ValidationError: Extra inputs are not permitted at construction. The field is expected in an unreleased later version, which is not a released tag in tests/contract/test_version_matrix.RELEASED_SDK_TAGS, and a SKILL.md cannot carry a python_version_floors entry (_is_floorable_key admits only flat references/<name>.md), so the teaching is removed rather than floored. The anchor precondition is kept and restated honestly: the anchor is designated server-side from the independent correctness signal registered for the run, and a run without one abstains with no_anchor_designation; abstain identifiers replaced by the ones witnessed live on 2026-09-13 (status abstain, reason audit_abstained, anchor_type none).",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-gate-cap-traigent-eval-audit",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "e837799ff92d8b04",
+      "doc_after_hash": "af01ce7b77585bce",
+      "note": "sync interaction-policy v1: gate next-skill recommendations to result-bearing steps/decision points, cap at 3, attach eligibility reasons (policy v2, issue #238)",
+      "source_type": "human"
     }
   ]
 }
