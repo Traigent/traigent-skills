@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.17"
+  version: "1.1.18"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -564,6 +564,16 @@ rendered visually. That requires **both** `offline=False` (the default) **and** 
 (`TRAIGENT_API_KEY`): a run with no key can fall back to local-only execution and then is **not**
 portal-tracked. The portal Pareto/frontier view also requires >=2 objectives; a single-objective
 run shows an "add a second measure" hint there, not a blank frontier. To locate a synced run:
+
+> **Portal list order reflects arrival, not execution.** The Experiments list's default sort
+> is driven by when the backend received and finalized the run, not by when you executed it
+> locally — there is no client-supplied execution timestamp in that ordering. A normal run's
+> receive order usually matches your execution order, but a deferred or retried sync
+> (`traigent local sync`, or a finalize retry after a persistence hiccup — see "Verify the Run
+> Actually Persisted" below) can land it out of that order. Do not infer execution order from
+> list position: use `results.timestamp` (the local completion time) to know when a run
+> actually finished, and `results.cloud_url` / `results.experiment_id` to open that exact run
+> directly regardless of where it sits in the list.
 
 ```python
 # The portal/backend identifiers (None when offline or local-fallback):
