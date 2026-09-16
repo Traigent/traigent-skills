@@ -455,11 +455,11 @@ CONFIGURATION_SPACE = {
    - DELEGATE (required): `traigent-optimize-run` owns algorithms, budgets, and execution controls.
 
 10. INSIGHT: configurations AND examples.
-   - Configuration side: start with `get_optimization_insights(results)`, then use `traigent-analyze-variable-importance` for importance-backed knob ranking.
+   - Configuration side: start with `get_optimization_insights(results)`; for importance-backed knob ranking beyond that, deep-dive into `traigent-analyze-variable-importance` (optional).
    - Example side: use `ExampleInsightsClient` to compute example scores, read scores, and read dataset-quality metadata. Its reportable scope is non-signal metadata; do not claim hidden difficulty, informativeness, ambiguity, or causal signal values. `ExampleInsightsClient` takes the **`/api/v1` base** (`https://portal.traigent.ai/api/v1`), while `BackendAnalyticsClient` and `traigent plan --backend-url` take the **origin** (`https://portal.traigent.ai`) — mixing the two gives a 405 or a doubled path (full table in `traigent-setup-audit`).
    - Core `ExampleInsightsClient` import warns deprecated since 0.13.x (see version-matrix: `exampleinsights-deprecation`): importing it from core `traigent.analytics` emits a `DeprecationWarning` pointing at the `traigent-analytics` plugin — but the plugin does not export this class, so keep the core import and ignore the warning for this class. If the plugin IS installed, the core shim stops exposing the class; use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (see the verified import note in `traigent-dataset-curate`).
    - Report baseline vs `results.best_config` delta for the agreed metrics, cost, token use, trial count, failed trials, and `results.stop_reason`.
-   - Use `traigent-analyze-results` for `OptimizationResult` inspection and `traigent-analyze-variable-importance` to explain which knobs mattered.
+   - Use `traigent-analyze-results` for `OptimizationResult` inspection; deep-dive into `traigent-analyze-variable-importance` (optional) for a richer explanation of which knobs mattered.
    <!-- PROTECTED -->
    - If results are flat, noisy, failed, or negative, call it a no-boost result. Do not hide it or promote a winner that does not beat the baseline on the evaluation dataset.
    <!-- /PROTECTED -->

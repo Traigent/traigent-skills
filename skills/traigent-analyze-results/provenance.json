@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d8a4b13f978f8c81",
+  "doc_hash": "d5cf1aaeee381123",
   "reference_hashes": {
     "references/convergence-patterns.md": "77652d333c38a85a",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -185,8 +185,8 @@
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "acde24064b27156b",
-      "doc_after_hash": "d8a4b13f978f8c81",
-      "note": "PR-VERIFY per-item table on issue #150: fix the live instruction-quality finding(s) for this skill",
+      "doc_after_hash": "d5cf1aaeee381123",
+      "note": "Add an explicit MCP-call-failure/backend-unreachable fallback branch (route local/offline runs to the local OptimizationResult section, portal runs to the deep-link); note a per-trial cost total is not comparable across runs with a different example count.",
       "source_type": "agent"
     }
   ]

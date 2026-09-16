@@ -27,11 +27,14 @@ npm run build
 ```
 
 Then consume the local build from your project. Under **plain npm**, `npm link` in the cloned repo plus
-`npm link @traigent/sdk` in your project works. Under **pnpm or yarn**, prefer a path/`file:` dependency
+`npm link @traigent/sdk` in your project works. Under **pnpm or yarn**, prefer a path dependency
 (e.g. `"@traigent/sdk": "file:../traigent-js"`) instead — both tools' strict, symlink-isolated
 `node_modules` layout (pnpm's content-addressed store, Yarn PnP/workspaces) commonly breaks a global
 `npm link`, surfacing as a module-resolution or duplicate-instance error rather than a clean import
-failure. Supported Node: 18, 20, 22. (Public npm publishing is tracked in Traigent/traigent-js#165.)
+failure. Under pnpm specifically, prefer **`link:../traigent-js`** over `file:` — pnpm's `file:`
+protocol hard-links/copies the package at install time, so it goes stale after every rebuild until
+you reinstall, while `link:` is a live symlink that always picks up your latest `npm run build`.
+Supported Node: 18, 20, 22. (Public npm publishing is tracked in Traigent/traigent-js#165.)
 
 ## Core Pattern
 

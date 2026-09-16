@@ -380,10 +380,16 @@ print(result.is_valid)  # True
 # Check satisfiability (are there any valid configs?)
 sat = space.check_satisfiability()
 print(sat)
-# If this is falsy, the constraints rule out every combination in the space — no trial can
-# ever run. Loosen or drop a constraint (widen a `Range`, remove an `implies`/mutual-exclusion
-# rule) and re-check before wiring the decorator; do not proceed to `@traigent.optimize` with
-# an unsatisfiable space.
+# `check_satisfiability()` returns a `SatResult` (frozen dataclass, no truthiness override —
+# `bool(sat)` is always True, so never `if sat:`). Check the field instead:
+from traigent_validation import SatStatus
+
+if sat.status is SatStatus.UNSAT:
+    # `sat.unsat_core` names the offending constraint indices. The constraints rule out every
+    # combination in the space — no trial can ever run. Loosen or drop a constraint (widen a
+    # `Range`, remove an `implies`/mutual-exclusion rule) and re-check before wiring the
+    # decorator; do not proceed to `@traigent.optimize` with an unsatisfiable space.
+    ...
 
 # Use with decorator
 @traigent.optimize(

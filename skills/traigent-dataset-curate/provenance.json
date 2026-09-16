@@ -141,7 +141,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "11471c8f3b1772d2",
       "doc_after_hash": "e4386ebd6eb03aaa",
-      "note": "PR-VERIFY per-item table on issue #150: fix the live instruction-quality finding(s) for this skill",
+      "note": "Convert the ExampleInsightsClient import-path prose (plugin installed vs. not) into a 2-row decision table.",
       "source_type": "agent"
     }
   ]

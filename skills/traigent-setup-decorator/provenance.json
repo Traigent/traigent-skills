@@ -152,7 +152,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "b9d67ab09e868cf5",
       "doc_after_hash": "1b8201fc6963ced1",
-      "note": "PR-VERIFY per-item table on issue #150: fix the live instruction-quality finding(s) for this skill",
+      "note": "State that ObjectiveSchema.__post_init__ raises ValueError on any weights_sum/weights_normalized mismatch against weight= (no silent precedence winner) and replace the hand-computed example with the existing ObjectiveSchema.from_objectives() classmethod.",
       "source_type": "agent"
     }
   ]

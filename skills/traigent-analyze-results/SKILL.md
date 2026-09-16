@@ -121,6 +121,12 @@ Use `deploy` for reading deployment-relevant result fields, `debug` for "why is 
 `report` for a summary/report request, and `iterate` only when you are inspecting the backend's
 analysis payload without deciding the next run.
 
+**If the call itself fails or the `traigent-analytics` MCP server is unreachable** (as opposed to
+the tool returning `ok=False` or an empty payload for a real portal run), do not retry it silently
+or fabricate a brief. For a local/offline run this is expected — go straight to the "Working with
+the local OptimizationResult" section below. For a portal-tracked run, say the analytics service is
+unreachable and fall back to the portal deep-link.
+
 Decision questions are out of scope for this read-only analysis skill. For portal-tracked runs,
 route open-ended next-step decisions to `traigent-analyze-guidance`, which fetches the same
 backend decision brief (`analytics_get_run_decision_brief`) with the decision-making protocol

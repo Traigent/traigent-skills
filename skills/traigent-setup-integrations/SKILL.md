@@ -38,11 +38,14 @@ pip install "traigent>=0.19" dspy
 ```
 
 > **Pin, don't float, the framework version.** `langchain-openai`/`langchain-anthropic` and `dspy` both
-> ship breaking changes across minor releases (LangChain's `langchain-core` interface churn; DSPy's
-> `dspy.LM`/module API predates a 2.x stabilization). An unpinned install can silently pick up a
-> version whose import paths or call signatures differ from the examples below. Pin the exact version
-> you verified against in your project's lockfile, e.g. `dspy>=2.5,<3` / `langchain-openai>=0.2,<0.3`,
-> and re-verify these examples before bumping either range.
+> ship breaking changes across minor releases (LangChain's `langchain-core` interface churn; DSPy has
+> moved fast enough that `dspy.LM`, present since 2.5, is not guaranteed stable across 2.x/3.x). An
+> unpinned install can silently pick up a version whose import paths or call signatures differ from
+> the examples below. Traigent's own `integrations` extra already floors
+> `langchain-openai>=1.1.14`/`langchain-anthropic>=0.2.0` (security floors — see `pip show traigent`);
+> stay at or above those, e.g. `langchain-openai>=1.1.14,<2`. `dspy` is not part of that extra and has
+> no SDK-verified floor here — pin to the exact `dspy` version you test the examples below against, or
+> treat them as unverified against your installed version until you do.
 
 > **Dry-run first.** Before any paid optimization run, activate mock mode (`enable_mock_mode_for_quickstart()`), run with your chosen config, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers.
 

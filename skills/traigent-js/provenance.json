@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f18ba72da8857fcd",
+  "doc_hash": "19b7a05445b9c57f",
   "entries": [
     {
       "edit_id": "genesis",
@@ -38,8 +38,8 @@
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "45c9bde670e83621",
-      "doc_after_hash": "f18ba72da8857fcd",
-      "note": "PR-VERIFY per-item table on issue #150: fix the live instruction-quality finding(s) for this skill",
+      "doc_after_hash": "19b7a05445b9c57f",
+      "note": "Recommend file:/link: path deps over npm link under pnpm/yarn (link: over file: specifically, since pnpm's file: is a stale hard-link copy); document the AsyncLocalStorage/ESM caveat for trial-context propagation.",
       "source_type": "agent"
     }
   ]

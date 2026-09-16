@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "36f0d3236cedcfe4",
+  "doc_hash": "e8cd3fe6045bac56",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -165,8 +165,8 @@
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "039ccdf59313f55e",
-      "doc_after_hash": "36f0d3236cedcfe4",
-      "note": "PR-VERIFY per-item table on issue #150: fix the live instruction-quality finding(s) for this skill",
+      "doc_after_hash": "e8cd3fe6045bac56",
+      "note": "Mark 9 DELEGATE handoffs required-vs-optional/deep-dive; add key-collision precedence note for Step 7's CONFIGURATION_SPACE dict-spread merge; align Step 10 INSIGHT prose with the now-optional traigent-analyze-variable-importance delegation.",
       "source_type": "agent"
     }
   ]

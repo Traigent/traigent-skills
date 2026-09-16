@@ -55,7 +55,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "038d939558305b84",
       "doc_after_hash": "bcd62947b1235964",
-      "note": "PR-VERIFY per-item table on issue #150: fix the live instruction-quality finding(s) for this skill",
+      "note": "Cross-link the 'No trials ran' checklist to the quota-exhaustion entry above it — a plan-quota block can present as zero trials with no other symptom.",
       "source_type": "agent"
     }
   ]

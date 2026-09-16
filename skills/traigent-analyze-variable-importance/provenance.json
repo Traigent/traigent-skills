@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d24334760f62dbe8",
+  "doc_hash": "ee36de6a42579463",
   "entries": [
     {
       "edit_id": "genesis",
@@ -49,8 +49,8 @@
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "d6a76300a735a4ed",
-      "doc_after_hash": "d24334760f62dbe8",
-      "note": "PR-VERIFY per-item table on issue #150: fix the live instruction-quality finding(s) for this skill",
+      "doc_after_hash": "ee36de6a42579463",
+      "note": "State that --objective must exactly match the trial's metric key (e.g. exec_accuracy on text2SQL runs), and that an empty/all-directional importance.json means insufficient variation, not 'no knob matters'.",
       "source_type": "agent"
     }
   ]
