@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "87cd2c82ec0b39da",
+  "doc_hash": "25b2eefe5a05ecee",
   "reference_hashes": {
-    "references/algorithms.md": "4c79ff944c78bf76",
-    "references/cost-management.md": "44fca0c7fb536c36",
+    "references/algorithms.md": "1f1b85e715a30b9a",
+    "references/cost-management.md": "8d64103e83f4fb7f",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/parallel-config.md": "f0979cbb952b3cf3"
   },
@@ -45,7 +45,7 @@
       "timestamp": "2026-07-05T00:00:00Z",
       "doc_before_hash": "70e6157794404a2f",
       "doc_after_hash": "aecaeb37a7a929f5",
-      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) \u2014 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
+      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) — 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
       "source_type": "human"
     },
     {
@@ -122,7 +122,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "738713d34a109be3",
       "doc_after_hash": "6fdd53351932dcb7",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -146,6 +146,17 @@
       "doc_after_hash": "c578e36da860899e",
       "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "87cd2c82ec0b39da",
+      "doc_after_hash": "25b2eefe5a05ecee",
+      "note": "fold traigent-first-run's field-tested run lessons in: algorithm=auto with no live backend session degrades to a local random search that still returns a result, so a run approved as managed search launches with TRAIGENT_REQUIRE_CLOUD=1 and a results.metadata source of local_fallback (or cloud_url None) is a failure to investigate, never a result to report (mirrored in references/algorithms.md); warm_start_from is a decorator argument and raises TypeError at .optimize() call time on 0.19.1+ (#1683), so its row leaves the optimize() table; budget=ExecutionBudget row plus a multi-phase example holding one approved cap across baseline, search and holdout, with the execution_budget and vendor_error stop reasons; a paid run outlives a coding-agent shell's foreground timeout, so long runs launch detached with TRAIGENT_RESULTS_FOLDER and optionally TRAIGENT_LOG_EXAMPLE_CONTENT=false; the complete example drops timeout=300.0 (run-level default is no wall clock) and its CostLimitExceeded comment names the real pre-run condition; references/cost-management.md states the SDK cost gate is conditional (prompts only over the limit or on an unpriced model), so explicit user approval is the gate.",
+      "source_type": "agent"
     }
   ]
 }

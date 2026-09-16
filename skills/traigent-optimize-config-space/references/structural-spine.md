@@ -144,7 +144,6 @@ Transform the decorator from a frozen evaluator into a real optimizer.
 +result = await fn.optimize(
 +    algorithm="random",
 +    max_trials=80,
-+    timeout=1800.0,
 +)
 +trials_df = result.to_dataframe()
 ```
@@ -159,10 +158,10 @@ from `result.to_dataframe()`.
 ## Operational checklist
 
 1. Confirm execution mode before a paid run: for connected real optimization, omit `algorithm` or use `algorithm="auto"` — the default connected path to real cloud Optuna TPE. Use `grid` and `random` only for explicit local/offline search. Named smart selectors like `tpe` (the Optuna/Bayesian family) execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): on an authenticated connected run, supported names bind to the typed backend Optuna strategy; unsupported names (`nsga2`/`cmaes`) fail fast with a capability message (Traigent/Traigent#1752, #1758). They never run locally: `ConfigurationError` with `offline=True`, and the SDK's local optimizer registry rejects the name with `OptimizationError` (*"Smart optimization ('tpe') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). Installing Optuna (`traigent[integrations]`) does **not** make `tpe` resolve locally -- the only locally-registered algorithms are `grid` and `random` (`_LOCAL_ALGORITHMS = {grid, random}`). Use `algorithm="random"` only when you deliberately want local sampling for a large structural search space.
-2. Set `TRAIGENT_COST_APPROVED=true` and a high `TRAIGENT_RUN_COST_LIMIT`; rely on your own real-usage budget guard.
-3. Use a fresh per-run study directory. A persistent study dedups configs and can stop early.
+2. Set one approved cap for this run — `cost_limit=<approved USD>` on `.optimize()` or `TRAIGENT_RUN_COST_LIMIT` in the launching process, never in `.env` (litellm auto-loads it into every later run). Set `TRAIGENT_COST_APPROVED=true` only after the user approved that figure, and only in that process: it silences the SDK's own prompt, whose `[r]` key would raise the cap 1.5×.
+3. A rerun over the same function and dataset repeats configurations by default (`cache_policy="allow_repeats"`); pass `cache_policy="prefer_new"` to skip ones already evaluated — and know that it can then stop early with fewer trials than `max_trials`.
 4. Read trials from `result.to_dataframe()`, not from `custom_evaluator` callbacks.
-5. Pass a large `timeout=` to `.optimize()`. The default 60s can silently truncate real runs.
+5. Leave `timeout=` unset (the run-level default is no wall-clock cap). Bound a paid search by `max_trials` and the cost cap; a clock cut a 12-trial search at 7 in the field. Keep a per-request timeout inside your own LLM call instead.
 
 ## After the run
 
