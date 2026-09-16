@@ -110,12 +110,13 @@ answerQuestion.applyBestConfig(result);
 
 Pass `offline: true` on `.optimize({ ... })` — it is an optimize option, not a spec
 field — when the run must avoid Traigent-backend egress; `TRAIGENT_OFFLINE_MODE` (alias
-`TRAIGENT_OFFLINE`) is also read. There is no `mode` option any more: `mode`, `offlineMode`,
-`privacy`, `hybridApiOptions` and `execution.mode` each throw a `ValidationError` naming the
-replacement — `algorithm` (`"grid"`/`"random"` = local, `"auto"` or a smart algorithm = cloud)
-plus `offline`, or `externalServiceEvaluator` for an external-service evaluator; e.g.
-`optimize() offlineMode was removed. Use offline instead.` (traigent-js `7b7cd07`,
-`src/optimization/spec.ts`).
+`TRAIGENT_OFFLINE`) is also read. Do not write `mode`: on the repository's default branch
+(`main` @ `9580f57`, what a source build gives you) `mode`, `offlineMode`, `privacy` and
+`execution.mode` are still accepted as **deprecated aliases** that map onto `algorithm`
+(`"grid"`/`"random"` = local, `"auto"` or a smart algorithm = cloud) plus `offline`, or
+`externalServiceEvaluator` for an external-service evaluator; the next release (`develop` @
+`7b7cd07`, `src/optimization/spec.ts`) removes them and each throws a `ValidationError` naming
+the replacement, e.g. `optimize() offlineMode was removed. Use offline instead.`
 
 In offline mode, backend HTTP is refused by the SDK's offline guard and only
 local algorithms (`grid` and `random`) run. Do not expect portal tracking or
