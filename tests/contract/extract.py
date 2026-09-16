@@ -18,6 +18,19 @@ INLINE_CODE_RE = re.compile(r"`([^`]+)`")
 # token (so capitalized prose like `` `traigent SDK` `` and version strings like
 # `` `traigent 0.0.1 does not provide ...` `` never match either).
 INLINE_CLI_RE = re.compile(r"^traigent\s+[a-z][a-z0-9-]*(?:\s+\S.*)?$")
+# A greppable prose-claim stamp: `<!-- contract: <kind> <target> in <module> [@ SDK <ver>] -->`.
+# Lets a path / literal-string / raises claim made in plain prose (never a fenced code
+# block) be decay-checked against the installed SDK's module source the same way an
+# import or kwarg fact already is. See tests/README.md "Doc-claim stamps".
+CONTRACT_COMMENT_RE = re.compile(r"<!--\s*contract:\s*(?P<body>.*?)\s*-->")
+STAMP_VERSION_RE = re.compile(r"\s+@\s+SDK\s+(?P<version>\S+)\s*$")
+STAMP_PATH_RE = re.compile(r"^path\s+(?P<target>.+?)\s+in\s+(?P<module>traigent[\w.]*)$")
+STAMP_LITERAL_RE = re.compile(
+    r'^literal\s+(?P<quoted>"(?:\\.|[^"\\])*")\s+in\s+(?P<module>traigent[\w.]*)$'
+)
+STAMP_RAISES_RE = re.compile(
+    r"^raises\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s+in\s+(?P<module>traigent[\w.]*)$"
+)
 # Same-paragraph signal that an inline `traigent <subcommand>` span is a MENTION of the
 # command's absence/status, not an assertion that it is runnable today — e.g. "Do not reach for
 # `traigent next-steps`: it was retired ..." or "Planned: a `traigent ci` command group will
@@ -151,6 +164,7 @@ def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
     lines = text.splitlines()
     paragraph_by_line = _paragraph_text_by_line(lines)
     for line_number, line in enumerate(lines, start=1):
+        facts.extend(_extract_docstamp_facts(skill, path, line_number, line))
         for match in ENV_RE.finditer(line):
             facts.append(
                 ContractFact(
@@ -191,6 +205,53 @@ def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
         elif language in {"js", "jsx", "javascript", "ts", "tsx", "typescript"}:
             facts.extend(_extract_js_block(skill, path, block))
     return _dedupe(facts)
+
+
+def _extract_docstamp_facts(
+    skill: str, path: Path, line_number: int, text: str
+) -> list[ContractFact]:
+    facts: list[ContractFact] = []
+    for comment in CONTRACT_COMMENT_RE.finditer(text):
+        body = comment.group("body").strip()
+        version = None
+        version_match = STAMP_VERSION_RE.search(body)
+        if version_match:
+            version = version_match.group("version")
+            body = body[: version_match.start()].rstrip()
+
+        parsed = _parse_docstamp_body(body)
+        if parsed is None:
+            continue
+        name, target, module = parsed
+        facts.append(
+            ContractFact(
+                kind="docstamp",
+                skill=skill,
+                path=path,
+                line=line_number,
+                module=module,
+                target=target,
+                name=name,
+                stamped_sdk_version=version,
+            )
+        )
+    return facts
+
+
+def _parse_docstamp_body(body: str) -> tuple[str, str, str] | None:
+    if match := STAMP_PATH_RE.match(body):
+        return "path", match.group("target"), match.group("module")
+    if match := STAMP_RAISES_RE.match(body):
+        return "raises", match.group("target"), match.group("module")
+    if match := STAMP_LITERAL_RE.match(body):
+        try:
+            literal = ast.literal_eval(match.group("quoted"))
+        except (SyntaxError, ValueError):
+            return None
+        if not isinstance(literal, str):
+            return None
+        return "literal", literal, match.group("module")
+    return None
 
 
 def _extract_url_facts(

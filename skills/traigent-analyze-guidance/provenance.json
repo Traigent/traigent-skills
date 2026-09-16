@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "65a778ec91bc3ee7",
+  "doc_hash": "12682fba13548010",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -247,6 +247,17 @@
       "doc_after_hash": "65a778ec91bc3ee7",
       "note": "ExampleInsightsClient appends /analytics/... to its base, so the base must be https://portal.traigent.ai/api/v1; the skills taught the bare origin, which 405s on the live portal (observed 2026-09-13). Fix the snippet base and state which client takes the origin and which takes the /api/v1 base.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-175-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "65a778ec91bc3ee7",
+      "doc_after_hash": "12682fba13548010",
+      "note": "add greppable path docstamp for example-insights endpoint (contract harness, #175)",
+      "source_type": "agent"
     }
   ]
 }

@@ -13,6 +13,54 @@ It extracts these facts from skills and references:
 - URL facts from inline code and fenced blocks: backend endpoint paths under
   `/datasets`, `/analytics`, `/experiment-runs`, `/optimization-comparisons`,
   `/sessions`, and `/hybrid`.
+- Doc-claim stamps from a `<!-- contract: ... -->` HTML comment anywhere in the
+  prose: `path`, `literal`, and `raises` claims (see below).
+
+## Doc-claim stamps
+
+Every fact above only sees fenced code blocks or code spans. A **prose** claim
+about the SDK — a file-layout path, a quoted error/warning string, or "this
+symbol does/does not raise X" — is invisible to the harness by default, so it
+can silently drift out of sync with the installed SDK and nothing goes red.
+
+Opt a specific prose claim into decay-checking by stamping it with a
+greppable HTML comment immediately after the sentence that makes the claim:
+
+```md
+The key is saved to `~/.traigent/secure_credentials.enc`.
+<!-- contract: path ~/.traigent/secure_credentials.enc in traigent.security.credentials -->
+```
+```md
+Watch the dry-run for a `found no injectable targets` warning.
+<!-- contract: literal "found no injectable targets" in traigent.config.providers -->
+```
+```md
+A pre-run over-budget estimate raises `CostLimitExceeded`.
+<!-- contract: raises CostLimitExceeded in traigent.core.cost_estimator -->
+```
+
+Grammar: `<!-- contract: <kind> <target> in <module> [@ SDK <version>] -->`,
+one stamp per comment line.
+
+- `path <target> in <module>` — `<target>` (a literal path string) must appear
+  in `<module>`'s source (or any `.py` file under it, if `<module>` is a
+  package).
+- `literal "<target>" in <module>` — same check, for a double-quoted literal
+  string (Python-escaped).
+- `raises <ExceptionName> in <module>` — the source must contain
+  `raise <ExceptionName>` (recursively for a package).
+
+The optional `@ SDK <version>` suffix works like `env_version_floors`: the
+stamp is only checked in buckets at or above that version, so a claim honestly
+restamped against a newer release does not red an older bucket. Never edit a
+stamp's target without re-verifying the claim; a mismatch fails as
+`DEAD TEACHING` with the fix menu (restamp / update the prose / remove the
+stamp because it is no longer an SDK claim).
+
+Because the stamp is a fixed, one-line comment, `grep -rn 'contract: '
+skills/` enumerates every load-bearing SDK claim currently decay-checked and
+its target module — useful both for a human audit and for finding claims that
+still need a stamp.
 
 Runnable examples are opt-in. Mark only complete, keyless Python examples with
 ````text
