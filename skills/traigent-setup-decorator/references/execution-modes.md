@@ -134,7 +134,7 @@ SDK v0.14.2, but the values do **not** all behave the same way today:
 | `"cloud"` | **Raises `ConfigurationError` at decoration time** — fails closed, no warning-and-remap | `algorithm="auto"` |
 | `"privacy"` | **Raises `ConfigurationError` at decoration time** — fails closed, no warning-and-remap | `algorithm="auto", offline=True` for no egress |
 | `"hybrid"` / `"standard"` | `DeprecationWarning` → remaps to cloud-first | `algorithm="auto"` |
-| `"local"` | `DeprecationWarning` → remaps to local-only | `offline=True` |
+| `"local"` | remaps silently to local-only (`offline=True`), no warning | `offline=True` |
 
 > **Key correction for `"cloud"` and `"privacy"`:** these two values do **not** warn-and-remap.
 > The SDK now treats them as fail-closed legacy selectors (`traigent/config/types.py`), and
@@ -142,7 +142,7 @@ SDK v0.14.2, but the values do **not** all behave the same way today:
 > `ConfigurationError` at decoration time**, because compatibility normalization for them could
 > otherwise route to cloud egress. There is no `CloudRemoteExecutionUnavailableError` on the
 > public decorator path; that error lives on a reserved cloud-client RPC surface unreachable
-> from a decorated run. Only `"hybrid"`, `"standard"`, and `"local"` still warn-and-remap.
+> from a decorated run. Only `"hybrid"` and `"standard"` still warn-and-remap; `"local"` remaps silently.
 >
 > **No-egress is `offline=True`, not any string mode value.** The `"privacy"` value
 > previously implied no-egress; on current SDK it no longer decorates at all — remove it and

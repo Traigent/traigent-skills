@@ -66,7 +66,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "24e58af61829eb8a",
       "doc_after_hash": "1c64193bac6a72ba",
-      "note": "Fix SDK-0.21/0.27 doc inaccuracy from issue #195 audit (verified against installed traigent SDK).",
+      "note": "issue #195 audit: references/parameter-types.md - Range/IntRange.to_config_value() returns a tuple when neither step nor log is set, and a dict carrying only whichever of step/log is set (both together raise ValueError). Verified on 0.27.0.",
       "source_type": "agent"
     }
   ]

@@ -4,7 +4,7 @@
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/evaluation-options.md": "6ddebf1de9dd5838",
-    "references/execution-modes.md": "e90d1e0e52ec2d2d",
+    "references/execution-modes.md": "9810ea63e8fcfc89",
     "references/injection-modes.md": "30b94bf570e66954",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
   },
@@ -152,7 +152,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "b9d67ab09e868cf5",
       "doc_after_hash": "13444704c11fd47b",
-      "note": "Fix SDK-0.21/0.27 doc inaccuracy from issue #195 audit (verified against installed traigent SDK).",
+      "note": "issue #195 audit: references/execution-modes.md - the retired string mode selector's cloud/privacy values raise ConfigurationError at decoration (no warn+remap); hybrid/standard still warn-and-remap; local remaps silently with no warning. references/evaluation-options.md - a custom_evaluator with the wrong arity raises ValidationError at decoration; metric-style parameter names only log a warning. Verified on 0.27.0.",
       "source_type": "agent"
     }
   ]

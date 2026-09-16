@@ -9,7 +9,7 @@ The `OptimizationResult` dataclass is returned by `func.optimize()` and contains
 | Field | Type | Description |
 |---|---|---|
 | `trials` | `list[TrialResult]` | All trial results from the optimization run, in execution order. |
-| `best_config` | `dict[str, Any] \| None` | The configuration that achieved the best objective score, or `None` if no trial succeeded (it is not guaranteed to be an empty dict). |
+| `best_config` | `dict[str, Any] \| None` | The configuration that achieved the best objective score, or `None` when no eligible trial produced a winner (`{}` only on the strict-evidence no-certified-winner path) — guard with `if not results.best_config`; it is not guaranteed to be an empty dict). |
 | `best_score` | `float \| None` | The best objective score achieved. `None` when no trial produced a valid, rankable score. |
 | `optimization_id` | `str` | Unique identifier for this optimization run. |
 | `duration` | `float` | Total wall-clock time in seconds for the entire optimization. |
@@ -151,6 +151,7 @@ OptimizationStatus.RUNNING       # "running"
 OptimizationStatus.COMPLETED     # "completed"
 OptimizationStatus.FAILED        # "failed"
 OptimizationStatus.CANCELLED     # "cancelled"
+OptimizationStatus.UNKNOWN       # "unknown"
 ```
 
 ## TrialStatus Enum
@@ -165,6 +166,7 @@ TrialStatus.COMPLETED    # "completed"
 TrialStatus.FAILED       # "failed"
 TrialStatus.CANCELLED    # "cancelled"
 TrialStatus.PRUNED       # "pruned"
+TrialStatus.UNKNOWN      # "unknown"
 ```
 
 ---

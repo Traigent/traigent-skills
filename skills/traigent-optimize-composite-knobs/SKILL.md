@@ -100,8 +100,11 @@ def answer(text: str) -> tuple[str, dict[str, float]]:
         config=params,
         calibrated_values={GATE: params[GATE]},
     )
-    # The composite_* keys become per-trial measures on the wire.
-    metrics = {"accuracy": 1.0 if str(run.output) == _EXPECTED else 0.0}
+    # Leave `accuracy` to the built-in evaluator (it scores run.output against
+    # the dataset's expected output): a returned key named `accuracy` is
+    # reserved and silently dropped. The composite_* keys become per-trial
+    # measures on the wire.
+    metrics: dict[str, float] = {}
     merge_composite_measures(metrics, run)
     return str(run.output), metrics
 ```

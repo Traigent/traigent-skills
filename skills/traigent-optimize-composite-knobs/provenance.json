@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0d70e6638968ff54",
+  "doc_hash": "241ee88ce310e28b",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1",
@@ -76,8 +76,8 @@
       "run_id": null,
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "f9a13d9a52df48b9",
-      "doc_after_hash": "0d70e6638968ff54",
-      "note": "Fix SDK-0.21/0.27 doc inaccuracy from issue #195 audit (verified against installed traigent SDK).",
+      "doc_after_hash": "241ee88ce310e28b",
+      "note": "issue #195 audit: the escape-hatch text and the Quick Start no longer return a metric under the reserved key accuracy (the SDK logs 'Skipping user metric ... reserved' and drops it; the built-in evaluator scores accuracy); a custom metric needs a non-reserved key and a matching objectives= entry. Verified on 0.27.0.",
       "source_type": "agent"
     }
   ]
