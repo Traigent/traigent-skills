@@ -789,8 +789,8 @@
     ]
   },
   "generated_from": {
-    "commit_sha": "7b7cd076babdc4e39af68c75f90b7fdeaa8f1388",
-    "ref": "origin/develop",
+    "commit_sha": "9580f5772e1ce9f38adeb418870d6386210ab4ad",
+    "ref": "origin/main",
     "repo": "Traigent/traigent-js"
   }
 }

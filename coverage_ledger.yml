@@ -980,112 +980,114 @@ waivers:
     owner: nimrodbusany
 
   # JS API snapshot refresh 2026-09-16 (issue #113): tools/contract/refresh_js_api.py against
-  # traigent-js origin/develop @ 7b7cd076babdc4e39af68c75f90b7fdeaa8f1388 (765 symbols, up from 641).
-  # All 125 new exports are hosted-portal/backend surfaces outside traigent-js's taught scope
-  # (optimize()/param.*/evaluation/budget/execution/trial-context/offline-mode); grouped below by
-  # feature area with a shared reason per group. Full teach/waive table is in the PR body for
-  # owner review — flip any row to "teach" by removing its waiver and adding it to skills/traigent-js.
+  # traigent-js origin/main @ 9580f5772e1ce9f38adeb418870d6386210ab4ad (765 symbols, up from 641;
+  # 1 removal, root @traigent/sdk#withTraigent, moved to @traigent/sdk/vercel-ai — no skill teaches
+  # the root form). All 125 new exports are hosted-portal/backend surfaces outside traigent-js's
+  # taught scope (optimize()/param.*/evaluation/budget/execution/trial-context/offline-mode);
+  # grouped below by feature area with a shared reason per group. Full teach/waive table is in the
+  # PR body for owner review — flip any row to "teach" by removing its waiver and adding it to
+  # skills/traigent-js.
   "js:@traigent/sdk#CHARACTERIZATION_BAND_FIELDS":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#CHARACTERIZATION_FIELD_NAMES":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#CHARACTERIZATION_OVERRIDE_FIELDS":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#CharacterizationFieldName":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#CharacterizationForEgress":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#ECONOMICS_TELEMETRY_CONTRACT":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#ECONOMICS_TELEMETRY_CONTRACT_VERSION":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsFunnelEvent":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsReceiptEvent":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsRunEvent":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsTelemetryClient":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsTelemetryClientOptions":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsTelemetryCounts":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsTelemetryEvent":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsTelemetryOutcome":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsTelemetryRejection":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsTelemetryResult":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsTelemetrySource":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#EconomicsTelemetrySourceKind":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#SubmitEconomicsTelemetryInput":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#enforceCharacterizationEgress":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsCharacterizationVocabularySchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsCommonSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsFunnelEventSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsReceiptEventSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsRecommendationRequestSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsRecommendationResponseSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsRunEventSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsTelemetryEventSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsTelemetryIngestRequestSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsTelemetryIngestResponseInitialSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsTelemetryIngestResponseReplaySchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#EconomicsTelemetryIngestResponseSchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk/schema#TimingMetricVocabularySchema":
-    reason: server-side economics telemetry (funnel/receipt/run events, characterization vocabulary, egress enforcement); not a user-facing optimization surface
+    reason: hosted economics-telemetry emission, not part of optimize() (funnel/receipt/run events, characterization vocabulary, egress enforcement)
     owner: nimrodbusany
   "js:@traigent/sdk#ObservabilityExecutionContext":
     reason: hosted observability/tracing ingestion and analysis surface (traces, tool/analysis insights, session/observation ingest, execution-context provenance); traigent-js teaches only the local optimize() workflow, not trace/observability ingestion
