@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "038d939558305b84",
+  "doc_hash": "962450e640492adc",
   "reference_hashes": {
     "references/error-reference.md": "658bbefa9c203bea",
     "references/logging-config.md": "a9ba72306ba70183",
-    "references/mock-mode.md": "70fb8325c09901e6"
+    "references/mock-mode.md": "2097960cc4198421"
   },
   "entries": [
     {
@@ -46,6 +46,17 @@
       "doc_after_hash": "038d939558305b84",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "issue-195-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "038d939558305b84",
+      "doc_after_hash": "962450e640492adc",
+      "note": "issue #195 audit: mock-mode.md — the TRAIGENT_MOCK_LLM production guard raises OSError at first decoration/optimize(), not at `import traigent` (verified on 0.27.0: bare import succeeds). The exception-hierarchy fix from the same audit is in PR #286, not here.",
+      "source_type": "agent"
     }
   ]
 }

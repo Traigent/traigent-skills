@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.16"
+  version: "1.0.17"
 ---
 
 # Running Traigent Optimization
@@ -432,7 +432,7 @@ print(results.best_config)     # {"model": "gpt-4o", "temperature": 0.5}
 print(results.best_score)      # 0.92
 
 # Run metadata
-print(results.algorithm)       # "grid"
+print(results.algorithm)       # "GridSearchOptimizer" (the resolved optimizer class name, not the "grid" string you passed in)
 print(results.duration)        # 45.2 (seconds)
 print(results.stop_reason)     # "max_trials_reached"
 print(results.total_cost)      # 0.34 (USD, if tracked)

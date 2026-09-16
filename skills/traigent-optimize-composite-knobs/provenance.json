@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f9a13d9a52df48b9",
+  "doc_hash": "241ee88ce310e28b",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1",
@@ -68,6 +68,17 @@
       "doc_after_hash": "31680229368b35c3",
       "note": "move the useful fitness, comparator, headroom, economics, calibration, and historical evidence guidance from the retired agents-skills traigent-router prototype into the owning public composite-knobs skill; distinguish current pre-dispatch router semantics from post-output cascades and incorporate Traigent/agents-skills#118 claim disambiguation",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "issue-195-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "f9a13d9a52df48b9",
+      "doc_after_hash": "241ee88ce310e28b",
+      "note": "issue #195 audit: the escape-hatch text and the Quick Start no longer return a metric under the reserved key accuracy (the SDK logs 'Skipping user metric ... reserved' and drops it; the built-in evaluator scores accuracy); a custom metric needs a non-reserved key and a matching objectives= entry. Verified on 0.27.0.",
+      "source_type": "agent"
     }
   ]
 }

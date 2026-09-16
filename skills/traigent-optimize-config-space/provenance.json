@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "24e58af61829eb8a",
+  "doc_hash": "1c64193bac6a72ba",
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
-    "references/parameter-types.md": "eab8e4595ec71fd9",
+    "references/parameter-types.md": "168f2e30312cff5c",
     "references/structural-spine.md": "262c7f4ac4be9549"
   },
   "entries": [
@@ -57,6 +57,17 @@
       "doc_after_hash": "24e58af61829eb8a",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "issue-195-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "24e58af61829eb8a",
+      "doc_after_hash": "1c64193bac6a72ba",
+      "note": "issue #195 audit: references/parameter-types.md - Range/IntRange.to_config_value() returns a tuple when neither step nor log is set, and a dict carrying only whichever of step/log is set (both together raise ValueError). Verified on 0.27.0.",
+      "source_type": "agent"
     }
   ]
 }

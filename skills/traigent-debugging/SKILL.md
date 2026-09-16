@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Debugging and Troubleshooting Traigent

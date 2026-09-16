@@ -9,12 +9,12 @@ The `OptimizationResult` dataclass is returned by `func.optimize()` and contains
 | Field | Type | Description |
 |---|---|---|
 | `trials` | `list[TrialResult]` | All trial results from the optimization run, in execution order. |
-| `best_config` | `dict[str, Any]` | The configuration that achieved the best objective score. Empty dict if no trial succeeded. |
+| `best_config` | `dict[str, Any] \| None` | The configuration that achieved the best objective score, or `None` when no eligible trial produced a winner (`{}` only on the strict-evidence no-certified-winner path) — guard with `if not results.best_config`; it is not guaranteed to be an empty dict). |
 | `best_score` | `float \| None` | The best objective score achieved. `None` when no trial produced a valid, rankable score. |
 | `optimization_id` | `str` | Unique identifier for this optimization run. |
 | `duration` | `float` | Total wall-clock time in seconds for the entire optimization. |
 | `convergence_info` | `dict[str, Any]` | Dictionary with convergence statistics (see convergence-patterns.md for fields). |
-| `status` | `OptimizationStatus` | Final status of the optimization. One of: `NOT_STARTED`, `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`. |
+| `status` | `OptimizationStatus` | Final status of the optimization. One of: `NOT_STARTED`, `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `UNKNOWN`. |
 | `objectives` | `list[str]` | List of objective metric names being optimized (e.g., `["accuracy"]`). |
 | `algorithm` | `str` | Name of the optimization algorithm used. |
 | `timestamp` | `datetime` | When the optimization completed. |
@@ -79,7 +79,7 @@ The `TrialResult` dataclass represents the outcome of a single optimization tria
 | `trial_id` | `str` | Unique identifier for this trial. |
 | `config` | `dict[str, Any]` | The configuration used for this trial (e.g., `{"model": "gpt-4o", "temperature": 0.5}`). |
 | `metrics` | `dict[str, float]` | Metric values produced by this trial (e.g., `{"accuracy": 0.85, "latency": 1200.0}` — the bare `latency` metric is **milliseconds** on SDKs after 0.22.0; see version-matrix: `latency-unit`). |
-| `status` | `TrialStatus` | Status of this trial. One of: `NOT_STARTED`, `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `PRUNED`. |
+| `status` | `TrialStatus` | Status of this trial. One of: `NOT_STARTED`, `PENDING`, `RUNNING`, `COMPLETED`, `FAILED`, `CANCELLED`, `PRUNED`, `UNKNOWN`. |
 | `duration` | `float` | Wall-clock execution time for this trial in seconds. |
 | `timestamp` | `datetime` | When this trial was executed. |
 | `error_message` | `str \| None` | Error message if the trial failed. `None` for successful trials. |
@@ -151,6 +151,7 @@ OptimizationStatus.RUNNING       # "running"
 OptimizationStatus.COMPLETED     # "completed"
 OptimizationStatus.FAILED        # "failed"
 OptimizationStatus.CANCELLED     # "cancelled"
+OptimizationStatus.UNKNOWN       # "unknown"
 ```
 
 ## TrialStatus Enum
@@ -165,6 +166,7 @@ TrialStatus.COMPLETED    # "completed"
 TrialStatus.FAILED       # "failed"
 TrialStatus.CANCELLED    # "cancelled"
 TrialStatus.PRUNED       # "pruned"
+TrialStatus.UNKNOWN      # "unknown"
 ```
 
 ---
