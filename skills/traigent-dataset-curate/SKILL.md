@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.5"
+  version: "1.1.6"
 ---
 
 # Traigent Curate Dataset
@@ -24,7 +24,7 @@ Use this skill when you need to build, grow, or audit the examples that Traigent
 - Mock or zero-egress check first with `enable_mock_mode_for_quickstart()`, `offline=True`, and a small local sample.
 - Before paid provider or backend runs, estimate cost, ask for user approval, and set `TRAIGENT_RUN_COST_LIMIT`.
 - For task-shape recipes, read `references/dataset-recipes.md`.
-- Only when none of the above sources exist at all — no fixtures, golden sets, tickets, logs, traces, or labeled examples anywhere — a guided cold-start path is planned. It is **not available in the shipping SDK**; ask Traigent whether it is enabled for your deployment rather than building against it.
+- Only when none of the above sources exist at all — no fixtures, golden sets, tickets, logs, traces, or labeled examples anywhere — consider the cold-start path. It exists in the SDK from 0.27.0 but is gated by a backend flag that is off by default; read `references/cold-start.md` before offering it.
 
 ## Optimization Economics — Read This Before Sizing a Run
 
@@ -85,14 +85,44 @@ instead. Read its opening section before offering the path to anyone: it needs
 is off by default, and it brings no generation technique or verifier of its own. Real
 curated data beats generated data every time, so exhaust this section first.
 
+## Check the rows before you spend on them (local, free)
+
+Run these over the whole file, in a working copy under a path you name — never edit the
+user's original, and report every change by row id:
+
+- usable vs corrupted rows; duplicate ids; exact and near-duplicate inputs;
+- empty or constant expected outputs; a dominant label a lazy configuration could guess;
+- tuning/holdout overlap by id **and** by normalized input; a split where each recurring
+  input kind sits on one side only.
+
+Then run every gold answer through the chosen scorer: a gold that scores a right and a wrong
+answer identically (empty, case-trapped, unparseable) can separate no configuration. Exclude
+it, quote results on the scoreable subset, and keep the excluded ids. Finally read input beside
+expected output for the rows the run will score and ask "is this a sensible answer under this
+scoring method?" — one wrong gold in ten rows moves the number ten points. That read is your
+judgement, never a label; a `no` is a proposed diff the user accepts or declines, never a silent
+edit. This is integrity, not hard-example selection — the server still owns that (see
+"Boundary" below).
+
+A prior run that left repaired / generated / excluded row lists (the guided first run writes
+them under `traigent-runs/`) is this pass already run once: start from what it left open, and
+keep extending its working copy rather than the original.
+
 ## JSONL format and holdout discipline
 
 Use one JSON object per line. Put model inputs under `input` or `input_data`, the expected answer under `expected_output` or an accepted alias, and non-label context in `metadata`.
 
 ```json
-{"input": {"question": "What is the refund window for annual plans?"}, "expected_output": "Annual plans are refundable within 30 days.", "metadata": {"split": "tune", "source": "policy-golden", "task": "qa"}}
-{"input": {"question": "Can I pause a monthly subscription?"}, "expected_output": "Monthly subscriptions can be paused from billing settings.", "metadata": {"split": "holdout", "source": "support-review", "task": "qa"}}
+{"input": {"question": "What is the refund window for annual plans?"}, "expected_output": "Annual plans are refundable within 30 days.", "metadata": {"split": "tune", "source": "reviewed-policy", "task": "qa"}}
+{"input": {"question": "Can I pause a monthly subscription?"}, "expected_output": "Monthly subscriptions can be paused from billing settings.", "metadata": {"split": "holdout", "source": "curated-support", "task": "qa"}}
 ```
+
+Declare where each row came from twice: `source` (or `provenance`) for the **question** — a word
+starting with `production`/`collected`/`curated`/`reviewed`/`gold`/`human` when someone observed
+it, `synthetic`/`generated`/`model-written` when nobody did — and `output_provenance` for the
+**answer**, when a model wrote the label for a real input. A row that says nothing counts as
+generated; a model-written answer key measures agreement with that model, not correctness, until
+a person reviews a sample. Human review improves a generated row; it never changes its origin.
 
 ### One canonical dataset contract
 
@@ -103,7 +133,7 @@ flat `{"input": "...", "output": "..."}` is just this contract with scalar value
 |---|---|---|
 | `input` (or `input_data`) | `example.input_data` | required; the value can be a scalar **or a nested dict**. Called as `func(**input_data)` when it is a dict. |
 | **gold key** (first match) | `example.expected_output` | the value can be a scalar **or a nested dict** (then index it, e.g. `expected["sql"]`). |
-| every **other top-level key** | `example.metadata[<key>]` | this is how a **per-example side field** (e.g. `db_path`) reaches a scorer. |
+| every **other top-level key** | `example.metadata[<key>]` | this is how a **per-example side field** (e.g. `db_path`) reaches a scorer. A row that carries its own `metadata` object lands one level down — `example.metadata["metadata"]["split"]` — because 0.27.0 does not flatten it (Traigent/Traigent#1768); a scorer must read both shapes. |
 
 **Accepted gold-key aliases**, in first-match order (SDK `evaluators/base.py` `_EXPECTED_OUTPUT_FIELDS`):
 `output`, `expected`, `expected_output`, `answer`, `target`, `label`. Pick **one** per row.
@@ -132,7 +162,9 @@ Holdout rules:
 - Reserve the holdout slice before the first optimization run, and record how the dataset is partitioned: tuning/search slice, optional exemplar/few-shot bank, and holdout slice.
 - Split by stable example id, customer, document, repository, or time window when near-duplicates exist.
 - Stratify by task type, difficulty, language, tenant, tool path, and known failure class.
-- Keep synthetic examples out of the holdout unless a human reviews and labels them independently.
+- The SDK does not read `split`: `eval_dataset` loads every row it is given, and `EvaluationOptions` has no holdout field (verified on 0.27.0; a first-class holdout primitive is tracked in Traigent/Traigent#2143). The tag is bookkeeping for you and for readiness checks, not a fence. Keep the holdout in its own file (`eval/holdout.jsonl`) that no `eval_dataset`, `optimize_with_guidance`, or synthesizer seed ever names — a filtered slice of one file is a predicate that has to stay right; a file the search was never given cannot leak.
+- The holdout exists to defeat selection: picking the best of N trials on the tuning rows makes that score optimistic. Score exactly **one** configuration on the holdout — the one already chosen on tuning scores — and report its number beside the tuning number. Scoring two candidates there and keeping the better is selection, and a set used for selection is no longer held out. Under ~30 rows report correct counts, not percentages, and say the gap may land lower, level, or higher.
+- Synthetic rows stay `synthetic` however carefully a human reviewed them; a holdout that contains them, or one you built and can read, is held-back and non-blind — say so beside every number it produces, and never call it production evidence.
 - Rebuild the tuning slice freely; touch the holdout only to add newly sourced, independently reviewed examples.
 - Report tune-slice movement and holdout movement separately.
 - If no holdout exists yet, say so explicitly and create one before treating any result as promotion-ready; preserve the same split across iteration rounds — never recreate or contaminate it after a run.
@@ -398,7 +430,7 @@ Flag-to-curation-action guide for step 3:
 | `possible_mislabel` | Re-check the expected answer / rubric |
 | `redundant_pattern` | Remove or dedupe; broaden coverage elsewhere |
 | `anomalous_low_success` | Clarify the expected output, or keep as a deliberate hard case |
-| `high_response_variance` | Clarify acceptable answers or add repetitions |
+| `high_response_variance` | Separate the cause first: agent temperature > 0 with a strict scorer (pin 0 or add repetitions); a configuration that structurally fails (empty/erroring outputs — exclude it, do not repeat it); a brittle exact match on a correct-but-rephrased answer (equivalence-aware match). Repetitions fix only the first. |
 | `low_agent_strength_correlation` | Review the label or the evaluator for this example |
 | `low_sample_support` | Rerun for more evidence before a permanent dataset change |
 

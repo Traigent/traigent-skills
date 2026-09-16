@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "cc9f6f6cf32aeae7",
+  "doc_hash": "01152520c709ad2f",
   "reference_hashes": {
     "references/evaluator-templates.md": "5c783861911a82e1"
   },
@@ -64,6 +64,17 @@
       "doc_after_hash": "d608c3e241d120cc",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "cc9f6f6cf32aeae7",
+      "doc_after_hash": "01152520c709ad2f",
+      "note": "a judge inside metric_functions is outside the SDK cost ledger on 0.27.0 (local evaluator settles example cost before metric functions run) so judge spend must be budgeted and capped in user code; the Tier-3 example no longer converts a data-shape exception into an ordinary 0.0 (an objective metric that raises fails the trial closed with EvaluationError); nested explicit metadata object pitfall; new pitfall on scoring what the evaluator is handed (fence strip seam, all-0.0/all-1.0 first paid run is a scorer suspect); claim-scope line that a 0.0 must mean a wrong answer; See Also points at traigent-boost-agent (the bare traigent skill was merged).",
+      "source_type": "agent"
     }
   ]
 }

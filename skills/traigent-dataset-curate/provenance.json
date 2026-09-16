@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "11471c8f3b1772d2",
+  "doc_hash": "f4d340dcfd3f1ebc",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
@@ -132,6 +132,17 @@
       "doc_after_hash": "11471c8f3b1772d2",
       "note": "ExampleInsightsClient appends /analytics/... to its base, so the base must be https://portal.traigent.ai/api/v1; the skills taught the bare origin, which 405s on the live portal (observed 2026-09-13). Fix the snippet base and state which client takes the origin and which takes the /api/v1 base.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "11471c8f3b1772d2",
+      "doc_after_hash": "f4d340dcfd3f1ebc",
+      "note": "fold traigent-first-run's field-tested dataset lessons into the lifecycle skill: a free local row-integrity pass (duplicates, degenerate gold through the scorer, row-level read as judgement, working copy never the original) with a first-run arrival entry point; a two-field provenance vocabulary (question source vs model-written answer) matching first-run's preflight prefixes; the SDK does not read the split tag (verified on 0.27.0: EvaluationOptions has no holdout field) so the holdout lives in its own file; one configuration on the holdout, counts under ~30 rows, synthetic stays synthetic and a readable holdout is non-blind; nested explicit metadata object lands one level down; cold-start sentence aligned with references/cold-start.md; high_response_variance cell separates the three causes.",
+      "source_type": "agent"
     }
   ]
 }

@@ -1,6 +1,6 @@
 ---
 name: traigent-eval-audit
-description: "Audit evaluator reliability before trusting Traigent optimization decisions. Use when users ask: is my LLM judge reliable, audit my evaluator, judge agreement, evaluator calibration, calibrate thresholds, parse-failure policy, repeated-judge stability, bias probes, or when optimization results depend on an LLM-as-judge metric."
+description: "Audit evaluator reliability before trusting Traigent optimization decisions. Use when users ask: is my LLM judge reliable, audit my evaluator, does my exact-match or deterministic scorer fit the task, validate my evaluation policy, judge agreement, evaluator calibration, calibrate thresholds, parse-failure policy, repeated-judge stability, bias probes, or when optimization results depend on an LLM-as-judge metric."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.7"
+  version: "1.1.8"
 ---
 
 # Evaluator Audit
@@ -90,6 +90,22 @@ retroactive quality signal computed from real runs.
 An unreliable evaluator silently corrupts every optimization decision downstream. If the judge rewards verbosity, misses parse failures, changes labels on repeated calls, or disagrees with humans on the target evaluation dataset, the optimizer can faithfully optimize the wrong thing.
 
 Run the audit before the first real optimization, then re-run it whenever the judge model, prompt, output schema, scoring rubric, or evaluation dataset changes.
+
+## Task-Fit Calibration (any evaluator, deterministic first)
+
+Before trusting a comparator or a judge, run it over at least four authored answers per
+materially distinct case — `good`, `equivalent_good` (same correctness in another accepted form:
+case, spacing, an alias, a markdown fence), `partial`, `bad` — and record the score mode from the
+product decision **before** any score exists: `graded` requires good ≈ equivalent_good > partial >
+bad; `binary` requires both goods to pass and partial **and** bad to fail. Reject the evaluator
+when: all scores are equal; all 0 or all 1; `equivalent_good` is penalized for surface form;
+`partial` ≥ `good` or ≤ `bad`; `bad` passes; or an exception is silently scored 0. Add two probes
+you may not revise — the expected answer permuted, and a malformed output — they raise questions,
+never verdicts. Never widen the scorer until a probe passes; record the equivalent it cannot reach
+as a coverage gap instead. Re-run after any evaluator repair.
+
+A prior run's calibration record (the guided first run leaves one under `traigent-runs/`) is this
+protocol already run once: start from what it left open, on the customer's own evaluation policy.
 
 ## Gold-Set Agreement (Manual Protocol)
 
