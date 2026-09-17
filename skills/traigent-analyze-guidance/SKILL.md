@@ -388,8 +388,11 @@ If importance is empty, do not infer that no knob matters. Common reasons are to
 
 Below about 20 completed trials — a first-run search is 12 — read `importance_score`,
 `optimization_priority`, and the insights `recommendations` as directional, the label the
-`traigent-analyze-variable-importance` script gives the same data; none of them carry a
-sample-size gate, and "focus on these parameters" is a hypothesis to test, not a finding.
+`traigent-analyze-variable-importance` script gives the same data. The only sample-size gates
+are the analyzer's own: `analyze_variance_based` and the correlation method return `{}` under
+10 successful trials, `analyze_permutation_based` under 20 — an empty result is "too few
+trials", never "no knob matters" — and above those floors nothing marks a ranking as
+underpowered, so "focus on these parameters" is a hypothesis to test, not a finding.
 
 ### Example-Side Evidence
 

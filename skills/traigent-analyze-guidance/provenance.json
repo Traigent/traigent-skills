@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "8e271f1c8cb3b909",
+  "doc_hash": "442a851d049a9a5e",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -257,6 +257,17 @@
       "doc_before_hash": "65a778ec91bc3ee7",
       "doc_after_hash": "8e271f1c8cb3b909",
       "note": "Mode B presentation rule: the brief knows the numbers, not the provenance - a run built on generated substitutes (the project's own run record) is walkthrough evidence and a promote_winner action on it is advisory; Mode C: importance/insights output below ~20 trials is directional with no sample-size gate; optimize_with_guidance is synchronous (drop the await, verified on 0.27.0); collapse the duplicated traigent-dataset-curate See Also row.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "8e271f1c8cb3b909",
+      "doc_after_hash": "442a851d049a9a5e",
+      "note": "review fix: 'none of them carry a sample-size gate' was false - analyze_variance_based and the correlation method return {} under 10 successful trials, analyze_permutation_based under 20 (importance.py, 0.24.0 and 0.27.0); the sentence now names those floors and keeps the point that nothing above them marks a ranking as underpowered.",
       "source_type": "agent"
     }
   ]

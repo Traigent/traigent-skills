@@ -460,7 +460,7 @@ if audit is not None:
 
 A never-correct row is a suspect *expectation* before it is a model failure; `suggested_answer` is
 set only where unrelated model families agreed on the same non-gold output. `results.example_matrix`
-is the per-example × per-config grid behind it. Do not call `results.analyze()`: it needs the
+is the per-example × per-trial grid behind it (two trials of one config are two columns). Do not call `results.analyze()`: it needs the
 separate tuned-variables plugin, which the SDK does not install, and raises `ImportError`
 without it.
 
@@ -733,13 +733,16 @@ Verify results before applying:
 ```python
 results = classify.optimize_sync()
 
-verdict = (results.best_config_margin or {}).get("verdict")
-if results.best_score is not None and results.best_score >= 0.85 and verdict != "statistical_tie":
-    classify.apply_best_config(results)
-    print(f"Applied config with score {results.best_score:.2%}")
-else:
+# best_config_margin exists from SDK 0.26.0; getattr keeps this runnable on the 0.24.0 floor (verdict None there)
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
+if results.best_score is None or results.best_score < 0.85:
     print(f"Score {results.best_score} below threshold, not applying")
     # Use a known-good default instead
+elif verdict == "statistical_tie":
+    print(f"Score {results.best_score:.2%} but the winner is tied with the runner-up, not applying")
+else:
+    classify.apply_best_config(results)
+    print(f"Applied config with score {results.best_score:.2%}")
 ```
 
 This threshold check runs on the optimization/search slice — it gates whether to apply, not whether to promote. Promotion is a separate decision that requires candidate-vs-incumbent evaluation on the holdout slice (see `traigent-ci-safety-gate`).
@@ -827,20 +830,24 @@ top_trials = sorted(
 for trial in top_trials:
     print(f"  {trial.config} -> accuracy={trial.get_metric('accuracy'):.3f}")
 
-# 5. Convergence check
-if results.stop_reason == "plateau":
-    print("\nOptimization converged naturally")
-elif results.stop_reason == "max_trials_reached":
-    print("\nMay benefit from more trials")
+# 5. Stop reason — a result, never a verdict on buying more trials (see the table above)
+print(f"\nStop reason: {results.stop_reason}")
 
-# 6. Apply if good enough
+# 6. Apply if good enough and not a statistical tie (SDK 0.26.0+ verdict; None below)
 THRESHOLD = 0.80
-if results.best_score is not None and results.best_score >= THRESHOLD:
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
+if (
+    results.best_score is not None
+    and results.best_score >= THRESHOLD
+    and verdict != "statistical_tie"
+):
     summarize.apply_best_config(results)
     print(f"\nApplied best config (score={results.best_score:.2%})")
 
     # Production usage
     output = summarize("Summarize this quarterly earnings report...")
+elif verdict == "statistical_tie":
+    print(f"\nScore {results.best_score:.2%} but the winner is tied with the runner-up, skipping apply")
 else:
     print(f"\nScore {results.best_score} below threshold {THRESHOLD}, skipping apply")
 ```
