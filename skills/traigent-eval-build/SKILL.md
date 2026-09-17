@@ -267,7 +267,7 @@ The `example` argument passed to `custom_evaluator(func, config, example)` is an
 - `example.input` does not exist — the attribute is `.input_data` (name differs from the JSONL key).
 - `example.output` does not exist — use `.expected_output`.
 - Extra JSONL keys (e.g. `db_id`) are in `example.metadata["db_id"]`, not top-level attributes.
-- A row that carries its own `metadata` object is nested one level down on 0.27.0 (Traigent/Traigent#1768): `db_id` is at `example.metadata["metadata"]["db_id"]`, and `example.metadata["db_id"]` reads `None`. Read both shapes.
+- A row that carries its own `metadata` object is nested one level down on 0.27.0 (Traigent/Traigent#1768): `db_id` is at `example.metadata["metadata"]["db_id"]`; `example.metadata.get("db_id")` reads `None` and `example.metadata["db_id"]` raises `KeyError`. Read both shapes.
 
 ## The ExampleResult contract
 
@@ -333,7 +333,7 @@ A chat model wraps code, SQL, and JSON in a markdown fence by default — and so
 ## Claim scope
 
 - Deterministic scores measure only the rules encoded in the evaluator.
-- A metric's 0.0 must mean the answer was wrong; a harness or data-shape failure must raise or be flagged, never scored.
+- A metric's 0.0 must mean the answer was wrong; a harness or data-shape failure must raise or be flagged, never scored as an ordinary wrong answer without being counted separately (the judge template's parse-failure 0.0 is such a counted class).
 - Judge scores are model opinions under the stated rubric. Label them as judge scores.
 - Statistical scores depend on repeat count, sampling settings, and dataset slice.
 - Hybrid scores inherit both the deterministic gate assumptions and judge limitations.

@@ -99,7 +99,7 @@ case, spacing, an alias, a markdown fence), `partial`, `bad` — and record the 
 product decision **before** any score exists: `graded` requires good ≈ equivalent_good > partial >
 bad; `binary` requires both goods to pass and partial **and** bad to fail. Reject the evaluator
 when: all scores are equal; all 0 or all 1; `equivalent_good` is penalized for surface form;
-`partial` ≥ `good` or ≤ `bad`; `bad` passes; or an exception is silently scored 0. Add two probes
+in `graded` mode `partial` ≥ `good` or ≤ `bad`, in `binary` mode `partial` passes; `bad` passes; or an exception is silently scored 0. Add two probes
 you may not revise — the expected answer permuted, and a malformed output — they raise questions,
 never verdicts. Never widen the scorer until a probe passes; record the equivalent it cannot reach
 as a coverage gap instead. Re-run after any evaluator repair.

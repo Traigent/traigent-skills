@@ -112,8 +112,15 @@ keep extending its working copy rather than the original.
 
 Use one JSON object per line. Put model inputs under `input` or `input_data`, the expected answer under `expected_output` or an accepted alias, and non-label context in `metadata`.
 
+`eval/tuning.jsonl` — the file `eval_dataset` names:
+
 ```json
 {"input": {"question": "What is the refund window for annual plans?"}, "expected_output": "Annual plans are refundable within 30 days.", "metadata": {"split": "tune", "source": "reviewed-policy", "task": "qa"}}
+```
+
+`eval/holdout.jsonl` — a separate file the search is never given (see the holdout rules below):
+
+```json
 {"input": {"question": "Can I pause a monthly subscription?"}, "expected_output": "Monthly subscriptions can be paused from billing settings.", "metadata": {"split": "holdout", "source": "curated-support", "task": "qa"}}
 ```
 
@@ -314,7 +321,8 @@ does not decide which examples are hard.
    egress" above for the exact call patterns — a prompt rewrite, a trained
    skill, or a fix to the agent code.
 6. Execute the approved action locally. For generated or changed examples,
-   mark them for human label review before they can support a holdout claim.
+   mark them for human label review before they can enter the tuning slice; they
+   never enter the holdout (see the holdout rules above).
 7. Loop back to `traigent-analyze-guidance` for a fresh service plan. Do not launch a
    new optimization run from this skill without the run-plan confirmation and
    mock dry-run flow.

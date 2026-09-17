@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "27a9294969e3bf33",
+  "doc_hash": "430bed00326ed930",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -107,6 +107,17 @@
       "doc_before_hash": "e837799ff92d8b04",
       "doc_after_hash": "27a9294969e3bf33",
       "note": "add Task-Fit Calibration for any evaluator, deterministic first (good / equivalent_good / partial / bad probes, score mode fixed before any score exists, reject list, two unrevisable probes, never widen the scorer to pass a probe) so the skill delivers what traigent-first-run's handoff map promises; first-run arrival entry point via a prior run's calibration record under traigent-runs/; description triggers cover deterministic/exact-match scorers.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "27a9294969e3bf33",
+      "doc_after_hash": "430bed00326ed930",
+      "note": "review fix: scope the partial-vs-good/bad reject rule to graded mode; in binary mode the reject is partial passing (the unscoped rule condemned every valid binary scorer).",
       "source_type": "agent"
     }
   ]
