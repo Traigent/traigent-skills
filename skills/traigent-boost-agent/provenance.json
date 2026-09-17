@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4c93d58cb0623651",
+  "doc_hash": "fd1ae4ed82cd2b61",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -176,8 +176,8 @@
       "run_id": null,
       "timestamp": "2026-09-17T00:00:00Z",
       "doc_before_hash": "d130de0e5bd2771f",
-      "doc_after_hash": "4c93d58cb0623651",
-      "note": "review fix: Step 5 snippet reads best_config_margin via getattr (AttributeError on the 0.24.0 floor, executed) and keeps a numeric cost-limit literal (a placeholder string is logged and replaced by the 2.00 default, executed on 0.27.0); Step 4 card proposes the ceiling and prices the probe in its example; one phrase for the go gate; setup-audit's probe described by the guard level it reports.",
+      "doc_after_hash": "fd1ae4ed82cd2b61",
+      "note": "review fix: Step 5 snippet reads best_config_margin via getattr (AttributeError on the 0.24.0 floor, executed) and keeps a numeric cost-limit literal (a placeholder string is logged and replaced by the 2.00 default, executed on 0.27.0); Step 4 card proposes the ceiling and prices the probe in its example; one phrase for the go gate; setup-audit's probe described by the guard level it reports. Also: the two quota sentences now match traigent-debugging - a connected mock run consumes optimization_samples, an offline=True run touches no quota (the old text said mock always consumes).",
       "source_type": "agent"
     }
   ]

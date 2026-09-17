@@ -140,7 +140,7 @@ traigent check my_script.py --dry-run                         # discovers @traig
 
 Enable mock mode in code, then run the full optimization pipeline end to end (decorator wiring, config sampling, dataset loading, trial execution, scoring) with LLM calls intercepted. Mock mode is hard-blocked when `ENVIRONMENT=production`. For mock-mode setup mechanics and scope (what is and isn't intercepted, mock vs offline), see `traigent-setup-quickstart`.
 
-> Mock dry-runs still consume the plan's `optimization_samples` quota, and mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`).
+> A **connected** mock run (`offline=False` with a key) consumes the plan's `optimization_samples` quota like any other run; an `offline=True` mock run makes no backend call and touches no quota. Mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`).
 
 ```python
 import os
@@ -464,7 +464,7 @@ CONFIGURATION_SPACE = {
    - Confirm dataset loading, config sampling, stage wiring, tuple-return unpacking, and zero failed trials before real provider calls.
    - Machine-checkable success contract — assert this instead of eyeballing the table:
      `assert results.trials, "no trials ran"` · `assert not getattr(results, "failed_trials", []), f"failed trials: {results.failed_trials}"` · `assert results.best_config is not None, "no best config selected"`.
-   - Mock reality: mock still consumes `optimization_samples` quota; exact/execution-match scorers read uniform 0.0 under mock (expected, not broken); raw `openai`/`anthropic` clients are not intercepted and still bill.
+   - Mock reality: a connected mock run consumes `optimization_samples` quota, an `offline=True` one does not; exact/execution-match scorers read uniform 0.0 under mock (expected, not broken); raw `openai`/`anthropic` clients are not intercepted and still bill.
    - DELEGATE: `traigent-setup-quickstart` owns first-run setup; `traigent-debugging` owns mock/offline failure diagnosis.
 
 9. OPTIMIZE for real only with cost limits and explicit approval.
