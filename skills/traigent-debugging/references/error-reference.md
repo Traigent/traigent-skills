@@ -266,7 +266,7 @@ from traigent.utils.exceptions import (
 try:
     results = func.optimize_sync()
 except CostLimitExceeded as e:
-    print(f"Over budget: ${e.accumulated:.2f}")
+    print(f"Pre-run estimate ${e.estimated} exceeds the ${e.limit:.2f} limit — approve or lower it")
 except ProviderValidationError as e:
     print(f"Bad API keys: {e.failed_providers}")
 except ConfigurationError as e:

@@ -138,6 +138,8 @@ def main() -> None:
         accuracy.append(score)
         latency.append(ms)
         total_cost += cost
+    if args.mode == "real" and total_cost == 0.0:
+        raise SystemExit("total_cost is 0.0 after real calls: cost is not wired, the budget check cannot pass on nothing")
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps({

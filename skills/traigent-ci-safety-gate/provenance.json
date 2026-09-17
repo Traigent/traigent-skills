@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0f6a18dc2407e353",
+  "doc_hash": "2607fc4a004eac81",
   "reference_hashes": {
-    "references/gate-workflow.md": "9aee30f037c76821"
+    "references/gate-workflow.md": "a3d062232caa02aa"
   },
   "entries": [
     {
@@ -65,6 +65,17 @@
       "doc_before_hash": "d58186cf81ede09e",
       "doc_after_hash": "0f6a18dc2407e353",
       "note": "state what the holdout may be (rows the optimization's eval_dataset never scored; not the guided first run's ten-row held-back split; one committed candidate, never re-gated until one promotes; Traigent does not manage the split); TRAIGENT_RUN_COST_LIMIT bounds only SDK-placed calls, so the holdout script must write a measured total_cost; references/gate-workflow.md: cost() refuses a missing, non-finite or negative total_cost (a missing/NaN cost promoted under --max-cost 0.01 before), evaluate_one returns the measured per-call cost or None and main() fails closed on None. Lesson from traigent-first-run run-safety.md (a path the controls cannot observe is not a dollar-limited path).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "0f6a18dc2407e353",
+      "doc_after_hash": "2607fc4a004eac81",
+      "note": "review fix: the gate script accepts a 0.0 total_cost (only missing/NaN/negative are refused), so the prose no longer claims it refuses both; the holdout script now refuses a 0.0 total after real calls at the seam that knows the mode; ten rows can separate only a very large lift (the skill's own min_effect=0.01 example promotes 6/10 -> 9/10).",
       "source_type": "agent"
     }
   ]

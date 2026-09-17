@@ -78,8 +78,8 @@ Any space, wrong length, surrounding quotes, or other character → rejected. Co
 Read `results.metadata.get("source")` first. `"local_fallback"` means `algorithm="auto"` could not
 create a backend session — no key was found in the process, or session creation hit a
 connectivity failure, a 5xx, or an HTTP 400 — and the SDK ran a **local** search after one warning
-(an unresolvable backend host raises `CloudUrlUnreachableError` instead); `results.metadata["fallback_reason"]` and
-`["fallback_reason_code"]` say which. That result is not the managed run: do not present it as
+(an unresolvable backend host raises `CloudUrlUnreachableError` instead); `results.metadata["fallback_reason"]` (and, on SDK 0.27.0+,
+`["fallback_reason_code"]`) say which. That result is not the managed run: do not present it as
 one and do not pay for it again. Set `TRAIGENT_REQUIRE_CLOUD=1` so the next run raises
 (`ConfigurationError: Cloud execution is required, but backend session creation failed …`) before
 any trial is paid for.
@@ -96,7 +96,7 @@ A key the backend **rejects** never falls back — the run stops with a category
 - `expired API key` / `rate limited` / `edge blocked` — the text is the diagnosis; retrying blindly
   changes nothing.
 
-A run that raised **after** paid trials carries `exc.sync_session_id`: `traigent sync <session_id>`
+A run that raised **after** paid trials carries `exc.sync_session_id` (SDK 0.27.0+; below that, take the session id from the run log): `traigent sync <session_id>`
 uploads what was logged locally. For a run that returned but did not persist, read
 `results.metadata["persistence_status"]` — `traigent-analyze-results` → "Verify the Run Actually
 Persisted" owns that table (degraded is kept, failed is synced, neither is re-paid).
@@ -353,7 +353,7 @@ The backend's canonical signal is HTTP **429** with `error_code: "quota_exceeded
   monthly reset. See the `traigent-optimize-run` skill ("Quota & Run Sizing").
 - Upgrade the plan if you consistently need more `optimization_samples` headroom.
 
-**Current SDK behavior (as of SDK 0.16.0 — may change):**
+**Current SDK behavior (re-verified on 0.24.0 and 0.27.0 — may change):**
 
 - A quota block can **surface as a generic `400 VALIDATION_ERROR`** on session-create rather
   than a clean 429, so a run that "looks like bad input" may actually be a quota block. If
