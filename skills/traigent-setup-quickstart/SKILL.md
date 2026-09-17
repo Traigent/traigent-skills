@@ -60,10 +60,11 @@ paid run**, an explicit spend cap, and the recorded stop rule. The service sets
 
 **Brand-new to Traigent with an agent to optimize?** Use the guided first run, the funnel
 traigent.ai hands out: `npx skills add Traigent/traigent-first-run`, then ask
-`Use traigent-first-run to run my first Traigent optimization.` It scores the project's
-readiness, preserves the real agent, dataset and evaluator, and marks what it had to
-generate. This skill is the install-and-wire reference that run and `traigent-boost-agent`
-call into; the path below is for when the guided run is not available.
+`Use $traigent-first-run to run my first Traigent optimization.` It scores the project's
+readiness, preserves the real agent, dataset and evaluator, and lists what it had to
+generate under its Walkthrough setup. The guided run is self-contained and hands over to
+these skills afterwards; `traigent-boost-agent` calls into this skill for install-and-wire,
+and the path below is for when the guided run is not available.
 
 **When there's no prior run to look at**, do not open with menus, methodology, or the
 advanced sections below. Detect cold start — the user is new to Traigent, has never
@@ -276,7 +277,7 @@ See `references/installation-extras.md` for the full table of extras and their c
 
 Backend-connected features (the default cloud smart optimizer, dataset synthesis, analytics dashboards, the CI gate, and portal result history) all require `TRAIGENT_API_KEY`. There are two ways to obtain it:
 
-### Portal key (experiments-scoped)
+### Portal key (Full access preset)
 
 1. Sign up at the Traigent portal and create a project.
 2. In your project settings, go to **API Keys → Create key** and choose **Full access**. The dialog's default preset is **read-only**: a read-only key is refused at session creation (nothing spent), or, if accepted and then rejected mid-run, drops the run to local-only tracking while it keeps spending.
@@ -296,7 +297,7 @@ Run `traigent auth login` in your terminal — it opens a browser for OAuth devi
 export TRAIGENT_API_KEY="sk_..."
 ```
 
-**Which key to use?** The portal experiments-scoped key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
+**Which key to use?** A Full-access portal key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
 For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero egress is required.
 
@@ -390,6 +391,10 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    ```
 2. **Always show the user the absolute path** (e.g. `/home/me/proj/.env`). This is the
    guaranteed fallback — they can open it in their own editor no matter what happens next.
+   Before any key is pasted, run `chmod 600 .env`, `git ls-files --error-unmatch -- .env`
+   (must exit 1 — a tracked `.env` stays tracked whatever `.gitignore` says) and
+   `git check-ignore -q -- .env` (must exit 0); a key pasted into a tracked file is already
+   the state these checks exist to prevent.
 3. **Best-effort: pop the file open in a _standalone_ editor window, launched _detached_.**
    Pick the launcher by OS; never wrap it in `timeout`:
    - **Linux:** `setsid -f gnome-text-editor "$ENV"` — or the first of
@@ -409,7 +414,7 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    `openai` / `anthropic` / `litellm` / Bedrock imports or config). If the vendor is
    ambiguous, undetectable, or the project uses **multiple** providers (e.g. OpenAI *and*
    Bedrock), **ask the user which provider(s)** and label the matching key(s) in `.env`.
-5. **Wait** for the user to paste and save. Then run `chmod 600 .env`, `git ls-files --error-unmatch -- .env` (must exit 1 — a tracked `.env` stays tracked whatever `.gitignore` says) and `git check-ignore -q -- .env` (must exit 0) before any key is pasted.
+5. **Wait** for the user to paste and save.
 6. **Fallback:** if no standalone editor opens (or the user says no window appeared), have
    them open the printed path manually; only as a last resort use a terminal `export VAR=...`
    (less private than the file).

@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e40d9925dfb1e22f",
+  "doc_hash": "ff9eb13615d6539a",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/environment-variables.md": "2861783a9b39c9c3",
+    "references/environment-variables.md": "b560a47914459103",
     "references/first-value-fallback.md": "7d7eaa86ba9fa986",
     "references/installation-extras.md": "049a5aa7e3638e3a"
   },
@@ -121,7 +121,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "d1fcc507af83c0ee",
       "doc_after_hash": "1bceeccc65431713",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -188,6 +188,17 @@
       "doc_before_hash": "094e4551130954cc",
       "doc_after_hash": "e40d9925dfb1e22f",
       "note": "fold traigent-first-run's field lessons into the install-and-wire skill: description and Cold Start point a brand-new user with an agent at the guided first run (Traigent/traigent-first-run) and scope this skill to install + wire; portal key creation names the Full-access preset (the dialog defaults to read-only, which is refused at session create or degrades a run to local-only while spending); connected runs set TRAIGENT_REQUIRE_CLOUD=1 and check results.cloud_url, since auto silently falls back to a local random search; 'run with no key' replaced (a stored CLI key survives an unset env var; offline=True is the only assertable no-egress state); the SDK cost handshake is stated as conditional (fires only over TRAIGENT_RUN_COST_LIMIT, default $2.00, or on an unpriced model) with TRAIGENT_COST_APPROVED process-only; .env is loaded by the script, not by the SDK (which reads only <site-packages>/.env) and the paste step adds chmod 600 / git ls-files --error-unmatch / git check-ignore; environment-variables.md gains TRAIGENT_OFFLINE_MODE, LITELLM_LOCAL_MODEL_COST_MAP, TRAIGENT_REQUIRE_CLOUD, TRAIGENT_LOG_EXAMPLE_CONTENT, TRAIGENT_BACKEND_URL, TRAIGENT_DATASET_ROOT rows, corrects TRAIGENT_SKIP_PROVIDER_VALIDATION (no automatic validation exists) and the Gemini key order (LiteLLM reads GOOGLE_API_KEY first), drops the standing TRAIGENT_COST_APPROVED export and uses TRAIGENT_RUN_APPROVED=1 as the CI signal; first-value-fallback.md step 3 aligned with the conditional handshake.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "e40d9925dfb1e22f",
+      "doc_after_hash": "ff9eb13615d6539a",
+      "note": "review fix: the .env tracked/ignored checks run before any key is pasted (they were ordered after the paste); the guided first run is self-contained and hands over afterwards - it does not call into this skill; prompt quoted verbatim with the $ sigil; generated substitutes are listed under Walkthrough setup, not marked; portal key heading and 'which key' line say Full access, matching the new step 2; TRAIGENT_OFFLINE_MODE is read live (is_backend_offline) and the SDK setdefaults LITELLM_LOCAL_MODEL_COST_MAP itself (cost_calculator.py), verified on 0.27.0.",
       "source_type": "agent"
     }
   ]
