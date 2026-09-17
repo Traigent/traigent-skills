@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f7843bd6f9327651",
+  "doc_hash": "7c28126328d20666",
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
     "references/parameter-types.md": "aec5c6f990a712d3",
-    "references/structural-spine.md": "dcfeb52586f6c66f"
+    "references/structural-spine.md": "4579a678b53f1194"
   },
   "entries": [
     {
@@ -66,7 +66,18 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "24e58af61829eb8a",
       "doc_after_hash": "f7843bd6f9327651",
-      "note": "add 'Widening a space after a first run': start from the space a first small run recorded and the knobs it proved wired, wired), the controls = knobs = tuned variables bridge, the three space-sanity checks a scorer cannot count (values too close, alias knobs, unread knobs proved via get_config in mock mode), materially larger than max_trials, and the first run's hypothesis stays a hypothesis; references/structural-spine.md checklist items 2/3/5 corrected (approved cap process-only and never in .env, TRAIGENT_COST_APPROVED only after approval; cache_policy=prefer_new is the dedup mechanism, there is no study directory; run-level timeout defaults to None so leave it unset and bound by max_trials plus the cost cap) and timeout=1800.0 dropped from the diff; references/parameter-types.md openai quality tier is gpt-4o, gpt-5.2 since 0.25.0 (o1-preview retired).",
+      "note": "add 'Widening a space after a first run': start from the space a first small run recorded and the knobs it proved wired, the controls = knobs = tuned variables bridge, the three space-sanity checks a scorer cannot count (values too close, alias knobs, unread knobs proved via get_config in mock mode), materially larger than max_trials, and the first run's hypothesis stays a hypothesis; references/structural-spine.md checklist items 2/3/5 corrected (approved cap process-only and never in .env, TRAIGENT_COST_APPROVED only after approval; cache_policy=prefer_new is the dedup mechanism, there is no study directory; run-level timeout defaults to None so leave it unset and bound by max_trials plus the cost cap) and timeout=1800.0 dropped from the diff; references/parameter-types.md openai quality tier is gpt-4o, gpt-5.2 since 0.25.0 (o1-preview retired).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "f7843bd6f9327651",
+      "doc_after_hash": "7c28126328d20666",
+      "note": "review fix: sanity check 1 phrased on behaviour rather than borrowing check 3's request-diff criterion; the 24-configuration / 12-trial figure attributed to the guided first run's generated space; [r] wording in structural-spine matches cost-management; audit-note typo fixed.",
       "source_type": "agent"
     }
   ]

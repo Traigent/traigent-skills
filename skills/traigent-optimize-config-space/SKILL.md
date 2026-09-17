@@ -510,14 +510,14 @@ provably read (the guided first run leaves both under `traigent-runs/`) — and 
 as left out. A control, a knob, and a tuned variable (TVAR) are the same thing here. Widen, then
 check three things no scorer can count:
 
-1. **Values too close together are one value** (`temperature: [0.1, 0.115]`); each value must change
-   the request the agent builds.
+1. **Values too close together are one value** (`temperature: [0.1, 0.115]`); values must be far
+   enough apart to change behaviour, not just the field's number.
 2. **Two knobs naming one dimension are one knob** — one lever, one name.
 3. **A knob the function never reads is not a lever**: prove every key from `traigent.get_config()`
    changes the outgoing request (two configs in mock mode, diff the request dicts) before paying.
 
-Keep the space materially larger than `max_trials` — the first run searched 24 configurations under a
-12-trial cap; a space the cap nearly exhausts is a grid, not a search. Carry the first run's "control X
+Keep the space materially larger than `max_trials` — the guided first run's generated space is 24
+configurations under a 12-trial cap; a space the cap nearly exhausts is a grid, not a search. Carry the first run's "control X
 seemed to matter" as a hypothesis to test, never a finding to build on.
 
 ## Next Steps

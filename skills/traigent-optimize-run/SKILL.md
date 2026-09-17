@@ -236,7 +236,8 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 
 > ⚠️ **`auto` with no live backend session is a local `random` search, not managed optimization.**
 > When no `TRAIGENT_API_KEY` is found in the process, or session creation hits a connectivity
-> failure, a 5xx, or an HTTP 400, `algorithm="auto"` does not fail: it falls back to local random
+> failure, a 5xx, or the session-create HTTP 400 that both the typed and the legacy create
+> request return (any other 400 raises `ConfigurationError`), `algorithm="auto"` does not fail: it falls back to local random
 > sampling, prints one warning banner, and returns a result that reads like the managed one
 > (verified on 0.27.0: `metadata["source"] == "local_fallback"`, `fallback_reason_code ==
 > "no_api_key"`). A key the backend rejects (401/403/429) and an unresolvable backend host raise
@@ -244,7 +245,7 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 > 1. Launch it with `TRAIGENT_REQUIRE_CLOUD=1` so session-creation failure raises **before** any
 >    trial is paid for, instead of degrading.
 > 2. On return, treat `results.metadata.get("source") == "local_fallback"` (with
->    `metadata["fallback_reason"]` / `["fallback_reason_code"]`) or `results.cloud_url is None` as a
+>    `metadata["fallback_reason"]` / `metadata.get("fallback_reason_code")`, the code is 0.27.0+) or `results.cloud_url is None` as a
 >    failure to investigate, never a result to report. Prove tracking first at $0: a stub function
 >    returning a constant, 1–2 trials, confirm a `cloud_url` comes back.
 
@@ -385,7 +386,7 @@ Optimization can stop for several reasons. Check `results.stop_reason`:
 | `"timeout"` | Exceeded the `timeout` duration. |
 | `"cost_limit"` | Hit the `TRAIGENT_RUN_COST_LIMIT` budget. |
 | `"execution_budget"` | A shared `ExecutionBudget` (cost, examples, or deadline) was exhausted (SDK 0.26.0+); reported instead of `"cost_limit"`, detail in `results.metadata["execution_budget"]`. |
-| `"vendor_error"` | A provider-side error (401/402/403/429, `insufficient_quota`) ended the run; the SDK does not retry by default. |
+| `"vendor_error"` | A provider-side error (401/402/403/429, `insufficient_quota`) ended the run; the SDK does not retry by default. When every call fails before any example is scored the run instead raises `OptimizationError`, so catch that too. |
 | `"optimizer"` | Algorithm exhausted the search space (e.g., grid search finished). |
 | `"plateau"` | No improvement detected over recent trials. |
 | `"user_cancelled"` | User cancelled or declined cost approval. |

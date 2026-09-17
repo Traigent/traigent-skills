@@ -11,7 +11,7 @@ scoring — share a cumulative cap by passing the same `ExecutionBudget` instanc
 from traigent import ExecutionBudget
 
 cap = ExecutionBudget(max_cost_usd=5.00)  # the figure the user approved, once
-baseline = await fn.optimize(algorithm="grid", max_trials=N, budget=cap)
+baseline = await fn.optimize(algorithm="grid", max_trials=12, budget=cap)  # your baseline size
 search = await fn.optimize(algorithm="auto", max_trials=12, budget=cap)  # spends what is left
 ```
 
