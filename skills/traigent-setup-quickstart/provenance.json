@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "094e4551130954cc",
+  "doc_hash": "ff9eb13615d6539a",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/environment-variables.md": "01d5b26914c28bf5",
-    "references/first-value-fallback.md": "5571ce556feefb23",
+    "references/environment-variables.md": "b560a47914459103",
+    "references/first-value-fallback.md": "7d7eaa86ba9fa986",
     "references/installation-extras.md": "049a5aa7e3638e3a"
   },
   "entries": [
@@ -178,6 +178,28 @@
       "doc_after_hash": "f41343a8272f8da4",
       "note": "declare min_sdk_version 0.17.0 and state it in When to Use. This skill teaches `traigent plan`, which first ships in v0.17.0 (absent from v0.15.0 and v0.16.0), while the skill was inheriting the 0.15.0 default floor. Surfaced by the prose-aware CLI fact extraction added in this PR. Traigent/traigent-skills#254.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "094e4551130954cc",
+      "doc_after_hash": "e40d9925dfb1e22f",
+      "note": "fold traigent-first-run's field lessons into the install-and-wire skill: description and Cold Start point a brand-new user with an agent at the guided first run (Traigent/traigent-first-run) and scope this skill to install + wire; portal key creation names the Full-access preset (the dialog defaults to read-only, which is refused at session create or degrades a run to local-only while spending); connected runs set TRAIGENT_REQUIRE_CLOUD=1 and check results.cloud_url, since auto silently falls back to a local random search; 'run with no key' replaced (a stored CLI key survives an unset env var; offline=True is the only assertable no-egress state); the SDK cost handshake is stated as conditional (fires only over TRAIGENT_RUN_COST_LIMIT, default $2.00, or on an unpriced model) with TRAIGENT_COST_APPROVED process-only; .env is loaded by the script, not by the SDK (which reads only <site-packages>/.env) and the paste step adds chmod 600 / git ls-files --error-unmatch / git check-ignore; environment-variables.md gains TRAIGENT_OFFLINE_MODE, LITELLM_LOCAL_MODEL_COST_MAP, TRAIGENT_REQUIRE_CLOUD, TRAIGENT_LOG_EXAMPLE_CONTENT, TRAIGENT_BACKEND_URL, TRAIGENT_DATASET_ROOT rows, corrects TRAIGENT_SKIP_PROVIDER_VALIDATION (no automatic validation exists) and the Gemini key order (LiteLLM reads GOOGLE_API_KEY first), drops the standing TRAIGENT_COST_APPROVED export and uses TRAIGENT_RUN_APPROVED=1 as the CI signal; first-value-fallback.md step 3 aligned with the conditional handshake.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "e40d9925dfb1e22f",
+      "doc_after_hash": "ff9eb13615d6539a",
+      "note": "review fix: the .env tracked/ignored checks run before any key is pasted (they were ordered after the paste); the guided first run is self-contained and hands over afterwards - it does not call into this skill; prompt quoted verbatim with the $ sigil; generated substitutes are listed under Walkthrough setup, not marked; portal key heading and 'which key' line say Full access, matching the new step 2; TRAIGENT_OFFLINE_MODE is read live (is_backend_offline) and the SDK setdefaults LITELLM_LOCAL_MODEL_COST_MAP itself (cost_calculator.py), verified on 0.27.0.",
+      "source_type": "agent"
     }
   ]
 }

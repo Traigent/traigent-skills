@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7c97ace17a3429d5",
+  "doc_hash": "f1021b21f56999aa",
   "reference_hashes": {
     "references/dspy.md": "59680e5b6e0e1570",
     "references/langchain.md": "ffe92eb4d431f3b9",
-    "references/litellm.md": "63db130850e6a2ac"
+    "references/litellm.md": "f86dd6d1ff187af8"
   },
   "entries": [
     {
@@ -68,6 +68,17 @@
       "doc_after_hash": "7c97ace17a3429d5",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "7c97ace17a3429d5",
+      "doc_after_hash": "f1021b21f56999aa",
+      "note": "Gemini key resolution stated in LiteLLM's actual order (GOOGLE_API_KEY first, then GEMINI_API_KEY, PALM_API_KEY accepted) in SKILL.md and references/litellm.md, so an unrelated GOOGLE_API_KEY in the shell is named as the thing that silently wins.",
+      "source_type": "agent"
     }
   ]
 }

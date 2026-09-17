@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b9d67ab09e868cf5",
+  "doc_hash": "ad34615600ad7be1",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/evaluation-options.md": "60647f49ac8b2ae3",
     "references/execution-modes.md": "beca15259a649c4b",
-    "references/injection-modes.md": "30b94bf570e66954",
+    "references/injection-modes.md": "be8c4d49b4992b0e",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
   },
   "entries": [
@@ -142,6 +142,17 @@
       "doc_before_hash": "8e34812e7e96968d",
       "doc_after_hash": "b9d67ab09e868cf5",
       "note": "remove the task_type row from the EvaluationOptions field table and the two paragraphs teaching readers to set it. task_type is not a field of EvaluationOptions on traigent 0.27.0 (extra='forbid' -> ValidationError: Extra inputs are not permitted), and the 'Requires traigent>=0.28' stamp named a version that is not a released tag, so the table documented a field no reader could construct. Replaced with a statement of what is true at the released floor: the evaluator-quality anchor is designated server-side, there is no client-side field for it, and passing task_type raises. A per-file python_version_floors entry was not an option -- floors are refused on SKILL.md.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "b9d67ab09e868cf5",
+      "doc_after_hash": "ad34615600ad7be1",
+      "note": "seamless example rewritten to the shape the AST transformer actually rewrites (a local assignment or parameter named after each config key; verified on 0.27.0: ast_transformer visits Assign/AnnAssign only) with the callout that a literal kwarg, os.environ.get or dict-built kwarg is not rewritten, the SDK logs 'found no injectable targets ... ran with original values', every trial runs the original configuration and the dry-run still passes, so prove the value reaching the provider call changes across two configurations before any paid run (traigent-first-run field test, seamless removed from the funnel for exactly this); injection-modes.md mirrors it in the table, the example and How It Works; framework_targets takes dotted module.Class paths (a bare 'langchain' is skipped silently) and enable_framework_overrides is core, no plugin; the SDK cost handshake stated as conditional with TRAIGENT_COST_APPROVED process-only; winner_stability_reps no longer called unreleased (0.27.0 is on PyPI).",
       "source_type": "agent"
     }
   ]

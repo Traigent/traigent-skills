@@ -51,8 +51,8 @@ skills:
     # would make list_buckets.py try to `pip install traigent==0.27.0`,
     # which does not exist.
     python_version_floors:
-      # winner_stability_reps lands in 0.27.0 (Traigent/Traigent@867a7288,
-      # unreleased as of 2026-08-13); the reference states the requirement
+      # winner_stability_reps shipped in 0.27.0 (Traigent/Traigent@867a7288,
+      # on PyPI since 2026-09-02); the reference states the requirement
       # in prose at the top of the file.
       references/winner-stability-reps.md: "0.27.0"
     modules:

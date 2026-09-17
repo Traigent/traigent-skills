@@ -21,7 +21,7 @@ Set API keys for each provider you want to test:
 ```bash
 export OPENAI_API_KEY="sk-..."
 export ANTHROPIC_API_KEY="sk-ant-..."
-export GEMINI_API_KEY="..."
+export GEMINI_API_KEY="..."      # LiteLLM checks GOOGLE_API_KEY first, then GEMINI_API_KEY — an unrelated GOOGLE_API_KEY wins
 export COHERE_API_KEY="..."
 export MISTRAL_API_KEY="..."
 ```
