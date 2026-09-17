@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.8"
+  version: "1.0.9"
 ---
 
 # Traigent Build Evaluator
@@ -20,6 +20,7 @@ Use this skill after the metric is chosen and the user needs concrete evaluator 
 - For metric selection first, use `traigent-eval-choose-metric`.
 - Mock/offline check before paid runs with `TRAIGENT_OFFLINE_MODE`, `enable_mock_mode_for_quickstart()`, and a tiny local dataset.
 - Ask for explicit approval and set `TRAIGENT_RUN_COST_LIMIT` before any evaluator calls paid LLMs or backend services.
+- A judge call placed inside `metric_functions` is **not** in the SDK's cost ledger: on 0.27.0 the local evaluator settles an example's cost from the agent's captured responses before it calls your metric functions, and `TRAIGENT_RUN_COST_LIMIT` admits trials on that recorded cost (Traigent/Traigent#2297). Budget judge calls as their own line (calls per scored row × price × rows × trials), cap them in your own code, and never rely on the SDK limit to stop judge spend.
 - Disjointness invariant: any slice used to tune a threshold, rubric, or metric must be disjoint from the holdout used to claim the result (see `traigent-eval-audit`). The example dataset paths below stand for your *tuning* slice.
 - For full templates by method, read `references/evaluator-templates.md`.
 
@@ -84,13 +85,17 @@ def valid_json_metric(output, expected, input_data) -> float:
     return 1.0
 
 def expected_field_metric(output, expected, input_data) -> float:
-    # Guard the parse AND the access: model output may not be valid JSON,
-    # and `expected` may be a scalar — both must score 0.0, not raise.
+    # Model output that is not a JSON object is a wrong answer: score 0.0.
+    # A gold that is not a dict is a dataset defect: let it raise. On 0.27.0 an
+    # objective metric that raises fails the trial closed with a distinct
+    # EvaluationError instead of a fake 0.0 the search would rank as "wrong answer".
     try:
         data = json.loads(output)
-        return 1.0 if data.get("label") == expected.get("label") else 0.0
-    except (json.JSONDecodeError, AttributeError, TypeError):
+    except json.JSONDecodeError:
         return 0.0
+    if not isinstance(data, dict):
+        return 0.0
+    return 1.0 if data.get("label") == expected["label"] else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
@@ -262,6 +267,7 @@ The `example` argument passed to `custom_evaluator(func, config, example)` is an
 - `example.input` does not exist — the attribute is `.input_data` (name differs from the JSONL key).
 - `example.output` does not exist — use `.expected_output`.
 - Extra JSONL keys (e.g. `db_id`) are in `example.metadata["db_id"]`, not top-level attributes.
+- A row that carries its own `metadata` object is nested one level down on 0.27.0 (Traigent/Traigent#1768): `db_id` is at `example.metadata["metadata"]["db_id"]`; `example.metadata.get("db_id")` reads `None` and `example.metadata["db_id"]` raises `KeyError`. Read both shapes.
 
 ## The ExampleResult contract
 
@@ -320,9 +326,14 @@ If the optimized function returns `(output, metrics)`, make sure the custom scor
 
 When a deterministic scorer compares structured outputs against a gold whose internal ordering is arbitrary (SQL projection columns, JSON object keys, set-valued answers), decide the order policy explicitly and write it in the evaluator docstring. If the gold's ordering is arbitrary and the comparator is positional, correct answers score 0 and impose a hard accuracy ceiling that no configuration can cross — the optimizer then ranks knobs by their accidental effect on ordering. Policy for SQL execution match (the Spider test-suite convention): row order significant only when gold has `ORDER BY`; column order never significant (compare under column permutations); column count must match. Audit signal: an example that fails in 100% of trials across all configs is a metric-artifact suspect — re-check its gold and your order policy before blaming the model.
 
+## Known pitfall: score what the evaluator is handed, not what the model meant
+
+A chat model wraps code, SQL, and JSON in a markdown fence by default — and sometimes when told not to. An exact or normalized comparator scores that reply 0 for every configuration, so every candidate ties and the search ranks noise. Put the agent's own extraction step (fence strip, first statement, JSON parse) between model and scorer, then pass a known-right answer through that step and confirm it still scores right. A first paid run whose primary metric is exactly 0.0 or 1.0 on every trial is a scorer-or-extraction suspect: dump one raw reply and the value the scorer received before spending again.
+
 ## Claim scope
 
 - Deterministic scores measure only the rules encoded in the evaluator.
+- A metric's 0.0 must mean the answer was wrong; a harness or data-shape failure must raise or be flagged, never scored as an ordinary wrong answer without being counted separately (the judge template's parse-failure 0.0 is such a counted class).
 - Judge scores are model opinions under the stated rubric. Label them as judge scores.
 - Statistical scores depend on repeat count, sampling settings, and dataset slice.
 - Hybrid scores inherit both the deterministic gate assumptions and judge limitations.
@@ -330,7 +341,7 @@ When a deterministic scorer compares structured outputs against a gold whose int
 ## See Also
 
 - `traigent-eval-choose-metric` - choose objectives before building evaluator code
-- `traigent` Step 3.5 - lightweight evaluator sanity gate (run this before the first paid optimization)
+- `traigent-boost-agent` Step 3.5 - lightweight evaluator sanity gate (run this before the first paid optimization)
 - `traigent-eval-audit` - evaluator reliability: manual gold-slice protocol + service-side evaluator-audit action (no new gold collection required)
 - `traigent-setup-decorator` - decorator wiring for evaluation options
 - `traigent-analyze-results` - inspect the metrics emitted by evaluator runs

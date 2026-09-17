@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e837799ff92d8b04",
+  "doc_hash": "430bed00326ed930",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -96,6 +96,28 @@
       "doc_before_hash": "47040b9de571bb0e",
       "doc_after_hash": "e837799ff92d8b04",
       "note": "stop teaching EvaluationOptions(task_type=...) as a runnable instruction. On traigent 0.27.0 -- the current released SDK per sync_map.current_released_sdk_version -- EvaluationOptions sets extra='forbid' and has no task_type field, so the taught call raises ValidationError: Extra inputs are not permitted at construction. The field is expected in an unreleased later version, which is not a released tag in tests/contract/test_version_matrix.RELEASED_SDK_TAGS, and a SKILL.md cannot carry a python_version_floors entry (_is_floorable_key admits only flat references/<name>.md), so the teaching is removed rather than floored. The anchor precondition is kept and restated honestly: the anchor is designated server-side from the independent correctness signal registered for the run, and a run without one abstains with no_anchor_designation; abstain identifiers replaced by the ones witnessed live on 2026-09-13 (status abstain, reason audit_abstained, anchor_type none).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "e837799ff92d8b04",
+      "doc_after_hash": "27a9294969e3bf33",
+      "note": "add Task-Fit Calibration for any evaluator, deterministic first (good / equivalent_good / partial / bad probes, score mode fixed before any score exists, reject list, two unrevisable probes, never widen the scorer to pass a probe) so the skill delivers what traigent-first-run's handoff map promises; first-run arrival entry point via a prior run's calibration record under traigent-runs/; description triggers cover deterministic/exact-match scorers.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "27a9294969e3bf33",
+      "doc_after_hash": "430bed00326ed930",
+      "note": "review fix: scope the partial-vs-good/bad reject rule to graded mode; in binary mode the reject is partial passing (the unscoped rule condemned every valid binary scorer).",
       "source_type": "agent"
     }
   ]
