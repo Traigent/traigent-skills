@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4486a14874acffaf",
+  "doc_hash": "4d78fdc11b0e6e8d",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -76,7 +76,18 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "be9895ccc3835b1f",
       "doc_after_hash": "4486a14874acffaf",
-      "note": "read a completed traigent-first-run correctly: files under traigent-runs/ are counted on one card line as walkthrough material and never taken as the project's entry point, dataset or scorer (split_walkthrough_files); the two-file holdout layout the first run writes (a holdout/heldout/validation/test/val/eval-named dataset file beside a tuning file in one directory) is read as a declared holdout slice for both files with the overlap check run across the pair by normalized input, per-row split markers winning when present (apply_sibling_holdouts); the interpreter probe tries .venv, then .venv-traigent, then the audit's own. New fixture tests/fixtures/first-run-graduate plus four tests shown red before the change. File-name holdout tokens are narrower than the per-row markers: `eval`/`test` in a file name usually name the tuning set, so only holdout/heldout/validation/val declare a holdout by name.",
+      "note": "read a completed traigent-first-run correctly: files under traigent-runs/ are counted on one card line as walkthrough material and never taken as the project's entry point, dataset or scorer (split_walkthrough_files); a two-file holdout layout in the project's own directories (a holdout/heldout/validation/val-named dataset file beside a tuning file) is read as a declared holdout slice for both files with the overlap check run across the pair by normalized input, per-row split markers winning when present (apply_sibling_holdouts); the interpreter probe tries .venv, then .venv-traigent, then the audit's own. New fixture tests/fixtures/first-run-graduate plus four tests shown red before the change. File-name holdout tokens are narrower than the per-row markers: `eval`/`test` in a file name usually name the tuning set, so only holdout/heldout/validation/val declare a holdout by name.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "4486a14874acffaf",
+      "doc_after_hash": "4d78fdc11b0e6e8d",
+      "note": "review fix: the guided first run writes its tuning/holdout pair under traigent-runs/, not eval/ - the sibling-holdout reader is documented as a project-directory feature, the walkthrough card line names the first run's reserved slice and who continues from it (holdout_files), a holdout-named file is judged by the holdout minimum only in next_step branch f (holdout_by_name); fixture gains traigent-runs/holdout.jsonl and three tests.",
       "source_type": "agent"
     }
   ]

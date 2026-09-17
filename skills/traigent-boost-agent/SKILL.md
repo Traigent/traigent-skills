@@ -196,7 +196,7 @@ If mock fails, set `export TRAIGENT_DEBUG=1` for debug logging, fix decorator ar
 
 Before the first paid run, verify the metric actually separates a correct output from a wrong one. This costs nothing — no LLM calls — but catches the single most expensive silent failure mode: an evaluation metric that swallows exceptions or silently returns 0.0 for every config (making the agent look broken when the metric is broken).
 
-Run this gate only for a scorer you have **read** and classified deterministic: no model call, no subprocess, no network, no `exec`/`eval` of the candidate output. `traigent-setup-audit` makes that classification for free and probes the scorer in a contained process — prefer it when the project already has one. For an LLM judge the two asserts below are paid calls: skip this gate, price the judge on the Step 4 card, and route to `traigent-eval-audit`. For a code-executing scorer, disclose that it was not probed.
+Run this gate only for a scorer you have **read** and classified deterministic: no model call, no subprocess, no network, no `exec`/`eval` of the candidate output. `traigent-setup-audit` makes that classification for free and probes the scorer in a separate process whose network-guard level the audit reports — prefer it when the project already has one. For an LLM judge the two asserts below are paid calls: skip this gate, price the judge on the Step 4 card, and route to `traigent-eval-audit`. For a code-executing scorer, disclose that it was not probed.
 
 ```python
 # `my_metric` is the scoring_function / metric you pass to @traigent.optimize.
@@ -219,9 +219,9 @@ For a `custom_evaluator` / `BaseEvaluator`, call `.evaluate([good_example])` and
 >
 > **If either fails:** fix the metric before spending tokens. Common causes: wrong field name in the result, inverted logic (`>` vs `<`), exception swallowed to `0.0`. See [traigent-eval-build](../traigent-eval-build/SKILL.md) for diagnostic steps. For LLM-judge metrics, see [traigent-eval-audit](../traigent-eval-audit/SKILL.md) for the full reliability protocol.
 
-### Step 3.6: Tiny Real Cost and KPI Probe (paid — runs only after the Step 4 go)
+### Step 3.6: Tiny Real Cost and KPI Probe (paid — runs only after the user's go at the end of Step 4)
 
-The **first paid call** of this skill is a tiny real optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model (pennies, not dollars). It is paid, so price it on the Step 4 card beside the full run (one ceiling covers both) and launch it only after the user's explicit go in Step 5 — never before. Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, stop and wire it before the full run — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, strict accounting).
+The **first paid call** of this skill is a tiny real optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model (pennies, not dollars). It is paid, so price it on the Step 4 card beside the full run (one ceiling covers both) and launch it only after the user's go at the end of Step 4 — never before. Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, stop and wire it before the full run — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, strict accounting).
 
 ### Step 4: Report and Estimate Costs
 
@@ -230,16 +230,16 @@ After a successful mock run, tell the user:
 1. **Pipeline validated** — trials, config space, dataset all working
 2. **Config space size** — how many unique configurations
 3. **Estimated LLM calls** — the Step 3.6 probe first (`<n>` calls on the cheapest model), then the full run: `max_trials x dataset_size` (upper bound)
-4. **Cost limit** — default $2.00 USD per run (`TRAIGENT_RUN_COST_LIMIT`)
+4. **Cost limit** — the ceiling you propose for this run in USD (`TRAIGENT_RUN_COST_LIMIT`; the SDK default is $2.00). The figure the user approves is the one Step 5 sets
 5. **Ask for go/no-go**
 
 Example:
 
 > Mock run passed: 4/4 trials, 0 failures, pipeline is valid.
 >
-> Config space: 2 models x continuous temperature. With `max_trials=10` and 15 dataset examples, that's up to 150 LLM calls.
+> Config space: 2 models x continuous temperature. Probe first: 2 examples x 2 trials on the cheapest model (4 calls, pennies). Then the full run: with `max_trials=10` and 15 dataset examples, up to 150 LLM calls.
 >
-> Default cost limit is $2.00 USD. Want me to run it for real? This will use your API keys and cost real tokens.
+> Proposed cost limit for probe and run together: $2.00 USD (the SDK default). Want me to run it for real? This will use your API keys and cost real tokens.
 
 ### Step 5: Run Real Optimization (Only When Asked)
 
@@ -264,8 +264,9 @@ import os
 # real run if the previous one had it on.
 os.environ.pop("TRAIGENT_OFFLINE_MODE", None)
 
-# Cost limit — the exact figure the user approved, not the SDK default ($2.00)
-os.environ["TRAIGENT_RUN_COST_LIMIT"] = "<approved USD>"
+# Cost limit — the exact figure the user approved on the Step 4 card. Keep it a
+# numeric string: a non-number is logged and silently replaced by the $2.00 default.
+os.environ["TRAIGENT_RUN_COST_LIMIT"] = "2.00"  # replace with the approved figure
 
 # Do NOT set TRAIGENT_COST_APPROVED here. A run whose pre-run estimate fits
 # the limit needs no approval variable and starts real calls with no prompt;
@@ -317,7 +318,7 @@ if results.stop_reason == "cost_limit":
     # A mid-run budget hit never raises: the paid trials are kept and this is
     # a partial result, not a failure. A larger run needs a new approval.
     print("Budget reached mid-run — partial result; a larger run needs a new approval")
-verdict = (results.best_config_margin or {}).get("verdict")   # SDK >= 0.26.0
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")  # SDK >= 0.26.0; None below
 if verdict == "statistical_tie":
     print("Winner is a STATISTICAL TIE with the runner-up — no boost to claim; "
           "prefer the cheaper config or add examples")

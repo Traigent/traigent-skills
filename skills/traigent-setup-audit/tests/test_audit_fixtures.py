@@ -310,8 +310,9 @@ def graduate(tmp_path_factory):
 
 
 def test_graduate_two_file_layout_is_read_as_a_declared_holdout(graduate) -> None:
-    """`eval/holdout.jsonl` beside `eval/tuning.jsonl` declares the holdout by
-    file name; neither file is reported as having no holdout slice."""
+    """`eval/holdout.jsonl` beside `eval/tuning.jsonl` — the project's own
+    two-file layout — declares the holdout by file name; neither file is
+    reported as having no holdout slice."""
     report, _ = graduate
     by_file = {item["file"]: item for item in report["datasets"]}
     tuning = by_file["eval/tuning.jsonl"]
@@ -347,8 +348,47 @@ def test_graduate_walkthrough_artifacts_are_noted_and_not_counted(graduate) -> N
     assert not any(
         item["file"].startswith("traigent-runs/") for item in report["scorers"]
     )
-    assert report["files"]["walkthrough"] == {"dir": "traigent-runs", "count": 3}
-    assert "traigent-runs/: 3 walkthrough file(s) from traigent-first-run" in card
+    assert report["files"]["walkthrough"] == {
+        "dir": "traigent-runs",
+        "count": 4,
+        "holdout_files": ["traigent-runs/holdout.jsonl"],
+    }
+    assert "traigent-runs/: 4 walkthrough file(s) from traigent-first-run" in card
+
+
+def test_graduate_first_run_holdout_pair_is_named_not_analysed(graduate) -> None:
+    """The guided first run writes its tuning/holdout pair under `traigent-runs/`
+    (working copies of the customer's rows). The card says where that reserved
+    slice is and who continues from it, but the pair never becomes a dataset
+    row on the card and never declares a holdout for the project's own files."""
+    report, card = graduate
+    assert "traigent-runs/holdout.jsonl" not in {
+        item["file"] for item in report["datasets"]
+    }
+    assert "The first run's reserved slice is traigent-runs/holdout.jsonl" in card
+    assert "`traigent-boost-agent` continues from it" in card
+
+
+def test_graduate_without_own_split_routes_to_curate_not_to_the_walkthrough(
+    tmp_path: Path,
+) -> None:
+    """A graduate whose own dataset is one unsplit file (the common case: the
+    first run split a working copy, not the source) is routed to
+    `traigent-dataset-curate` on its own rows; the walkthrough pair is named,
+    not borrowed as the project's holdout."""
+    project = tmp_path / "project"
+    shutil.copytree(FIXTURES / "first-run-graduate", project)
+    (project / "eval" / "holdout.jsonl").unlink()
+    report, card = run_audit(project, tmp_path / "out")
+    by_file = {item["file"]: item for item in report["datasets"]}
+    assert set(by_file) == {"eval/tuning.jsonl"}
+    assert by_file["eval/tuning.jsonl"]["holdout_rows"] == 0
+    assert any(
+        "no holdout slice is declared" in f for f in by_file["eval/tuning.jsonl"]["findings"]
+    )
+    # The fixture has no scorer, so the next step is the scorer branch; the
+    # point here is what the dataset section says about the project's own file.
+    assert "The first run's reserved slice is traigent-runs/holdout.jsonl" in card
 
 
 def test_eval_or_test_in_a_file_name_does_not_declare_a_holdout(tmp_path: Path) -> None:

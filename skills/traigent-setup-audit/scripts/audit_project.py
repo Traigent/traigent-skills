@@ -107,17 +107,21 @@ INPUT_KEYS = ("input", "input_data", "question", "prompt", "query", "messages")
 EXPECTED_KEYS = ("output", "expected", "expected_output", "answer", "target", "label")
 HOLDOUT_VALUES = frozenset({"holdout", "test", "validation", "val", "eval"})
 # A dataset file whose name carries one of these tokens, beside another dataset
-# file in the same directory, declares the holdout slice by file name — the
-# two-file layout the guided first run writes (`eval/tuning.jsonl` +
-# `eval/holdout.jsonl`), which keeps a reserved row out of the search by never
-# handing the file to `eval_dataset` at all. Narrower than HOLDOUT_VALUES on
-# purpose: in a file name, `eval` and `test` usually name the tuning set
-# (`eval_dataset.jsonl`, `test_cases.jsonl`), not a reserved slice.
+# file in the same directory, declares the holdout slice by file name — a
+# two-file layout (`tuning.jsonl` + `holdout.jsonl`) that keeps a reserved row
+# out of the search by never handing the file to `eval_dataset` at all. This is
+# read in the project's own directories only; the guided first run writes its
+# own such pair under `traigent-runs/`, which is walkthrough material (see
+# WALKTHROUGH_DIR) and is noted on the card, never analysed as the project's
+# dataset. Narrower than HOLDOUT_VALUES on purpose: in a file name, `eval` and
+# `test` usually name the tuning set (`eval_dataset.jsonl`, `test_cases.jsonl`),
+# not a reserved slice.
 HOLDOUT_FILE_TOKENS = frozenset({"holdout", "heldout", "validation", "val"})
 FILE_TOKEN_RE = re.compile(r"[^a-z0-9]+")
 # The directory the guided first run (`traigent-first-run`) writes its
-# walkthrough artifacts into: substitute agents, working-copy datasets, the run
-# record. They are listed, never counted as the project's own material.
+# walkthrough artifacts into: substitute agents, working-copy datasets (its
+# `tuning.jsonl` + `holdout.jsonl` pair), the run record. They are listed, never
+# counted as the project's own material.
 WALKTHROUGH_DIR = "traigent-runs"
 
 # Row-count minimums mirrored from skills/traigent-dataset-curate/SKILL.md.
@@ -1065,6 +1069,9 @@ class DatasetReport:
     # Row indexes by normalized input: kept for the cross-file overlap check,
     # never serialised into the report.
     input_index: dict[str, list[int]] = field(default_factory=dict, repr=False)
+    # True when this file IS the holdout slice (declared by its name beside a
+    # tuning file): it is judged against the holdout minimum only.
+    holdout_by_name: bool = False
 
 
 NO_HOLDOUT_FINDING = "no split marker on any row, so no holdout slice is declared"
@@ -1352,6 +1359,7 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
         for report in holdouts:
             holdout_inputs.update(report.input_index)
             report.holdout_rows = report.rows
+            report.holdout_by_name = True
             # A holdout file is judged against the holdout minimum below, not
             # the tuning-slice minimum meant for the file the search reads.
             report.findings = [
@@ -2347,23 +2355,41 @@ def next_step(
             ),
         }
 
+    # A file that is itself the holdout slice (declared by name) has no tuning
+    # rows to judge: only the holdout minimum applies to it.
     short = [
         report
         for report in reports
-        if report.rows < MIN_TUNING or report.holdout_rows < MIN_HOLDOUT
+        if (not report.holdout_by_name and report.rows < MIN_TUNING)
+        or report.holdout_rows < MIN_HOLDOUT
     ]
     if short:
-        worst = min(short, key=lambda report: report.rows)
+        tuning_short = [r for r in short if not r.holdout_by_name]
+        worst = min(tuning_short or short, key=lambda report: report.rows)
+        if worst.holdout_by_name:
+            line = (
+                f"{worst.file} is a {worst.rows}-row holdout slice declared by "
+                f"file name, under the {MIN_HOLDOUT}-row holdout minimum, so a "
+                "small score movement would not be resolvable — grow it with "
+                "`traigent-dataset-curate`."
+            )
+        else:
+            # Name only the minimum(s) actually missed.
+            missed = []
+            if worst.rows < MIN_TUNING:
+                missed.append(f"the {MIN_TUNING}-row tuning minimum")
+            if worst.holdout_rows < MIN_HOLDOUT:
+                missed.append(f"the {MIN_HOLDOUT}-row holdout minimum")
+            line = (
+                f"{worst.file} has {worst.rows} row(s) and a {worst.holdout_rows}-row "
+                f"holdout slice, under {' and '.join(missed)}, so a small score "
+                "movement would not be resolvable — grow and split it with "
+                "`traigent-dataset-curate`."
+            )
         return {
             "branch": "f",
             "skills": ["traigent-dataset-curate"],
-            "line": (
-                f"{worst.file} has {worst.rows} row(s) and a {worst.holdout_rows}-row "
-                f"holdout slice, under the {MIN_TUNING}-row tuning and "
-                f"{MIN_HOLDOUT}-row holdout minimums, so a small score movement "
-                "would not be resolvable — grow and split it with "
-                "`traigent-dataset-curate`."
-            ),
+            "line": line,
         }
 
     return {
@@ -2558,7 +2584,18 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             "dataset_candidates": dataset_candidates,
             "dataset_files_not_analysed": skipped_files,
             "notes": inventory.notes + dataset_notes,
-            "walkthrough": {"dir": WALKTHROUGH_DIR, "count": len(walkthrough_files)},
+            "walkthrough": {
+                "dir": WALKTHROUGH_DIR,
+                "count": len(walkthrough_files),
+                # The first run's own tuning/holdout working copies, when present:
+                # named so the card can say where the graduate's reserved slice is.
+                "holdout_files": sorted(
+                    relative(path, root)
+                    for path in walkthrough_files
+                    if path.suffix.lower() in {".jsonl", ".json", ".csv"}
+                    and file_names_holdout(relative(path, root))
+                ),
+            },
         },
         "areas": areas,
         "entry_points": [
@@ -2662,6 +2699,13 @@ def render_card(report: dict) -> str:
             f"{walkthrough['dir']}/: {walkthrough['count']} walkthrough file(s) from "
             "traigent-first-run — not counted as project material."
         )
+        if walkthrough.get("holdout_files"):
+            names = ", ".join(walkthrough["holdout_files"])
+            lines.append(
+                f"  The first run's reserved slice is {names} (a working copy): "
+                "`traigent-boost-agent` continues from it; the project's own "
+                "dataset above is judged on its own rows."
+            )
     lines.append("")
 
     titles = {
