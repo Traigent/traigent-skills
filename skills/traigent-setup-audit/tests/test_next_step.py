@@ -203,6 +203,45 @@ def test_branch_f_fires_on_a_dataset_under_the_minimums() -> None:
     assert "12 row(s) and a 0-row holdout slice" in step["line"]
 
 
+def test_branch_f_judges_a_named_holdout_file_by_the_holdout_minimum_only() -> None:
+    """A holdout file declared by its name beside a tuning file has no tuning
+    rows to judge: 10 holdout rows under the holdout minimum is reported as a
+    short holdout slice, never as a 10-row tuning file, and the tuning file is
+    the one named when it is short too."""
+    entry = _entry([_knob("model", "read")])
+    tuning = _dataset(12, 10)
+    tuning.file = "eval/tuning.jsonl"
+    tuning.split_counts = {}
+    holdout = _dataset(10, 10)
+    holdout.file = "eval/holdout.jsonl"
+    holdout.split_counts = {}
+    holdout.holdout_by_name = True
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [tuning, holdout], GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert step["line"].startswith("eval/tuning.jsonl has 12 row(s) and a 10-row")
+    assert "under the 30-row tuning minimum and the 30-row holdout minimum" in step["line"]
+    # The tuning file is long enough; only the holdout is short, and the line
+    # says exactly that (40 rows is not "under the tuning minimum").
+    tuning.rows = 40
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [tuning, holdout], GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert step["line"].startswith("eval/tuning.jsonl has 40 row(s) and a 10-row")
+    assert "under the 30-row holdout minimum, so" in step["line"]
+    assert "tuning minimum" not in step["line"]
+    # A holdout file with no tuning sibling short is described by its role.
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [holdout], GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert step["line"].startswith(
+        "eval/holdout.jsonl is a 10-row holdout slice declared by file name"
+    )
+
+
 def test_branch_g_needs_every_earlier_branch_to_be_clear() -> None:
     entry = _entry([_knob("model", "read")])
     step = audit.next_step(
@@ -240,3 +279,18 @@ def test_the_dataset_branch_never_outranks_an_unreliable_scorer() -> None:
         _inventory([entry], [_scorer()]), [_dataset(5, 0)], unstable, _scorer()
     )
     assert step["branch"] == "d"
+
+
+def test_interpreter_probe_order_is_venv_then_venv_traigent(tmp_path: Path) -> None:
+    """`.venv-traigent` (the throwaway environment a guided first run may create)
+    is probed after `.venv` and before the audit's own interpreter."""
+    root = tmp_path / "proj"
+    (root / ".venv-traigent" / "bin").mkdir(parents=True)
+    fallback = root / ".venv-traigent" / "bin" / "python"
+    fallback.write_text("")
+    assert audit.project_interpreter(root) == str(fallback)
+    (root / ".venv" / "bin").mkdir(parents=True)
+    preferred = root / ".venv" / "bin" / "python"
+    preferred.write_text("")
+    assert audit.project_interpreter(root) == str(preferred)
+    assert audit.project_interpreter(tmp_path / "empty") == sys.executable

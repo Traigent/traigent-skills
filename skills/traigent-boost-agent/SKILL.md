@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.10"
+  version: "2.1.11"
 ---
 
 # Traigent Boost Agent
@@ -44,6 +44,15 @@ Use this skill when the user asks you to:
 - choose tuned variables and composite knobs for a real client codebase
 
 For detailed grep patterns and evidence-mining heuristics, read `references/codebase-analysis.md`. For a minimal before/after implementation recipe, read `references/instrument-recipe.md`. For insight and iteration code, read `references/insights-and-iteration.md`.
+
+## Inspect what is already there before Step 1
+
+Read the project's existing run records first — a `traigent-runs/` directory left by the guided
+first run, `save_to=` result files, a prior config export. Name the project and the function you
+are optimizing before quoting any recorded number, and treat a record made for a different function
+as historical. Generated substitutes in those records stay substitutes: Steps 2-4 apply to the
+project's real material. Do not re-run a paid phase to move a number; enter at the step the record
+leaves open. For a project with no run yet, `traigent-setup-audit` first — it is free.
 
 ## Optimization Economics — Read This Before Sizing a Run
 
@@ -131,11 +140,14 @@ traigent check my_script.py --dry-run                         # discovers @traig
 
 Enable mock mode in code, then run the full optimization pipeline end to end (decorator wiring, config sampling, dataset loading, trial execution, scoring) with LLM calls intercepted. Mock mode is hard-blocked when `ENVIRONMENT=production`. For mock-mode setup mechanics and scope (what is and isn't intercepted, mock vs offline), see `traigent-setup-quickstart`.
 
-> Mock dry-runs still consume the plan's `optimization_samples` quota, and mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`).
+> A **connected** mock run (`offline=False` with a key) consumes the plan's `optimization_samples` quota like any other run; an `offline=True` mock run makes no backend call and touches no quota. Mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`).
 
 ```python
 import os
 os.environ["TRAIGENT_OFFLINE_MODE"] = "true"   # Skip Traigent backend calls
+# LiteLLM fetches its pricing map over the network at import unless this is
+# set; offline mode alone does not stop it.
+os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "true"
 
 import traigent
 from traigent.testing import enable_mock_mode_for_quickstart
@@ -184,6 +196,8 @@ If mock fails, set `export TRAIGENT_DEBUG=1` for debug logging, fix decorator ar
 
 Before the first paid run, verify the metric actually separates a correct output from a wrong one. This costs nothing — no LLM calls — but catches the single most expensive silent failure mode: an evaluation metric that swallows exceptions or silently returns 0.0 for every config (making the agent look broken when the metric is broken).
 
+Run this gate only for a scorer you have **read** and classified deterministic: no model call, no subprocess, no network, no `exec`/`eval` of the candidate output. `traigent-setup-audit` makes that classification for free and probes the scorer in a separate process whose network-guard level the audit reports — prefer it when the project already has one. For an LLM judge the two asserts below are paid calls: skip this gate, price the judge on the Step 4 card, and route to `traigent-eval-audit`. For a code-executing scorer, disclose that it was not probed.
+
 ```python
 # `my_metric` is the scoring_function / metric you pass to @traigent.optimize.
 # Use literal good/bad examples for YOUR task — no LLM call needed (that's the point).
@@ -205,9 +219,9 @@ For a `custom_evaluator` / `BaseEvaluator`, call `.evaluate([good_example])` and
 >
 > **If either fails:** fix the metric before spending tokens. Common causes: wrong field name in the result, inverted logic (`>` vs `<`), exception swallowed to `0.0`. See [traigent-eval-build](../traigent-eval-build/SKILL.md) for diagnostic steps. For LLM-judge metrics, see [traigent-eval-audit](../traigent-eval-audit/SKILL.md) for the full reliability protocol.
 
-### Step 3.6: Tiny Real Cost and KPI Probe
+### Step 3.6: Tiny Real Cost and KPI Probe (paid — runs only after the user's go at the end of Step 4)
 
-After mock mode and the evaluator sanity gate pass, run one tiny **real** optimization before any full run: 1-2 dataset examples, minimal trials, and the cheapest candidate model (pennies, not dollars). Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, wire it before scaling up — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, strict accounting).
+The **first paid call** of this skill is a tiny real optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model (pennies, not dollars). It is paid, so price it on the Step 4 card beside the full run (one ceiling covers both) and launch it only after the user's go at the end of Step 4 — never before. Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, stop and wire it before the full run — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, strict accounting).
 
 ### Step 4: Report and Estimate Costs
 
@@ -215,17 +229,17 @@ After a successful mock run, tell the user:
 
 1. **Pipeline validated** — trials, config space, dataset all working
 2. **Config space size** — how many unique configurations
-3. **Estimated LLM calls** — `max_trials x dataset_size` (upper bound)
-4. **Cost limit** — default $2.00 USD per run (`TRAIGENT_RUN_COST_LIMIT`)
+3. **Estimated LLM calls** — the Step 3.6 probe first (`<n>` calls on the cheapest model), then the full run: `max_trials x dataset_size` (upper bound)
+4. **Cost limit** — the ceiling you propose for this run in USD (`TRAIGENT_RUN_COST_LIMIT`; the SDK default is $2.00). The figure the user approves is the one Step 5 sets
 5. **Ask for go/no-go**
 
 Example:
 
 > Mock run passed: 4/4 trials, 0 failures, pipeline is valid.
 >
-> Config space: 2 models x continuous temperature. With `max_trials=10` and 15 dataset examples, that's up to 150 LLM calls.
+> Config space: 2 models x continuous temperature. Probe first: 2 examples x 2 trials on the cheapest model (4 calls, pennies). Then the full run: with `max_trials=10` and 15 dataset examples, up to 150 LLM calls.
 >
-> Default cost limit is $2.00 USD. Want me to run it for real? This will use your API keys and cost real tokens.
+> Proposed cost limit for probe and run together: $2.00 USD (the SDK default). Want me to run it for real? This will use your API keys and cost real tokens.
 
 ### Step 5: Run Real Optimization (Only When Asked)
 
@@ -250,13 +264,16 @@ import os
 # real run if the previous one had it on.
 os.environ.pop("TRAIGENT_OFFLINE_MODE", None)
 
-# Cost limit — default $2.00 USD per run
-os.environ["TRAIGENT_RUN_COST_LIMIT"] = "2.00"
+# Cost limit — the exact figure the user approved on the Step 4 card. Keep it a
+# numeric string: a non-number is logged and silently replaced by the $2.00 default.
+os.environ["TRAIGENT_RUN_COST_LIMIT"] = "2.00"  # replace with the approved figure
 
-# Real runs are blocked by the cost-approval gate until this is set.
-# Set it ONLY after the user has seen the cost estimate and explicitly
-# approved the spend — never set it preemptively on the user's behalf.
-os.environ["TRAIGENT_COST_APPROVED"] = "true"
+# Do NOT set TRAIGENT_COST_APPROVED here. A run whose pre-run estimate fits
+# the limit needs no approval variable and starts real calls with no prompt;
+# the variable only SKIPS the SDK's own over-limit and unpriced-model
+# refusals. Set it process-only, never persisted, and only when the SDK
+# refused the run and the user has seen that figure. Your approval card in
+# Step 4 is the gate — the SDK handshake is not.
 ```
 
 > **Algorithm selector.** For connected real runs, omit `algorithm` or use `algorithm="auto"`.
@@ -279,8 +296,9 @@ try:
     # like "bayesian" are connected-only (SDK 0.20.1+) and never run locally.
     results = my_function.optimize_sync(max_trials=10, algorithm="auto")
 except CostLimitExceeded as e:
-    print(f"Budget hit: ${e.accumulated:.2f} / ${e.limit:.2f}")
-    print("Increase TRAIGENT_RUN_COST_LIMIT to allow more spending.")
+    # Raised BEFORE any trial: the pre-run estimate exceeded the limit and was
+    # not approved. Nothing was spent — take the figure back to the user.
+    print(f"Refused before spending: estimate ${e.estimated or 0:.2f} > limit ${e.limit:.2f}")
     raise
 except OptimizationError as e:
     print(f"Optimization could not run: {e}")
@@ -296,6 +314,14 @@ else:
     print("Total cost:   NOT TRACKED — wire cost before the next run (Step 3.6)")
 print(f"Duration:     {results.duration:.1f}s")
 print(f"Stop reason:  {results.stop_reason}")
+if results.stop_reason == "cost_limit":
+    # A mid-run budget hit never raises: the paid trials are kept and this is
+    # a partial result, not a failure. A larger run needs a new approval.
+    print("Budget reached mid-run — partial result; a larger run needs a new approval")
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")  # SDK >= 0.26.0; None below
+if verdict == "statistical_tie":
+    print("Winner is a STATISTICAL TIE with the runner-up — no boost to claim; "
+          "prefer the cheaper config or add examples")
 ```
 
 > **Never mock the real run.** Before reporting these numbers, confirm this wasn't a mock/offline
@@ -434,17 +460,17 @@ CONFIGURATION_SPACE = {
 
 8. VALIDATE in mock mode FIRST.
    - Cross-reference `traigent-setup-quickstart` and `traigent-debugging` for mock/offline setup.
-   - Use `from traigent.testing import enable_mock_mode_for_quickstart` plus `TRAIGENT_OFFLINE_MODE=true` for keyless development.
+   - Use `from traigent.testing import enable_mock_mode_for_quickstart` plus `TRAIGENT_OFFLINE_MODE=true` and `LITELLM_LOCAL_MODEL_COST_MAP=true` for keyless development.
    - Confirm dataset loading, config sampling, stage wiring, tuple-return unpacking, and zero failed trials before real provider calls.
    - Machine-checkable success contract — assert this instead of eyeballing the table:
      `assert results.trials, "no trials ran"` · `assert not getattr(results, "failed_trials", []), f"failed trials: {results.failed_trials}"` · `assert results.best_config is not None, "no best config selected"`.
-   - Mock reality: mock still consumes `optimization_samples` quota; exact/execution-match scorers read uniform 0.0 under mock (expected, not broken); raw `openai`/`anthropic` clients are not intercepted and still bill.
+   - Mock reality: a connected mock run consumes `optimization_samples` quota, an `offline=True` one does not; exact/execution-match scorers read uniform 0.0 under mock (expected, not broken); raw `openai`/`anthropic` clients are not intercepted and still bill.
    - DELEGATE: `traigent-setup-quickstart` owns first-run setup; `traigent-debugging` owns mock/offline failure diagnosis.
 
 9. OPTIMIZE for real only with cost limits and explicit approval.
    - Cross-reference `traigent-optimize-run` for `func.optimize()`, `optimize_sync()`, algorithms, `max_trials`, parallelism, and `CostLimitExceeded`.
    - Set an explicit `TRAIGENT_RUN_COST_LIMIT` and verify provider keys before the real run. If a Traigent backend is used, set `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL` as appropriate for the client environment. See [Getting your Traigent API key](../traigent-setup-quickstart/SKILL.md#get-your-traigent-api-key) if you have not yet obtained `TRAIGENT_API_KEY`.
-   - Present a cost estimate and get the user's explicit approval before any paid run. The approval signal depends on context: interactive real runs are gated by `TRAIGENT_COST_APPROVED=true` (set only after the user approves the estimate); CI/offline runs (including mock wiring checks under `CI=true`) require `TRAIGENT_RUN_APPROVED=1` instead — see `traigent-ci-safety-gate`.
+   - Present a cost estimate and get the user's explicit approval before any paid run. Your card is the gate: the SDK's cost handshake prompts only when the pre-run estimate exceeds `TRAIGENT_RUN_COST_LIMIT` or a model is unpriced, and `TRAIGENT_COST_APPROVED=true` merely skips that prompt (set it process-only, never persisted, and only after the user has seen the refused figure). CI/offline runs (including mock wiring checks under `CI=true`) require `TRAIGENT_RUN_APPROVED=1` instead — see `traigent-ci-safety-gate`.
    - Start with a bounded trial budget, keep the current production baseline in the search space, and save results artifacts for audit.
    - DELEGATE: `traigent-optimize-run` owns algorithms, budgets, and execution controls.
 
@@ -454,6 +480,7 @@ CONFIGURATION_SPACE = {
    - Core `ExampleInsightsClient` import warns deprecated since 0.13.x (see version-matrix: `exampleinsights-deprecation`): importing it from core `traigent.analytics` emits a `DeprecationWarning` pointing at the `traigent-analytics` plugin — but the plugin does not export this class, so keep the core import and ignore the warning for this class. If the plugin IS installed, the core shim stops exposing the class; use the deep import `from traigent.analytics.example_insights import ExampleInsightsClient` (see the verified import note in `traigent-dataset-curate`).
    - Report baseline vs `results.best_config` delta for the agreed metrics, cost, token use, trial count, failed trials, and `results.stop_reason`.
    - Use `traigent-analyze-results` for `OptimizationResult` inspection and `traigent-analyze-variable-importance` to explain which knobs mattered.
+   - Read `results.best_config_margin["verdict"]` (SDK 0.26.0+) before claiming a boost: a `statistical_tie` verdict is a no-boost result by definition, whatever `best_score` says.
    <!-- PROTECTED -->
    - If results are flat, noisy, failed, or negative, call it a no-boost result. Do not hide it or promote a winner that does not beat the baseline on the evaluation dataset.
    <!-- /PROTECTED -->

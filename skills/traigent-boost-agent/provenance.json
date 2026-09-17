@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "039ccdf59313f55e",
+  "doc_hash": "fd1ae4ed82cd2b61",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/insights-and-iteration.md": "92d53cae73c0dae5",
-    "references/instrument-recipe.md": "dd780d3c1429ba67"
+    "references/insights-and-iteration.md": "2fbc6034f8bd71d2",
+    "references/instrument-recipe.md": "3f2fa48719c9220c"
   },
   "entries": [
     {
@@ -157,6 +157,28 @@
       "doc_after_hash": "039ccdf59313f55e",
       "note": "ExampleInsightsClient appends /analytics/... to its base, so the base must be https://portal.traigent.ai/api/v1; the skills taught the bare origin, which 405s on the live portal (observed 2026-09-13). Fix the snippet base and state which client takes the origin and which takes the /api/v1 base.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "039ccdf59313f55e",
+      "doc_after_hash": "d130de0e5bd2771f",
+      "note": "fold traigent-first-run's field-tested lessons into the front door: new 'Inspect what is already there before Step 1' entry (read existing run records such as traigent-runs/ or save_to= files, name the target before quoting a number, substitutes stay substitutes, never re-run a paid phase to move a number, setup-audit first for a project with no run); Step 3.6 real probe is paid so it is priced on the Step 4 card and launched only after the Step 5 go, never before; the real-run snippet no longer sets TRAIGENT_COST_APPROVED as a gate (verified on 0.27.0: check_and_approve admits any estimate under the limit with no prompt; the variable only skips the SDK's over-limit and unpriced-model refusals) and reads stop_reason=='cost_limit' as a partial result plus best_config_margin['verdict'] (0.26.0+) so a statistical_tie is a no-boost result; Step 3.5 sanity gate runs only for a scorer read and classified deterministic (judge = paid, executing = disclosed); LITELLM_LOCAL_MODEL_COST_MAP set beside TRAIGENT_OFFLINE_MODE in the mock block and Step 8 (offline mode alone does not stop LiteLLM's import-time pricing fetch, first-run #132); Step 9 states the SDK handshake is conditional and the approval card is the gate. References: instrument-recipe.md dataset-path containment applies to every run, offline included (verified: no offline exemption in evaluators/base.py) and sets the LiteLLM flag; insights-and-iteration.md reads example scores and dataset quality first and triggers compute_scores only on explicit approval, citing the 2026-09-13 HTTP 500 witness recorded in traigent-setup-audit.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "d130de0e5bd2771f",
+      "doc_after_hash": "fd1ae4ed82cd2b61",
+      "note": "review fix: Step 5 snippet reads best_config_margin via getattr (AttributeError on the 0.24.0 floor, executed) and keeps a numeric cost-limit literal (a placeholder string is logged and replaced by the 2.00 default, executed on 0.27.0); Step 4 card proposes the ceiling and prices the probe in its example; one phrase for the go gate; setup-audit's probe described by the guard level it reports. Also: the two quota sentences now match traigent-debugging - a connected mock run consumes optimization_samples, an offline=True run touches no quota (the old text said mock always consumes).",
+      "source_type": "agent"
     }
   ]
 }
