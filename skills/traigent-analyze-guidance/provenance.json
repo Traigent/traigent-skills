@@ -4,7 +4,7 @@
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
-    "references/optimization-principles.md": "2c9b62d815e7fbc9",
+    "references/optimization-principles.md": "633c064bbae26440",
     "references/preflight.md": "56489d08e02da5ec",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
@@ -267,7 +267,7 @@
       "timestamp": "2026-09-17T00:00:00Z",
       "doc_before_hash": "8e271f1c8cb3b909",
       "doc_after_hash": "442a851d049a9a5e",
-      "note": "review fix: 'none of them carry a sample-size gate' was false - analyze_variance_based and the correlation method return {} under 10 successful trials, analyze_permutation_based under 20 (importance.py, 0.24.0 and 0.27.0); the sentence now names those floors and keeps the point that nothing above them marks a ranking as underpowered.",
+      "note": "review fix: 'none of them carry a sample-size gate' was false - analyze_variance_based and the correlation method return {} under 10 successful trials, analyze_permutation_based under 20 (importance.py, 0.24.0 and 0.27.0); the sentence now names those floors and keeps the point that nothing above them marks a ranking as underpowered. Also: references/optimization-principles.md quotes the text2sql run as 20/30 -> 27/30 on the tuning slice with the selection caveat, matching the recipe skill, instead of 66.7% -> 90%.",
       "source_type": "agent"
     }
   ]
