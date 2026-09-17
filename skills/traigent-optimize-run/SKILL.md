@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.16"
+  version: "1.0.17"
 ---
 
 # Running Traigent Optimization
@@ -145,9 +145,15 @@ results = await answer.optimize(max_trials=10)  # default algorithm="auto"
 | `callbacks` | `list[Callable] \| None` | Progress tracking callbacks. |
 | `configuration_space` | `dict \| None` | Override config space for this run. |
 | `objectives` | `list[str] \| ObjectiveSchema \| None` | Override objectives for this run. |
-| `warm_start_from` | `str \| None` | Identifier of a prior experiment run. Cloud sessions only: the SDK forwards it to backend session metadata, and the backend can reuse the referenced run's results to seed the search. No local/offline effect. |
 | `cost_limit` | `float \| None` | Per-run cost cap in USD. Overrides `TRAIGENT_RUN_COST_LIMIT` for this call. A pre-run estimate over the limit raises `OptimizationError`; a mid-run budget hit returns partial results with `stop_reason="cost_limit"` (see cost handling below). |
+| `budget` | `ExecutionBudget \| None` | Experimental (SDK 0.26.0+): one cumulative cost / examples / deadline cap shared by every `optimize()` call it is passed to (see "Setting a Cost Limit"). |
 | `**algorithm_kwargs` | `Any` | Algorithm-specific parameters (e.g., `parameter_order` for grid). |
+
+`warm_start_from` is a **decorator** argument, not an `optimize()` one — `.optimize(warm_start_from=…)`
+raises `TypeError` (SDK 0.19.1+, Traigent/Traigent#1683). To seed a connected run from a prior portal
+experiment: `@traigent.optimize(..., warm_start_from="<prior experiment id>")`. Cloud sessions only:
+the SDK forwards it on session creation and the backend may reuse that run's results; no local/offline
+effect.
 
 To continue from a prior run, see the post-run flow (`traigent-analyze-guidance`).
 
@@ -165,6 +171,18 @@ results = asyncio.run(answer.optimize(max_trials=10, algorithm="grid"))
 ```
 
 `optimize_sync()` accepts the same parameters as `optimize()`. It creates and manages the event loop internally.
+
+**A paid run outlives your tool's foreground timeout.** Coding-agent shells commonly kill a command
+after ~2 minutes, and the trials already paid for are not rolled back. Launch a real run detached and
+poll its log or `save_to=` file rather than awaiting it in the foreground:
+
+```bash
+nohup python run_optimization.py > optimization-run.log 2>&1 &
+```
+
+Set `TRAIGENT_RESULTS_FOLDER` to a project-local, git-ignored directory so partial results land where
+you can recover them, and `TRAIGENT_LOG_EXAMPLE_CONTENT=false` if prompts, outputs, and expected
+answers must not be written to the SDK's per-example logs (they are by default).
 
 ## Algorithm Selection
 
@@ -216,6 +234,21 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 | `"random"` | Sampling | Any | Limited | Local SDK search |
 | `"bayesian"` / `"optuna"` / `"tpe"` / `"cmaes"` / `"nsga2"` | Named backend strategy | Any | Any | **Connected only, SDK 0.20.1+** (supported names bind server-side; `nsga2`/`cmaes` fail fast — see above) |
 
+> ⚠️ **`auto` with no live backend session is a local `random` search, not managed optimization.**
+> When no `TRAIGENT_API_KEY` is found in the process, or session creation hits a connectivity
+> failure, a 5xx, or the session-create HTTP 400 that both the typed and the legacy create
+> request return (any other 400 raises `ConfigurationError`), `algorithm="auto"` does not fail: it falls back to local random
+> sampling, prints one warning banner, and returns a result that reads like the managed one
+> (verified on 0.27.0: `metadata["source"] == "local_fallback"`, `fallback_reason_code ==
+> "no_api_key"`). A key the backend rejects (401/403/429) and an unresolvable backend host raise
+> instead. Two rules for any run the user approved *as* managed search:
+> 1. Launch it with `TRAIGENT_REQUIRE_CLOUD=1` so session-creation failure raises **before** any
+>    trial is paid for, instead of degrading.
+> 2. On return, treat `results.metadata.get("source") == "local_fallback"` (with
+>    `metadata["fallback_reason"]` / `metadata.get("fallback_reason_code")`, the code is 0.27.0+) or `results.cloud_url is None` as a
+>    failure to investigate, never a result to report. Prove tracking first at $0: a stub function
+>    returning a constant, 1–2 trials, confirm a `cloud_url` comes back.
+
 > ⚠️ **Local `default_config` consumes a `max_trials` slot.** In local SDK execution (`grid`,
 > `random`, and `auto` when it resolves to local random), a supplied `default_config` runs as an
 > extra baseline trial before optimizer suggestions and counts against `max_trials`. This bites
@@ -257,6 +290,12 @@ export TRAIGENT_RUN_COST_LIMIT=5.00  # $5 max per optimization run
 ```
 
 The default limit is $2.00 per run.
+
+Several paid phases under one approved total (a baseline, then the search, then holdout scoring)
+can share one cumulative cap on SDK 0.26.0+ — see
+[`references/execution-budget.md`](references/execution-budget.md). Per-run `cost_limit` still
+applies inside each call; the shared cap is the binding one, and a run it stops reports
+`stop_reason="execution_budget"`. Neither cap sees calls your evaluator or a judge places directly.
 
 ### Handling a Cost Limit
 
@@ -346,6 +385,8 @@ Optimization can stop for several reasons. Check `results.stop_reason`:
 | `"max_samples_reached"` | Hit the `max_total_examples` limit across all trials. |
 | `"timeout"` | Exceeded the `timeout` duration. |
 | `"cost_limit"` | Hit the `TRAIGENT_RUN_COST_LIMIT` budget. |
+| `"execution_budget"` | A shared `ExecutionBudget` (cost, examples, or deadline) was exhausted (SDK 0.26.0+); reported instead of `"cost_limit"`, detail in `results.metadata["execution_budget"]`. |
+| `"vendor_error"` | A provider-side error (401/402/403/429, `insufficient_quota`) ended the run; the SDK does not retry by default. When every call fails before any example is scored the run instead raises `OptimizationError`, so catch that too. |
 | `"optimizer"` | Algorithm exhausted the search space (e.g., grid search finished). |
 | `"plateau"` | No improvement detected over recent trials. |
 | `"user_cancelled"` | User cancelled or declined cost approval. |
@@ -526,9 +567,9 @@ async def main():
         results = await answer_question.optimize(
             max_trials=6,
             algorithm="grid",
-            timeout=300.0,
+            # no timeout: bounded by max_trials + the cost cap, not a wall clock
         )
-    except CostLimitExceeded as e:  # kept for forward-compat; not raised today
+    except CostLimitExceeded as e:  # raised only when the pre-run estimate exceeds the cap and was not approved
         print(f"Budget exceeded: ${e.accumulated:.2f} / ${e.limit:.2f}")
         return
     except OptimizationError as e:  # pre-run "estimate > limit" decline, and run errors

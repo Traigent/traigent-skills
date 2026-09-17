@@ -31,12 +31,15 @@ The default limit is $2.00 per optimization run. This applies per call to `optim
 
 ## Cost-Limit Handling
 
-Do not rely on one exception for every budget outcome. In the current SDK, a
-pre-run estimate above the limit is surfaced at the `optimize()` boundary as
-`OptimizationError`, while a mid-run budget stop can return partial results with
-`results.stop_reason == "cost_limit"`. `CostLimitExceeded` is exported and may
-appear in integration or future SDK paths, so keep it in handlers for
-forward-compatibility, but do not make it your only guard.
+The SDK gate is conditional, not the approval. `CostLimitExceeded` (an
+`OptimizationError` subclass) is raised before any trial only when the pre-run
+estimate exceeds the limit and no approval is present (`TRAIGENT_COST_APPROVED` /
+`cost_approved=True`); a priced run whose estimate is under the limit starts real
+calls with no prompt at all. A mid-run budget hit never raises — it returns partial
+results with `results.stop_reason == "cost_limit"`. So the user's explicit yes to a
+stated ceiling is obtained by you, before the call, never inferred from the absence
+of an exception. In a TTY the SDK prompt's `[r]` key sets the limit to 1.5× the *estimate*
+(not 1.5× the old limit) on one keystroke, which is why approval belongs in your flow and not in that prompt.
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
