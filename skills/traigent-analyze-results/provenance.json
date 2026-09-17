@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "acde24064b27156b",
+  "doc_hash": "9cc86b7e77ba45cc",
   "reference_hashes": {
-    "references/convergence-patterns.md": "77652d333c38a85a",
+    "references/convergence-patterns.md": "57c2d4ef7f2c2b69",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/mcp-analytics-tools.md": "4c68385be07782a7",
-    "references/optimization-result-api.md": "5d902e1d910d1a81"
+    "references/optimization-result-api.md": "06a059e9d16040ef"
   },
   "entries": [
     {
@@ -177,6 +177,28 @@
       "doc_after_hash": "c343887a6484b340",
       "note": "declare min_sdk_version 0.20.0 and state it in When to Use. This skill teaches `traigent local sync`, and the `local` CLI group first ships in v0.20.0 (added by Traigent 0ba0fa98, 2026-06-21; absent from v0.15.0-v0.19.1), while the skill was inheriting the 0.15.0 default floor. Surfaced by the prose-aware CLI fact extraction added in this PR. Traigent/traigent-skills#254.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "acde24064b27156b",
+      "doc_after_hash": "b7903d120dbed0a5",
+      "note": "fold traigent-first-run's reporting lessons in: read results.best_config_margin (0.26.0+; verdict clear/statistical_tie/na, Bonferroni-corrected paired winner-vs-runner-up margin) before any local delta test and never apply a statistical_tie; a walkthrough-substitute run stays walkthrough evidence when narrating a decision brief; stop-reason table gains execution_budget/metric_limit/convergence/semantic_saturation (verified on 0.27.0) and cost_limit/max_trials_reached actions report the partial result instead of defaulting to more spend; results.eval_audit / example_matrix free local audit taught, results.analyze() warned against; export_config preferred over apply_best_config and the load_optimization_results sticky-override side effect named; cross-run history guarded by same-setup and labelled directional; collapse the post-merge duplicated 'traigent-analyze-guidance ... and traigent-analyze-guidance' routing into one Mode B / Mode C phrase in the description, prose, table and See Also.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "b7903d120dbed0a5",
+      "doc_after_hash": "9cc86b7e77ba45cc",
+      "note": "review fix: Safety Check and Complete Example read best_config_margin via getattr (AttributeError on the 0.24.0 floor, executed), branch the tie case with its own message (the 'below threshold' message fired on a tie), and the Complete Example no longer prints 'may benefit from more trials' or applies a tied winner - the two rules this PR rewrote; example_matrix is per-example x per-trial.",
+      "source_type": "agent"
     }
   ]
 }

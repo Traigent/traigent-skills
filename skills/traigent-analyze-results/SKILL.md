@@ -1,6 +1,6 @@
 ---
 name: traigent-analyze-results
-description: "Analyze and report Traigent optimization results from the terminal — without opening the portal's tabs. Use when a user asks to analyze a run, 'how did my run do?', 'analyze my latest run in project X', what the winner is, or to read result fields, reports, leaderboards, Pareto trade-offs, correlations, or parameter/example insights. Decision questions route to `traigent-analyze-guidance` for portal-tracked runs and `traigent-analyze-guidance` for offline/local runs. Also covers the local OptimizationResult object: reading results.best_config, comparing trials, checking stop_reason, calling apply_best_config(), accessing total_cost or total_tokens, or understanding why optimization stopped."
+description: "Analyze and report Traigent optimization results from the terminal — without opening the portal's tabs. Use when a user asks to analyze a run, 'how did my run do?', 'analyze my latest run in project X', what the winner is, or to read result fields, reports, leaderboards, Pareto trade-offs, correlations, or parameter/example insights. Decision questions route to `traigent-analyze-guidance` (Mode B for portal-tracked runs, Mode C for offline/local). Also covers the local OptimizationResult object: reading results.best_config, comparing trials, checking stop_reason, calling apply_best_config(), accessing total_cost or total_tokens, or understanding why optimization stopped."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.17"
+  version: "1.1.18"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -121,11 +121,10 @@ Use `deploy` for reading deployment-relevant result fields, `debug` for "why is 
 `report` for a summary/report request, and `iterate` only when you are inspecting the backend's
 analysis payload without deciding the next run.
 
-Decision questions are out of scope for this read-only analysis skill. For portal-tracked runs,
-route open-ended next-step decisions to `traigent-analyze-guidance`, which fetches the same
-backend decision brief (`analytics_get_run_decision_brief`) with the decision-making protocol
-around it; for offline/local runs or unavailable service payloads, route them to
-`traigent-analyze-guidance`.
+Decision questions are out of scope for this read-only analysis skill. Route open-ended
+next-step decisions to `traigent-analyze-guidance`: Mode B for portal-tracked runs (it fetches the
+same backend decision brief, `analytics_get_run_decision_brief`, with the decision-making protocol
+around it), Mode C for offline/local runs or unavailable service payloads.
 
 The tool returns an `ok` flag and a `decision_brief` object. Narrate the brief in this order:
 
@@ -138,6 +137,11 @@ The tool returns an `ok` flag and a `decision_brief` object. Narrate the brief i
    decision.
 5. **Fallback** — build a navigation-only portal link:
    `https://portal.traigent.ai/p/<project_id>/runs/<run_id>`.
+
+The brief knows the numbers, not where the data came from: a run whose dataset, evaluator, or agent
+was a generated substitute (check the project's own run record) is
+walkthrough evidence — say so before the headline and keep that disclosure attached to every number
+quoted from it.
 
 ### 3. Pull one drilldown only when the brief or user asks
 
@@ -174,17 +178,17 @@ If the payload is absent, use the portal deep-link instead.
 | Clean winner | (none — headline is enough) | Report the winner and route promotion decisions to `traigent-analyze-guidance` or `traigent-ci-safety-gate` |
 | Expensive winner / Pareto trade-off | `analytics_get_single_run_pareto`, then `analytics_render_chart` with `kind="run_pareto"` to draw it | Report the trade-off; route operating-point decisions to `traigent-analyze-guidance` for portal runs |
 | Dominated winner / leaderboard | `analytics_get_run_leaderboard` | Report the dominating config; route the next-step decision to `traigent-analyze-guidance` |
-| Low trials | (none — state low confidence) | Report low confidence; route more-trials decisions to `traigent-analyze-guidance` or `traigent-analyze-guidance` for offline/local runs |
-| One knob dominates | `analytics_get_parameter_insights` | Report the dominant knob; route space changes to `traigent-analyze-guidance` or offline/local diagnosis to `traigent-analyze-guidance` |
-| Flat scores | `analytics_get_parameter_insights` | Report flatness; route dataset/space decisions to `traigent-analyze-guidance` or offline/local diagnosis to `traigent-analyze-guidance` |
-| Noisy examples | `analytics_get_example_insights` (safe projection) | Report the safe projection; route evaluator/data changes to `traigent-analyze-guidance` or offline/local diagnosis to `traigent-analyze-guidance` |
+| Low trials | (none — state low confidence) | Report low confidence; route more-trials decisions to `traigent-analyze-guidance` (Mode B portal, Mode C offline/local) |
+| One knob dominates | `analytics_get_parameter_insights` | Report the dominant knob; route space changes to `traigent-analyze-guidance` (Mode B portal, Mode C offline/local) |
+| Flat scores | `analytics_get_parameter_insights` | Report flatness; route dataset/space decisions to `traigent-analyze-guidance` (Mode B portal, Mode C offline/local) |
+| Noisy examples | `analytics_get_example_insights` (safe projection) | Report the safe projection; route evaluator/data changes to `traigent-analyze-guidance` (Mode B portal, Mode C offline/local) |
 | Cost blowup | `analytics_get_single_run_pareto` (+ render `kind="run_pareto"`) | Report cost evidence; route budget/guardrail decisions to `traigent-analyze-guidance` or `traigent-ci-safety-gate` |
 
 For the full tool contract (every tool's arguments and response shape and the geometry-vs-words
 rule), see
 [references/mcp-analytics-tools.md](references/mcp-analytics-tools.md). For choosing the
-*next experiment* once analysis names the problem, hand off portal-tracked runs to
-`traigent-analyze-guidance` and offline/local runs to `traigent-analyze-guidance`.
+*next experiment* once analysis names the problem, hand off to `traigent-analyze-guidance`
+(Mode B for portal-tracked runs, Mode C for offline/local).
 
 ### 4. Multi-Run View (Cohort Table)
 
@@ -400,6 +404,17 @@ across three passes). Three rules follow:
    claimable only if the CI excludes zero. The same skepticism applies to public leaderboard
    gaps of a few points.
 
+**Read the SDK's own winner verdict before any local delta test (SDK >= 0.26.0).**
+`results.best_config_margin` qualifies `best_config` without changing it: a paired test of the
+winner against the best *distinct* runner-up on their shared per-example scores (McNemar exact for
+0/1 scorers, paired t otherwise), Bonferroni-corrected for having picked the best of `n_configs` —
+the selection effect that inflates `best_score`. Read `verdict`: `"clear"` = the winner beats the
+runner-up at `effective_alpha`; `"statistical_tie"` = report a tie, whatever `best_score` says;
+`"na"` = no paired data (needs >= 5 shared examples; `reason` says why). The payload also carries
+`delta`, `ci95`, `p_value`, `n_shared_examples`, `runner_up`, `n_configs`. `None` means there was no
+runner-up. This is the paired delta and interval the winner receipt asks for; never upgrade a tie
+into a win.
+
 **Winning configs do not port across model families.** Identical knob grids on two families kept
 the knob *ranking* but flipped the *optimum* (one model peaked with full schema context; the
 other did better on the compact variant — full slightly hurt it). Re-optimize per model; never
@@ -431,6 +446,23 @@ semantics — map flags back to your dataset via `example_id`, never `example_nu
 evaluators emit those `example_{index}` keys automatically; a custom evaluator should set
 `example_id` to a real per-row id (e.g. `example.metadata.get("id", index)`) so the two keyings
 line up.
+
+**Run the SDK's free local audit before reading portal flags (SDK >= 0.24.0).** `results.eval_audit`
+is computed only when read, makes no calls, and is `None` when the run captured no per-example
+detail or spanned fewer than two configurations:
+
+```python
+audit = results.eval_audit
+if audit is not None:
+    for flag in audit.flagged:   # never-correct, token-leak, cross-family-consensus-on-wrong
+        print(flag.example_id, flag.detectors, flag.suggested_answer)
+```
+
+A never-correct row is a suspect *expectation* before it is a model failure; `suggested_answer` is
+set only where unrelated model families agreed on the same non-gold output. `results.example_matrix`
+is the per-example × per-trial grid behind it (two trials of one config are two columns). Do not call `results.analyze()`: it needs the
+separate tuned-variables plugin, which the SDK does not install, and raises `ImportError`
+without it.
 
 ### Configuration Insights
 
@@ -623,12 +655,16 @@ The `stop_reason` field tells you why optimization ended. This is critical for d
 
 | Stop Reason | Meaning | Action |
 |---|---|---|
-| `"max_trials_reached"` | Hit the `max_trials` limit | Increase `max_trials` if results are still improving |
+| `"max_trials_reached"` | Hit the `max_trials` limit | Report the best completed configuration as a result, never as a failure; whether to buy more trials is the decision brief's call (`traigent-analyze-guidance`, Mode B), not this skill's |
 | `"max_samples_reached"` | Hit the max samples/examples limit | Increase sample budget or reduce dataset size |
 | `"timeout"` | Exceeded the timeout duration | Increase timeout or reduce config space |
-| `"cost_limit"` | Hit the cost budget limit | Increase `cost_limit` or use cheaper models |
+| `"cost_limit"` | Hit the per-run cost budget | Report the best completed configuration as a result, never as a failure — the paid trials are kept; a larger run needs a new approval, and the decision is `traigent-analyze-guidance`'s |
+| `"execution_budget"` | Shared cumulative `ExecutionBudget` exhausted — cost, examples, or deadline (SDK >= 0.26.0); reported instead of `"cost_limit"` | Report the best completed configuration as the result; `results.metadata["execution_budget"]` says which limit hit |
+| `"metric_limit"` | A soft cumulative metric limit was hit | Results are valid; report them |
 | `"optimizer"` | Optimizer decided to stop (search space exhausted) | Config space fully explored; results are final |
 | `"plateau"` | No improvement detected | Results have converged; more trials unlikely to help |
+| `"convergence"` | Built-in convergence condition triggered | Converged for this space; results are final |
+| `"semantic_saturation"` | Per-example quality and continuous objectives saturated | Report; detail in `results.metadata["semantic_saturation"]` |
 | `"user_cancelled"` | User cancelled or declined cost approval | Review cost estimates, re-run if needed |
 | `"condition"` | A generic stop condition triggered | Check convergence_info for details |
 | `"error"` | Optimization failed due to an exception | Check failed trials for error messages |
@@ -638,11 +674,11 @@ The `stop_reason` field tells you why optimization ended. This is critical for d
 
 ```python
 if results.stop_reason == "max_trials_reached":
-    print("Consider increasing max_trials for better results")
+    print("Trial cap reached - report the winner; more trials is a decision-brief question")
 elif results.stop_reason == "plateau":
     print("Optimization converged - these are likely the best results")
-elif results.stop_reason == "cost_limit":
-    print(f"Budget exhausted at ${results.total_cost:.2f}")
+elif results.stop_reason in ("cost_limit", "execution_budget"):
+    print(f"Budget reached at ${results.total_cost:.2f} - partial result, paid trials kept")
 elif results.stop_reason == "error":
     for trial in results.failed_trials:
         print(f"Error in trial {trial.trial_id}: {trial.error_message}")
@@ -671,6 +707,13 @@ classify.apply_best_config(results)
 print(classify.current_config)  # {"model": "gpt-4o", "temperature": 0.5}
 ```
 
+Prefer `classify.export_config("candidate_config.json")` and hand the file to
+`traigent-ci-safety-gate`; `apply_best_config()` changes what the function serves *now*, which is a
+promotion step, not an analysis step. `classify.load_optimization_results(path)` has the same side
+effect — it applies the loaded `best_config` as a sticky override — so to re-read a saved result
+without touching the function, read the JSON (`trials[]`, `best_config`, `best_config_margin`,
+`stop_reason`) directly.
+
 ### Config Access Lifecycle
 
 | When | API | Notes |
@@ -690,12 +733,16 @@ Verify results before applying:
 ```python
 results = classify.optimize_sync()
 
-if results.best_score is not None and results.best_score >= 0.85:
-    classify.apply_best_config(results)
-    print(f"Applied config with score {results.best_score:.2%}")
-else:
+# best_config_margin exists from SDK 0.26.0; getattr keeps this runnable on the 0.24.0 floor (verdict None there)
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
+if results.best_score is None or results.best_score < 0.85:
     print(f"Score {results.best_score} below threshold, not applying")
     # Use a known-good default instead
+elif verdict == "statistical_tie":
+    print(f"Score {results.best_score:.2%} but the winner is tied with the runner-up, not applying")
+else:
+    classify.apply_best_config(results)
+    print(f"Applied config with score {results.best_score:.2%}")
 ```
 
 This threshold check runs on the optimization/search slice — it gates whether to apply, not whether to promote. Promotion is a separate decision that requires candidate-vs-incumbent evaluation on the holdout slice (see `traigent-ci-safety-gate`).
@@ -718,16 +765,21 @@ for past_result in history:
     print(f"  Timestamp: {past_result.timestamp}")
 ```
 
-Compare across runs to see if optimization is improving over time:
+Compare across runs only when `objectives`, dataset, evaluator, and space are identical
+(`metadata["configuration_space"]`, `objectives`) — otherwise the two numbers were measured on
+different things, and even then the difference is directional, not a paired result (see "Pair,
+don't cross-compare" above):
 
 ```python
 history = classify.get_optimization_history()
 if len(history) >= 2:
-    latest = history[-1]
-    previous = history[-2]
-    if latest.best_score is not None and previous.best_score is not None:
-        improvement = latest.best_score - previous.best_score
-        print(f"Improvement: {improvement:+.3f}")
+    latest, previous = history[-1], history[-2]
+    same_setup = (
+        latest.objectives == previous.objectives
+        and latest.metadata.get("configuration_space") == previous.metadata.get("configuration_space")
+    )
+    if same_setup and latest.best_score is not None and previous.best_score is not None:
+        print(f"Directional change: {latest.best_score - previous.best_score:+.3f}")
 ```
 
 ## Complete Example
@@ -778,20 +830,24 @@ top_trials = sorted(
 for trial in top_trials:
     print(f"  {trial.config} -> accuracy={trial.get_metric('accuracy'):.3f}")
 
-# 5. Convergence check
-if results.stop_reason == "plateau":
-    print("\nOptimization converged naturally")
-elif results.stop_reason == "max_trials_reached":
-    print("\nMay benefit from more trials")
+# 5. Stop reason — a result, never a verdict on buying more trials (see the table above)
+print(f"\nStop reason: {results.stop_reason}")
 
-# 6. Apply if good enough
+# 6. Apply if good enough and not a statistical tie (SDK 0.26.0+ verdict; None below)
 THRESHOLD = 0.80
-if results.best_score is not None and results.best_score >= THRESHOLD:
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
+if (
+    results.best_score is not None
+    and results.best_score >= THRESHOLD
+    and verdict != "statistical_tie"
+):
     summarize.apply_best_config(results)
     print(f"\nApplied best config (score={results.best_score:.2%})")
 
     # Production usage
     output = summarize("Summarize this quarterly earnings report...")
+elif verdict == "statistical_tie":
+    print(f"\nScore {results.best_score:.2%} but the winner is tied with the runner-up, skipping apply")
 else:
     print(f"\nScore {results.best_score} below threshold {THRESHOLD}, skipping apply")
 ```
@@ -806,8 +862,7 @@ else:
 
 | Skill | Use |
 |---|---|
-| `traigent-analyze-guidance` | Get the canonical next-step decision for a portal-tracked run. |
-| `traigent-analyze-guidance` | Form a local next-iteration hypothesis for offline/local runs, unavailable service payloads, or service-flagged local evidence. |
+| `traigent-analyze-guidance` | Mode B: the canonical next-step decision for a portal-tracked run. Mode C: a local next-iteration hypothesis for offline/local runs, unavailable service payloads, or service-flagged local evidence. |
 | `traigent-analyze-variable-importance` | A deeper, local tuned-variable importance card when `one_knob_dominates` and you want the bootstrap-CI breakdown. |
 | `traigent-ci-safety-gate` | Gate a `clean_winner` (or a cost guardrail for `cost_blowup`) before promoting it to production. |
 
