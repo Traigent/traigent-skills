@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Traigent text2SQL optimization — the working recipe
