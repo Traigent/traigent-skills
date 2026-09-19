@@ -1073,6 +1073,7 @@ class DatasetReport:
     non_holdout_input_index: dict[str, list[int]] = field(
         default_factory=dict, repr=False
     )
+    untagged_input_index: dict[str, list[int]] = field(default_factory=dict, repr=False)
     # True when this file IS the holdout slice (declared by its name beside a
     # tuning file): it is judged against the holdout minimum only.
     holdout_by_name: bool = False
@@ -1247,12 +1248,15 @@ def analyse_dataset(
     by_input: dict[str, list[int]] = defaultdict(list)
     holdout_by_input: dict[str, list[int]] = defaultdict(list)
     non_holdout_by_input: dict[str, list[int]] = defaultdict(list)
+    untagged_by_input: dict[str, list[int]] = defaultdict(list)
     for row in parsed:
         by_input[row.normalized_input].append(row.index)
         if row.split in HOLDOUT_VALUES:
             holdout_by_input[row.normalized_input].append(row.index)
         else:
             non_holdout_by_input[row.normalized_input].append(row.index)
+        if row.split is None:
+            untagged_by_input[row.normalized_input].append(row.index)
     exact_groups = sorted(
         (indices for indices in by_input.values() if len(indices) > 1),
         key=lambda group: group[0],
@@ -1352,13 +1356,15 @@ def analyse_dataset(
         input_index=dict(by_input),
         holdout_input_index=dict(holdout_by_input),
         non_holdout_input_index=dict(non_holdout_by_input),
+        untagged_input_index=dict(untagged_by_input),
     )
 
 
 def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
     """Read the two-file holdout layout: a holdout-named file beside a tuning
     file in one directory declares the holdout slice for both, and the overlap
-    check runs across the pair. Per-row split markers, when present, win."""
+    check runs across the pair. Explicit row tags win; untagged rows inherit
+    their file's role."""
     by_dir: dict[str, list[DatasetReport]] = defaultdict(list)
     for report in reports:
         by_dir[str(Path(report.file).parent)].append(report)
@@ -1374,7 +1380,13 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                 # Tagged rows keep their declared roles. A holdout-named file
                 # that contains tuning rows is contradictory; do not silently
                 # relabel those rows just to make the sibling layout pass.
+                # Untagged rows still inherit the holdout role from the file.
                 holdout_inputs.update(report.holdout_input_index)
+                holdout_inputs.update(report.untagged_input_index)
+                untagged_rows = sum(
+                    len(indexes) for indexes in report.untagged_input_index.values()
+                )
+                report.holdout_rows += untagged_rows
                 non_holdout_rows = sum(
                     count
                     for split, count in report.split_counts.items()
@@ -1384,6 +1396,27 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                     report.findings.append(
                         f"holdout-named file contradicts {non_holdout_rows} per-row "
                         "split marker(s) naming a non-holdout slice; per-row markers win"
+                    )
+                if untagged_rows:
+                    report.findings.append(
+                        f"{untagged_rows} untagged row(s) inherit the holdout role "
+                        "from the file name"
+                    )
+                report.findings = [
+                    finding
+                    for finding in report.findings
+                    if not (
+                        report.holdout_rows
+                        and finding.startswith(
+                            "split markers present but none name a holdout slice"
+                        )
+                    )
+                    and not finding.startswith("holdout slice has ")
+                ]
+                if 0 < report.holdout_rows < MIN_HOLDOUT:
+                    report.findings.append(
+                        f"holdout slice has {report.holdout_rows} rows, under the "
+                        f"{MIN_HOLDOUT}-row minimum"
                     )
                 report.holdout_by_name = (
                     report.holdout_rows == report.rows and non_holdout_rows == 0

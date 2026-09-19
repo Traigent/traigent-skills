@@ -208,6 +208,23 @@ def test_tagged_sibling_pair_without_overlap_still_propagates_holdout(
     assert tuning.holdout_overlap == []
 
 
+def test_untagged_rows_in_partially_tagged_holdout_file_inherit_filename_role(
+    tmp_path: Path,
+) -> None:
+    reports = _scan_sibling_pair(
+        tmp_path,
+        [_row("SAME", "tune")],
+        [_row("other", "holdout"), _row(" same ")],
+    )
+
+    tuning = reports["eval/tuning.jsonl"]
+    holdout = reports["eval/holdout.jsonl"]
+    assert holdout.holdout_rows == 2
+    assert tuning.holdout_rows == 2
+    assert tuning.holdout_overlap == [0]
+    assert not any("contradict" in finding for finding in holdout.findings)
+
+
 def test_mixed_row_tags_win_and_a_named_holdout_contradiction_is_reported(
     tmp_path: Path,
 ) -> None:
