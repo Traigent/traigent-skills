@@ -1,6 +1,6 @@
 ---
 name: traigent-analyze-results
-description: "Analyze and report Traigent optimization results from the terminal — without opening the portal's tabs. Use when a user asks to analyze a run, 'how did my run do?', 'analyze my latest run in project X', what the winner is, or to read result fields, reports, leaderboards, Pareto trade-offs, correlations, or parameter/example insights. Decision questions route to `traigent-analyze-guidance` (Mode B for portal-tracked runs, Mode C for offline/local). Also covers the local OptimizationResult object: reading results.best_config, comparing trials, checking stop_reason, calling apply_best_config(), accessing total_cost or total_tokens, or understanding why optimization stopped."
+description: "Analyze and report Traigent optimization results from the terminal — without opening the portal's tabs. Use when a user asks to analyze a run, 'how did my run do?', 'analyze my latest run in project X', what the winner is, or to read result fields, reports, leaderboards, Pareto trade-offs, correlations, or parameter/example insights. Decision questions route to `traigent-analyze-guidance` (Mode B for portal-tracked runs, Mode C for offline/local). Also covers the local OptimizationResult object: reading results.best_config, comparing trials, checking stop_reason, automatic best-config application, candidate export, accessing total_cost or total_tokens, or understanding why optimization stopped."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.18"
+  version: "1.1.19"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -684,35 +684,33 @@ elif results.stop_reason == "error":
         print(f"Error in trial {trial.trial_id}: {trial.error_message}")
 ```
 
-## Applying Best Config
+## Exporting a Candidate and Promoting It Safely
 
-After optimization, apply the winning configuration so your function uses it in production:
+On SDK 0.27.0, `optimize()` / `optimize_sync()` automatically applies a nonempty
+`results.best_config` to the same `OptimizedFunction` instance before returning. Calling
+`apply_best_config(results)` afterwards only reapplies it. Therefore, if the incumbent must keep
+serving while you inspect a candidate, never optimize the serving-process instance. Run the search
+in a separate candidate process with its own decorated function instance:
 
 ```python
-# Run optimization
+# candidate_optimize.py — a separate OS process, never the serving process
 results = classify.optimize_sync()
 
-# Apply the best configuration
-classify.apply_best_config(results)
-
-# Now every call uses the optimized config
-# traigent.get_config() inside the function returns results.best_config
-response = classify("What category is this email?")
+# A nonempty winner is already active on this process-local `classify` instance.
+if results.best_config:
+    classify.export_config("candidate_config.json")
 ```
 
-`apply_best_config()` sets the configuration so that subsequent calls to `traigent.get_config()` inside the decorated function return the best configuration from the optimization run. The applied config is also readable from outside the function via `func.current_config` on the `OptimizedFunction` instance:
+Exit that candidate process after export. The serving process and its incumbent instance remain
+unchanged because they do not share process memory. `classify.load_optimization_results(path)` also
+applies the loaded `best_config` as a sticky override on that instance, so use a disposable process
+for replay too. To inspect a saved result without mutation, read its JSON (`trials[]`, `best_config`,
+`best_config_margin`, `stop_reason`) directly.
 
-```python
-classify.apply_best_config(results)
-print(classify.current_config)  # {"model": "gpt-4o", "temperature": 0.5}
-```
-
-Prefer `classify.export_config("candidate_config.json")` and hand the file to
-`traigent-ci-safety-gate`; `apply_best_config()` changes what the function serves *now*, which is a
-promotion step, not an analysis step. `classify.load_optimization_results(path)` has the same side
-effect — it applies the loaded `best_config` as a sticky override — so to re-read a saved result
-without touching the function, read the JSON (`trials[]`, `best_config`, `best_config_margin`,
-`stop_reason`) directly.
+The exported candidate is not promoted yet. Compare it with the exact incumbent on a frozen holdout
+slice through `traigent-ci-safety-gate`, then load or deploy it to the serving process only after the
+gate passes. `best_config_margin` compares the search winner with its runner-up on the search slice;
+it cannot replace the candidate-vs-incumbent holdout comparison.
 
 ### Config Access Lifecycle
 
@@ -720,7 +718,8 @@ without touching the function, read the JSON (`trials[]`, `best_config`, `best_c
 |---|---|---|
 | During optimization trials | `traigent.get_config()` | Returns current trial config. Thread-safe via contextvars. |
 | During optimization trials (strict) | `traigent.get_trial_config()` | Raises `OptimizationStateError` if not in active trial. |
-| After `apply_best_config()` | `traigent.get_config()` | Returns the applied best config. |
+| After a successful `optimize()` with nonempty `best_config` | `traigent.get_config()` | Returns the automatically applied winner on that same instance. |
+| After `apply_best_config()` | `traigent.get_config()` | Returns the explicitly reapplied best config. |
 | From optimization results | `results.best_config` | Dict with the best configuration found. |
 | From the function object | `func.current_config` | Current config on the `OptimizedFunction` instance. |
 
@@ -731,21 +730,24 @@ Verify results before applying:
 <!-- /PROTECTED -->
 
 ```python
+# Run this only in the disposable candidate process described above.
 results = classify.optimize_sync()
 
 # best_config_margin exists from SDK 0.26.0; getattr keeps this runnable on the 0.24.0 floor (verdict None there)
 verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
 if results.best_score is None or results.best_score < 0.85:
-    print(f"Score {results.best_score} below threshold, not applying")
-    # Use a known-good default instead
+    print(f"Score {results.best_score} below threshold; candidate not exported")
 elif verdict == "statistical_tie":
-    print(f"Score {results.best_score:.2%} but the winner is tied with the runner-up, not applying")
+    print(f"Score {results.best_score:.2%} but the winner is tied with the runner-up; candidate not exported")
 else:
-    classify.apply_best_config(results)
-    print(f"Applied config with score {results.best_score:.2%}")
+    classify.export_config("candidate_config.json")
+    print(f"Exported candidate with search score {results.best_score:.2%}")
 ```
 
-This threshold check runs on the optimization/search slice — it gates whether to apply, not whether to promote. Promotion is a separate decision that requires candidate-vs-incumbent evaluation on the holdout slice (see `traigent-ci-safety-gate`).
+This threshold and runner-up check runs on the optimization/search slice — it gates whether to
+export a candidate. Promotion is a separate decision that requires candidate-vs-incumbent
+evaluation on the holdout slice (see `traigent-ci-safety-gate`). The process is disposable because
+the SDK already applied the winner to its local instance before these checks ran.
 
 ## Optimization History
 
@@ -784,7 +786,8 @@ if len(history) >= 2:
 
 ## Complete Example
 
-End-to-end workflow: optimize, analyze, decide, apply.
+Candidate-process workflow: optimize, analyze, decide whether to export. Save this as a batch script
+and run it in a separate OS process from the serving agent. A later holdout gate owns promotion.
 
 ```python
 import traigent
@@ -833,7 +836,8 @@ for trial in top_trials:
 # 5. Stop reason — a result, never a verdict on buying more trials (see the table above)
 print(f"\nStop reason: {results.stop_reason}")
 
-# 6. Apply if good enough and not a statistical tie (SDK 0.26.0+ verdict; None below)
+# 6. Export if good enough and not a statistical tie (SDK 0.26.0+ verdict; None below).
+# optimize_sync() already applied a nonempty winner to this disposable process-local instance.
 THRESHOLD = 0.80
 verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
 if (
@@ -841,15 +845,13 @@ if (
     and results.best_score >= THRESHOLD
     and verdict != "statistical_tie"
 ):
-    summarize.apply_best_config(results)
-    print(f"\nApplied best config (score={results.best_score:.2%})")
-
-    # Production usage
-    output = summarize("Summarize this quarterly earnings report...")
+    summarize.export_config("candidate_config.json")
+    print(f"\nExported candidate (search score={results.best_score:.2%})")
+    print("Compare candidate_config.json with the incumbent on the frozen holdout before promotion")
 elif verdict == "statistical_tie":
-    print(f"\nScore {results.best_score:.2%} but the winner is tied with the runner-up, skipping apply")
+    print(f"\nScore {results.best_score:.2%} but the winner is tied with the runner-up; not exporting")
 else:
-    print(f"\nScore {results.best_score} below threshold {THRESHOLD}, skipping apply")
+    print(f"\nScore {results.best_score} below threshold {THRESHOLD}; not exporting")
 ```
 
 ## Reference Files

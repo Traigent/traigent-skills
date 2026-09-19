@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9cc86b7e77ba45cc",
+  "doc_hash": "47247023e87c0786",
   "reference_hashes": {
     "references/convergence-patterns.md": "57c2d4ef7f2c2b69",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -198,6 +198,17 @@
       "doc_before_hash": "b7903d120dbed0a5",
       "doc_after_hash": "9cc86b7e77ba45cc",
       "note": "review fix: Safety Check and Complete Example read best_config_margin via getattr (AttributeError on the 0.24.0 floor, executed), branch the tie case with its own message (the 'below threshold' message fired on a tie), and the Complete Example no longer prints 'may benefit from more trials' or applies a tied winner - the two rules this PR rewrote; example_matrix is per-example x per-trial.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-fix-isolated-candidate-promotion-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "9cc86b7e77ba45cc",
+      "doc_after_hash": "47247023e87c0786",
+      "note": "review correction for PR #285: state that SDK 0.27.0 automatically applies a nonempty winner to the optimized instance, run candidate search and export in a separate disposable process, preserve the serving incumbent, and require candidate-vs-incumbent frozen-holdout evidence before promotion rather than substituting the search runner-up margin",
       "source_type": "agent"
     }
   ]
