@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.1"
+  version: "1.2.2"
 ---
 
 # Traigent Analyze Guidance
@@ -388,11 +388,13 @@ If importance is empty, do not infer that no knob matters. Common reasons are to
 
 Below about 20 completed trials — a first-run search is 12 — read `importance_score`,
 `optimization_priority`, and the insights `recommendations` as directional, the label the
-`traigent-analyze-variable-importance` script gives the same data. The only sample-size gates
-are the analyzer's own: `analyze_variance_based` and the correlation method return `{}` under
-10 successful trials, `analyze_permutation_based` under 20 — an empty result is "too few
-trials", never "no knob matters" — and above those floors nothing marks a ranking as
-underpowered, so "focus on these parameters" is a hypothesis to test, not a finding.
+`traigent-analyze-variable-importance` script gives the same data. The analyzer's sample floors
+are explicit: `analyze_variance_based` and the correlation method return `{}` under 10 successful
+trials, and `analyze_permutation_based` does so under 20. Below the applicable floor, an empty
+result means insufficient samples, never "no knob matters". At or above the floor, inspect flat
+objective variance, missing objective metrics, and parameters that did not vary before diagnosing
+the empty result. Rankings above the floors still carry no underpowered marker, so "focus on these
+parameters" is a hypothesis to test, not a finding.
 
 ### Example-Side Evidence
 

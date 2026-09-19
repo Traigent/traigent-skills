@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "47247023e87c0786",
+  "doc_hash": "7616926cf0a8afc1",
   "reference_hashes": {
     "references/convergence-patterns.md": "57c2d4ef7f2c2b69",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -209,6 +209,17 @@
       "doc_before_hash": "9cc86b7e77ba45cc",
       "doc_after_hash": "47247023e87c0786",
       "note": "review correction for PR #285: state that SDK 0.27.0 automatically applies a nonempty winner to the optimized instance, run candidate search and export in a separate disposable process, preserve the serving incumbent, and require candidate-vs-incumbent frozen-holdout evidence before promotion rather than substituting the search runner-up margin",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-round2-optional-execution-budget-cost-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "47247023e87c0786",
+      "doc_after_hash": "7616926cf0a8afc1",
+      "note": "independent review follow-up for PR #285: split cost-limit and shared-execution-budget reporting, preserve missing or zero tracked cost, and read the exhausted budget dimension defensively",
       "source_type": "agent"
     }
   ]

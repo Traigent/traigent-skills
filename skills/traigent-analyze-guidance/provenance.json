@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "442a851d049a9a5e",
+  "doc_hash": "19b1685bda3289c7",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -268,6 +268,17 @@
       "doc_before_hash": "8e271f1c8cb3b909",
       "doc_after_hash": "442a851d049a9a5e",
       "note": "review fix: 'none of them carry a sample-size gate' was false - analyze_variance_based and the correlation method return {} under 10 successful trials, analyze_permutation_based under 20 (importance.py, 0.24.0 and 0.27.0); the sentence now names those floors and keeps the point that nothing above them marks a ranking as underpowered. Also: references/optimization-principles.md quotes the text2sql run as 20/30 -> 27/30 on the tuning slice with the selection caveat, matching the recipe skill, instead of 66.7% -> 90%.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-round2-empty-importance-diagnosis-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "442a851d049a9a5e",
+      "doc_after_hash": "19b1685bda3289c7",
+      "note": "independent review follow-up for PR #285: scope insufficient-sample diagnosis to results below each analyzer floor and direct above-floor empty results to flat variance, missing metrics, and non-varying parameter checks",
       "source_type": "agent"
     }
   ]

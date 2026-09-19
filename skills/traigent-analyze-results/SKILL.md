@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.19"
+  version: "1.1.20"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -677,8 +677,23 @@ if results.stop_reason == "max_trials_reached":
     print("Trial cap reached - report the winner; more trials is a decision-brief question")
 elif results.stop_reason == "plateau":
     print("Optimization converged - these are likely the best results")
-elif results.stop_reason in ("cost_limit", "execution_budget"):
-    print(f"Budget reached at ${results.total_cost:.2f} - partial result, paid trials kept")
+elif results.stop_reason == "cost_limit":
+    if results.total_cost is None:
+        print("Cost limit reached; tracked total cost unavailable - partial result, paid trials kept")
+    else:
+        print(f"Cost limit reached at ${results.total_cost:.2f} - partial result, paid trials kept")
+elif results.stop_reason == "execution_budget":
+    budget = results.metadata.get("execution_budget")
+    exhausted_dimension = (
+        budget.get("exhausted_dimension") if isinstance(budget, dict) else None
+    )
+    dimension = exhausted_dimension or "unknown dimension"
+    cost = (
+        "tracked total cost unavailable"
+        if results.total_cost is None
+        else f"tracked total cost ${results.total_cost:.2f}"
+    )
+    print(f"Shared execution budget reached ({dimension}); {cost} - partial result kept")
 elif results.stop_reason == "error":
     for trial in results.failed_trials:
         print(f"Error in trial {trial.trial_id}: {trial.error_message}")
