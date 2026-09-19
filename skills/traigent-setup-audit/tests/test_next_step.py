@@ -156,6 +156,81 @@ def _dataset(rows, holdout_rows):
     )
 
 
+def _scan_sibling_pair(tmp_path: Path, tuning_rows: list[dict], holdout_rows: list[dict]):
+    eval_dir = tmp_path / "eval"
+    eval_dir.mkdir()
+    paths = []
+    for name, rows in (("tuning.jsonl", tuning_rows), ("holdout.jsonl", holdout_rows)):
+        path = eval_dir / name
+        path.write_text(
+            "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+        )
+        paths.append(path)
+    reports, _, _, _ = audit.scan_datasets(paths, tmp_path)
+    return {report.file: report for report in reports}
+
+
+def _row(question: str, split: str | None = None) -> dict:
+    row = {"input": question, "expected_output": "answer"}
+    if split is not None:
+        row["metadata"] = {"split": split}
+    return row
+
+
+def test_tagged_sibling_pair_propagates_holdout_and_detects_normalized_overlap(
+    tmp_path: Path,
+) -> None:
+    reports = _scan_sibling_pair(
+        tmp_path,
+        [_row("  SAME   question ", "tune"), _row("tuning only", "tune")],
+        [_row("same question", "holdout"), _row("holdout only", "holdout")],
+    )
+
+    tuning = reports["eval/tuning.jsonl"]
+    holdout = reports["eval/holdout.jsonl"]
+    assert tuning.holdout_rows == 2
+    assert holdout.holdout_rows == 2
+    assert tuning.holdout_overlap == [0]
+    assert any("sibling holdout file" in finding for finding in tuning.findings)
+
+
+def test_tagged_sibling_pair_without_overlap_still_propagates_holdout(
+    tmp_path: Path,
+) -> None:
+    reports = _scan_sibling_pair(
+        tmp_path,
+        [_row("tuning only", "tune")],
+        [_row("holdout only", "holdout")],
+    )
+
+    tuning = reports["eval/tuning.jsonl"]
+    assert tuning.holdout_rows == 1
+    assert tuning.holdout_overlap == []
+
+
+def test_mixed_row_tags_win_and_a_named_holdout_contradiction_is_reported(
+    tmp_path: Path,
+) -> None:
+    reports = _scan_sibling_pair(
+        tmp_path,
+        [
+            _row("actual holdout", "tune"),
+            _row("already internal holdout", "holdout"),
+        ],
+        [
+            _row("actual holdout", "holdout"),
+            _row("not a holdout despite filename", "tune"),
+        ],
+    )
+
+    tuning = reports["eval/tuning.jsonl"]
+    holdout = reports["eval/holdout.jsonl"]
+    assert tuning.holdout_rows == 1
+    assert holdout.holdout_rows == 1
+    assert tuning.holdout_overlap == [0]
+    assert any("contradict" in finding for finding in holdout.findings)
+
+
 GOOD_PROBE = {
     "ran": True,
     "scores": {"good": [1.0, 1.0], "partial": [0.5], "bad": [0.0]},

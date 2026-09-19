@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4d78fdc11b0e6e8d",
+  "doc_hash": "f239c41c1ee30f1c",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -88,6 +88,17 @@
       "doc_before_hash": "4486a14874acffaf",
       "doc_after_hash": "4d78fdc11b0e6e8d",
       "note": "review fix: the guided first run writes its tuning/holdout pair under traigent-runs/, not eval/ - the sibling-holdout reader is documented as a project-directory feature, the walkthrough card line names the first run's reserved slice and who continues from it (holdout_files), a holdout-named file is judged by the holdout minimum only in next_step branch f (holdout_by_name); fixture gains traigent-runs/holdout.jsonl and three tests.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "pr-282-tagged-sibling-holdout-correction-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "4d78fdc11b0e6e8d",
+      "doc_after_hash": "f239c41c1ee30f1c",
+      "note": "review correction: associate tuning and holdout sibling files when their rows carry split tags, propagate the tagged holdout count, compare normalized inputs across the actual row roles, preserve mixed per-row semantics, and report holdout-filename contradictions instead of relabelling tagged tuning rows; add tagged overlap, tagged no-overlap, mixed-role, and existing untagged regression coverage.",
       "source_type": "agent"
     }
   ]

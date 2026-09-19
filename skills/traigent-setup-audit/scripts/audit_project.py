@@ -1069,6 +1069,10 @@ class DatasetReport:
     # Row indexes by normalized input: kept for the cross-file overlap check,
     # never serialised into the report.
     input_index: dict[str, list[int]] = field(default_factory=dict, repr=False)
+    holdout_input_index: dict[str, list[int]] = field(default_factory=dict, repr=False)
+    non_holdout_input_index: dict[str, list[int]] = field(
+        default_factory=dict, repr=False
+    )
     # True when this file IS the holdout slice (declared by its name beside a
     # tuning file): it is judged against the holdout minimum only.
     holdout_by_name: bool = False
@@ -1241,8 +1245,14 @@ def analyse_dataset(
         )
 
     by_input: dict[str, list[int]] = defaultdict(list)
+    holdout_by_input: dict[str, list[int]] = defaultdict(list)
+    non_holdout_by_input: dict[str, list[int]] = defaultdict(list)
     for row in parsed:
         by_input[row.normalized_input].append(row.index)
+        if row.split in HOLDOUT_VALUES:
+            holdout_by_input[row.normalized_input].append(row.index)
+        else:
+            non_holdout_by_input[row.normalized_input].append(row.index)
     exact_groups = sorted(
         (indices for indices in by_input.values() if len(indices) > 1),
         key=lambda group: group[0],
@@ -1340,6 +1350,8 @@ def analyse_dataset(
         label_counts=label_counts,
         findings=findings,
         input_index=dict(by_input),
+        holdout_input_index=dict(holdout_by_input),
+        non_holdout_input_index=dict(non_holdout_by_input),
     )
 
 
@@ -1351,46 +1363,78 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
     for report in reports:
         by_dir[str(Path(report.file).parent)].append(report)
     for group in by_dir.values():
-        holdouts = [r for r in group if file_names_holdout(r.file) and not r.split_counts]
-        tuning = [r for r in group if r not in holdouts and not r.split_counts]
+        holdouts = [r for r in group if file_names_holdout(r.file)]
+        tuning = [r for r in group if r not in holdouts]
         if not holdouts or not tuning:
             continue
         holdout_inputs: set[str] = set()
+        total = 0
         for report in holdouts:
-            holdout_inputs.update(report.input_index)
-            report.holdout_rows = report.rows
-            report.holdout_by_name = True
-            # A holdout file is judged against the holdout minimum below, not
-            # the tuning-slice minimum meant for the file the search reads.
-            report.findings = [
-                f
-                for f in report.findings
-                if f != NO_HOLDOUT_FINDING and "first-tuning-slice minimum" not in f
-            ]
-            report.findings.append(
-                f"holdout slice declared by file name: {report.rows} row(s), "
-                "no per-row split marker"
-            )
-            if report.rows < MIN_HOLDOUT:
-                report.findings.append(
-                    f"holdout slice has {report.rows} rows, under the "
-                    f"{MIN_HOLDOUT}-row minimum"
+            if report.split_counts:
+                # Tagged rows keep their declared roles. A holdout-named file
+                # that contains tuning rows is contradictory; do not silently
+                # relabel those rows just to make the sibling layout pass.
+                holdout_inputs.update(report.holdout_input_index)
+                non_holdout_rows = sum(
+                    count
+                    for split, count in report.split_counts.items()
+                    if split not in HOLDOUT_VALUES
                 )
+                if non_holdout_rows:
+                    report.findings.append(
+                        f"holdout-named file contradicts {non_holdout_rows} per-row "
+                        "split marker(s) naming a non-holdout slice; per-row markers win"
+                    )
+                report.holdout_by_name = (
+                    report.holdout_rows == report.rows and non_holdout_rows == 0
+                )
+            else:
+                holdout_inputs.update(report.input_index)
+                report.holdout_rows = report.rows
+                report.holdout_by_name = True
+                report.findings.append(
+                    f"holdout slice declared by file name: {report.rows} row(s), "
+                    "no per-row split marker"
+                )
+                if report.rows < MIN_HOLDOUT:
+                    report.findings.append(
+                        f"holdout slice has {report.rows} rows, under the "
+                        f"{MIN_HOLDOUT}-row minimum"
+                    )
+            if report.holdout_by_name:
+                # A dedicated holdout file is judged against the holdout
+                # minimum, not the tuning minimum meant for searchable rows.
+                report.findings = [
+                    finding
+                    for finding in report.findings
+                    if finding != NO_HOLDOUT_FINDING
+                    and "first-tuning-slice minimum" not in finding
+                ]
+            total += report.holdout_rows
         names = ", ".join(r.file for r in holdouts)
-        total = sum(r.rows for r in holdouts)
         for report in tuning:
-            report.holdout_rows = total
-            report.findings = [f for f in report.findings if f != NO_HOLDOUT_FINDING]
-            report.findings.append(
-                f"holdout slice declared by sibling file {names} ({total} row(s))"
-            )
+            if report.holdout_rows == 0 and total:
+                report.holdout_rows = total
+                report.findings = [
+                    finding
+                    for finding in report.findings
+                    if finding != NO_HOLDOUT_FINDING
+                    and not finding.startswith(
+                        "split markers present but none name a holdout slice"
+                    )
+                ]
+                report.findings.append(
+                    f"holdout slice declared by sibling file {names} ({total} row(s))"
+                )
             overlap = sorted(
                 index
-                for text, indexes in report.input_index.items()
+                for text, indexes in report.non_holdout_input_index.items()
                 if text in holdout_inputs
                 for index in indexes
             )
-            report.holdout_overlap = overlap[:20]
+            report.holdout_overlap = sorted(
+                set(report.holdout_overlap).union(overlap)
+            )[:20]
             if overlap:
                 report.findings.append(
                     f"{len(overlap)} row(s) appear in both this file and the "
