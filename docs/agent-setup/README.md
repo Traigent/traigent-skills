@@ -2,20 +2,20 @@
 
 [`prompt.md`](prompt.md) is the **canonical, versioned, agent-agnostic setup prompt** for
 onboarding a coding agent to Traigent. It is authored here (in the skills repo, next to the skills
-it references) and served publicly at **<https://traigent.ai/agent-setup/prompt.md>**.
+it references). It is not the prompt currently served at
+**<https://traigent.ai/agent-setup/prompt.md>**; that route deliberately serves the shorter
+"Guided First Run" prompt described below.
 
-## Who copies it
+## Current canonical consumer
 
-Two "Connect your agent" buttons put this exact prompt on the user's clipboard, ready to paste into
-Claude Code, Codex, Cursor, Copilot, or any other coding agent:
+The **Traigent portal** (`TraigentFrontend`) vendors this canonical text in
+`src/components/onboarding/agentSetupPrompt.ts`. Its "Connect your agent" flow injects the freshly
+issued API key into the "Add your Traigent API key" section before copying the prompt for Claude
+Code, Codex, Cursor, Copilot, or another coding agent.
 
-- **traigent.ai** (marketing site, `traigent-web`) — as of commit `e52a89e7` (2026-08-20) no longer
-  serves this file: `/agent-setup/prompt.md` there now serves a different, intentionally short
-  "Guided First Run" prompt. This bullet is kept for history; see the Bump protocol section below
-  before assuming this copy still needs to track `prompt.md`.
-- **The Traigent portal** (`TraigentFrontend`) — vendors the same canonical text in
-  `src/components/onboarding/agentSetupPrompt.ts` and injects the **freshly issued API key** into
-  the "Add your Traigent API key" section before copying.
+The marketing site (`traigent-web`) is not a consumer of this canonical prompt. As of commit
+`e52a89e7` (2026-08-20), its `public/agent-setup/prompt.md` intentionally contains the distinct
+"Guided First Run" prompt.
 
 ## How it works when pasted
 
@@ -54,8 +54,8 @@ the helper script) point back here instead of repeating it:
    ```
    (`--check` reports staleness without writing, e.g. for CI.)
 3. Run `pytest tests/contract/test_agent_setup_prompt_sync.py` to confirm the checksum is green.
-4. Re-sync known downstream copies, in a separate PR in each repo with the same content adapted to
-   its format:
+4. Re-sync each current downstream copy in a separate PR, with the same content adapted to its
+   format. The current list is:
    - **`TraigentFrontend`** `src/components/onboarding/agentSetupPrompt.ts` — hand-synced to this
      file as of the genesis entry in `provenance.json`. This repo cannot verify that copy directly
      (an exact byte match isn't achievable there either: the portal's copy is split across several
@@ -64,13 +64,10 @@ the helper script) point back here instead of repeating it:
      `doc_hash` it was last synced against, so a source-side bump here becomes visibly stale there
      too — that guard doesn't exist yet; adding it is follow-up work with no tracking issue filed
      yet.
-   - **`traigent-web`** `public/agent-setup/prompt.md` — **not currently a copy of this file.** As
-     of commit `e52a89e7` (2026-08-20), `traigent.ai` serves a different, intentionally short
-     "Guided First Run" prompt instead (confirm with
-     `curl https://traigent.ai/agent-setup/prompt.md` before assuming otherwise). Do not push a
-     re-sync there on the strength of this document alone — the two prompts may have deliberately
-     diverged; check with that repo's history first.
+
+Do not re-sync `traigent-web` on the strength of this document: its public route intentionally
+serves a different prompt. Check that repo's current history before treating it as a consumer.
 
 This repo's guard only pins *this* copy, and only forces the checklist above to run — it cannot
-verify that either downstream copy was actually updated, or that the list above is still accurate
+verify that the downstream copy was actually updated, or that the list above is still accurate
 (it has gone stale before).
