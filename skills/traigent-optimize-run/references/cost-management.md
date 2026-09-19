@@ -49,7 +49,8 @@ from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 | Attribute | Type | Description |
 |---|---|---|
-| `accumulated` | `float` | Total cost in USD accumulated before the limit was hit. |
+| `estimated` | `float \| None` | Pre-run estimated cost in USD; `None` when no estimate was available. Preserve that unknown state rather than reporting zero. |
+| `accumulated` | `float` | Actual cost accumulated before the limit was hit. A pre-run decline normally reports `0.0` here because no trial ran; it is not the estimate. |
 | `limit` | `float` | The configured cost limit in USD. |
 
 ### Handling
@@ -60,7 +61,10 @@ from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 try:
     results = await func.optimize(max_trials=100, algorithm="random")
 except CostLimitExceeded as e:          # forward-compatible budget exception
-    print(f"Cost limit exceeded: ${e.accumulated:.2f} of ${e.limit:.2f} budget")
+    if e.estimated is None:
+        print(f"Cost limit exceeded before the run; estimate unavailable; limit ${e.limit:.2f}")
+    else:
+        print(f"Estimated cost ${e.estimated:.2f} exceeds the ${e.limit:.2f} limit")
 except OptimizationError as e:           # pre-run estimate above limit, cloud/auth issue, etc.
     print(f"Optimization could not run: {e}")
 else:

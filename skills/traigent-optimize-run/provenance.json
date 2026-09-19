@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "09891e9d48f027d2",
+  "doc_hash": "c2292e30c1ab4eef",
   "reference_hashes": {
     "references/algorithms.md": "1f1b85e715a30b9a",
-    "references/cost-management.md": "70c09d3c7a71cad0",
+    "references/cost-management.md": "397526da87fd5c3d",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/execution-budget.md": "5237d5546f884d06",
     "references/parallel-config.md": "f0979cbb952b3cf3"
@@ -168,6 +168,17 @@
       "doc_before_hash": "6d2474288716da2b",
       "doc_after_hash": "09891e9d48f027d2",
       "note": "review fix: the auto fallback on HTTP 400 is scoped to the typed-then-legacy session-create 400 (other 400s raise ConfigurationError; execution_policy_runtime.py); fallback_reason_code read with .get and tagged 0.27.0+; vendor_error row notes the pre-scoring OptimizationError raise; [r] sets the limit to 1.5x the estimate, not the old limit (cost_enforcement.py); execution-budget snippet uses a literal max_trials.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-fix-prerun-estimated-cost-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "09891e9d48f027d2",
+      "doc_after_hash": "c2292e30c1ab4eef",
+      "note": "review correction for PR #284: all pre-run CostLimitExceeded examples report estimated cost rather than zero accumulated spend, preserve an unavailable estimate as unknown, and document both exception attributes",
       "source_type": "agent"
     }
   ]

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.17"
+  version: "1.0.18"
 ---
 
 # Running Traigent Optimization
@@ -313,7 +313,10 @@ from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 try:
     results = await func.optimize(max_trials=100, algorithm="random")
 except CostLimitExceeded as e:
-    print(f"Cost limit exceeded: ${e.accumulated:.2f} / ${e.limit:.2f}")
+    if e.estimated is None:
+        print(f"Cost limit exceeded before the run; estimate unavailable; limit ${e.limit:.2f}")
+    else:
+        print(f"Estimated cost ${e.estimated:.2f} exceeds the ${e.limit:.2f} limit")
 except OptimizationError as e:
     print(f"Optimization error: {e}")
 else:
@@ -570,7 +573,10 @@ async def main():
             # no timeout: bounded by max_trials + the cost cap, not a wall clock
         )
     except CostLimitExceeded as e:  # raised only when the pre-run estimate exceeds the cap and was not approved
-        print(f"Budget exceeded: ${e.accumulated:.2f} / ${e.limit:.2f}")
+        if e.estimated is None:
+            print(f"Budget exceeded before the run; estimate unavailable; limit ${e.limit:.2f}")
+        else:
+            print(f"Estimated cost ${e.estimated:.2f} exceeds the ${e.limit:.2f} limit")
         return
     except OptimizationError as e:  # pre-run "estimate > limit" decline, and run errors
         print(f"Run declined or failed: {e}")
