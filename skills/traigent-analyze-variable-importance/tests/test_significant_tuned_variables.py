@@ -88,11 +88,15 @@ def test_dominant_knob_ranks_first_and_is_significant_with_enough_trials(
     output_dir = tmp_path / "out"
     write_jsonl(trials_path, synthetic_trials(80))
 
-    run_cli(trials_path, output_dir)
+    run_cli(trials_path, output_dir, "--sampling-design", "randomized")
 
     ranking = json.loads((output_dir / "importance.json").read_text(encoding="utf-8"))
     assert ranking[0]["knob"] == "dominant_knob"
     assert ranking[0]["label"] == "significant"
+    assert ranking[0]["correction"] == "holm"
+    assert ranking[0]["family_size"] == 3
+    assert ranking[0]["p_adjusted"] >= ranking[0]["p_value"]
+    assert ranking[0]["inference_status"] == "tested"
     assert ranking[0]["ci_low"] > 0
 
 
@@ -142,6 +146,8 @@ def test_outputs_are_written_and_parseable(tmp_path: Path) -> None:
         (output_dir / "video_card.json").read_text(encoding="utf-8")
     )
     assert video_card["top_variables"][0]["knob"] == "dominant_knob"
+    assert video_card["top_variables"][0]["family_size"] == 3
+    assert video_card["top_variables"][0]["inference_status"] == "exchangeability_unknown"
     assert video_card["n_trials"] == 80
     assert "fixed Spider slice" in video_card["caption"]
 
@@ -192,16 +198,115 @@ def test_real_effect_knob_is_labeled_significant() -> None:
         for i in range(40)
     ]
 
-    row = module.analyze_knob(
+    rows = module.analyze_importance(
         trials=trials,
-        knob="real_knob",
+        config_space=None,
         confidence=0.9,
         bootstrap_draws=500,
-        total_n=len(trials),
+        sampling_design="randomized",
     )
+    row = rows[0]
     assert row is not None
     assert row.label == "significant"
     assert module.permutation_spread_pvalue(trials, "real_knob", draws=500) < 0.1
+
+
+def test_holm_adjustment_exact_values_and_order_independent() -> None:
+    module = _load_module()
+    assert module.holm_adjust([0.01, 0.04, 0.03]) == [0.03, 0.06, 0.06]
+    assert module.holm_adjust([0.03, 0.01, 0.04]) == [0.06, 0.03, 0.06]
+
+
+def test_holm_family_is_fixed_before_top_k(tmp_path: Path) -> None:
+    module = _load_module()
+    trials = []
+    for i in range(80):
+        config = {f"knob_{j:02d}": (i + j) % 2 for j in range(12)}
+        trials.append(_trial(module, 0.8 if config["knob_00"] else 0.4, config))
+
+    rows = module.analyze_importance(
+        trials, None, confidence=0.9, bootstrap_draws=1200,
+        sampling_design="randomized",
+    )
+    assert len(rows) == 12
+    assert all(row.family_size == 12 for row in rows)
+    full_adjusted = {row.knob: row.p_adjusted for row in rows}
+
+    output = tmp_path / "importance.json"
+    module.write_importance_json(output, rows[:3])
+    displayed = json.loads(output.read_text(encoding="utf-8"))
+    assert {row["knob"]: row["p_adjusted"] for row in displayed} == {
+        row["knob"]: module.round_float(full_adjusted[row["knob"]])
+        for row in displayed
+    }
+
+
+def test_multiple_null_knobs_do_not_survive_holm() -> None:
+    module = _load_module()
+    trials = []
+    for i in range(60):
+        config = {f"null_{j}": (i * (j + 2) + j) % 5 for j in range(8)}
+        trials.append(_trial(module, 0.5 + ((i * 17) % 11) / 1000, config))
+    rows = module.analyze_importance(
+        trials, None, confidence=0.9, bootstrap_draws=1000,
+        sampling_design="randomized",
+    )
+    assert rows
+    assert all(row.label == "directional" for row in rows)
+    assert all(row.p_adjusted >= row.p_value for row in rows)
+
+
+def test_low_permutation_resolution_is_explicit() -> None:
+    module = _load_module()
+    trials = [
+        _trial(module, 0.9 if i % 2 else 0.2, {f"k{j}": (i + j) % 2 for j in range(8)})
+        for i in range(40)
+    ]
+    rows = module.analyze_importance(
+        trials, None, confidence=0.95, bootstrap_draws=99,
+        sampling_design="randomized",
+    )
+    assert all(row.inference_status == "insufficient_permutation_resolution" for row in rows)
+    assert all(row.label == "directional" for row in rows)
+    assert all(row.permutation_p_floor == 0.01 for row in rows)
+
+
+def test_sparse_knob_uses_per_knob_support_guard() -> None:
+    module = _load_module()
+    trials = [
+        _trial(module, 0.9 if i % 2 else 0.2, {"dense": i % 2})
+        for i in range(40)
+    ]
+    for i in range(10):
+        trials[i].config["sparse"] = i % 2
+    rows = module.analyze_importance(
+        trials, None, confidence=0.9, bootstrap_draws=1000,
+        sampling_design="randomized",
+    )
+    by_knob = {row.knob: row for row in rows}
+    assert by_knob["dense"].label == "significant"
+    assert by_knob["sparse"].inference_status == "insufficient_per_knob_samples"
+    assert by_knob["sparse"].relevant_trials == 10
+    assert by_knob["sparse"].label == "directional"
+
+
+def test_unknown_and_adaptive_designs_never_confirm_effect() -> None:
+    module = _load_module()
+    trials = [
+        _trial(module, 0.9 if i % 2 else 0.2, {"knob": i % 2})
+        for i in range(40)
+    ]
+    for design, status in (
+        ("unknown", "exchangeability_unknown"),
+        ("adaptive", "adaptive_sampling"),
+    ):
+        row = module.analyze_importance(
+            trials, None, confidence=0.9, bootstrap_draws=1000,
+            sampling_design=design,
+        )[0]
+        assert row.p_adjusted < 0.1
+        assert row.label == "directional"
+        assert row.inference_status == status
 
 
 def test_video_card_uses_per_knob_effect_not_run_level_delta(tmp_path: Path) -> None:

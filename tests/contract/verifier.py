@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import ast
+import io
 import importlib
 import inspect
+import tokenize
 from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
@@ -137,7 +139,7 @@ def _assert_module_source_contains(
         # `literal`/`raises` claim that only matches inside a docstring or module
         # summary is verifying another piece of documentation, not behavior, and
         # would keep passing after the code it describes changed underneath it.
-        if needle in _source_without_docstrings(path):
+        if needle in _source_without_docstrings_and_comments(path):
             return
 
     raise AssertionError(
@@ -153,17 +155,26 @@ def _assert_module_source_contains(
 
 
 @lru_cache(maxsize=256)
-def _source_without_docstrings(path: Path) -> str:
+def _source_without_docstrings_and_comments(path: Path) -> str:
     try:
-        source = path.read_text(encoding="utf-8", errors="ignore")
+        source = path.read_text(encoding="utf-8")
     except OSError:
         return ""
     try:
+        tokens = tuple(tokenize.generate_tokens(io.StringIO(source).readline))
         tree = ast.parse(source)
-    except SyntaxError:
-        return source
+    except (SyntaxError, tokenize.TokenError) as exc:
+        location = getattr(exc, "lineno", None)
+        location_suffix = f":{location}" if location is not None else ""
+        raise AssertionError(
+            f"DOCSTAMP SOURCE UNVERIFIABLE  {path}{location_suffix}\n"
+            f"  problem : invalid Python source ({type(exc).__name__}: {exc})"
+        ) from exc
 
     lines = source.splitlines(keepends=True)
+    for token in tokens:
+        if token.type == tokenize.COMMENT:
+            _blank_character_span(lines, token.start, token.end)
     for node in ast.walk(tree):
         if not isinstance(
             node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
@@ -178,13 +189,30 @@ def _source_without_docstrings(path: Path) -> str:
             and isinstance(first.value, ast.Constant)
             and isinstance(first.value.value, str)
         ):
-            _blank_span(lines, first)
+            _blank_byte_span(lines, first)
     return "".join(lines)
 
 
-def _blank_span(lines: list[str], node: ast.AST) -> None:
+def _blank_byte_span(lines: list[str], node: ast.AST) -> None:
     start, end = node.lineno - 1, node.end_lineno - 1  # type: ignore[attr-defined]
-    col, end_col = node.col_offset, node.end_col_offset  # type: ignore[attr-defined]
+    col = _byte_column_to_character(lines[start], node.col_offset)  # type: ignore[attr-defined]
+    end_col = _byte_column_to_character(  # type: ignore[attr-defined]
+        lines[end], node.end_col_offset
+    )
+    _blank_character_span(lines, (start + 1, col), (end + 1, end_col))
+
+
+def _byte_column_to_character(line: str, byte_column: int) -> int:
+    """Translate AST UTF-8 byte offsets to Python string character offsets."""
+    return len(line.encode("utf-8")[:byte_column].decode("utf-8"))
+
+
+def _blank_character_span(
+    lines: list[str], start_position: tuple[int, int], end_position: tuple[int, int]
+) -> None:
+    start_line, col = start_position
+    end_line, end_col = end_position
+    start, end = start_line - 1, end_line - 1
     if start == end:
         line = lines[start]
         lines[start] = line[:col] + " " * (end_col - col) + line[end_col:]

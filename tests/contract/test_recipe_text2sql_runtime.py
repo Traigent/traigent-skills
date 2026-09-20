@@ -85,6 +85,24 @@ def test_extracted_run_helper_allows_reads_and_rejects_sqlite_escape_hatches(
     assert recipe._run("SELECT MIN(price) FROM products") == (True, [(4.25,)])
 
 
+def test_extracted_real_recipe_missing_credentials_stops_before_optimization(
+    recipe: SimpleNamespace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    globals_ = recipe.main.__globals__
+    monkeypatch.setitem(globals_, "DB_PATH", tmp_path / "store.sqlite")
+    monkeypatch.setitem(globals_, "DATA_PATH", tmp_path / "eval.jsonl")
+    monkeypatch.delenv("TRAIGENT_API_KEY", raising=False)
+    monkeypatch.setattr(sys, "argv", ["quickstart_text2sql.py", "--real"])
+
+    def unexpected_optimization(*args, **kwargs):
+        pytest.fail("missing credentials reached optimization")
+
+    monkeypatch.setattr(recipe.traigent, "optimize", unexpected_optimization)
+    assert recipe.main() == 2
+    assert "TRAIGENT_API_KEY not set" in capsys.readouterr().out
+
+
 def test_extracted_run_helper_closes_the_connection_after_execution_failure(
     recipe: SimpleNamespace, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

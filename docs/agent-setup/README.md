@@ -60,10 +60,15 @@ the helper script) point back here instead of repeating it:
      file as of the genesis entry in `provenance.json`. This repo cannot verify that copy directly
      (an exact byte match isn't achievable there either: the portal's copy is split across several
      template pieces with a freshly issued API key injected into one, not one flat file). The
-     realistic guard on that side is a local test pinning a checksum of *its own* constant plus the
-     `doc_hash` it was last synced against, so a source-side bump here becomes visibly stale there
-     too — that guard doesn't exist yet; adding it is follow-up work with no tracking issue filed
-     yet.
+     companion Frontend guard is `npm run check:agent-setup-prompt-drift`: it resolves this
+     repository's live `main` SHA, fetches the prompt at that exact commit, and compares its
+     SHA-256 with the reviewed upstream hash, alongside a hash of the local template source.
+     It detects changed bytes since review, not whether the adaptation is faithful. An unrelated
+     upstream commit with unchanged prompt bytes is not drift. Review both diffs before updating
+     the pins; preserve the SDK-only wording differences and never use a key-expanded prompt.
+     The companion workflow checks relevant PRs and supports manual dispatch. Its weekly schedule
+     becomes active only after that Frontend change reaches the default branch (`main`). Until
+     the guard is installed there, continue the manual synchronization step above.
 
 Do not re-sync `traigent-web` on the strength of this document: its public route intentionally
 serves a different prompt. Check that repo's current history before treating it as a consumer.

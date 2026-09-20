@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import sys
+from contextlib import contextmanager
 from pathlib import Path
+from typing import Iterator
 
 import pytest
 from packaging.version import InvalidVersion, Version
@@ -23,6 +26,28 @@ class _FakeConfig:
     def getoption(self, name: str) -> str | None:
         assert name == "--sdk-version"
         return self._sdk_version
+
+
+@contextmanager
+def _fake_module(tmp_path: Path, module_name: str, source: str) -> Iterator[None]:
+    (tmp_path / f"{module_name}.py").write_text(source, encoding="utf-8")
+    sys.path.insert(0, str(tmp_path))
+    try:
+        yield
+    finally:
+        sys.path.remove(str(tmp_path))
+        sys.modules.pop(module_name, None)
+
+
+def _verify_fixture_stamp(
+    tmp_path: Path, module_name: str, stamp_body: str, source: str
+) -> None:
+    skill_path = tmp_path / "SKILL.md"
+    skill_path.write_text(f"<!-- contract: {stamp_body} -->\n", encoding="utf-8")
+    facts = collect_file("demo", skill_path)
+    assert len(facts) == 1
+    with _fake_module(tmp_path, module_name, source):
+        verify_docstamp_fact(facts[0], repo_root=tmp_path, sdk_version="test")
 
 
 def test_extractor_detects_html_docstamps(tmp_path: Path) -> None:
@@ -278,8 +303,6 @@ def test_docstamp_asserter_ignores_docstring_only_matches(tmp_path: Path) -> Non
         '"""This module handles /api/v1/only-in-the-docstring requests."""\n',
         encoding="utf-8",
     )
-    import sys
-
     sys.path.insert(0, str(tmp_path))
     try:
         skill_path = tmp_path / "SKILL.md"
@@ -290,6 +313,107 @@ def test_docstamp_asserter_ignores_docstring_only_matches(tmp_path: Path) -> Non
         facts = collect_file("demo", skill_path)
         assert len(facts) == 1
         with pytest.raises(AssertionError, match="source path string missing"):
+            verify_docstamp_fact(facts[0], repo_root=tmp_path, sdk_version="test")
+    finally:
+        sys.path.remove(str(tmp_path))
+        sys.modules.pop(module_name, None)
+
+
+@pytest.mark.parametrize(
+    ("stamp_body", "comment"),
+    [
+        (
+            "path /api/v1/comment-only in traigent_comment_path_fixture",
+            "# /api/v1/comment-only\n",
+        ),
+        (
+            'literal "comment-only-literal" in traigent_comment_literal_fixture',
+            "# comment-only-literal\n",
+        ),
+        (
+            "raises ConfigurationError in traigent_comment_raises_fixture",
+            "# raise ConfigurationError\n",
+        ),
+    ],
+)
+def test_docstamp_asserter_rejects_comment_only_matches(
+    tmp_path: Path, stamp_body: str, comment: str
+) -> None:
+    module_name = stamp_body.split(" in ", maxsplit=1)[1]
+    with pytest.raises(AssertionError, match="DEAD TEACHING"):
+        _verify_fixture_stamp(tmp_path, module_name, stamp_body, comment)
+
+
+@pytest.mark.parametrize(
+    ("target", "source"),
+    [
+        ("value#fragment", 'VALUE = "value#fragment"\n'),
+        ("https://example.test/#anchor", 'URL = "https://example.test/#anchor"\n'),
+        ("prefix#", 'suffix = "suffix"\nVALUE = f"prefix#{suffix}"\n'),
+        (
+            "triple#quoted",
+            'VALUE = """a multiline string with triple#quoted content"""\n',
+        ),
+    ],
+)
+def test_docstamp_asserter_preserves_hashes_in_real_string_literals(
+    tmp_path: Path, target: str, source: str
+) -> None:
+    module_name = "traigent_hash_string_fixture"
+    _verify_fixture_stamp(
+        tmp_path,
+        module_name,
+        f'literal "{target}" in {module_name}',
+        source,
+    )
+
+
+def test_docstamp_asserter_blanks_unicode_prefixed_multiline_docstring(
+    tmp_path: Path,
+) -> None:
+    module_name = "traigent_unicode_docstring_fixture"
+    source = 'PREFIX = "é"\n\ndef f():\n    """line one\n    docstring-only-value\n    """\n'
+    with pytest.raises(AssertionError, match="source literal missing"):
+        _verify_fixture_stamp(
+            tmp_path,
+            module_name,
+            f'literal "docstring-only-value" in {module_name}',
+            source,
+        )
+
+
+def test_docstamp_asserter_preserves_code_after_unicode_docstring(
+    tmp_path: Path,
+) -> None:
+    module_name = "traigent_unicode_offset_fixture"
+    source = 'def f():\n    """ééééé"""; value = "live-after-docstring"\n'
+    _verify_fixture_stamp(
+        tmp_path,
+        module_name,
+        f'literal "value = \\"live-after-docstring\\"" in {module_name}',
+        source,
+    )
+
+
+def test_docstamp_asserter_fails_closed_on_malformed_package_source(
+    tmp_path: Path,
+) -> None:
+    module_name = "traigent_malformed_source_fixture"
+    package = tmp_path / module_name
+    package.mkdir()
+    (package / "__init__.py").write_text("", encoding="utf-8")
+    (package / "broken.py").write_text('VALUE = "unterminated\n', encoding="utf-8")
+    skill_path = tmp_path / "SKILL.md"
+    skill_path.write_text(
+        f'<!-- contract: literal "unterminated" in {module_name} -->\n',
+        encoding="utf-8",
+    )
+    facts = collect_file("demo", skill_path)
+    assert len(facts) == 1
+
+    sys.path.insert(0, str(tmp_path))
+    try:
+        with pytest.raises(AssertionError, match="DOCSTAMP SOURCE UNVERIFIABLE"):
             verify_docstamp_fact(facts[0], repo_root=tmp_path, sdk_version="test")
     finally:
         sys.path.remove(str(tmp_path))

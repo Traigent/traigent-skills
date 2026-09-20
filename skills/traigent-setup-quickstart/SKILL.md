@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.25"
+  version: "1.0.26"
 ---
 
 # Traigent Quickstart
@@ -545,15 +545,25 @@ async def main():
     print(f"Best score:  {results.best_score}")
     print(f"Trials run:  {len(results.trials)}")
 
-    # Apply the best configuration for production use
+    if results.best_config is None:
+        print("No eligible winner; inspect trial errors before continuing.")
+        return results
+
+    # Exercise configuration application inside this mock demo only.
+    # Synthetic scores cannot authorize production promotion: replace the demo
+    # scorer, run the approved real experiment, then evaluate a frozen candidate
+    # on an independent holdout using traigent-ci-safety-gate.
+    print("Demo only: this mock-selected configuration is not approved for production.")
     classify_query.apply_best_config(results)
 
     # Now calling the function uses the best config
     answer = classify_query("I can't log in to my account")
     print(f"Classification: {answer}")
+    return results
 
 
-asyncio.run(main())
+if __name__ == "__main__":
+    asyncio.run(main())
 ```
 
 > **In a notebook (Jupyter/IPython/Colab)?** `asyncio.run()` raises
