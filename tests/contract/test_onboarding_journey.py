@@ -122,8 +122,8 @@ else:
 
 
 def test_documented_journey_exhausted_budget_stops_before_provider(journey, sdk_version_label) -> None:
-    if sdk_version_label != "develop" and Version(sdk_version_label) < Version("0.27.0"):
-        pytest.skip("ExecutionBudget was added in SDK 0.27.0")
+    if sdk_version_label != "develop" and Version(sdk_version_label) < Version("0.26.0"):
+        pytest.skip("ExecutionBudget was added in SDK 0.26.0")
     journey('''
 from traigent import ExecutionBudget
 from traigent.integrations.utils.mock_adapter import MockAdapter

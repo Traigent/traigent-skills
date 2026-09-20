@@ -70,6 +70,10 @@ the helper script) point back here instead of repeating it:
      becomes active only after that Frontend change reaches the default branch (`main`). Until
      the guard is installed there, continue the manual synchronization step above.
 
+     These companion instructions describe the Frontend source reviewed on 2026-09-20 at
+     commit `5909cf6af219edfa7b76dd064885315e4aa8ef1e`; they do not establish its current
+     installation, scheduled execution, or deployed state.
+
 Do not re-sync `traigent-web` on the strength of this document: its public route intentionally
 serves a different prompt. Check that repo's current history before treating it as a consumer.
 

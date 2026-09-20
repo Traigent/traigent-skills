@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: experimental
   author: Nimrod
-  version: "0.2.3"
+  version: "0.2.4"
 ---
 
 # Traigent Setup Audit

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.1"
+  version: "1.1.2"
 ---
 
 # Show Significant Tuned Variables
@@ -54,6 +54,11 @@ The script accepts:
   when knob assignments were independent of outcomes and time/order effects, so trial labels are
   exchangeable under the no-effect null. Adaptive optimizer output and results whose assignment
   process is not known remain directional even when their adjusted p-values are small.
+
+Present objectives must be finite numeric values; booleans, NaN and infinity are rejected with
+the input file and row number. Supplied costs must also be finite and nonnegative. Missing costs
+remain unavailable, while a measured zero stays zero. Permutation comparisons count numerical
+roundoff ties conservatively using a relative tolerance, including for tiny-scale objectives.
 
 An SDK result saved with `save_to=` (for example `traigent-runs/optimized-results.json` after the
 guided first run) is one JSON object whose `trials[]` already carry `config` and `metrics` (the

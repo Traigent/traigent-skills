@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f1effe17f06364ab",
+  "doc_hash": "1016f70cb93d68f4",
   "entries": [
     {
       "edit_id": "genesis",
@@ -95,6 +95,17 @@
       "doc_before_hash": "9ce25ca53381e2d2",
       "doc_after_hash": "f1effe17f06364ab",
       "note": "Keep the generic example at unknown sampling, define evidence required for randomized sampling, use association language, and preserve full precision for inferential values.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "astra-fable-review-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "f1effe17f06364ab",
+      "doc_after_hash": "1016f70cb93d68f4",
+      "note": "Reject invalid objective and cost measurements before inference and count floating-point permutation ties with a scale-relative tolerance.",
       "source_type": "agent"
     }
   ]

@@ -77,12 +77,23 @@ def test_extracted_run_helper_allows_reads_and_rejects_sqlite_escape_hatches(
         "UPDATE products SET price = 0",
         "PRAGMA writable_schema=ON",
         "SELECT load_extension('missing-extension')",
+        f"VACUUM INTO '{attached}'",
     ]
     for sql in forbidden:
         assert recipe._run(sql) == (False, None), sql
 
     assert not attached.exists()
     assert recipe._run("SELECT MIN(price) FROM products") == (True, [(4.25,)])
+
+
+def test_extracted_sqlite_watchdog_aborts_recursive_query(recipe, tmp_path) -> None:
+    recipe._run.__globals__["DB_PATH"] = tmp_path / "store.sqlite"
+    recipe.build_db()
+    assert recipe._run(
+        "WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers) "
+        "SELECT sum(n) FROM numbers"
+    ) == (False, None)
+    assert recipe._run("SELECT COUNT(*) FROM products") == (True, [(4,)])
 
 
 def test_extracted_real_recipe_missing_credentials_stops_before_optimization(

@@ -177,6 +177,28 @@ def _row(question: str, split: str | None = None) -> dict:
     return row
 
 
+def test_partially_tagged_single_file_reports_holdout_overlap(tmp_path):
+    path = tmp_path / "data.jsonl"
+    path.write_text("\n".join(json.dumps(row) for row in
+                              [_row("Q1", "holdout"), _row(" q1 ")]) + "\n")
+    reports, _, _, _ = audit.scan_datasets([path], tmp_path)
+    assert reports[0].holdout_overlap == [0, 1]
+    assert any("both the holdout slice" in finding for finding in reports[0].findings)
+
+
+def test_untagged_named_holdout_rows_do_not_create_false_overlap(tmp_path):
+    reports = _scan_sibling_pair(tmp_path, [_row("tuning only")],
+                                [_row("Q1", "holdout"), _row(" q1 ")])
+    assert reports["eval/holdout.jsonl"].holdout_overlap == []
+
+
+@pytest.mark.parametrize("holdout_tag", ["holdout", None])
+def test_explicit_tuning_in_named_holdout_still_reports_overlap(tmp_path, holdout_tag):
+    reports = _scan_sibling_pair(tmp_path, [_row("tuning only")],
+                                [_row("Q1", holdout_tag), _row(" q1 ", "tune")])
+    assert reports["eval/holdout.jsonl"].holdout_overlap == [0, 1]
+
+
 def test_tagged_sibling_pair_propagates_holdout_and_detects_normalized_overlap(
     tmp_path: Path,
 ) -> None:
