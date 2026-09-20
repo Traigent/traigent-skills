@@ -1,10 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "87cd2c82ec0b39da",
+  "doc_hash": "c2292e30c1ab4eef",
   "reference_hashes": {
-    "references/algorithms.md": "4c79ff944c78bf76",
-    "references/cost-management.md": "44fca0c7fb536c36",
+    "references/algorithms.md": "1f1b85e715a30b9a",
+    "references/cost-management.md": "397526da87fd5c3d",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
+    "references/execution-budget.md": "5237d5546f884d06",
     "references/parallel-config.md": "f0979cbb952b3cf3"
   },
   "entries": [
@@ -146,6 +147,39 @@
       "doc_after_hash": "c578e36da860899e",
       "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "87cd2c82ec0b39da",
+      "doc_after_hash": "6d2474288716da2b",
+      "note": "fold traigent-first-run's field-tested run lessons in: algorithm=auto with no live backend session degrades to a local random search that still returns a result, so a run approved as managed search launches with TRAIGENT_REQUIRE_CLOUD=1 and a results.metadata source of local_fallback (or cloud_url None) is a failure to investigate, never a result to report (mirrored in references/algorithms.md); warm_start_from is a decorator argument and raises TypeError at .optimize() call time on 0.19.1+ (#1683), so its row leaves the optimize() table; budget=ExecutionBudget row plus a multi-phase example holding one approved cap across baseline, search and holdout, with the execution_budget and vendor_error stop reasons; a paid run outlives a coding-agent shell's foreground timeout, so long runs launch detached with TRAIGENT_RESULTS_FOLDER and optionally TRAIGENT_LOG_EXAMPLE_CONTENT=false; the complete example drops timeout=300.0 (run-level default is no wall clock) and its CostLimitExceeded comment names the real pre-run condition; references/cost-management.md states the SDK cost gate is conditional (prompts only over the limit or on an unpriced model), so explicit user approval is the gate.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "first-run-lessons-review-2026-09-17",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-17T00:00:00Z",
+      "doc_before_hash": "6d2474288716da2b",
+      "doc_after_hash": "09891e9d48f027d2",
+      "note": "review fix: the auto fallback on HTTP 400 is scoped to the typed-then-legacy session-create 400 (other 400s raise ConfigurationError; execution_policy_runtime.py); fallback_reason_code read with .get and tagged 0.27.0+; vendor_error row notes the pre-scoring OptimizationError raise; [r] sets the limit to 1.5x the estimate, not the old limit (cost_enforcement.py); execution-budget snippet uses a literal max_trials.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-fix-prerun-estimated-cost-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "09891e9d48f027d2",
+      "doc_after_hash": "c2292e30c1ab4eef",
+      "note": "review correction for PR #284: all pre-run CostLimitExceeded examples report estimated cost rather than zero accumulated spend, preserve an unavailable estimate as unknown, and document both exception attributes",
+      "source_type": "agent"
     }
   ]
 }

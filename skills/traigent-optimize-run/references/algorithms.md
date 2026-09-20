@@ -6,6 +6,8 @@ Traigent uses `algorithm="auto"` by default for connected real runs and also sup
 results = await func.optimize(max_trials=10)  # default algorithm="auto"
 ```
 
+> `auto` with no key found, or a connectivity/5xx/400 failure at session creation, degrades to a local `random` search and still returns a result (a rejected key raises instead): launch a run approved as managed search with `TRAIGENT_REQUIRE_CLOUD=1`, and treat `results.metadata.get("source") == "local_fallback"` as a failure to investigate (see the callout under Quick Comparison in `SKILL.md`).
+
 ## Algorithm Comparison
 
 | Algorithm | Strategy | Config Space Size | Trial Budget | Deterministic | Where search runs | Best For |

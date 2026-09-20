@@ -66,6 +66,10 @@ skills:
       - docs/features/safety-gates.md
 
   traigent-optimize-run:
+    python_version_floors:
+      # traigent.ExecutionBudget and the optimize(budget=) kwarg ship in
+      # 0.26.0; the reference states the requirement in prose at the top.
+      references/execution-budget.md: "0.26.0"
     modules:
       - traigent.core.optimized_function
       - traigent.core.orchestrator
