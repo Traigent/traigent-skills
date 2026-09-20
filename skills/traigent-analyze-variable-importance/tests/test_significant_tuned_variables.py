@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import importlib
 import json
+import random
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
@@ -236,24 +237,88 @@ def test_holm_family_is_fixed_before_top_k(tmp_path: Path) -> None:
     module.write_importance_json(output, rows[:3])
     displayed = json.loads(output.read_text(encoding="utf-8"))
     assert {row["knob"]: row["p_adjusted"] for row in displayed} == {
-        row["knob"]: module.round_float(full_adjusted[row["knob"]])
-        for row in displayed
+        row["knob"]: full_adjusted[row["knob"]] for row in displayed
     }
 
 
-def test_multiple_null_knobs_do_not_survive_holm() -> None:
+def test_repeated_nulls_bound_familywise_flags_and_raw_control_exceeds_bound() -> None:
     module = _load_module()
-    trials = []
-    for i in range(60):
-        config = {f"null_{j}": (i * (j + 2) + j) % 5 for j in range(8)}
-        trials.append(_trial(module, 0.5 + ((i * 17) % 11) / 1000, config))
-    rows = module.analyze_importance(
+    rng = random.Random(20260920)
+    adjusted_any = 0
+    raw_any = 0
+    datasets = 60
+    family_size = 4
+    alpha = 0.05
+    draws = 800
+    familywise_bound = 9
+
+    for _ in range(datasets):
+        trials = [
+            _trial(
+                module,
+                rng.random(),
+                {f"null_{j}": rng.randrange(2) for j in range(family_size)},
+            )
+            for _ in range(40)
+        ]
+        rows = module.analyze_importance(
+            trials,
+            None,
+            confidence=1.0 - alpha,
+            bootstrap_draws=draws,
+            sampling_design="randomized",
+        )
+        assert len(rows) == family_size
+        assert all(row.inference_status == "tested" for row in rows)
+        adjusted_any += any(row.label == "significant" for row in rows)
+        raw_any += any(row.p_value < alpha for row in rows)
+
+    print(
+        f"repeated-null datasets={datasets} adjusted_any={adjusted_any} "
+        f"raw_any={raw_any} bound={familywise_bound}"
+    )
+    assert adjusted_any <= familywise_bound
+    # This is the control with Holm removed: the same raw p-values must exceed
+    # the predeclared family-wise bound or the fixture has no power to detect a
+    # missing correction.
+    assert raw_any > familywise_bound
+
+
+def test_inferential_serialization_preserves_sub_micro_values(tmp_path: Path) -> None:
+    module = _load_module()
+    trials = [
+        _trial(module, 0.9 if i % 2 else 0.2, {"knob": i % 2})
+        for i in range(40)
+    ]
+    row = module.analyze_importance(
         trials, None, confidence=0.9, bootstrap_draws=1000,
         sampling_design="randomized",
+    )[0]
+    row.p_value = 4e-7
+    row.p_adjusted = 8e-7
+    row.permutation_p_floor = 2e-7
+
+    json_path = tmp_path / "importance.json"
+    csv_path = tmp_path / "importance.csv"
+    video_path = tmp_path / "video.json"
+    module.write_importance_json(json_path, [row])
+    module.write_importance_csv(csv_path, [row])
+    video = module.write_video_card_json(
+        video_path, [row], top_k=1, n_trials=40,
+        objective="accuracy", heldout=None,
     )
-    assert rows
-    assert all(row.label == "directional" for row in rows)
-    assert all(row.p_adjusted >= row.p_value for row in rows)
+
+    json_row = json.loads(json_path.read_text(encoding="utf-8"))[0]
+    with csv_path.open(encoding="utf-8", newline="") as handle:
+        csv_row = next(csv.DictReader(handle))
+    assert json_row["p_value"] == 4e-7
+    assert json_row["p_adjusted"] == 8e-7
+    assert json_row["permutation_p_floor"] == 2e-7
+    assert float(csv_row["p_value"]) == 4e-7
+    assert float(csv_row["p_adjusted"]) == 8e-7
+    assert float(csv_row["permutation_p_floor"]) == 2e-7
+    assert video["top_variables"][0]["p_value"] == 4e-7
+    assert video["top_variables"][0]["p_adjusted"] == 8e-7
 
 
 def test_low_permutation_resolution_is_explicit() -> None:

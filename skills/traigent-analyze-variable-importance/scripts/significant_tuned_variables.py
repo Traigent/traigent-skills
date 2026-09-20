@@ -74,8 +74,8 @@ class KnobImportance:
             "best_value": self.best_value,
             "best_value_mean_acc": round_float(self.best_value_mean_acc),
             "cost_effect": round_float_or_none(self.cost_effect),
-            "p_value": round_float(self.p_value),
-            "p_adjusted": round_float(self.p_adjusted),
+            "p_value": self.p_value,
+            "p_adjusted": self.p_adjusted,
             "correction": self.correction,
             "family_size": self.family_size,
             "inference_status": self.inference_status,
@@ -83,7 +83,7 @@ class KnobImportance:
             "relevant_trials": self.relevant_trials,
             "min_group_size": self.min_group_size,
             "permutation_draws": self.permutation_draws,
-            "permutation_p_floor": round_float(self.permutation_p_floor),
+            "permutation_p_floor": self.permutation_p_floor,
         }
 
 
@@ -681,7 +681,7 @@ def write_svg(
         "</defs>",
         '<rect width="1280" height="720" fill="#08111f"/>',
         '<rect x="34" y="34" width="1212" height="652" rx="26" fill="#0f172a" stroke="#243244" filter="url(#shadow)"/>',
-        '<text x="80" y="92" fill="#e5f0ff" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">Which tuned variables drove the gain?</text>',
+        '<text x="80" y="92" fill="#e5f0ff" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">Which tuned variables were associated with score differences?</text>',
         f'<text x="80" y="130" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="18">Objective: {svg_text(objective)}. Bars show mean spread; whiskers show bootstrap CI.</text>',
         f'<text x="80" y="655" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="17">{svg_text(caption)}</text>',
         f'<line x1="{chart_x}" y1="{chart_y - 28}" x2="{chart_x + axis_w}" y2="{chart_y - 28}" stroke="#334155" stroke-width="1"/>',
@@ -757,8 +757,8 @@ def write_video_card_json(
                 "accuracy_pp": round_float(row.spread * 100.0),
                 "cost_delta_pct": round_float_or_none(row.cost_effect_pct),
                 "label": row.label,
-                "p_value": round_float(row.p_value),
-                "p_adjusted": round_float(row.p_adjusted),
+                "p_value": row.p_value,
+                "p_adjusted": row.p_adjusted,
                 "family_size": row.family_size,
                 "inference_status": row.inference_status,
                 "sampling_design": row.sampling_design,
@@ -813,7 +813,7 @@ def write_insights_md(
         heldout, objective
     )
     lines = [
-        "# Significant Tuned Variables",
+        "# Tuned Variable Associations",
         "",
         f"On {slice_label}, in this run, {len(rows)} tuned variables had at least two observed values across {n_trials} trials.",
         "",
@@ -900,7 +900,7 @@ def parse_args() -> argparse.Namespace:
         default="unknown",
         help=(
             "How knob values were assigned. Only randomized establishes the "
-            "exchangeability needed for confirmatory permutation labels; default unknown"
+            "exchangeability needed for statistically significant labels; default unknown"
         ),
     )
     return parser.parse_args()
