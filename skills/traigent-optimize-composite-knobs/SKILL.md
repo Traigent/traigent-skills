@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.2"
+  version: "1.1.3"
 ---
 
 # Traigent Composite Knobs
@@ -53,10 +53,10 @@ from traigent.knobs.telemetry import merge_composite_measures
 
 GATE = "router_margin_threshold"
 
-# On the tuple-return path the function scores itself (see the note below),
-# so it needs the expected answer in scope. _EXPECTED stands in for your
-# dataset's expected_output; in real code look it up per example.
-_EXPECTED = "STRONG"
+# Synthetic demo output only. It is deliberately a constant, not a gold-label lookup.
+# In a real agent, derive outputs only from the input/context/tools and keep expected
+# answers exclusively in the evaluation dataset for the evaluator to read.
+_DEMO_STRONG_OUTPUT = "STRONG"
 
 # Tiny self-contained dataset so this block runs as-is.
 Path("eval").mkdir(exist_ok=True)
@@ -96,12 +96,15 @@ def answer(text: str) -> tuple[str, dict[str, float]]:
     params = dict(cfg)
     run = execute_composite(
         COMPOSITE.structure,
-        {"cheap": _stage(["weak-guess"]), "strong": _stage([_EXPECTED])},
+        {"cheap": _stage(["weak-guess"]), "strong": _stage([_DEMO_STRONG_OUTPUT])},
         config=params,
         calibrated_values={GATE: params[GATE]},
     )
-    # The composite_* keys become per-trial measures on the wire.
-    metrics = {"accuracy": 1.0 if str(run.output) == _EXPECTED else 0.0}
+    # Leave `accuracy` to the built-in evaluator (it scores run.output against
+    # the dataset's expected output): a returned key named `accuracy` is
+    # reserved and silently dropped. The composite_* keys become per-trial
+    # measures on the wire.
+    metrics: dict[str, float] = {}
     merge_composite_measures(metrics, run)
     return str(run.output), metrics
 ```
@@ -118,11 +121,18 @@ mirrors the primary objective on SDKs after 0.21.3
 (see version-matrix: `score-relocation`), so it is also 0.0 here and the sane built-in value is
 relocated to `exact_match_default` — check that key instead, and look for the
 run-level "custom scoring_function defines the 'accuracy' objective" log line.
-**Escape hatch:** if you need custom scoring on this
-path, compute the metric inside the function and return it in the tuple's
-metrics dict (as the Quick Start's `accuracy` does) — do not wire a
-`scoring_function` and wonder why it never fires. If neither works for your
-case, stop and surface the SDK limitation to the user rather than iterating.
+**Escape hatch:** if you need custom scoring on this path, compute the metric
+inside the function and return it in the tuple's metrics dict under a
+**non-reserved key** with a matching `objectives=` entry (e.g.
+`objectives=["custom_match"]`, `metrics = {"custom_match": ...}`) — do not
+wire a `scoring_function` and wonder why it never fires, and do not name the
+key `accuracy` (or any other name in `RESERVED_METRIC_KEYS`, e.g. `cost`,
+`latency`, `score`, `success`). A returned value under a reserved key is
+silently dropped in favor of the built-in evaluator's own value for that key
+(logged as "Skipping user metric '<key>' ... is a reserved evaluator-computed
+key and cannot be overwritten") — it will not raise, and your custom score is
+never used. If neither works for your case, stop and surface the SDK
+limitation to the user rather than iterating.
 
 Before any paid run, assert the gate CVAR is actually resolvable — an
 undeclared threshold is a per-trial `KeyError` after money is spent:

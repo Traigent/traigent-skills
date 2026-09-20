@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "200dad45bab4d613",
+  "doc_hash": "0a79ab1bfc5058d7",
   "reference_hashes": {
     "references/algorithms.md": "1f1b85e715a30b9a",
     "references/cost-management.md": "397526da87fd5c3d",
@@ -212,6 +212,17 @@
       "doc_before_hash": "e92884278e78065a",
       "doc_after_hash": "200dad45bab4d613",
       "note": "add literal and raises docstamps for the connected-only smart-selector claim, without a below-floor SDK suffix (contract harness, #175)",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issue-195-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "200dad45bab4d613",
+      "doc_after_hash": "0a79ab1bfc5058d7",
+      "note": "Rebuild issue #195 on current main: show results.algorithm as the resolved optimizer class name rather than the input selector string.",
       "source_type": "agent"
     }
   ]

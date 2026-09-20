@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "afe7ee79fd41d0f4",
+  "doc_hash": "ae06c2993f2ee67a",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/environment-variables.md": "b560a47914459103",
+    "references/environment-variables.md": "8ed2fa35292d9576",
     "references/first-value-fallback.md": "7d7eaa86ba9fa986",
     "references/installation-extras.md": "049a5aa7e3638e3a"
   },
@@ -222,6 +222,17 @@
       "doc_after_hash": "afe7ee79fd41d0f4",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-195-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "afe7ee79fd41d0f4",
+      "doc_after_hash": "ae06c2993f2ee67a",
+      "note": "Rebuild issue #195 on current main: correct the TRAIGENT_MOCK_LLM production guard to fail on first decoration, optimization, or CLI use rather than bare import.",
+      "source_type": "agent"
     }
   ]
 }

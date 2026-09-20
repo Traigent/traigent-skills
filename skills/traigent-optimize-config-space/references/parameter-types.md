@@ -60,7 +60,7 @@ Range(
 
 ### to_config_value()
 
-Returns `tuple[float, float]` for simple ranges, or `dict` with `type`, `low`, `high`, `step`, `log` keys when step or log is set.
+Returns `tuple[float, float]` for simple ranges (neither `step` nor `log` set), or a `dict` with `type`, `low`, `high` plus only whichever of `step`/`log` is actually set (never both, and never a `dict` carrying all five keys).
 
 ---
 
@@ -117,7 +117,7 @@ IntRange(
 
 ### to_config_value()
 
-Returns `tuple[int, int]` for simple ranges, or `dict` with `type`, `low`, `high`, `step`, `log` keys when step or log is set.
+Returns `tuple[int, int]` for simple ranges (neither `step` nor `log` set), or a `dict` with `type`, `low`, `high` plus only whichever of `step`/`log` is actually set (never both, and never a `dict` carrying all five keys).
 
 ---
 

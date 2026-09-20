@@ -91,7 +91,9 @@ metric key.
 
 ### Validation
 
-Traigent validates the `custom_evaluator` signature at decoration time. If your callable has parameters named `output`, `expected`, and `input_data`, Traigent will raise a `ValidationError` suggesting you use `metric_functions` instead. This catches a common mistake where a metric evaluator is passed as a custom evaluator.
+Traigent checks the `custom_evaluator` signature at decoration time for two different mistakes, with two different outcomes:
+- **Wrong arity** (e.g. a 2-arg metric-style callable instead of the 3-arg `(func, config, example)` shape) **raises `ValidationError`** at decoration time.
+- **Parameter names that look like a metric evaluator** — `output`, `expected`, and `input_data` — **only logs a warning and decoration still succeeds**; it does not raise. This is a heuristic nudge toward `metric_functions`, not an enforced contract — don't rely on it to hard-stop a misconfigured evaluator.
 
 ## Scoring Function
 

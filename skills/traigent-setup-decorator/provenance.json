@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "085f427ca6ccf5f0",
+  "doc_hash": "37a3c2f59d7c5da0",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/evaluation-options.md": "60647f49ac8b2ae3",
-    "references/execution-modes.md": "7492de267ab1c602",
+    "references/evaluation-options.md": "6ddebf1de9dd5838",
+    "references/execution-modes.md": "2a6a0fb6b19b78d7",
     "references/injection-modes.md": "be8c4d49b4992b0e",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
   },
@@ -197,6 +197,17 @@
       "doc_before_hash": "1ec76fe612b68cd4",
       "doc_after_hash": "085f427ca6ccf5f0",
       "note": "Rebuild issue #150 on current main: document ObjectiveSchema mismatch validation and use ObjectiveSchema.from_objectives() in the example.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issue-195-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "085f427ca6ccf5f0",
+      "doc_after_hash": "37a3c2f59d7c5da0",
+      "note": "Rebuild issue #195 on current main: correct legacy execution-mode behavior and distinguish custom-evaluator arity errors from parameter-name warnings.",
       "source_type": "agent"
     }
   ]

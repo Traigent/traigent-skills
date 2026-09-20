@@ -6,7 +6,7 @@ Common environment variables for Traigent quickstart workflows.
 
 | Variable                           | Default         | Description                                                                                         |
 | ---------------------------------- | --------------- | --------------------------------------------------------------------------------------------------- |
-| `TRAIGENT_MOCK_LLM`               | `false`         | **Legacy** — when `true`, mocks all LLM API calls. Honored only outside production; **hard-blocked when `ENVIRONMENT=production`** (raises `OSError` at import). Prefer the in-code API `traigent.testing.enable_mock_mode_for_quickstart()` for new code. |
+| `TRAIGENT_MOCK_LLM`               | `false`         | **Legacy** — when `true`, mocks all LLM API calls. Honored only outside production; **hard-blocked when `ENVIRONMENT=production`** (raises `OSError` at the first decoration, `optimize()` or CLI use, not at import). Prefer the in-code API `traigent.testing.enable_mock_mode_for_quickstart()` for new code. |
 | `TRAIGENT_RUN_COST_LIMIT`         | `2.0`           | Maximum cost budget (in USD) per optimization run. Optimization stops when this limit is reached.    |
 | `TRAIGENT_COST_APPROVED`          | `false`         | When `true`, skips the SDK's pre-run cost handshake (which fires only when the estimate exceeds `TRAIGENT_RUN_COST_LIMIT` or a model is unpriced) and downgrades the unpriced-model refusal to a warning. Set it per approved process, never as a standing export. |
 | `TRAIGENT_SKIP_PROVIDER_VALIDATION`| `false`        | Gates only your own call to `traigent.providers.validate_providers`; the SDK runs no automatic provider validation at decoration time. |
