@@ -23,6 +23,7 @@ The `OptimizationResult` dataclass is returned by `func.optimize()` and contains
 | `total_tokens` | `int \| None` | Total tokens consumed across all trials. `None` if token tracking is not available. |
 | `metrics` | `dict[str, Any]` | Aggregated metrics across all trials. Default: `{}`. |
 | `stop_reason` | `StopReason \| None` | Why the optimization stopped. See StopReason values below. |
+| `best_config_margin` | `dict[str, Any] \| None` | Winner-vs-best-distinct-runner-up paired margin qualifying `best_config` (SDK >= 0.26.0): `verdict` (`"clear"` / `"statistical_tie"` / `"na"`), `delta`, `ci95`, `p_value`, `n_shared_examples`, `runner_up`, `n_configs`, `effective_alpha` (Bonferroni over `n_configs - 1`), optional `reason`. `None` when there is no runner-up. |
 
 ### Properties
 
@@ -33,6 +34,8 @@ The `OptimizationResult` dataclass is returned by `func.optimize()` and contains
 | `failed_trials` | `list[TrialResult]` | Filtered list of trials with `status == FAILED`. |
 | `success_rate` | `float` | Ratio of successful trials to total trials. Returns `0.0` if no trials exist. |
 | `best_metrics` | `dict[str, float]` | Full metrics dict from the best-scoring trial. Returns `{}` if no trials exist. |
+| `example_matrix` | `dict[str, Any]` | Per-example × per-trial outcome matrix built in memory from each trial's `example_results`; `examples` is empty when the run captured no per-example detail. |
+| `eval_audit` | `EvalAudit \| None` | Opt-in, zero-cost dataset-defect audit over `example_matrix` (never-correct, token-leak, cross-family consensus-on-wrong): `flagged` (`EvalAuditFlag`: `example_id`, `detectors`, `suggested_answer`), `summary`, `scored`. `None` when no per-example detail was captured or fewer than two configurations ran. |
 
 ### Usage
 
@@ -129,9 +132,13 @@ for trial in results.trials:
 | `"max_trials_reached"` | The configured `max_trials` limit was reached. |
 | `"max_samples_reached"` | The maximum number of samples/examples was reached. |
 | `"timeout"` | The optimization exceeded its timeout duration. |
-| `"cost_limit"` | The accumulated cost exceeded the configured budget. |
+| `"cost_limit"` | The accumulated per-run cost reached the configured budget; the completed trials are kept and returned. |
+| `"execution_budget"` | A shared cumulative `ExecutionBudget` (cost, examples, or deadline) was exhausted (SDK >= 0.26.0); reported instead of `"cost_limit"`, detail in `metadata["execution_budget"]`. |
+| `"metric_limit"` | A soft cumulative metric limit was hit. |
 | `"optimizer"` | The optimizer decided to stop (e.g., configuration space exhausted). |
 | `"plateau"` | A plateau was detected (no improvement over recent trials). |
+| `"convergence"` | A built-in convergence condition triggered. |
+| `"semantic_saturation"` | Per-example quality and continuous objectives saturated; detail in `metadata["semantic_saturation"]`. |
 | `"user_cancelled"` | The user cancelled the optimization or declined a cost approval prompt. |
 | `"condition"` | A generic stop condition was triggered. |
 | `"error"` | The optimization failed due to an unrecoverable exception. |

@@ -2,8 +2,9 @@
 
 Use these principles before designing a Traigent optimization program or
 run-plan. The first six are the core must-dos; the rest keep results trustworthy
-and reproducible. They are field-tested from taking a text2SQL agent from 66.7%
-to 90% accuracy at lower cost.
+and reproducible. They are field-tested from taking a text2SQL agent from 20/30
+to 27/30 on its 30-row tuning slice at lower cost — a tuning-slice count chosen
+by the search, so it is optimistic; the held-out number is the claim.
 
 ## Core recommendations
 
@@ -37,7 +38,7 @@ are reproducible and so a later run can promote it to a tuned knob.
 After a run, rank each knob's impact on the objective. **Drop knobs with ~zero
 impact** (especially if they add cost -- e.g. self-consistency that doesn't raise
 accuracy) and **swap in better structural knobs**. This run-over-run swap is
-where the ceiling moves (it took us 83.3% -> 90%). See `traigent-analyze-guidance`.
+where the ceiling moves (it took us 25/30 -> 27/30 on the tuning slice). See `traigent-analyze-guidance`.
 
 ### P5 -- Vary the objective weights across runs
 

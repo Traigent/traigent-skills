@@ -115,42 +115,31 @@ if results.stop_reason in ("plateau", "convergence"):
     print(f"  Final best score: {results.best_score}")
 ```
 
-## When to Increase max_trials
+## Evidence for the more-trials question
 
-Use convergence information to decide whether more trials would help:
+Summarise what the curve shows; whether to buy more trials is the decision brief's call
+(`traigent-analyze-guidance`, Mode B) or, offline, a hypothesis to state — not a default:
 
 ```python
-def should_run_more_trials(results) -> bool:
-    """Decide whether increasing max_trials is worthwhile."""
+def trial_evidence(results) -> str:
+    """Describe the stopping evidence; never a yes/no about spending."""
 
-    # Already converged / stopped early naturally
-    if results.stop_reason in ("plateau", "convergence"):
-        return False
-
-    # Optimizer exhausted the search space
+    if results.stop_reason in ("plateau", "convergence", "semantic_saturation"):
+        return "converged for this space"
     if results.stop_reason == "optimizer":
-        return False
-
-    # Error-based stops need fixing, not more trials
+        return "search space exhausted"
     if results.stop_reason in ("error", "vendor_error", "network_error"):
-        return False
-
-    # Hit trial limit - check if still improving
-    if results.stop_reason == "max_trials_reached":
+        return "stopped on an error - fix it before any rerun"
+    if results.stop_reason in ("max_trials_reached", "cost_limit", "execution_budget"):
         history = best_score_curve(results)
-        if len(history) >= 3:
-            recent = history[-3:]          # last 3 best-so-far values
-            if recent[-1] > recent[0]:
-                return True  # Still improving
-        # Default: yes, if we hit the limit, try more
-        return True
-
-    return False
+        if len(history) >= 3 and history[-1] > history[-3]:
+            return "cap reached while the best-so-far was still moving"
+        return "cap reached with a flat best-so-far"
+    return f"stopped: {results.stop_reason}"
 
 
 results = func.optimize_sync()
-if should_run_more_trials(results):
-    print("Consider re-running with higher max_trials")
+print(f"Stop evidence: {trial_evidence(results)}")
 ```
 
 ## Comparing Convergence Across Runs

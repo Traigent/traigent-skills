@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.1"
+  version: "1.0.2"
 ---
 
 # Show Significant Tuned Variables
@@ -44,6 +44,16 @@ The script accepts:
 - `--heldout`: optional heldout report JSON with `baseline`, `optimized`, and `delta`. When present, the video card uses the heldout optimized-vs-baseline accuracy and cost deltas for context.
 - `--objective`: objective field to maximize, typically `accuracy`.
 
+An SDK result saved with `save_to=` (for example `traigent-runs/optimized-results.json` after the
+guided first run) is one JSON object whose `trials[]` already carry `config` and `metrics` (the
+script reads the objective from either the top level or `metrics`); write it out one trial per
+line first, then pass that file as `--trials`:
+
+```bash
+python3 -c 'import json,sys; [print(json.dumps(t)) for t in json.load(open(sys.argv[1]))["trials"]]' \
+  traigent-runs/optimized-results.json > trials.jsonl
+```
+
 Expected trial shape:
 
 ```json
@@ -70,6 +80,16 @@ Never overclaim significance:
 - The video card's per-knob `accuracy_pp`/`cost_delta_pct` are that knob's own measured effect; the whole-run heldout optimized-vs-baseline delta is reported once as a card-level field, never copied onto each knob.
 - The ranking is observational: "on this fixed Spider slice, in this run." It is not proof of causal attribution.
 <!-- /PROTECTED -->
+
+**Fewer than 20 trials — a first small run, such as the guided first run's 12-trial search.**
+Every row will read `directional`. Present the card as *which knobs to test next*, never
+as a ranking that holds: say "n=<trials> — directional; a knob showing no spread was mostly not
+sampled enough to show one". Do not rerun the search to reach 20; the run size that can support the
+ranking comes from the service plan (`traigent-analyze-guidance`, Mode A), not from this skill.
+Pass `--heldout` only when baseline **and** optimized were scored on the same held-out rows; a
+held-out score of one selected configuration — what the guided first run reports — is not a
+baseline-vs-optimized delta, so leave `--heldout` off and say the held-out check covers the
+selected configuration only.
 
 The primary importance is the spread between the best and worst per-value mean objective. The script also reports variance-decomposition share: between-group variance divided by total variance.
 
