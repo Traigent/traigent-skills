@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # Traigent Decorator Setup
@@ -329,7 +329,7 @@ def my_func(query: str, config: dict = None) -> str:
 
 ### Seamless Mode
 
-Zero code change. Traigent uses AST transformation to inject parameters into LLM calls automatically.
+No `get_config()` call. Traigent rewrites the function's AST per trial — but only **local assignments or parameters whose name equals a configuration key**.
 
 ```python
 @traigent.optimize(
@@ -340,14 +340,18 @@ Zero code change. Traigent uses AST transformation to inject parameters into LLM
     },
 )
 def my_func(query: str) -> str:
-    # No get_config() call needed - Traigent transforms AST automatically
-    return openai.chat.completions.create(
-        model="gpt-4o-mini",  # Will be overridden by Traigent
+    model = "gpt-4o-mini"      # seamless rewrites THIS local assignment per trial
+    temperature = 0.5          # a matching local name (or parameter) is required
+    return litellm.completion(
+        model=model,
+        temperature=temperature,
         messages=[{"role": "user", "content": query}],
     )
 ```
 
-> **Mock does not intercept this example.** Mock mode covers LiteLLM/LangChain calls only — a raw `openai` client like the one above makes **real, billable calls even during a "keyless" mock dry-run**. For a genuinely free dry-run of a seamless-mode function, use `litellm.completion` in the body or run fully offline (`offline=True`, no keys).
+> **A literal in the call is not rewritten.** `model="gpt-4o-mini"` written directly as a keyword argument, a value from `os.environ.get(...)`, or a dict-built kwarg has no matching local name, so the SDK logs `Seamless provider found no injectable targets for <fn>; no local assignment or parameter matched configuration keys [...], so the function ran with original values` and every trial runs the original configuration — and the dry-run still passes (fail-closed behaviour is tracked in Traigent/Traigent#2298). Before any paid run, prove the value reaching the provider call changes across two configurations (mock mode, diff the request); if it does not, use context mode.
+
+> **Mock intercepts this example only because it calls `litellm.completion`.** Mock mode covers LiteLLM/LangChain calls only — a raw `openai` / `anthropic` client in the body makes **real, billable calls even during a "keyless" mock dry-run**. For a genuinely free dry-run of a seamless-mode function, keep `litellm.completion` in the body or run fully offline (`offline=True`, no keys).
 
 ## Execution Options
 
@@ -358,11 +362,14 @@ See `references/execution-modes.md` for the full reference.
 
 After mock/dry-run validation passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired — the provider may still bill), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, wire it before scaling up — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, `TRAIGENT_STRICT_COST_ACCOUNTING`).
 
-> **Real LLM runs require cost approval.** A real (non-mock, non-offline) optimization is
-> blocked by a cost gate. Set `TRAIGENT_COST_APPROVED=true` to confirm (the verified path);
-> some SDK versions also accept `cost_approved=True` in the decorator. The SDK prints an estimate before executing any
-> trial; the estimate may be high (fallback pricing is conservative) but the gate is a
-> safety confirmation — no spend occurs until approved.
+> **Real LLM runs require the user's approval — the SDK's cost handshake is conditional.** It
+> prompts only when the pre-run estimate exceeds `TRAIGENT_RUN_COST_LIMIT` (default $2.00) or
+> a model is unpriced; a priced run under the cap starts real calls with no prompt. The user's
+> explicit yes to a stated ceiling is the gate. Set `TRAIGENT_COST_APPROVED=true` (or
+> `cost_approved=True` in the decorator) only in the process of that approved run, never in
+> `.env` or a shell profile — it also turns the unpriced-model refusal into a warning. The
+> estimate may be high (fallback pricing is conservative); read `results.stop_reason` after
+> the run.
 
 ```python
 @traigent.optimize(
@@ -455,7 +462,7 @@ answer = answer_question("What is the capital of France?")
 - `references/evaluation-options.md` - Full EvaluationOptions field reference
 - `references/injection-modes.md` - Detailed injection mode comparison
 - `references/execution-modes.md` - Full ExecutionOptions field reference
-- `references/winner-stability-reps.md` - `winner_stability_reps` opt-in post-selection winner rerun (unreleased; requires `traigent>=0.27.0`)
+- `references/winner-stability-reps.md` - `winner_stability_reps` opt-in post-selection winner rerun (requires `traigent>=0.27.0`)
 - `traigent-eval-build` - Deep evaluator implementation, ExampleResult, custom evaluators, and evaluator templates
 - `traigent-eval-choose-metric` - Metric interview and objective selection before decorator wiring
 - `traigent-setup-quickstart` - Installation, API-key setup, and first cloud-smart optimization

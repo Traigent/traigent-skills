@@ -129,9 +129,11 @@ metric is scoring canned output — re-add `mock_demo_accuracy` for the dry-run.
 
 Only after the user has seen the mock result and explicitly approved spend. A real run:
 
-1. **Requires cost approval.** A real (non-mock) optimization is blocked by a cost gate.
-   Set `TRAIGENT_COST_APPROVED=true` to confirm you accept the estimate the SDK prints
-   before any trial runs.
+1. **Requires the user's approval.** The SDK's own cost handshake is conditional: it
+   prompts only when the pre-run estimate exceeds `TRAIGENT_RUN_COST_LIMIT` (default $2.00)
+   or a model is unpriced; a priced run under the cap starts immediately. The user's yes to
+   a stated ceiling is the gate. Set `TRAIGENT_COST_APPROVED=true` only in the process of
+   that approved run, never persisted.
 2. **Caps the budget.** Pass a per-run dollar `cost_limit` so an unattended sweep can't
    overrun — a pre-run estimate over the cap stops the run before spending. See the
    `traigent-optimize-run` skill for `cost_limit` behavior and stop conditions.
@@ -143,7 +145,7 @@ Only after the user has seen the mock result and explicitly approved spend. A re
 export TRAIGENT_API_KEY="uk_..."                        # portal-issued key
 export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"   # optional: cloud is already the default
 export OPENAI_API_KEY="sk-..."                          # the provider this project uses
-export TRAIGENT_COST_APPROVED=true                      # explicit spend approval
+export TRAIGENT_COST_APPROVED=true                      # only in this run's shell, after the user's yes to the stated ceiling
 ```
 
 ```python
