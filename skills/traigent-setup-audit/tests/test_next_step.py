@@ -156,6 +156,98 @@ def _dataset(rows, holdout_rows):
     )
 
 
+def _scan_sibling_pair(tmp_path: Path, tuning_rows: list[dict], holdout_rows: list[dict]):
+    eval_dir = tmp_path / "eval"
+    eval_dir.mkdir()
+    paths = []
+    for name, rows in (("tuning.jsonl", tuning_rows), ("holdout.jsonl", holdout_rows)):
+        path = eval_dir / name
+        path.write_text(
+            "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+        )
+        paths.append(path)
+    reports, _, _, _ = audit.scan_datasets(paths, tmp_path)
+    return {report.file: report for report in reports}
+
+
+def _row(question: str, split: str | None = None) -> dict:
+    row = {"input": question, "expected_output": "answer"}
+    if split is not None:
+        row["metadata"] = {"split": split}
+    return row
+
+
+def test_tagged_sibling_pair_propagates_holdout_and_detects_normalized_overlap(
+    tmp_path: Path,
+) -> None:
+    reports = _scan_sibling_pair(
+        tmp_path,
+        [_row("  SAME   question ", "tune"), _row("tuning only", "tune")],
+        [_row("same question", "holdout"), _row("holdout only", "holdout")],
+    )
+
+    tuning = reports["eval/tuning.jsonl"]
+    holdout = reports["eval/holdout.jsonl"]
+    assert tuning.holdout_rows == 2
+    assert holdout.holdout_rows == 2
+    assert tuning.holdout_overlap == [0]
+    assert any("sibling holdout file" in finding for finding in tuning.findings)
+
+
+def test_tagged_sibling_pair_without_overlap_still_propagates_holdout(
+    tmp_path: Path,
+) -> None:
+    reports = _scan_sibling_pair(
+        tmp_path,
+        [_row("tuning only", "tune")],
+        [_row("holdout only", "holdout")],
+    )
+
+    tuning = reports["eval/tuning.jsonl"]
+    assert tuning.holdout_rows == 1
+    assert tuning.holdout_overlap == []
+
+
+def test_untagged_rows_in_partially_tagged_holdout_file_inherit_filename_role(
+    tmp_path: Path,
+) -> None:
+    reports = _scan_sibling_pair(
+        tmp_path,
+        [_row("SAME", "tune")],
+        [_row("other", "holdout"), _row(" same ")],
+    )
+
+    tuning = reports["eval/tuning.jsonl"]
+    holdout = reports["eval/holdout.jsonl"]
+    assert holdout.holdout_rows == 2
+    assert tuning.holdout_rows == 2
+    assert tuning.holdout_overlap == [0]
+    assert not any("contradict" in finding for finding in holdout.findings)
+
+
+def test_mixed_row_tags_win_and_a_named_holdout_contradiction_is_reported(
+    tmp_path: Path,
+) -> None:
+    reports = _scan_sibling_pair(
+        tmp_path,
+        [
+            _row("actual holdout", "tune"),
+            _row("already internal holdout", "holdout"),
+        ],
+        [
+            _row("actual holdout", "holdout"),
+            _row("not a holdout despite filename", "tune"),
+        ],
+    )
+
+    tuning = reports["eval/tuning.jsonl"]
+    holdout = reports["eval/holdout.jsonl"]
+    assert tuning.holdout_rows == 1
+    assert holdout.holdout_rows == 1
+    assert tuning.holdout_overlap == [0]
+    assert any("contradict" in finding for finding in holdout.findings)
+
+
 GOOD_PROBE = {
     "ran": True,
     "scores": {"good": [1.0, 1.0], "partial": [0.5], "bad": [0.0]},
@@ -203,6 +295,45 @@ def test_branch_f_fires_on_a_dataset_under_the_minimums() -> None:
     assert "12 row(s) and a 0-row holdout slice" in step["line"]
 
 
+def test_branch_f_judges_a_named_holdout_file_by_the_holdout_minimum_only() -> None:
+    """A holdout file declared by its name beside a tuning file has no tuning
+    rows to judge: 10 holdout rows under the holdout minimum is reported as a
+    short holdout slice, never as a 10-row tuning file, and the tuning file is
+    the one named when it is short too."""
+    entry = _entry([_knob("model", "read")])
+    tuning = _dataset(12, 10)
+    tuning.file = "eval/tuning.jsonl"
+    tuning.split_counts = {}
+    holdout = _dataset(10, 10)
+    holdout.file = "eval/holdout.jsonl"
+    holdout.split_counts = {}
+    holdout.holdout_by_name = True
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [tuning, holdout], GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert step["line"].startswith("eval/tuning.jsonl has 12 row(s) and a 10-row")
+    assert "under the 30-row tuning minimum and the 30-row holdout minimum" in step["line"]
+    # The tuning file is long enough; only the holdout is short, and the line
+    # says exactly that (40 rows is not "under the tuning minimum").
+    tuning.rows = 40
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [tuning, holdout], GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert step["line"].startswith("eval/tuning.jsonl has 40 row(s) and a 10-row")
+    assert "under the 30-row holdout minimum, so" in step["line"]
+    assert "tuning minimum" not in step["line"]
+    # A holdout file with no tuning sibling short is described by its role.
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [holdout], GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert step["line"].startswith(
+        "eval/holdout.jsonl is a 10-row holdout slice declared by file name"
+    )
+
+
 def test_branch_g_needs_every_earlier_branch_to_be_clear() -> None:
     entry = _entry([_knob("model", "read")])
     step = audit.next_step(
@@ -240,3 +371,18 @@ def test_the_dataset_branch_never_outranks_an_unreliable_scorer() -> None:
         _inventory([entry], [_scorer()]), [_dataset(5, 0)], unstable, _scorer()
     )
     assert step["branch"] == "d"
+
+
+def test_interpreter_probe_order_is_venv_then_venv_traigent(tmp_path: Path) -> None:
+    """`.venv-traigent` (the throwaway environment a guided first run may create)
+    is probed after `.venv` and before the audit's own interpreter."""
+    root = tmp_path / "proj"
+    (root / ".venv-traigent" / "bin").mkdir(parents=True)
+    fallback = root / ".venv-traigent" / "bin" / "python"
+    fallback.write_text("")
+    assert audit.project_interpreter(root) == str(fallback)
+    (root / ".venv" / "bin").mkdir(parents=True)
+    preferred = root / ".venv" / "bin" / "python"
+    preferred.write_text("")
+    assert audit.project_interpreter(root) == str(preferred)
+    assert audit.project_interpreter(tmp_path / "empty") == sys.executable

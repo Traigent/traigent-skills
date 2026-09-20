@@ -1,0 +1,12 @@
+{"input": {"question": "Explain the refund window rule."}, "expected_output": "The refund window rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the billing cycle rule."}, "expected_output": "The billing cycle rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the seat licence rule."}, "expected_output": "The seat licence rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the data retention rule."}, "expected_output": "The data retention rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the export format rule."}, "expected_output": "The export format rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the trial length rule."}, "expected_output": "The trial length rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the support hours rule."}, "expected_output": "The support hours rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the invoice numbering rule."}, "expected_output": "The invoice numbering rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the currency rounding rule."}, "expected_output": "The currency rounding rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the tax handling rule."}, "expected_output": "The tax handling rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the renewal notice rule."}, "expected_output": "The renewal notice rule is documented.", "metadata": {"source": "reviewed-policy"}}
+{"input": {"question": "Explain the cancellation fee rule."}, "expected_output": "The cancellation fee rule is documented.", "metadata": {"source": "reviewed-policy"}}
