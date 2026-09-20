@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "fa9a1399055b04b9",
+  "doc_hash": "24f18c1bfed79ec9",
   "entries": [
     {
       "edit_id": "genesis",
@@ -52,6 +52,17 @@
       "doc_after_hash": "fa9a1399055b04b9",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-150-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "fa9a1399055b04b9",
+      "doc_after_hash": "24f18c1bfed79ec9",
+      "note": "Rebuild issue #150 on current main: recommend file/link path dependencies over npm link under pnpm/yarn and document the AsyncLocalStorage ESM caveat.",
+      "source_type": "agent"
     }
   ]
 }

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # Show Significant Tuned Variables
@@ -42,7 +42,12 @@ The script accepts:
 - `--trials`: required JSONL, one trial per line. Each row must contain `config` and a numeric objective such as `accuracy`.
 - `--config-space`: optional JSON object `{knob: [values...]}`. If absent, the script infers knobs and values observed in trials.
 - `--heldout`: optional heldout report JSON with `baseline`, `optimized`, and `delta`. When present, the video card uses the heldout optimized-vs-baseline accuracy and cost deltas for context.
-- `--objective`: objective field to maximize, typically `accuracy`.
+- `--objective`: objective field to maximize. This must exactly match the metric key present in each
+  trial row of `--trials` (typically `accuracy`, but a text2SQL run may score under `exec_accuracy` or
+  another custom `metric_functions` key) — it is not a fixed literal. An empty or all-`directional`
+  `importance.json` means insufficient variation in the trials for this objective, not "no knob
+  matters" — check that `--config-space` values were actually sampled and that there are enough
+  trials per value before concluding a knob is unimportant.
 
 An SDK result saved with `save_to=` (for example `traigent-runs/optimized-results.json` after the
 guided first run) is one JSON object whose `trials[]` already carry `config` and `metrics` (the

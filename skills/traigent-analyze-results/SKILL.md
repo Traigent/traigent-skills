@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.22"
+  version: "1.1.23"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -120,6 +120,12 @@ analytics_get_run_decision_brief(
 Use `deploy` for reading deployment-relevant result fields, `debug` for "why is it stuck?",
 `report` for a summary/report request, and `iterate` only when you are inspecting the backend's
 analysis payload without deciding the next run.
+
+**If the call itself fails or the `traigent-analytics` MCP server is unreachable** (as opposed to
+the tool returning `ok=False` or an empty payload for a real portal run), do not retry it silently
+or fabricate a brief. For a local/offline run this is expected — go straight to the "Working with
+the local OptimizationResult" section below. For a portal-tracked run, say the analytics service is
+unreachable and fall back to the portal deep-link.
 
 Decision questions are out of scope for this read-only analysis skill. Route open-ended
 next-step decisions to `traigent-analyze-guidance`: Mode B for portal-tracked runs (it fetches the
@@ -521,6 +527,9 @@ print(f"Best metrics: {results.best_metrics}")
 > on SDKs after 0.22.0 (see version-matrix: `cost-unit`) — it reconciles with `total_cost`, and the
 > per-example mean moved to `"cost_per_example_mean"`. On 0.22.0 and earlier, local runs reported
 > `"cost"` as the per-example mean — ~N× smaller than hybrid runs of the same config.
+> **A per-trial total is not comparable across runs with a different eval-dataset example count** —
+> more examples means a bigger total for the same per-example cost. Use `"cost_per_example_mean"`
+> (or divide the total by the example count) whenever you compare cost across runs, not the raw total.
 
 ## The Quality / Cost / Latency Trade-off (multi-objective)
 

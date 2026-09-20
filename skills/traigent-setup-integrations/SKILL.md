@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # Traigent Framework Integrations
@@ -36,6 +36,16 @@ pip install "traigent>=0.19" langchain-openai langchain-anthropic
 pip install "traigent>=0.19" litellm
 pip install "traigent>=0.19" dspy
 ```
+
+> **Pin, don't float, the framework version.** `langchain-openai`/`langchain-anthropic` and `dspy` both
+> ship breaking changes across minor releases (LangChain's `langchain-core` interface churn; DSPy has
+> moved fast enough that `dspy.LM`, present since 2.5, is not guaranteed stable across 2.x/3.x). An
+> unpinned install can silently pick up a version whose import paths or call signatures differ from
+> the examples below. Traigent's own `integrations` extra already floors
+> `langchain-openai>=1.1.14`/`langchain-anthropic>=0.2.0` (security floors — see `pip show traigent`);
+> stay at or above those, e.g. `langchain-openai>=1.1.14,<2`. `dspy` is not part of that extra and has
+> no SDK-verified floor here — pin to the exact `dspy` version you test the examples below against, or
+> treat them as unverified against your installed version until you do.
 
 > **Dry-run first.** Before any paid optimization run, activate mock mode (`enable_mock_mode_for_quickstart()`), run with your chosen config, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers.
 
@@ -261,8 +271,11 @@ results = func.optimize_sync()
 with mlflow.start_run():
     mlflow.log_param("algorithm", results.algorithm)
     mlflow.log_param("best_config", results.best_config)
-    mlflow.log_metric("best_score", results.best_score or 0.0)
-    mlflow.log_metric("total_cost", results.total_cost or 0.0)
+    # Omit unavailable telemetry; explicit checks preserve measured 0.0 values.
+    if results.best_score is not None:
+        mlflow.log_metric("best_score", results.best_score)
+    if results.total_cost is not None:
+        mlflow.log_metric("total_cost", results.total_cost)
     mlflow.log_metric("total_trials", len(results.trials))
     mlflow.log_metric("success_rate", results.success_rate)
 
@@ -287,11 +300,13 @@ for trial in results.trials:
         **trial.config,
         **trial.metrics,
     })
-wandb.log({
-    "best_score": results.best_score,
-    "best_config": results.best_config,
-    "total_cost": results.total_cost,
-})
+summary = {"best_config": results.best_config}
+# Missing telemetry stays absent; explicit checks preserve real 0.0 measurements.
+if results.best_score is not None:
+    summary["best_score"] = results.best_score
+if results.total_cost is not None:
+    summary["total_cost"] = results.total_cost
+wandb.log(summary)
 wandb.finish()
 ```
 

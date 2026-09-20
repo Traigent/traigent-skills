@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.7"
+  version: "1.0.8"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -464,6 +464,9 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 2. Check configuration space: is it non-empty with valid lists?
 3. Check for ConfigurationError in output
 4. Enable `TRAIGENT_LOG_LEVEL=DEBUG` and check for early failures
+5. On a cloud/hybrid run, rule out a plan-quota block before looking further — see "Session-create
+   fails with `400 VALIDATION_ERROR` / `429 quota_exceeded`" above; a quota block can present as zero
+   trials with no other symptom.
 
 ### All trials failed
 

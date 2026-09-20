@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "505f03f35f744c62",
+  "doc_hash": "bfbb9c9327a321f5",
   "reference_hashes": {
     "references/error-reference.md": "a4972fd8548f1357",
     "references/logging-config.md": "a9ba72306ba70183",
@@ -79,6 +79,17 @@
       "doc_after_hash": "505f03f35f744c62",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-150-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "505f03f35f744c62",
+      "doc_after_hash": "bfbb9c9327a321f5",
+      "note": "Rebuild issue #150 on current main: cross-link the no-trials checklist to plan-quota exhaustion.",
+      "source_type": "agent"
     }
   ]
 }

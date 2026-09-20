@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1f39515803010b9a",
+  "doc_hash": "278f0b35940ac5c8",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
@@ -165,6 +165,17 @@
       "doc_after_hash": "1f39515803010b9a",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-150-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "1f39515803010b9a",
+      "doc_after_hash": "278f0b35940ac5c8",
+      "note": "Rebuild issue #150 on current main: convert ExampleInsightsClient import-path guidance into a plugin-installed decision table.",
+      "source_type": "agent"
     }
   ]
 }
