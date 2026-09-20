@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e92884278e78065a",
+  "doc_hash": "200dad45bab4d613",
   "reference_hashes": {
     "references/algorithms.md": "1f1b85e715a30b9a",
     "references/cost-management.md": "397526da87fd5c3d",
@@ -191,6 +191,17 @@
       "doc_after_hash": "e92884278e78065a",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-175-rebuild-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "e92884278e78065a",
+      "doc_after_hash": "200dad45bab4d613",
+      "note": "add literal and raises docstamps for the connected-only smart-selector claim, without a below-floor SDK suffix (contract harness, #175)",
+      "source_type": "agent"
     }
   ]
 }

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.3"
+  version: "1.2.4"
 ---
 
 # Traigent Analyze Guidance
@@ -427,6 +427,7 @@ Backend-only report surfaces, each requiring a Traigent account/backend:
 
 - `GET /api/v1/experiment-runs/runs/{run_id}/report-payload`: winner, trade-off, and stability insights.
 - `/api/v1/optimization-comparisons`: cross-run comparison across candidate runs.
+<!-- contract: path /api/v1/optimization-comparisons in traigent.cloud.analytics_client -->
 - Example-scoring compute, scores, and dataset-quality endpoints: scoring status and scoring metadata.
 - `GET /api/v1/analytics/runs/{run_id}/example-insights`: ranked and flagged examples to review (IP-safe: review_priority, suspicious_flags, recommended_action).
 

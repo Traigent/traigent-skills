@@ -5,6 +5,8 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from packaging.version import InvalidVersion, Version
+
 from .facts import ContractFact
 
 
@@ -18,6 +20,22 @@ INLINE_CODE_RE = re.compile(r"`([^`]+)`")
 # token (so capitalized prose like `` `traigent SDK` `` and version strings like
 # `` `traigent 0.0.1 does not provide ...` `` never match either).
 INLINE_CLI_RE = re.compile(r"^traigent\s+[a-z][a-z0-9-]*(?:\s+\S.*)?$")
+# A greppable prose-claim stamp: `<!-- contract: <kind> <target> in <module> [@ SDK <ver>] -->`.
+# Lets a path / literal-string / raises claim made in plain prose (never a fenced code
+# block) be decay-checked against the installed SDK's module source the same way an
+# import or kwarg fact already is. See tests/README.md "Doc-claim stamps".
+# Match openings independently so a missing terminator cannot consume a later HTML
+# comment or a later valid stamp. `_extract_docstamp_facts` requires the closing `-->`
+# on the same physical line and emits a malformed fact otherwise.
+CONTRACT_OPEN_RE = re.compile(r"<!--\s*contract:")
+STAMP_VERSION_RE = re.compile(r"\s+@\s+SDK\s+(?P<version>\S+)\s*$")
+STAMP_PATH_RE = re.compile(r"^path\s+(?P<target>.+?)\s+in\s+(?P<module>traigent[\w.]*)$")
+STAMP_LITERAL_RE = re.compile(
+    r'^literal\s+(?P<quoted>"(?:\\.|[^"\\])*")\s+in\s+(?P<module>traigent[\w.]*)$'
+)
+STAMP_RAISES_RE = re.compile(
+    r"^raises\s+(?P<target>[A-Za-z_][A-Za-z0-9_]*)\s+in\s+(?P<module>traigent[\w.]*)$"
+)
 # Same-paragraph signal that an inline `traigent <subcommand>` span is a MENTION of the
 # command's absence/status, not an assertion that it is runnable today — e.g. "Do not reach for
 # `traigent next-steps`: it was retired ..." or "Planned: a `traigent ci` command group will
@@ -148,6 +166,10 @@ def collect_runnable_markdown(
 
 def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
     facts: list[ContractFact] = []
+    # Whole-document pass, not per-line: a stamp comment's `-->` can land on a later
+    # line than its `<!-- contract:`, and that split must be diagnosed (malformed),
+    # never silently produce zero facts.
+    facts.extend(_extract_docstamp_facts(skill, path, text))
     lines = text.splitlines()
     paragraph_by_line = _paragraph_text_by_line(lines)
     for line_number, line in enumerate(lines, start=1):
@@ -191,6 +213,127 @@ def collect_markdown(skill: str, path: Path, text: str) -> list[ContractFact]:
         elif language in {"js", "jsx", "javascript", "ts", "tsx", "typescript"}:
             facts.extend(_extract_js_block(skill, path, block))
     return _dedupe(facts)
+
+
+def _extract_docstamp_facts(skill: str, path: Path, text: str) -> list[ContractFact]:
+    """Find every ``<!-- contract: ... -->`` stamp in the whole document.
+
+    A stamp that does not match the grammar produces a ``docstamp`` fact of
+    ``name="malformed"`` rather than being silently dropped: an author who
+    mistypes a stamp gets a loud, greppable failure (protocol A4-style), not a
+    check that quietly never ran. See tests/README.md "Doc-claim stamps".
+    """
+    facts: list[ContractFact] = []
+    for opening in CONTRACT_OPEN_RE.finditer(text):
+        line_number = text.count("\n", 0, opening.start()) + 1
+        line_end = text.find("\n", opening.end())
+        if line_end == -1:
+            line_end = len(text)
+        closing = text.find("-->", opening.end(), line_end)
+        nested_opening = text.find("<!--", opening.end(), line_end)
+        if closing == -1 or (nested_opening != -1 and nested_opening < closing):
+            body_end = nested_opening if nested_opening != -1 else line_end
+            raw_body = text[opening.end() : body_end]
+            facts.append(
+                _malformed_docstamp_fact(
+                    skill,
+                    path,
+                    line_number,
+                    raw_body,
+                    problem="missing closing `-->` before end of line",
+                )
+            )
+            continue
+
+        raw_body = text[opening.end() : closing]
+        body = raw_body.strip()
+        version = None
+        version_match = STAMP_VERSION_RE.search(body)
+        if version_match:
+            version = version_match.group("version")
+            body = body[: version_match.start()].rstrip()
+            if not _is_valid_sdk_version(version):
+                facts.append(
+                    _malformed_docstamp_fact(
+                        skill,
+                        path,
+                        line_number,
+                        raw_body,
+                        problem=f"`@ SDK {version}` is not a parseable version",
+                    )
+                )
+                continue
+
+        parsed = _parse_docstamp_body(body)
+        if parsed is None:
+            facts.append(
+                _malformed_docstamp_fact(
+                    skill,
+                    path,
+                    line_number,
+                    raw_body,
+                    problem=(
+                        "does not match `path <target> in <module>`, "
+                        '`literal "<text>" in <module>`, or '
+                        "`raises <ExceptionName> in <module>` "
+                        "(module must start with `traigent`; optional trailing "
+                        "`@ SDK <version>`)"
+                    ),
+                )
+            )
+            continue
+        name, target, module = parsed
+        facts.append(
+            ContractFact(
+                kind="docstamp",
+                skill=skill,
+                path=path,
+                line=line_number,
+                module=module,
+                target=target,
+                name=name,
+                stamped_sdk_version=version,
+            )
+        )
+    return facts
+
+
+def _malformed_docstamp_fact(
+    skill: str, path: Path, line_number: int, raw_body: str, *, problem: str
+) -> ContractFact:
+    collapsed = " ".join(raw_body.split())
+    return ContractFact(
+        kind="docstamp",
+        skill=skill,
+        path=path,
+        line=line_number,
+        name="malformed",
+        target=f"<!-- contract:{collapsed} --> ({problem})",
+    )
+
+
+def _is_valid_sdk_version(version: str) -> bool:
+    try:
+        Version(version)
+        return True
+    except InvalidVersion:
+        return False
+
+
+def _parse_docstamp_body(body: str) -> tuple[str, str, str] | None:
+    if match := STAMP_PATH_RE.match(body):
+        return "path", match.group("target"), match.group("module")
+    if match := STAMP_RAISES_RE.match(body):
+        return "raises", match.group("target"), match.group("module")
+    if match := STAMP_LITERAL_RE.match(body):
+        try:
+            literal = ast.literal_eval(match.group("quoted"))
+        except (SyntaxError, ValueError):
+            return None
+        if not isinstance(literal, str):
+            return None
+        return "literal", literal, match.group("module")
+    return None
 
 
 def _extract_url_facts(
