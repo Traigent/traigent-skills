@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f608f09c807218fb",
+  "doc_hash": "505f03f35f744c62",
   "reference_hashes": {
     "references/error-reference.md": "a4972fd8548f1357",
     "references/logging-config.md": "a9ba72306ba70183",
@@ -68,6 +68,17 @@
       "doc_after_hash": "f608f09c807218fb",
       "note": "review fix: fallback_reason_code and exc.sync_session_id floored to SDK 0.27.0+ in prose (absent on 0.24.0, grepped); the quota bullet's heading no longer wears the 0.16.0 date; the catch-specific-errors example prints estimated/limit instead of the accumulated 0.0 of a pre-run decline.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-debugging",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "f608f09c807218fb",
+      "doc_after_hash": "505f03f35f744c62",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

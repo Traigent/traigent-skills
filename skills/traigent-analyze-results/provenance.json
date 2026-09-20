@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7616926cf0a8afc1",
+  "doc_hash": "af0827c11e4b7aaf",
   "reference_hashes": {
     "references/convergence-patterns.md": "57c2d4ef7f2c2b69",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -221,6 +221,17 @@
       "doc_after_hash": "7616926cf0a8afc1",
       "note": "independent review follow-up for PR #285: split cost-limit and shared-execution-budget reporting, preserve missing or zero tracked cost, and read the exhausted budget dimension defensively",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-analyze-results",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "7616926cf0a8afc1",
+      "doc_after_hash": "af0827c11e4b7aaf",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

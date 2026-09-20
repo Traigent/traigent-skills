@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7c28126328d20666",
+  "doc_hash": "34271cc9337c7e17",
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
     "references/parameter-types.md": "aec5c6f990a712d3",
@@ -79,6 +79,17 @@
       "doc_after_hash": "7c28126328d20666",
       "note": "review fix: sanity check 1 phrased on behaviour rather than borrowing check 3's request-diff criterion; the 24-configuration / 12-trial figure attributed to the guided first run's generated space; [r] wording in structural-spine matches cost-management; audit-note typo fixed.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-optimize-config-space",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "7c28126328d20666",
+      "doc_after_hash": "34271cc9337c7e17",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

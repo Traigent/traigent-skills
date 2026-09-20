@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ad34615600ad7be1",
+  "doc_hash": "67393c42fcc3836f",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/evaluation-options.md": "60647f49ac8b2ae3",
@@ -154,6 +154,17 @@
       "doc_after_hash": "ad34615600ad7be1",
       "note": "seamless example rewritten to the shape the AST transformer actually rewrites (a local assignment or parameter named after each config key; verified on 0.27.0: ast_transformer visits Assign/AnnAssign only) with the callout that a literal kwarg, os.environ.get or dict-built kwarg is not rewritten, the SDK logs 'found no injectable targets ... ran with original values', every trial runs the original configuration and the dry-run still passes, so prove the value reaching the provider call changes across two configurations before any paid run (traigent-first-run field test, seamless removed from the funnel for exactly this); injection-modes.md mirrors it in the table, the example and How It Works; framework_targets takes dotted module.Class paths (a bare 'langchain' is skipped silently) and enable_framework_overrides is core, no plugin; the SDK cost handshake stated as conditional with TRAIGENT_COST_APPROVED process-only; winner_stability_reps no longer called unreleased (0.27.0 is on PyPI).",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-setup-decorator",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "ad34615600ad7be1",
+      "doc_after_hash": "67393c42fcc3836f",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

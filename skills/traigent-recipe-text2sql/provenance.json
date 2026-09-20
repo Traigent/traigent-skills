@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "21a83e7f8e3863fa",
+  "doc_hash": "5d0779ab3989b3c2",
   "reference_hashes": {
     "references/quickstart_text2sql.md": "791f802cfee26f32"
   },
@@ -73,7 +73,7 @@
       "timestamp": "2026-09-13T00:00:00Z",
       "doc_before_hash": "030cd36ac0e1e40a",
       "doc_after_hash": "c2b051b0c01c944f",
-      "note": "add 'Two scoring lessons from a real run' section from ruler-dev-001 FINDINGS.md \u00a73-5: column-contract failures and decline/error miscounting",
+      "note": "add 'Two scoring lessons from a real run' section from ruler-dev-001 FINDINGS.md §3-5: column-contract failures and decline/error miscounting",
       "source_type": "chat_decision"
     },
     {
@@ -84,7 +84,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "c2b051b0c01c944f",
       "doc_after_hash": "1fe86e7f9dfb88f1",
-      "note": "headline and description now state the result as counts on the tuning slice (20/30 -> 27/30) with the selection-score caveat, the 'proven winner' section retitled 'The winner on this slice (tuning score \u2014 not a held-out result)'; new rule to execute every gold once before paying and exclude empty/erroring golds by id, result_eq no longer scores an empty gold 1.0; candidate SQL runs on a read-only handle with a watchdog; nested explicit metadata object lands one level down on 0.27.0; offline mock touches no quota; dropped the dangling 'EXAMPLE vs the REAL agent' cross-reference; references/quickstart_text2sql.md gains check_golds(), a read-only URI connection with set_progress_handler, and the empty-gold rule (verified end-to-end in --mock, exit 0). Lessons from traigent-first-run evaluation-and-dataset.md and assets/sql_structure.py.",
+      "note": "headline and description now state the result as counts on the tuning slice (20/30 -> 27/30) with the selection-score caveat, the 'proven winner' section retitled 'The winner on this slice (tuning score — not a held-out result)'; new rule to execute every gold once before paying and exclude empty/erroring golds by id, result_eq no longer scores an empty gold 1.0; candidate SQL runs on a read-only handle with a watchdog; nested explicit metadata object lands one level down on 0.27.0; offline mock touches no quota; dropped the dangling 'EXAMPLE vs the REAL agent' cross-reference; references/quickstart_text2sql.md gains check_golds(), a read-only URI connection with set_progress_handler, and the empty-gold rule (verified end-to-end in --mock, exit 0). Lessons from traigent-first-run evaluation-and-dataset.md and assets/sql_structure.py.",
       "source_type": "agent"
     },
     {
@@ -97,6 +97,17 @@
       "doc_after_hash": "21a83e7f8e3863fa",
       "note": "review correction: the runnable text2SQL helper installs a default-deny SQLite authorizer before executing model-produced SQL, allowing SELECT reads and an explicit set of data-only functions while rejecting ATTACH, mutation and DDL actions, PRAGMA, and unsafe extension or filesystem functions; the connection now closes in finally, with runtime tests executing the fenced markdown helper for legitimate reads, escape attempts, and the exception path.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-recipe-text2sql",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "21a83e7f8e3863fa",
+      "doc_after_hash": "5d0779ab3989b3c2",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

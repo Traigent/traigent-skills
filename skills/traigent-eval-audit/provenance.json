@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "430bed00326ed930",
+  "doc_hash": "ee3e55ba0f75f7f7",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -119,6 +119,17 @@
       "doc_after_hash": "430bed00326ed930",
       "note": "review fix: scope the partial-vs-good/bad reject rule to graded mode; in binary mode the reject is partial passing (the unscoped rule condemned every valid binary scorer).",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-eval-audit",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "430bed00326ed930",
+      "doc_after_hash": "ee3e55ba0f75f7f7",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }
