@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -29,6 +30,36 @@ def recipe(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> SimpleNamespace:
     namespace: dict[str, object] = {"__name__": "quickstart_text2sql_under_test"}
     exec(compile(python_blocks[0].text, str(RECIPE), "exec"), namespace)
     return SimpleNamespace(**namespace)
+
+
+def _run_main(
+    recipe: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    result: SimpleNamespace,
+    mode: str,
+) -> int:
+    globals_ = recipe.main.__globals__
+    monkeypatch.setitem(globals_, "build_db", lambda: None)
+    monkeypatch.setitem(globals_, "check_golds", lambda: None)
+    monkeypatch.setitem(globals_, "write_dataset", lambda: None)
+
+    class Decorated:
+        def optimize_sync(self, **kwargs):
+            return result
+
+    def optimize(**kwargs):
+        return lambda function: Decorated()
+
+    monkeypatch.setattr(recipe.traigent, "optimize", optimize)
+    monkeypatch.setenv("TRAIGENT_API_KEY", "test-only-key")
+    monkeypatch.setattr(sys, "argv", ["quickstart_text2sql.py", mode])
+    if mode == "--mock":
+        import traigent.testing
+
+        monkeypatch.setattr(
+            traigent.testing, "enable_mock_mode_for_quickstart", lambda: None
+        )
+    return recipe.main()
 
 
 def test_extracted_run_helper_allows_reads_and_rejects_sqlite_escape_hatches(
@@ -85,3 +116,70 @@ def test_extracted_run_helper_closes_the_connection_after_execution_failure(
     assert recipe._run("SELECT * FROM missing_table") == (False, None)
     assert len(connections) == 1
     assert connections[0].closed is True
+
+
+@pytest.mark.parametrize(
+    ("metadata", "diagnostic"),
+    [
+        (
+            {"persistence_rejection_reason": "duplicate example", "source": "api"},
+            "REJECTED the submission",
+        ),
+        (
+            {"fallback_reason": "unreachable", "source": "local_fallback"},
+            "fell back to local-only",
+        ),
+        ({"source": "unknown"}, "was NOT synced to the portal"),
+    ],
+)
+def test_extracted_real_recipe_returns_nonzero_for_every_missing_link_diagnostic(
+    recipe: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    metadata: dict[str, str],
+    diagnostic: str,
+) -> None:
+    result = SimpleNamespace(
+        cloud_url=None,
+        metadata=metadata,
+        best_config={},
+        best_configuration={},
+        successful_trials=1,
+        trials=1,
+    )
+
+    assert _run_main(recipe, monkeypatch, result, "--real") != 0
+    assert diagnostic in capsys.readouterr().out
+
+
+def test_extracted_real_recipe_keeps_cloud_link_success_path(
+    recipe: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    result = SimpleNamespace(
+        cloud_url="https://portal.traigent.ai/runs/test",
+        metadata={},
+        best_config={"model": "test"},
+        successful_trials=1,
+        trials=1,
+    )
+
+    assert _run_main(recipe, monkeypatch, result, "--real") == 0
+    assert result.cloud_url in capsys.readouterr().out
+
+
+def test_extracted_recipe_keeps_mock_success_path(
+    recipe: SimpleNamespace,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    result = SimpleNamespace(
+        cloud_url=None,
+        metadata={},
+        best_config={},
+        best_configuration={},
+        successful_trials=1,
+        trials=1,
+    )
+
+    assert _run_main(recipe, monkeypatch, result, "--mock") == 0

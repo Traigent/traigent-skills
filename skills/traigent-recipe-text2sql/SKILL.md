@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.7"
+  version: "1.0.8"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -141,7 +141,22 @@ shapes. Read everything in a **custom_evaluator** `(func, config, example) ->
 ExampleResult` (it can call the agent with both `question` and `db_id`). See
 `traigent-eval-build`.
 
+`ExampleResult.example_id` must be unique per example (a row id or a content
+hash) — a constant like the `db_id` collides every row, and the backend rejects
+the submission (HTTP 400), causing a local-only fallback.
+
 ## 3. Configuration space — model + STRUCTURAL knobs
+
+> **Starting from a vanilla single-call agent?** Each structural knob below
+> (`fewshot_selector`, `generation_path`, `schema_context`, `repair`) must be
+> *implemented* in your agent — and READ at the call site — before you declare
+> it; declaring an unread knob is a silent no-op. `model` and `temperature` a
+> plain single-call agent already has. If the rest are still vanilla, optimize
+> the agent's REAL knobs first (model/temperature/prompt style) and add each
+> structural knob to the space as you build the behavior for it — see
+> `traigent-boost-agent`'s 12-Step Lifecycle Playbook, step 5 ("When the
+> suggestions do not fit": drive the space from the client's real knobs).
+
 Don't stop at model+temperature. The high-value text2SQL knobs:
 
 ```python
@@ -157,6 +172,13 @@ CONFIG_SPACE = {
 > Encode discrete/integer knobs as **strings** (`"0"/"2"/"4"`) and `int()` them at
 > the call site — the most robust, portable encoding for fixed-set knobs.
 > See `traigent-analyze-guidance/references/preflight.md`.
+>
+> **Correctness rule, not just a style tip:** `configuration_space` values and
+> `default_config` must be JSON-TYPE-CONSISTENT per knob — the backend's config
+> validation is fail-closed and type-strict, so int `0` is NOT the same as
+> float `0.0`. A knob declared with float values but a default typed as an int
+> (or vice versa) can be rejected outright; string-encoding discrete/int knobs
+> (as above) sidesteps this entirely.
 
 ## 4. Weighted objectives (ACL)
 ```python
@@ -183,11 +205,12 @@ decorated = traigent.optimize(
     evaluation=EvaluationOptions(eval_dataset=DS, custom_evaluator=exec_eval),
     execution=ExecutionOptions(offline=False),   # False -> online/cloud; True -> local zero-egress
 )(run_agent)
-results = decorated.optimize_sync(max_trials=25, algorithm="auto")  # or: await decorated.optimize(...)
+result = decorated.optimize_sync(max_trials=25, algorithm="auto")  # or: await decorated.optimize(...)
 ```
 - **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. With `offline=False`, omit `algorithm` or use `algorithm="auto"` for the default connected path to real cloud Optuna TPE. Use `"grid"`/`"random"` only for explicit local/offline search; `offline=True` keeps everything local (zero egress), `offline=False` syncs trials to the portal. Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): supported names (`bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random`) bind to the typed backend Optuna strategy on authenticated connected runs; unsupported names (`nsga2`/`cmaes`) fail fast (Traigent/Traigent#1752, #1758). They never run locally: `offline=True` raises `ConfigurationError` and the local registry raises `OptimizationError`.
 - **Mock first (free of LLM spend):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms never run offline — connected only). **Expect all-zero accuracy in mock**: this recipe scores by execution match, and every mock call returns the same canned text, so uniform 0.0 is the expected mock signature, not a broken pipeline (wiring, sampling, and scoring paths are what the mock validates). An offline mock touches no quota; a connected mock run (`offline=False` with a key) does.
 - **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, omit `algorithm` or use `algorithm="auto"`; named smart selectors (`bayesian`/`tpe`/`optuna`) are selectable on authenticated connected runs on SDK 0.20.1+ (see the Selector bullet above).
+- **`cloud_url` gate (don't skip this):** after a `--real`/`offline=False` run, check `result.cloud_url`. A missing `cloud_url` on a run you meant to be portal-tracked is easy to miss — trials still run and a `best_config` still comes back, so it reads as success (the SDK does log a fallback warning banner, but it's easy to scroll past). Verify the link before reporting the run as cloud-tracked. When it's missing, read `result.metadata["source"]` (`"local_fallback"` vs backend-tracked) for the provenance and `result.metadata.get("persistence_rejection_reason")` / `result.metadata.get("fallback_reason")` for the cause: a `persistence_rejection_reason` (e.g. a duplicate `example_id`) means the backend REJECTED the submission — fix the request, not the credentials; a `fallback_reason` with no rejection means check `TRAIGENT_API_KEY` and connectivity instead.
 - **Dataset path:** `eval_dataset` must live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.
 
 ## Runnable example (copy-paste, self-contained)
