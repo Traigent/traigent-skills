@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d88f628927e05d91",
+  "doc_hash": "c629cb6cf4f59abe",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -291,6 +291,17 @@
       "doc_after_hash": "d88f628927e05d91",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-175-rebuild-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "d88f628927e05d91",
+      "doc_after_hash": "c629cb6cf4f59abe",
+      "note": "add a greppable path docstamp for the optimization-comparisons endpoint, verified against executable SDK code rather than a docstring (contract harness, #175)",
+      "source_type": "agent"
     }
   ]
 }
