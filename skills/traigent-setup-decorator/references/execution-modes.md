@@ -48,6 +48,11 @@ def my_func(query: str) -> str:
 Results sync to the Traigent portal in every non-offline run, including local `grid` and
 `random` search. `offline=True` disables backend egress and portal sync.
 
+The portal's default Experiments list order reflects when each run's sync reached the
+backend, not when it executed locally — a deferred or retried sync can list a run out of
+your actual execution order. See `traigent-analyze-results` -> "Find Your Run on the Portal"
+for how to identify a specific run instead of relying on list position.
+
 ## Optimizing an external service (HTTP / MCP)
 
 To optimize an agent exposed behind an external HTTP/MCP endpoint, put the service call in

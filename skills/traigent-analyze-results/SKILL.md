@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.21"
+  version: "1.1.22"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -302,8 +302,11 @@ print(results.timestamp)        # datetime when optimization completed
 > default `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"`, then bare `func.__name__`) names
 > the **agent**, not the individual run — the portal groups optimization history by
 > (agent, evaluation dataset). Keep it **stable across runs**; giving each run its own name
-> splits that history into one-run fragments. Find a specific run by its `experiment_id` or
-> `results.cloud_url`, or by timestamp within the agent's history — not by naming each run.
+> splits that history into one-run fragments. Find a specific run by
+> `results.experiment_run_id`; `results.experiment_id` identifies only its experiment group.
+> Treat `results.cloud_url` as exact only when its query contains the matching
+> `run_id=<experiment_run_id>`; otherwise open the group and select that run ID. Use the timestamp
+> for chronology, not identity, and do not name each run separately.
 > The current SDK has no `tags`/`metadata` argument.
 > See `traigent-setup-decorator` -> "Naming: `experiment_name` identifies the agent, not the run".
 
@@ -597,13 +600,26 @@ rendered visually. That requires **both** `offline=False` (the default) **and** 
 portal-tracked. The portal Pareto/frontier view also requires >=2 objectives; a single-objective
 run shows an "add a second measure" hint there, not a blank frontier. To locate a synced run:
 
+> **Portal list order reflects arrival, not execution.** The Experiments list's default sort
+> is driven by when the backend received and finalized the run, not by when you executed it
+> locally — there is no client-supplied execution timestamp in that ordering. A normal run's
+> receive order usually matches your execution order, but a deferred or retried sync
+> (`traigent local sync`, or a finalize retry after a persistence hiccup — see "Verify the Run
+> Actually Persisted" below) can land it out of that order. Do not infer execution order from
+> list position: use `results.timestamp` (the local completion time) to know when a run
+> actually finished. `results.experiment_id` identifies the experiment group; pair it with
+> `results.experiment_run_id`, which identifies this exact run. Treat `results.cloud_url` as an
+> exact-run link only when its query contains `run_id=<experiment_run_id>`; otherwise it opens
+> the group and you must select that run ID.
+
 ```python
 # The portal/backend identifiers (None when offline or local-fallback):
-print(f"Portal experiment: {results.experiment_id}")  # backend experiment identifier
-print(f"Portal link:       {results.cloud_url}")      # direct URL to the experiment on the portal
+print(f"Experiment group: {results.experiment_id}")      # groups related runs
+print(f"Exact run:        {results.experiment_run_id}")  # this backend run
+print(f"Portal link:      {results.cloud_url}")
 # (results.optimization_id is the SDK's local run id, not the portal identifier.)
-# Open results.cloud_url, or go to https://portal.traigent.ai -> Experiments and find this run by
-# its experiment_id (or resolved experiment_name) to read the rendered view.
+# Open results.cloud_url only if it contains run_id=<results.experiment_run_id>.
+# Otherwise open the experiment group and select results.experiment_run_id.
 ```
 
 An `offline=True` run, or a non-offline run that fell back to local (no key), is **not** on the
