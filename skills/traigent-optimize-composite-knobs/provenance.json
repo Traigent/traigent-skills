@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "acf2877b41cdfe8e",
+  "doc_hash": "4d01eca74ecfd91a",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1",
@@ -79,6 +79,17 @@
       "doc_after_hash": "acf2877b41cdfe8e",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "rebuild-pr-294-explorer-composite-map-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "acf2877b41cdfe8e",
+      "doc_after_hash": "4d01eca74ecfd91a",
+      "note": "rebuild PR #294 on current main: cross-link domain-specific structural knobs and map the Knob Explorer composite names to factories without falsely listing self_debug or self_consistency as Explorer names",
+      "source_type": "agent"
     }
   ]
 }
