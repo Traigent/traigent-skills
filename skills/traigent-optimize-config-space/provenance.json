@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "34271cc9337c7e17",
+  "doc_hash": "00748cff24a5c11c",
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
     "references/parameter-types.md": "aec5c6f990a712d3",
-    "references/structural-spine.md": "4579a678b53f1194"
+    "references/structural-spine.md": "dc593cb3a13e965a"
   },
   "entries": [
     {
@@ -90,6 +90,17 @@
       "doc_after_hash": "34271cc9337c7e17",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "rebuild-pr-294-knob-catalog-reconciliation-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "34271cc9337c7e17",
+      "doc_after_hash": "00748cff24a5c11c",
+      "note": "rebuild PR #294 on current main: distinguish open configuration keys from SDK catalog proposals and demo recipe names, document the code-editing catalog family, separate conflicting context_order and schema_context vocabularies, map the public Explorer taxonomy, and point composite control-flow details to the owning skill",
+      "source_type": "agent"
     }
   ]
 }
