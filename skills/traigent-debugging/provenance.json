@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "bfbb9c9327a321f5",
+  "doc_hash": "565bcafed564c205",
   "reference_hashes": {
     "references/error-reference.md": "a4972fd8548f1357",
     "references/logging-config.md": "a9ba72306ba70183",
-    "references/mock-mode.md": "8bbdeccd7ab66fc0"
+    "references/mock-mode.md": "7945ee3565727d98"
   },
   "entries": [
     {
@@ -89,6 +89,17 @@
       "doc_before_hash": "505f03f35f744c62",
       "doc_after_hash": "bfbb9c9327a321f5",
       "note": "Rebuild issue #150 on current main: cross-link the no-trials checklist to plan-quota exhaustion.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issue-195-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "bfbb9c9327a321f5",
+      "doc_after_hash": "565bcafed564c205",
+      "note": "Rebuild issue #195 on current main: correct the TRAIGENT_MOCK_LLM production guard to fail on first SDK use rather than bare import.",
       "source_type": "agent"
     }
   ]

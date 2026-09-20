@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.23"
+  version: "1.1.24"
 ---
 
 # Analyzing Traigent Optimization Results

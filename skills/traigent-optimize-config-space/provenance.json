@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "cd33f88b27ee09a6",
+  "doc_hash": "ee271549cf8f69ad",
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
-    "references/parameter-types.md": "aec5c6f990a712d3",
+    "references/parameter-types.md": "03c333a37aab008f",
     "references/structural-spine.md": "dc593cb3a13e965a"
   },
   "entries": [
@@ -111,6 +111,17 @@
       "doc_before_hash": "00748cff24a5c11c",
       "doc_after_hash": "cd33f88b27ee09a6",
       "note": "Rebuild issue #150 on current main: check SatResult.status against SatStatus.UNSAT and read unsat_core instead of relying on object truthiness.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issue-195-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "cd33f88b27ee09a6",
+      "doc_after_hash": "ee271549cf8f69ad",
+      "note": "Rebuild issue #195 on current main: document Range and IntRange to_config_value() tuple/dict shapes for step and log settings.",
       "source_type": "agent"
     }
   ]

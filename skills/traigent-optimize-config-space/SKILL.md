@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.8"
+  version: "1.0.9"
 ---
 
 # Traigent Configuration Space

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4d01eca74ecfd91a",
+  "doc_hash": "0214b1f44414a9e4",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1",
@@ -89,6 +89,17 @@
       "doc_before_hash": "acf2877b41cdfe8e",
       "doc_after_hash": "4d01eca74ecfd91a",
       "note": "rebuild PR #294 on current main: cross-link domain-specific structural knobs and map the Knob Explorer composite names to factories without falsely listing self_debug or self_consistency as Explorer names",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issue-195-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "4d01eca74ecfd91a",
+      "doc_after_hash": "0214b1f44414a9e4",
+      "note": "Rebuild issue #195 on current main: keep reserved accuracy with the built-in evaluator, use non-reserved custom metric names, and isolate real agent outputs from evaluator gold labels.",
       "source_type": "agent"
     }
   ]
