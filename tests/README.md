@@ -66,8 +66,10 @@ Grammar: `<!-- contract: <kind> <target> in <module> [@ SDK <version>] -->`.
   docstring) and not of the executable code is not decay-checked by that
   documentation — it must match real code, or it fails as
   `source ... missing` even though grepping the raw file would find it.
-  Comments (`# ...`) are not stripped; a claim that only matches inside a
-  comment is a narrower gap this stamp kind does not currently close.
+  Python comments are removed with `tokenize`, preserving `#` inside strings
+  (including URL fragments and f-strings). Comment-only claims fail. Malformed
+  Python fails explicitly with `DOCSTAMP SOURCE UNVERIFIABLE`. These stamps
+  establish source-text presence, not that a behavior occurs for a given input.
 - Put the stamp in plain prose. The extractor scans the **whole raw file
   text**, so a stamp written inside a fenced code block or inline code span
   is scanned exactly the same as one in prose — nothing exempts an
@@ -189,3 +191,19 @@ then refresh the baseline:
 ```bash
 python tools/contract/build_interface_inventory.py
 ```
+
+## Local onboarding journey
+
+`pytest tests/contract/test_onboarding_journey.py --sdk-version=0.27.0` executes
+three documented Python blocks together: the quickstart, holdout adapter, and
+promotion gate. It runs the installed SDK, exports a candidate configuration,
+then checks that equal mock holdout scores do not authorize promotion. Companion
+cases cover invalid/unmeasured cost, exhausted `ExecutionBudget` (0.27.0+), and a
+run with no eligible winner. `test_recipe_text2sql_runtime.py` covers missing
+credentials and the presentation of injected cloud-persistence/fallback results.
+
+These are local contract and wiring tests. Provider responses are canned; the
+holdout is synthetic; the cloud-result diagnostic cases inject result objects.
+The socket tripwire catches connection attempts but is not OS network isolation.
+No live portal persistence, paid-provider success, evaluator quality, or an AI
+agent's interpretation of prose is certified by this suite.

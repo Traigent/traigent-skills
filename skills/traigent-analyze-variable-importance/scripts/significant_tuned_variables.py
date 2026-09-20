@@ -23,6 +23,9 @@ from typing import Any
 
 BOOTSTRAP_SEED = 55
 DEFAULT_BOOTSTRAP_DRAWS = 1000
+MIN_TRIALS_PER_KNOB = 20
+MIN_TRIALS_PER_VALUE = 5
+PERMUTATION_RESOLUTION_MULTIPLIER = 10
 
 
 @dataclass(frozen=True)
@@ -49,6 +52,16 @@ class KnobImportance:
     worst_value_mean_acc: float
     value_means: dict[str, float]
     group_sizes: dict[str, int]
+    p_value: float
+    p_adjusted: float
+    correction: str
+    family_size: int
+    inference_status: str
+    sampling_design: str
+    relevant_trials: int
+    min_group_size: int
+    permutation_draws: int
+    permutation_p_floor: float
 
     def required_dict(self) -> dict[str, Any]:
         return {
@@ -61,6 +74,16 @@ class KnobImportance:
             "best_value": self.best_value,
             "best_value_mean_acc": round_float(self.best_value_mean_acc),
             "cost_effect": round_float_or_none(self.cost_effect),
+            "p_value": self.p_value,
+            "p_adjusted": self.p_adjusted,
+            "correction": self.correction,
+            "family_size": self.family_size,
+            "inference_status": self.inference_status,
+            "sampling_design": self.sampling_design,
+            "relevant_trials": self.relevant_trials,
+            "min_group_size": self.min_group_size,
+            "permutation_draws": self.permutation_draws,
+            "permutation_p_floor": self.permutation_p_floor,
         }
 
 
@@ -299,6 +322,20 @@ def permutation_spread_pvalue(
     return (at_or_above + 1) / (draws + 1)
 
 
+def holm_adjust(p_values: list[float]) -> list[float]:
+    """Return Holm step-down adjusted p-values in the input order."""
+    family_size = len(p_values)
+    adjusted = [1.0] * family_size
+    running_max = 0.0
+    for rank, (index, p_value) in enumerate(
+        sorted(enumerate(p_values), key=lambda item: (item[1], item[0]))
+    ):
+        candidate = min(1.0, (family_size - rank) * p_value)
+        running_max = max(running_max, candidate)
+        adjusted[index] = running_max
+    return adjusted
+
+
 def value_from_key(groups: dict[str, list[Trial]], key: str, knob: str) -> Any:
     return groups[key][0].config[knob]
 
@@ -309,6 +346,7 @@ def analyze_knob(
     confidence: float,
     bootstrap_draws: int,
     total_n: int,
+    sampling_design: str = "unknown",
 ) -> KnobImportance | None:
     groups = grouped_trials(trials, knob)
     groups = {key: group for key, group in groups.items() if group}
@@ -348,12 +386,8 @@ def analyze_knob(
         knob=knob,
         draws=bootstrap_draws,
     )
-    alpha = 1.0 - confidence
-    label = (
-        "significant"
-        if total_n >= 20 and spread > 0.0 and p_value < alpha
-        else "directional"
-    )
+    relevant_trials = sum(len(group) for group in groups.values())
+    min_group_size = min(len(group) for group in groups.values())
 
     return KnobImportance(
         knob=knob,
@@ -361,7 +395,7 @@ def analyze_knob(
         variance_share=variance_share_for_groups(groups),
         ci_low=max(0.0, ci_low),
         ci_high=max(0.0, ci_high),
-        label=label,
+        label="directional",
         best_value=value_from_key(groups, best_key, knob),
         best_value_mean_acc=group_means[best_key],
         cost_effect=cost_effect,
@@ -376,6 +410,16 @@ def analyze_knob(
             display_value(value_from_key(groups, key, knob)): len(group)
             for key, group in sorted(groups.items())
         },
+        p_value=p_value,
+        p_adjusted=p_value,
+        correction="holm",
+        family_size=1,
+        inference_status="unadjusted",
+        sampling_design=sampling_design,
+        relevant_trials=relevant_trials,
+        min_group_size=min_group_size,
+        permutation_draws=bootstrap_draws,
+        permutation_p_floor=1.0 / (bootstrap_draws + 1),
     )
 
 
@@ -384,7 +428,12 @@ def analyze_importance(
     config_space: dict[str, list[Any]] | None,
     confidence: float,
     bootstrap_draws: int,
+    sampling_design: str = "unknown",
 ) -> list[KnobImportance]:
+    if sampling_design not in {"randomized", "adaptive", "unknown"}:
+        raise ValueError(
+            "sampling_design must be 'randomized', 'adaptive', or 'unknown'"
+        )
     total_n = len(trials)
     rows: list[KnobImportance] = []
     for knob in infer_knobs(trials, config_space):
@@ -394,9 +443,38 @@ def analyze_importance(
             confidence=confidence,
             bootstrap_draws=bootstrap_draws,
             total_n=total_n,
+            sampling_design=sampling_design,
         )
         if row is not None:
             rows.append(row)
+    family_size = len(rows)
+    adjusted = holm_adjust([row.p_value for row in rows])
+    alpha = 1.0 - confidence
+    required_draws_plus_one = (
+        math.ceil(PERMUTATION_RESOLUTION_MULTIPLIER * family_size / alpha)
+        if family_size
+        else 0
+    )
+    for row, p_adjusted in zip(rows, adjusted):
+        row.p_adjusted = p_adjusted
+        row.family_size = family_size
+        if row.relevant_trials < MIN_TRIALS_PER_KNOB or row.min_group_size < MIN_TRIALS_PER_VALUE:
+            row.inference_status = "insufficient_per_knob_samples"
+        elif bootstrap_draws + 1 < required_draws_plus_one:
+            row.inference_status = "insufficient_permutation_resolution"
+        elif sampling_design == "adaptive":
+            row.inference_status = "adaptive_sampling"
+        elif sampling_design == "unknown":
+            row.inference_status = "exchangeability_unknown"
+        else:
+            row.inference_status = "tested"
+        row.label = (
+            "significant"
+            if row.inference_status == "tested"
+            and row.spread > 0.0
+            and row.p_adjusted < alpha
+            else "directional"
+        )
     rows.sort(key=lambda row: (-row.spread, -row.variance_share, row.knob))
     return rows
 
@@ -539,6 +617,16 @@ def write_importance_csv(path: Path, rows: list[KnobImportance]) -> None:
         "best_value",
         "best_value_mean_acc",
         "cost_effect",
+        "p_value",
+        "p_adjusted",
+        "correction",
+        "family_size",
+        "inference_status",
+        "sampling_design",
+        "relevant_trials",
+        "min_group_size",
+        "permutation_draws",
+        "permutation_p_floor",
     ]
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -576,7 +664,7 @@ def write_svg(
     caption = (
         f"directional (n={n_trials}): fewer than 20 trials to test against a null"
         if n_trials < 20
-        else f"n={n_trials}; significant requires the spread to beat a label-shuffled null at {int(confidence * 100)}% (CI whiskers show scale only)"
+        else f"n={n_trials}; significant requires Holm-adjusted permutation evidence from randomized sampling at {int(confidence * 100)}% (CI whiskers show scale only)"
     )
 
     parts = [
@@ -593,7 +681,7 @@ def write_svg(
         "</defs>",
         '<rect width="1280" height="720" fill="#08111f"/>',
         '<rect x="34" y="34" width="1212" height="652" rx="26" fill="#0f172a" stroke="#243244" filter="url(#shadow)"/>',
-        '<text x="80" y="92" fill="#e5f0ff" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">Which tuned variables drove the gain?</text>',
+        '<text x="80" y="92" fill="#e5f0ff" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="700">Which tuned variables were associated with score differences?</text>',
         f'<text x="80" y="130" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="18">Objective: {svg_text(objective)}. Bars show mean spread; whiskers show bootstrap CI.</text>',
         f'<text x="80" y="655" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="17">{svg_text(caption)}</text>',
         f'<line x1="{chart_x}" y1="{chart_y - 28}" x2="{chart_x + axis_w}" y2="{chart_y - 28}" stroke="#334155" stroke-width="1"/>',
@@ -669,6 +757,11 @@ def write_video_card_json(
                 "accuracy_pp": round_float(row.spread * 100.0),
                 "cost_delta_pct": round_float_or_none(row.cost_effect_pct),
                 "label": row.label,
+                "p_value": row.p_value,
+                "p_adjusted": row.p_adjusted,
+                "family_size": row.family_size,
+                "inference_status": row.inference_status,
+                "sampling_design": row.sampling_design,
             }
         )
 
@@ -720,11 +813,11 @@ def write_insights_md(
         heldout, objective
     )
     lines = [
-        "# Significant Tuned Variables",
+        "# Tuned Variable Associations",
         "",
         f"On {slice_label}, in this run, {len(rows)} tuned variables had at least two observed values across {n_trials} trials.",
         "",
-        "Honesty rule: with fewer than 20 trials, importances are labelled `directional`, not statistically significant. A variable is called `significant` only when its per-value spread beats a label-shuffled permutation (no-effect) null at the configured confidence; the bootstrap CI is a scale annotation, not the significance test.",
+        "Honesty rule: `significant` requires randomized assignment, at least 20 observations for that knob and 5 per observed value, adequate permutation resolution, and a Holm-adjusted p-value below alpha. Adaptive or unknown sampling stays `directional` because label exchangeability is not established. The bootstrap CI is a scale annotation, not the significance test.",
         "",
     ]
     if heldout_accuracy_pp is not None or heldout_cost_delta_pct is not None:
@@ -746,7 +839,9 @@ def write_insights_md(
                 f"{index}. `{row.knob}`: {row.spread * 100:.2f} pp spread, "
                 f"variance share {row.variance_share:.3f}, "
                 f"{int(confidence * 100)}% CI [{row.ci_low * 100:.2f}, {row.ci_high * 100:.2f}] pp, "
-                f"`{row.label}`. Best observed value: `{display_value(row.best_value)}` "
+                f"raw p={row.p_value:.6g}, Holm-adjusted p={row.p_adjusted:.6g} "
+                f"across {row.family_size} eligible knobs, `{row.label}` "
+                f"(`{row.inference_status}`). Best observed value: `{display_value(row.best_value)}` "
                 f"({row.best_value_mean_acc:.3f} mean {objective}); {cost_clause}."
             )
     else:
@@ -799,6 +894,15 @@ def parse_args() -> argparse.Namespace:
         default=DEFAULT_BOOTSTRAP_DRAWS,
         help="Bootstrap draws per knob; default 1000",
     )
+    parser.add_argument(
+        "--sampling-design",
+        choices=("randomized", "adaptive", "unknown"),
+        default="unknown",
+        help=(
+            "How knob values were assigned. Only randomized establishes the "
+            "exchangeability needed for statistically significant labels; default unknown"
+        ),
+    )
     return parser.parse_args()
 
 
@@ -824,6 +928,7 @@ def main() -> int:
         config_space=config_space,
         confidence=args.confidence,
         bootstrap_draws=args.bootstrap_draws,
+        sampling_design=args.sampling_design,
     )
     sdk_note, _sdk_payload = attempt_sdk_importance(trials, args.objective)
 
@@ -864,6 +969,8 @@ def main() -> int:
                 f"{index}. {row.knob}: spread={row.spread:.6f}, "
                 f"variance_share={row.variance_share:.6f}, "
                 f"ci=[{row.ci_low:.6f}, {row.ci_high:.6f}], "
+                f"raw_p={row.p_value:.6g}, adjusted_p={row.p_adjusted:.6g}, "
+                f"family={row.family_size}, status={row.inference_status}, "
                 f"label={row.label}, best={display_value(row.best_value)}"
             )
     print(json.dumps(video_card, indent=2, ensure_ascii=False))

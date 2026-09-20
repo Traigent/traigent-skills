@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ae06c2993f2ee67a",
+  "doc_hash": "6c2a7196e03dd413",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/environment-variables.md": "8ed2fa35292d9576",
@@ -232,6 +232,17 @@
       "doc_before_hash": "afe7ee79fd41d0f4",
       "doc_after_hash": "ae06c2993f2ee67a",
       "note": "Rebuild issue #195 on current main: correct the TRAIGENT_MOCK_LLM production guard to fail on first decoration, optimization, or CLI use rather than bare import.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "local-journey-promotion-boundary-20260920",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "ae06c2993f2ee67a",
+      "doc_after_hash": "6c2a7196e03dd413",
+      "note": "Keep mock configuration application explicitly demo-only, return the SDK result for handoff and stop when no eligible winner exists.",
       "source_type": "agent"
     }
   ]

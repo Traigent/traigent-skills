@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "8ca37c64a89cea68",
+  "doc_hash": "f1effe17f06364ab",
   "entries": [
     {
       "edit_id": "genesis",
@@ -73,6 +73,28 @@
       "doc_before_hash": "3c53c968f6da4fcd",
       "doc_after_hash": "8ca37c64a89cea68",
       "note": "Rebuild issue #150 on current main: require --objective to match the trial metric key and explain that empty or all-directional importance means insufficient variation.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "holm-family-and-sampling-design-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "8ca37c64a89cea68",
+      "doc_after_hash": "9ce25ca53381e2d2",
+      "note": "Apply Holm correction across all eligible knobs before ranking, expose raw and adjusted inference metadata, guard per-knob support and permutation resolution, and require explicit randomized sampling for confirmed-effect labels.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "association-language-and-inference-precision-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "9ce25ca53381e2d2",
+      "doc_after_hash": "f1effe17f06364ab",
+      "note": "Keep the generic example at unknown sampling, define evidence required for randomized sampling, use association language, and preserve full precision for inferential values.",
       "source_type": "agent"
     }
   ]

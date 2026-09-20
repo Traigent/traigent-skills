@@ -1,6 +1,6 @@
 ---
 name: traigent-analyze-variable-importance
-description: "Show significant tuned variables and rank which variables mattered in a Traigent optimization. Use for: show significant tuned variables, which variables mattered, tuned variable importance, feature importance for optimization, optimization gains attribution, parameter importance with honest confidence labels, or one-glance video card summaries of what drove optimization gains."
+description: "Show tuned-variable associations and rank which variables differed within a Traigent optimization. Use for: show significant tuned variables, which variables mattered, tuned variable importance, feature importance for optimization, within-run score associations, parameter importance with honest confidence labels, or one-glance video card summaries of observed score differences."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,14 +8,16 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.4"
+  version: "1.1.1"
 ---
 
 # Show Significant Tuned Variables
 
 ## Purpose
 
-Use this skill to explain which tuned variables actually drove an optimization's observed gains. It ranks configuration knobs by effect size, adds honest confidence labels, and emits a one-glance SVG video card suitable for demos or review.
+Use this skill to show which tuned variables were associated with score differences within an
+optimization run. It ranks configuration knobs by effect size, adds honest confidence labels, and
+emits a one-glance SVG video card suitable for demos or review.
 
 The bundled script is designed for Traigent text2sql demo artifacts but works with any JSONL trial file that has a numeric objective and a `config` object.
 
@@ -27,7 +29,7 @@ Use this skill when the user asks:
 - "which variables mattered?"
 - "tuned variable importance"
 - "feature importance for optimization"
-- "what drove the optimization gains?"
+- "which variables were associated with score differences?"
 - "make a video card for the important knobs"
 
 The script ranks knobs within **one run's** trials. For multi-run evidence, fetch the cohort table,
@@ -48,6 +50,10 @@ The script accepts:
   `importance.json` means insufficient variation in the trials for this objective, not "no knob
   matters" — check that `--config-space` values were actually sampled and that there are enough
   trials per value before concluding a knob is unimportant.
+- `--sampling-design`: `randomized`, `adaptive`, or `unknown` (default). Choose `randomized` only
+  when knob assignments were independent of outcomes and time/order effects, so trial labels are
+  exchangeable under the no-effect null. Adaptive optimizer output and results whose assignment
+  process is not known remain directional even when their adjusted p-values are small.
 
 An SDK result saved with `save_to=` (for example `traigent-runs/optimized-results.json` after the
 guided first run) is one JSON object whose `trials[]` already carry `config` and `metrics` (the
@@ -69,19 +75,32 @@ Expected trial shape:
 
 The script writes these files into `--output-dir`:
 
-- `importance.json`: ranked tuned variables with `knob`, `spread`, `variance_share`, `ci_low`, `ci_high`, `label`, `best_value`, `best_value_mean_acc`, and `cost_effect`.
+- `importance.json`: ranked tuned variables with effect fields plus raw `p_value`, Holm
+  `p_adjusted`, `family_size`, sampling design, sample counts, permutation resolution, and an
+  explicit `inference_status`.
 - `importance.csv`: flat CSV with the same fields.
 - `significant_variables.svg`: hand-written 1280x720 dark-theme SVG with horizontal bars, bootstrap CI whiskers, best-value annotations, and a directional/significance caption.
 - `insights.md`: short human-readable summary using honest claim language.
-- `video_card.json`: compact payload: `top_variables` (each with the knob's own `accuracy_pp`/`cost_delta_pct`), `n_trials`, `objective`, run-level `heldout_accuracy_pp`/`heldout_cost_delta_pct`, and `caption`.
+- `video_card.json`: compact payload: `top_variables` (each with the knob's own effect,
+  raw/adjusted p-values, family size, and inference status), `n_trials`, `objective`, run-level
+  `heldout_accuracy_pp`/`heldout_cost_delta_pct`, and `caption`.
 
 <!-- PROTECTED -->
 ## Honesty Rule
 
 Never overclaim significance:
 
-- With fewer than 20 trials, importances are labelled `directional`, not statistically significant.
-- A variable is called `significant` only when the report rejects a no-effect result at the configured confidence. The displayed interval is for scale only and must never be used to infer significance — an interval clearing 0 is not a significance test.
+- A variable is called `significant` only for an explicitly randomized design, with at least 20
+  observations for that knob and 5 observations per value, enough permutation draws for the full
+  family, and a Holm-adjusted p-value below the configured alpha. Every other result is
+  `directional`, with `inference_status` explaining why.
+- Holm correction covers every knob with at least two observed values before ranking and `top-k`
+  display truncation. `p_value` is the raw permutation result; `p_adjusted` is the family-wise
+  value used by the label. The displayed interval is for scale only and must never be used to
+  infer significance.
+- The minimum attainable permutation p-value is `1 / (draws + 1)`. The script requires ten times
+  the family-size/alpha threshold for a statistically significant label; otherwise it reports
+  `insufficient_permutation_resolution` instead of a quiet negative.
 - The video card's per-knob `accuracy_pp`/`cost_delta_pct` are that knob's own measured effect; the whole-run heldout optimized-vs-baseline delta is reported once as a card-level field, never copied onto each knob.
 - The ranking is observational: "on this fixed Spider slice, in this run." It is not proof of causal attribution.
 <!-- /PROTECTED -->
@@ -121,9 +140,26 @@ cat /tmp/significant-tuned-variables/importance.json
 cat /tmp/significant-tuned-variables/video_card.json
 ```
 
+The generic command leaves `--sampling-design` at its conservative `unknown` default. Add
+`--sampling-design randomized` only when a run plan or sampler log verifies all three conditions:
+knob assignments were randomized, assignment probabilities did not depend on earlier outcomes,
+and no time/order trend affected scores. A sampler name or a balanced result table alone is not
+enough evidence.
+
 ## Method Notes
 
-For each knob, the script groups trials by the knob's value, computes mean objective per value, ranks by the max-min spread, and reports variance share as a companion statistic. Bootstrap confidence intervals use trial resampling with replacement and fixed seed `55`.
+For each knob, the script groups trials by the knob's value, computes mean objective per value,
+ranks by the max-min spread, and reports variance share as a companion statistic. It computes
+label-shuffled permutation p-values for all eligible knobs, applies Holm correction across that
+fixed family, then sorts for display. Bootstrap confidence intervals use trial resampling with
+replacement and fixed seed `55`.
+
+The permutation test assumes exchangeable trial labels: under the null, reassigning observed
+objectives among knob values must reproduce the assignment process. Random or independently
+randomized search can meet that assumption. Adaptive optimization generally does not because knob
+choices depend on earlier outcomes; time trends and sampler choices can then look like effects.
+Use `adaptive` or the default `unknown` in those cases. Their effect sizes and p-values remain
+exploratory and never receive a statistically significant label.
 
 The script also attempts to adapt trials to `traigent.utils.importance.ParameterImportanceAnalyzer` for a variance-based SDK cross-check. If that adaptation is unavailable or returns no output, it skips gracefully and states that the skill's own variance/bootstrap method was used, inspired by the SDK analyzer. Do not fabricate SDK analyzer output.
 
