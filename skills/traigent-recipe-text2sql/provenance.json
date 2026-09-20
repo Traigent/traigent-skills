@@ -33,6 +33,17 @@
       "source_type": "human"
     },
     {
+      "edit_id": "restamp-56b7d22-backfill-2026-07-06",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-07-06T00:00:00Z",
+      "doc_before_hash": "d78e5d3088f19e7c",
+      "doc_after_hash": "418baaedb8e56a96",
+      "note": "backfilled entry reconstructing commit 56b7d22 (\"docs: restamp algorithm guidance for sdk 0.20.0 (#170)\", fixes #168, merged 2026-07-06): that commit edited SKILL.md and bumped doc_hash but appended no entries[] record (traigent-skills#196)",
+      "source_type": "human"
+    },
+    {
       "edit_id": "exec-eval-per-row-id-2026-07-15",
       "op": "manual_edit",
       "status": "accepted",
