@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "67393c42fcc3836f",
+  "doc_hash": "1ec76fe612b68cd4",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/evaluation-options.md": "60647f49ac8b2ae3",
-    "references/execution-modes.md": "beca15259a649c4b",
+    "references/execution-modes.md": "7492de267ab1c602",
     "references/injection-modes.md": "be8c4d49b4992b0e",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
   },
@@ -165,6 +165,17 @@
       "doc_after_hash": "67393c42fcc3836f",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "rebuild-pr-289-portal-arrival-order-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "67393c42fcc3836f",
+      "doc_after_hash": "1ec76fe612b68cd4",
+      "note": "rebuild PR #289 on current main: point result-sync guidance to exact-run navigation and document that portal list order follows backend arrival rather than local execution time",
+      "source_type": "agent"
     }
   ]
 }

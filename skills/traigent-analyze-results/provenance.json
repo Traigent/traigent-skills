@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "af0827c11e4b7aaf",
+  "doc_hash": "a15330da41884526",
   "reference_hashes": {
     "references/convergence-patterns.md": "57c2d4ef7f2c2b69",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -232,6 +232,17 @@
       "doc_after_hash": "af0827c11e4b7aaf",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "rebuild-pr-289-exact-run-navigation-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "af0827c11e4b7aaf",
+      "doc_after_hash": "a15330da41884526",
+      "note": "rebuild PR #289 on current main: explain that portal list order reflects backend arrival rather than local execution, identify exact runs with experiment_run_id, distinguish experiment_id as the group id, and require a matching run_id query before treating cloud_url as exact",
+      "source_type": "agent"
     }
   ]
 }

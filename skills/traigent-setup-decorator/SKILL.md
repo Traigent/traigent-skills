@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.14"
+  version: "1.0.15"
 ---
 
 # Traigent Decorator Setup
