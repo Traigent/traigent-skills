@@ -144,6 +144,7 @@
     "be:GET /api/v1/datasets",
     "be:GET /api/v1/datasets/<dataset_id>/versions",
     "be:GET /api/v1/datasets/<dataset_id>/versions/<version_id>",
+    "be:GET /api/v1/datasets/<dataset_id>/versions/<version_id>/snapshot",
     "be:GET /api/v1/datasets/<string:dataset_id>",
     "be:GET /api/v1/datasets/<string:dataset_id>/examples",
     "be:GET /api/v1/datasets/<string:dataset_id>/files",

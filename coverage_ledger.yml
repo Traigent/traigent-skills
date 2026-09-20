@@ -978,3 +978,8 @@ waivers:
   "py:optimize#run_title":
     reason: optional per-run display label surfaced in the portal; skills teach agent/experiment naming only, no run-label surface yet
     owner: nimrodbusany
+  # Backend route snapshot refreshed to TraigentBackend origin/develop aa0f1a1438
+  # (from 06002ee9e) on 2026-09-16 (issue #112). 0 routes removed, 1 added.
+  "be:GET /api/v1/datasets/<dataset_id>/versions/<version_id>/snapshot":
+    reason: returns a dataset version's content_snapshot verbatim for offline digest recomputation (per the handler's own docstring); an integrity-verification detail beyond traigent-dataset-curate's dataset-curation workflow — teach when a skill needs to verify a version's content_digest
+    owner: nimrodbusany
