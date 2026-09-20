@@ -168,6 +168,7 @@ jobs:
 	    runs-on: ubuntu-latest
 	    env:
 	      TRAIGENT_MOCK_LLM: "true"
+	      TRAIGENT_RUN_APPROVED: "1"   # under GITHUB_ACTIONS every optimize() — mock included — refuses to run without this
 	    steps:
 	      - uses: actions/checkout@v4
 	      - uses: actions/setup-python@v5

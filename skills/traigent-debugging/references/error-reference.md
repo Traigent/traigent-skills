@@ -18,8 +18,8 @@ Exception
   |     +-- InvocationError
   |     +-- EvaluationError
   |     +-- OptimizationError
+  |     |     +-- CostLimitExceeded
   |     +-- OptimizationStateError
-  |     +-- CostLimitExceeded
   |     +-- FeatureNotAvailableError
   |     +-- DataIntegrityError
   |     |     +-- MetricExtractionError
@@ -31,6 +31,8 @@ Exception
   |     |     +-- TraigentConnectionError
   |     |     +-- ServiceUnavailableError
   |     |     +-- QuotaExceededError
+  |     |     +-- InsufficientFundsError
+  |     +-- VendorPauseError
   |     +-- SessionError
   |     +-- AgentExecutionError
   |     +-- PlatformCapabilityError
@@ -109,12 +111,15 @@ Raised before optimization starts when provider API keys are invalid or missing.
 
 ### CostLimitExceeded
 
-**Budget exceeded during optimization.**
+**Pre-run cost approval declined** — raised before the first trial when the estimate exceeds the
+limit and no approval is present. A mid-run budget hit does not raise: the run returns a partial
+result with `stop_reason == "cost_limit"`. Subclass of `OptimizationError`.
 
 | Attribute | Type | Description |
 |---|---|---|
-| `accumulated` | `float` | Total cost spent so far (USD). |
+| `estimated` | `float \| None` | The pre-run estimate that exceeded the limit (USD). |
 | `limit` | `float` | The configured cost limit (USD). |
+| `accumulated` | `float` | Cost spent (USD) — `0.0` on the pre-run decline. |
 
 ```python
 from traigent.utils.exceptions import CostLimitExceeded
@@ -122,10 +127,21 @@ from traigent.utils.exceptions import CostLimitExceeded
 try:
     results = func.optimize_sync()
 except CostLimitExceeded as e:
-    print(f"Spent ${e.accumulated:.2f} of ${e.limit:.2f} budget")
+    print(f"Refused before spending: estimated ${e.estimated or 0:.2f} > ${e.limit:.2f}")
+    raise
+if results.stop_reason == "cost_limit":
+    print("Budget reached mid-run — partial result, paid trials kept")
 ```
 
-**Resolution**: Increase `cost_limit`, use cheaper models, or reduce `max_trials`.
+**Resolution**: take the estimate back to the user for an explicit approval of a stated ceiling,
+or shrink the run (cheaper models, fewer `max_trials`). Never set `TRAIGENT_COST_APPROVED=true`
+persistently to make the decline go away.
+
+### InsufficientFundsError
+
+**The LLM provider account has no credit (HTTP 402 / billing error).** Subclass of
+`ServiceError`; non-retryable — the account must be topped up. Non-interactively the run ends with
+`results.stop_reason == "vendor_error"` and the paid trials kept; do not retry blindly.
 
 ### OptimizationStateError
 
@@ -250,7 +266,7 @@ from traigent.utils.exceptions import (
 try:
     results = func.optimize_sync()
 except CostLimitExceeded as e:
-    print(f"Over budget: ${e.accumulated:.2f}")
+    print(f"Pre-run estimate ${e.estimated} exceeds the ${e.limit:.2f} limit — approve or lower it")
 except ProviderValidationError as e:
     print(f"Bad API keys: {e.failed_providers}")
 except ConfigurationError as e:

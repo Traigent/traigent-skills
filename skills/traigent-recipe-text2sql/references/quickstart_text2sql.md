@@ -116,14 +116,50 @@ def schema_ddl() -> str:
     return "\n".join(r[0] for r in rows if r[0])
 
 
+_READ_ONLY_FUNCTIONS = frozenset({
+    "abs", "avg", "char", "coalesce", "concat", "concat_ws", "count",
+    "date", "datetime", "format", "glob", "group_concat", "hex", "ifnull",
+    "iif", "instr", "json", "json_array", "json_array_length", "json_extract",
+    "json_group_array", "json_group_object", "json_insert", "json_object",
+    "json_patch", "json_quote", "json_remove", "json_replace", "json_set",
+    "json_type", "json_valid", "julianday", "length", "like", "likelihood",
+    "likely", "lower", "ltrim", "max", "min", "nullif", "printf", "quote",
+    "random", "randomblob", "replace", "round", "rtrim", "sign", "strftime",
+    "substr", "substring", "sum", "time", "total", "trim", "typeof",
+    "unicode", "unixepoch", "unlikely", "upper", "zeroblob",
+})
+
+
+def _read_only_authorizer(action, arg1, arg2, database_name, trigger_name):
+    # Default-deny every SQLite operation except table reads, SELECT control
+    # flow, and an explicit set of data-only built-ins. This blocks ATTACH,
+    # mutations/DDL, PRAGMA (including writable_schema), and extension or
+    # file-system functions such as load_extension/readfile/writefile.
+    del arg1, database_name, trigger_name
+    if action in {sqlite3.SQLITE_READ, sqlite3.SQLITE_SELECT, sqlite3.SQLITE_RECURSIVE}:
+        return sqlite3.SQLITE_OK
+    if action == sqlite3.SQLITE_FUNCTION and isinstance(arg2, str):
+        if arg2.lower() in _READ_ONLY_FUNCTIONS:
+            return sqlite3.SQLITE_OK
+    return sqlite3.SQLITE_DENY
+
+
 def _run(sql: str):
+    # Candidate SQL is model output: run it on a READ-ONLY handle (a DELETE or DROP
+    # fails instead of mutating the DB the next trial reads) with a watchdog that
+    # aborts a runaway statement (a recursive CTE would otherwise hang the trial).
+    con = None
     try:
-        con = sqlite3.connect(DB_PATH)
+        con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
+        con.set_authorizer(_read_only_authorizer)
+        con.set_progress_handler(lambda: 1, 100_000)  # non-zero return aborts after ~100k VM steps
         rows = con.execute(sql).fetchall()
-        con.close()
         return True, rows
     except Exception:
         return False, None
+    finally:
+        if con is not None:
+            con.close()
 
 
 def _result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
@@ -137,7 +173,9 @@ def _result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
     if len(pred_rows) != len(gold_rows):
         return False
     if not gold_rows:
-        return True
+        # An empty gold hands a free point to every wrong query that also returns
+        # nothing; such rows are excluded upstream (run every gold once first).
+        return False
     n = len(gold_rows[0])
     if len(pred_rows[0]) != n:
         return False
@@ -146,6 +184,19 @@ def _result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
         if (p == gold_rows) if gold_has_order_by else (Counter(p) == Counter(gold_rows)):
             return True
     return False
+
+
+def check_golds() -> None:
+    # Run every gold once before spending: a gold that errors scores 0.0 for every
+    # candidate and an empty gold would score 1.0 for every wrong-but-empty query,
+    # so neither can separate configurations. Fail loudly instead of scoring them.
+    bad = []
+    for i, (_, gold) in enumerate(TESTBED):
+        ok, rows = _run(gold)
+        if not ok or not rows:
+            bad.append((f"store_q{i}", "errors" if not ok else "returns zero rows"))
+    if bad:
+        raise SystemExit(f"gold SQL cannot separate configurations, exclude these rows first: {bad}")
 
 
 def exec_match(pred_sql: str, gold_sql: str) -> float:
@@ -269,6 +320,7 @@ def main() -> int:
         return 2
 
     build_db()
+    check_golds()
     write_dataset()
 
     if args.mock:

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.3"
+  version: "1.0.4"
 ---
 
 # CI Safety Gate
@@ -41,6 +41,14 @@ Keep safety semantics simple, explicit, and reviewable regardless of mechanism: 
 ## Promotion Gate
 
 Use `PromotionGate` to compare a candidate config against the incumbent on the same holdout. `evaluate` returns a decision with `decision` equal to `promote`, `reject`, or `no_decision`.
+
+The holdout is rows the optimization's `eval_dataset` never scored: the candidate was selected on
+those tuning rows, so its tuning score is optimistic, and gating on them re-measures the selection,
+not the promotion. It is also not a ten-row split an assistant built and can read (what a guided first run
+leaves under `traigent-runs/`) — that is held-back and non-blind, and on ten rows a statistical gate can
+only separate a very large lift — a modest one reads `no_decision`; build a sealed slice sized for the effect you require. The gate judges
+**one** committed candidate: re-running it over several candidates until one promotes turns the
+holdout into a selection set and forfeits the guarantee. Traigent does not manage this split for you.
 
 ```python
 from traigent.tvl.models import PromotionPolicy
@@ -95,7 +103,7 @@ answer = my_function("What is Python?")
 SAFETY: run a holdout regression check against a pinned baseline config.
 
 - Pull request job: run offline/mock under `TRAIGENT_OFFLINE_MODE=true` to verify wiring, script shape, and fail-closed behavior without spending.
-- Scheduled job: run the real holdout evaluation under `TRAIGENT_RUN_COST_LIMIT` with account credentials and compare candidate vs incumbent.
+- Scheduled job: run the real holdout evaluation under `TRAIGENT_RUN_COST_LIMIT` with account credentials and compare candidate vs incumbent. That limit bounds only calls placed through the SDK; the holdout script's own provider calls are bounded by the script (rows × configs × a per-call cap), and it must write the **measured** `total_cost` — a `0.0` placeholder or a missing field would make `--max-cost` pass vacuously, so the holdout script refuses a `0.0` total after real calls (cost is not wired) and the gate script refuses a missing, NaN or negative field.
 
 Any CI workflow that executes `optimize()` or `optimize_sync()` in local/offline mode, including
 mock/offline wiring checks, must set `TRAIGENT_RUN_APPROVED=1`. This is the SDK's explicit

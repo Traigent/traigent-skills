@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "45c9bde670e83621",
+  "doc_hash": "73f0827c04567006",
   "entries": [
     {
       "edit_id": "genesis",
@@ -30,6 +30,17 @@
       "doc_after_hash": "832faf18089d7a0f",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "45c9bde670e83621",
+      "doc_after_hash": "73f0827c04567006",
+      "note": "offline is an .optimize() option, not a spec field; mode/offlineMode/privacy/hybridApiOptions/execution.mode now throw ValidationError naming the replacement (traigent-js 7b7cd07, src/optimization/spec.ts) — the 'mode: local is canonical' paragraph was stale after traigent-js#351; Runtime Rules gain the algorithm=auto local_fallback rule (read result.metadata.source before reporting; no JS TRAIGENT_REQUIRE_CLOUD equivalent) and the note that there is no guided JS first run (traigent-first-run optimizes a Python callable). tests/data/js_api_snapshot.json was NOT refreshed: at 7b7cd07 it surfaces ~100 new exports that need coverage-ledger triage in their own PR.",
+      "source_type": "agent"
     }
   ]
 }

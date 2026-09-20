@@ -8,7 +8,7 @@ metadata:
   traigent-stage: javascript
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.4"
+  version: "1.0.5"
 ---
 
 # Traigent JS/TS SDK
@@ -103,13 +103,20 @@ answerQuestion.applyBestConfig(result);
 <!-- /PROTECTED -->
 - Trial context is available during wrapped execution. Use `getTrialParam`, `getTrialConfig`, `TrialContext.run`, `isInTrial`, and `wrapCallback` rather than module-level globals.
 - JS supports `context`, `parameter`, and `seamless` injection modes. Use `context` unless the host app naturally accepts a config parameter or intentionally opts into seamless framework/rewrite support.
+- `algorithm: 'auto'` that cannot reach the backend **falls back to a local `random` search** with only a `console.warn` (`[traigent] algorithm="auto" could not reach the Traigent backend; falling back to local random search.`). Read `result.metadata?.source` before reporting: `'local_fallback'` is not the managed run and must not be presented as one; `'cloud_brain'` is. A backend 401/402/403/429 throws instead of falling back. There is no JS equivalent of Python's `TRAIGENT_REQUIRE_CLOUD` yet (Traigent/traigent-js#355).
+- There is no guided JS first run: `traigent-first-run` optimizes a Python callable, so a JS agent that went through it was measured through a thin Python adapter or a generated substitute, not natively. Treat that result as a workflow demonstration for the JS agent, and start its own measurement here.
 
 ## Offline / Zero-Egress
 
-Set `offline: true` in the optimize spec when the run must avoid Traigent-backend
-egress. `TRAIGENT_OFFLINE_MODE` is also recognized. Mode `"local"` is the
-recommended, non-deprecated canonical mode for local/offline optimization;
-legacy aliases such as `"native"` are deprecated and map to it.
+Pass `offline: true` on `.optimize({ ... })` — it is an optimize option, not a spec
+field — when the run must avoid Traigent-backend egress; `TRAIGENT_OFFLINE_MODE` (alias
+`TRAIGENT_OFFLINE`) is also read. Do not write `mode`: on the repository's default branch
+(`main` @ `9580f57`, what a source build gives you) `mode`, `offlineMode`, `privacy` and
+`execution.mode` are still accepted as **deprecated aliases** that map onto `algorithm`
+(`"grid"`/`"random"` = local, `"auto"` or a smart algorithm = cloud) plus `offline`, or
+`externalServiceEvaluator` for an external-service evaluator; the next release (`develop` @
+`7b7cd07`, `src/optimization/spec.ts`) removes them and each throws a `ValidationError` naming
+the replacement, e.g. `optimize() offlineMode was removed. Use offline instead.`
 
 In offline mode, backend HTTP is refused by the SDK's offline guard and only
 local algorithms (`grid` and `random`) run. Do not expect portal tracking or
