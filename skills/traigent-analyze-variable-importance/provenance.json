@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b75c8079424d8dbf",
+  "doc_hash": "3c53c968f6da4fcd",
   "entries": [
     {
       "edit_id": "genesis",
@@ -52,6 +52,17 @@
       "doc_after_hash": "b75c8079424d8dbf",
       "note": "entry point for a guided first run's traigent-runs/optimized-results.json (save_to dump -> one trial per line) and an explicit rule for the under-20-trial arrival state: every knob is directional, present as knobs to test next, never rerun the search to reach 20, and leave --heldout off when only one selected configuration was scored on the held-out rows. Script unchanged.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-analyze-variable-importance",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "b75c8079424d8dbf",
+      "doc_after_hash": "3c53c968f6da4fcd",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

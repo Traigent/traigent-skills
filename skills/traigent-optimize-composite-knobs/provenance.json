@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f9a13d9a52df48b9",
+  "doc_hash": "acf2877b41cdfe8e",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1",
@@ -68,6 +68,17 @@
       "doc_after_hash": "31680229368b35c3",
       "note": "move the useful fitness, comparator, headroom, economics, calibration, and historical evidence guidance from the retired agents-skills traigent-router prototype into the owning public composite-knobs skill; distinguish current pre-dispatch router semantics from post-output cascades and incorporate Traigent/agents-skills#118 claim disambiguation",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-optimize-composite-knobs",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "f9a13d9a52df48b9",
+      "doc_after_hash": "acf2877b41cdfe8e",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

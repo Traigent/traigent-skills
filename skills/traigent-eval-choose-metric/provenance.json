@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ddb6a2707bdafd8e",
+  "doc_hash": "cce7d3243ab47b0d",
   "entries": [
     {
       "edit_id": "genesis",
@@ -63,6 +63,17 @@
       "doc_after_hash": "ddb6a2707bdafd8e",
       "note": "judge-budget step notes the SDK cost limit does not see judge calls made inside a metric function; See Also points at traigent-boost-agent (the bare traigent skill was merged).",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-eval-choose-metric",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "ddb6a2707bdafd8e",
+      "doc_after_hash": "cce7d3243ab47b0d",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "19b1685bda3289c7",
+  "doc_hash": "d88f628927e05d91",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -280,6 +280,17 @@
       "doc_after_hash": "19b1685bda3289c7",
       "note": "independent review follow-up for PR #285: scope insufficient-sample diagnosis to results below each analyzer floor and direct above-floor empty results to flat variance, missing metrics, and non-varying parameter checks",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-analyze-guidance",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "19b1685bda3289c7",
+      "doc_after_hash": "d88f628927e05d91",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ee6ee645fcd22d1f",
+  "doc_hash": "1f39515803010b9a",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
@@ -154,6 +154,17 @@
       "doc_after_hash": "ee6ee645fcd22d1f",
       "note": "review fix: split the JSONL sample into eval/tuning.jsonl and eval/holdout.jsonl blocks so the sample no longer shows holdout rows in the file eval_dataset names; reflect step 6 says generated rows never enter the holdout.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-dataset-curate",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "ee6ee645fcd22d1f",
+      "doc_after_hash": "1f39515803010b9a",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }

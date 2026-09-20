@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "2607fc4a004eac81",
+  "doc_hash": "39d147836d1bdfb4",
   "reference_hashes": {
     "references/gate-workflow.md": "a3d062232caa02aa"
   },
@@ -77,6 +77,17 @@
       "doc_after_hash": "2607fc4a004eac81",
       "note": "review fix: the gate script accepts a 0.0 total_cost (only missing/NaN/negative are refused), so the prose no longer claims it refuses both; the holdout script now refuses a 0.0 total after real calls at the seam that knows the mode; ten rows can separate only a very large lift (the skill's own min_effect=0.01 example promotes 6/10 -> 9/10).",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "interaction-policy-v2-rebase-pr-288-traigent-ci-safety-gate",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "2607fc4a004eac81",
+      "doc_after_hash": "39d147836d1bdfb4",
+      "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
+      "source_type": "human"
     }
   ]
 }
