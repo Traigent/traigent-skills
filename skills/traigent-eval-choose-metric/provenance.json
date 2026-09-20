@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "04a4cfc25a7ece77",
+  "doc_hash": "ddb6a2707bdafd8e",
   "entries": [
     {
       "edit_id": "genesis",
@@ -52,6 +52,17 @@
       "doc_after_hash": "9ae5277b1c573049",
       "note": "add portable audience, topic, lifecycle-stage, and maturity metadata; instructional body unchanged",
       "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "first-run-lessons-2026-09-16",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-16T00:00:00Z",
+      "doc_before_hash": "04a4cfc25a7ece77",
+      "doc_after_hash": "ddb6a2707bdafd8e",
+      "note": "judge-budget step notes the SDK cost limit does not see judge calls made inside a metric function; See Also points at traigent-boost-agent (the bare traigent skill was merged).",
+      "source_type": "agent"
     }
   ]
 }

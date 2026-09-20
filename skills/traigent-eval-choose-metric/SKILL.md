@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.3"
+  version: "1.1.4"
 ---
 
 # Traigent Choose Metric
@@ -51,7 +51,8 @@ and do not force an exact-match metric. Route onto the judge track:
    between you and optimizing noise.
 4. Budget the judge itself: every trial example costs a judge call on top of the agent call.
    Flag judge cost as its own line in the run budget (and consider `cost` as a secondary
-   objective so expensive judge-pleasing configs don't win by default).
+   objective so expensive judge-pleasing configs don't win by default). The SDK cost limit
+   does not see judge calls made inside a metric function — see `traigent-eval-build`.
 
 ## Measure-type grounding
 
@@ -169,7 +170,7 @@ Treat safety properties as constraints or gates when a violation is unacceptable
 ## See Also
 
 - `traigent-eval-build` - next step after choosing the metric
-- `traigent` Step 3.5 - lightweight evaluator sanity gate (known-good/known-bad assertion before first real run)
+- `traigent-boost-agent` Step 3.5 - lightweight evaluator sanity gate (known-good/known-bad assertion before first real run)
 - `traigent-setup-decorator` - wiring objectives and evaluation options into the decorator
 - `traigent-analyze-results` - reading trial metrics and reporting outcomes
 
