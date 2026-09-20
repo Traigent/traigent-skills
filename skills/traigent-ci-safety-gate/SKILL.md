@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.5"
+  version: "1.0.6"
 ---
 
 # CI Safety Gate
@@ -26,6 +26,10 @@ Use this skill when the user asks:
 <!-- PROTECTED -->
 The gate should fail closed: missing metrics, NaN metrics, parse failures, rejected promotion decisions, and budget breaches should stop promotion.
 <!-- /PROTECTED -->
+
+The reference gate rejects non-finite or negative cost and latency limits, malformed or
+non-finite measurements, negative latency, and accuracy outside `[0, 1]`. Boolean values are
+not measurements. The holdout adapter validates each call's cost before accumulating it.
 
 ## In-Run Safety Constraints (Not Yet Available)
 

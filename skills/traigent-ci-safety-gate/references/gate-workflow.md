@@ -93,6 +93,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import time
 from pathlib import Path
 
@@ -135,6 +136,8 @@ def main() -> None:
         score, ms, cost = evaluate_one(json.loads(line), config, args.mode)
         if cost is None:
             raise SystemExit("unmeasured call cost: the efficiency check cannot pass on a guess")
+        if isinstance(cost, bool) or not isinstance(cost, (int, float)) or not math.isfinite(cost) or cost < 0:
+            raise SystemExit(f"call cost must be finite and nonnegative: {cost!r}")
         accuracy.append(score)
         latency.append(ms)
         total_cost += cost
@@ -185,21 +188,30 @@ def load_payload(path: Path) -> dict[str, Any]:
 
 def metric_series(payload: dict[str, Any], name: str) -> list[float]:
     metrics = payload.get("metrics", payload)
+    if not isinstance(metrics, dict):
+        raise SystemExit(f"metrics must be an object: {name}")
     value = metrics.get(name)
     if value is None:
         raise SystemExit(f"missing metric: {name}")
-    if isinstance(value, list):
-        series = [float(item) for item in value]
-    else:
-        series = [float(value)]
-    if not series:
+    values = value if isinstance(value, list) else [value]
+    if not values:
         raise SystemExit(f"empty metric series: {name}")
+    series = []
+    for item in values:
+        if isinstance(item, bool) or not isinstance(item, (int, float)):
+            raise SystemExit(f"invalid metric {name}: {item!r}")
+        number = float(item)
+        if not math.isfinite(number) or number < 0 or (name == "accuracy" and number > 1):
+            raise SystemExit(f"invalid metric {name}: {item!r}")
+        series.append(number)
     return series
 
 def cost(payload: dict[str, Any]) -> float:
     value = payload.get("total_cost", payload.get("cost"))
     if value is None:
         raise SystemExit("missing total_cost: the budget check cannot pass on an unmeasured cost")
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise SystemExit(f"invalid total_cost: {value!r}")
     value = float(value)
     if not math.isfinite(value) or value < 0:
         raise SystemExit(f"non-finite or negative total_cost: {value!r}")
@@ -213,6 +225,10 @@ def main() -> int:
     parser.add_argument("--max-latency-ms", type=float, required=True)
     parser.add_argument("--require-promote", action="store_true")
     args = parser.parse_args()
+
+    for name, value in (("--max-cost", args.max_cost), ("--max-latency-ms", args.max_latency_ms)):
+        if not math.isfinite(value) or value < 0:
+            raise SystemExit(f"{name} must be finite and nonnegative")
 
     incumbent_payload = load_payload(args.incumbent)
     candidate_payload = load_payload(args.candidate)
@@ -259,4 +275,9 @@ if __name__ == "__main__":
     raise SystemExit(main())
 ```
 
-The PR job verifies wiring in offline/mock mode. The scheduled job runs the real holdout under `TRAIGENT_RUN_COST_LIMIT` and fails on promotion rejection, required-promotion no-decision, regression, budget breach, missing or unmeasured cost, missing metrics, or latency breach.
+The PR job verifies wiring in offline/mock mode. The scheduled job evaluates the real holdout
+and fails on promotion rejection, required-promotion no-decision, regression, budget breach,
+missing or invalid measurements, or latency breach. `--max-cost` checks the completed candidate's
+spend; it does not stop provider calls. `TRAIGENT_RUN_COST_LIMIT` governs SDK-managed optimization,
+not arbitrary calls inside `run_my_agent`. Before enabling real mode, implement spending control
+in that project-specific adapter, covering both the incumbent and candidate evaluations.

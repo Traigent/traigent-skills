@@ -1263,13 +1263,16 @@ def analyse_dataset(
     )
 
     split_counts = Counter(row.split for row in parsed if row.split)
+    named_holdout = file_names_holdout(relative(path, root))
     holdout_inputs = {
-        row.normalized_input for row in parsed if row.split in HOLDOUT_VALUES
+        row.normalized_input for row in parsed
+        if row.split in HOLDOUT_VALUES or (row.split is None and named_holdout)
     }
     other_inputs = {
         row.normalized_input
         for row in parsed
-        if row.split is not None and row.split not in HOLDOUT_VALUES
+        if row.split not in HOLDOUT_VALUES
+        and (row.split is not None or not named_holdout)
     }
     overlap_texts = holdout_inputs & other_inputs
     holdout_overlap = sorted(

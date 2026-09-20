@@ -14,6 +14,7 @@ import io
 import json
 import math
 import random
+import sys
 from collections import defaultdict
 from contextlib import redirect_stderr
 from dataclasses import dataclass
@@ -110,26 +111,38 @@ def display_value(value: Any) -> str:
     return json.dumps(value, sort_keys=True, ensure_ascii=False)
 
 
+def measured_number(value: Any, field: str, *, nonnegative: bool = False) -> float | None:
+    """Keep missing measurements distinct from invalid ones and measured zero."""
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f"{field} must be a finite number, got {value!r}")
+    number = float(value)
+    if not math.isfinite(number) or (nonnegative and number < 0):
+        raise ValueError(f"{field} must be finite{' and nonnegative' if nonnegative else ''}, got {value!r}")
+    return number
+
+
 def extract_metric(record: dict[str, Any], objective: str) -> float | None:
-    if objective in record and isinstance(record[objective], (int, float)):
-        return float(record[objective])
+    if record.get(objective) is not None:
+        return measured_number(record[objective], objective)
     metrics = record.get("metrics")
-    if isinstance(metrics, dict) and isinstance(metrics.get(objective), (int, float)):
-        return float(metrics[objective])
+    if isinstance(metrics, dict):
+        return measured_number(metrics.get(objective), objective)
     return None
 
 
 def extract_cost(record: dict[str, Any]) -> float | None:
     for key in ("cost", "mock_cost"):
         value = record.get(key)
-        if isinstance(value, (int, float)):
-            return float(value)
+        if value is not None:
+            return measured_number(value, key, nonnegative=True)
     metrics = record.get("metrics")
     if isinstance(metrics, dict):
         for key in ("cost", "mock_cost"):
             value = metrics.get(key)
-            if isinstance(value, (int, float)):
-                return float(value)
+            if value is not None:
+                return measured_number(value, key, nonnegative=True)
     return None
 
 
@@ -151,14 +164,18 @@ def read_trials(path: Path, objective: str) -> list[Trial]:
             config = record.get("config")
             if not isinstance(config, dict):
                 raise ValueError(f"{path}:{line_number}: missing object field 'config'")
-            metric = extract_metric(record, objective)
+            try:
+                metric = extract_metric(record, objective)
+                cost = extract_cost(record) if metric is not None else None
+            except ValueError as exc:
+                raise ValueError(f"{path}:{line_number}: {exc}") from exc
             if metric is None:
                 continue
             trials.append(
                 Trial(
                     objective=metric,
                     config=dict(config),
-                    cost=extract_cost(record),
+                    cost=cost,
                     raw=record,
                 )
             )
@@ -317,7 +334,12 @@ def permutation_spread_pvalue(
         null_spread = (
             max(group_means) - min(group_means) if len(group_means) >= 2 else 0.0
         )
-        if null_spread >= observed:
+        # Roundoff can make a mathematical tie slightly smaller. Use a relative
+        # tolerance (as in scipy.stats.permutation_test), so tiny-scale metrics
+        # do not collapse every permutation into a tie.
+        if null_spread >= observed or math.isclose(
+            null_spread, observed, rel_tol=100 * sys.float_info.epsilon, abs_tol=0.0
+        ):
             at_or_above += 1
     return (at_or_above + 1) / (draws + 1)
 
@@ -434,6 +456,10 @@ def analyze_importance(
         raise ValueError(
             "sampling_design must be 'randomized', 'adaptive', or 'unknown'"
         )
+    for trial in trials:
+        if measured_number(trial.objective, "objective") is None:
+            raise ValueError("objective must be a finite number")
+        measured_number(trial.cost, "cost", nonnegative=True)
     total_n = len(trials)
     rows: list[KnobImportance] = []
     for knob in infer_knobs(trials, config_space):

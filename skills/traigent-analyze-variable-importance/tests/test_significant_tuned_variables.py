@@ -2,15 +2,76 @@ from __future__ import annotations
 
 import csv
 import importlib
+import itertools
 import json
 import random
 import subprocess
 import sys
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from fractions import Fraction
+
+import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 SCRIPT = SCRIPTS_DIR / "significant_tuned_variables.py"
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf"), True])
+@pytest.mark.parametrize("nested", [False, True])
+def test_invalid_objective_cannot_enter_significance_analysis(tmp_path, value, nested):
+    module = _load_module()
+    row = {"config": {"knob": "a"}}
+    row.update({"metrics": {"accuracy": value}} if nested else {"accuracy": value})
+    path = tmp_path / "invalid.jsonl"
+    write_jsonl(path, [row])
+    with pytest.raises(ValueError, match=r"invalid.jsonl:1:.*accuracy"):
+        module.read_trials(path, "accuracy")
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), -1.0, True])
+def test_invalid_cost_is_not_reported_as_measured(tmp_path, value):
+    module = _load_module()
+    path = tmp_path / "invalid.jsonl"
+    write_jsonl(path, [{"config": {"knob": "a"}, "accuracy": 0.5, "cost": value}])
+    with pytest.raises(ValueError, match=r"invalid.jsonl:1:.*cost"):
+        module.read_trials(path, "accuracy")
+
+
+def test_infinite_objective_cannot_be_labelled_significant_via_python_api():
+    module = _load_module()
+    trials = [module.Trial(float("inf") if i < 10 else 0.0, {"x": i // 10}, None, {})
+              for i in range(20)]
+    with pytest.raises(ValueError, match="objective"):
+        module.analyze_importance(trials, None, 0.95, 999, "randomized")
+
+
+@pytest.mark.parametrize("scale", [1, 10**-15])
+def test_permutation_ties_match_exact_rational_oracle(monkeypatch, scale):
+    module = _load_module()
+    # Enumerate all label shuffles instead of tolerating Monte Carlo error.
+    exact = [Fraction(i, 10) for i in (4, 5, 4, 1, 3, 7)]
+    values = [float(x) * scale for x in exact]
+    permutations = list(itertools.permutations(range(6)))
+
+    def statistic(items):
+        return abs(sum(items[:3]) / 3 - sum(items[3:]) / 3)
+
+    extreme = sum(statistic([exact[i] for i in p]) >= statistic(exact)
+                  for p in permutations)
+
+    class EnumeratedShuffles:
+        def __init__(self, seed):
+            self.remaining = iter(permutations)
+
+        def shuffle(self, items):
+            items[:] = [values[i] for i in next(self.remaining)]
+
+    monkeypatch.setattr(module.random, "Random", EnumeratedShuffles)
+    trials = [module.Trial(value, {"x": i // 3}, None, {})
+              for i, value in enumerate(values)]
+    actual = module.permutation_spread_pvalue(trials, "x", draws=len(permutations))
+    assert actual == (extreme + 1) / (len(permutations) + 1)
 
 
 def _load_module():

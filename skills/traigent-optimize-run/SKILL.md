@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.21"
+  version: "1.0.22"
 ---
 
 # Running Traigent Optimization
@@ -82,6 +82,9 @@ See `traigent-analyze-results` for the full field reference.
 > max_trials, dataset_size = 10, 15        # your run's values
 > print(f"Real run: up to {max_trials * dataset_size} LLM calls")
 > ```
+> Mock mode avoids provider spend but can still contact the backend and consume quota when a
+> Traigent key is set. For local-only wiring, declare `offline=True` on the decorated function
+> before running it; mock mode alone is not a network boundary.
 > Only proceed to the real run below after the user explicitly approves the cost.
 >
 > **Verify model IDs are live first.** Catalogs change — a delisted/renamed ID causes a 404 or a
@@ -391,12 +394,16 @@ Optimization can stop for several reasons. Check `results.stop_reason`:
 | `"timeout"` | Exceeded the `timeout` duration. |
 | `"cost_limit"` | Hit the `TRAIGENT_RUN_COST_LIMIT` budget. |
 | `"execution_budget"` | A shared `ExecutionBudget` (cost, examples, or deadline) was exhausted (SDK 0.26.0+); reported instead of `"cost_limit"`, detail in `results.metadata["execution_budget"]`. |
+| `"metric_limit"` | A soft cumulative metric limit was hit; report the completed results. |
 | `"vendor_error"` | A provider-side error (401/402/403/429, `insufficient_quota`) ended the run; the SDK does not retry by default. When every call fails before any example is scored the run instead raises `OptimizationError`, so catch that too. |
 | `"optimizer"` | Algorithm exhausted the search space (e.g., grid search finished). |
 | `"plateau"` | No improvement detected over recent trials. |
+| `"convergence"` | Built-in convergence condition triggered. |
+| `"semantic_saturation"` | Per-example quality and continuous objectives saturated; inspect `results.metadata["semantic_saturation"]`. |
 | `"user_cancelled"` | User cancelled or declined cost approval. |
 | `"condition"` | A generic stop condition was triggered. |
 | `"error"` | Optimization failed due to an exception. |
+| `"network_error"` | Connectivity failure; inspect the failure before retrying. |
 
 ```python
 results = await func.optimize(max_trials=20, algorithm="grid")
@@ -603,7 +610,8 @@ async def main():
     else:
         print("Total cost:  NOT TRACKED — wire cost before the next run (see Cost Wiring Probe)")
 
-    # Apply and use in production
+    # Demo-only application. Validate a sealed holdout before production promotion;
+    # never run optimization on the live serving instance (SDK 0.27+ auto-applies).
     answer_question.apply_best_config(results)
     answer = answer_question("What is the capital of France?")
     print(f"Answer: {answer}")

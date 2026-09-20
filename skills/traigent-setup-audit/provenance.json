@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "70c864d93a9e8ea4",
+  "doc_hash": "dfe7bb3ca7af1631",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -122,6 +122,17 @@
       "doc_after_hash": "70c864d93a9e8ea4",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "astra-fable-review-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "70c864d93a9e8ea4",
+      "doc_after_hash": "dfe7bb3ca7af1631",
+      "note": "Detect normalized overlap between tagged holdout and untagged tuning rows within a file while respecting named holdout roles and explicit tags.",
+      "source_type": "agent"
     }
   ]
 }

@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "39d147836d1bdfb4",
+  "doc_hash": "1d8461b4cd5f1b06",
   "reference_hashes": {
-    "references/gate-workflow.md": "a3d062232caa02aa"
+    "references/gate-workflow.md": "f8673205ff09bd3c"
   },
   "entries": [
     {
@@ -88,6 +88,17 @@
       "doc_after_hash": "39d147836d1bdfb4",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "astra-fable-review-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "39d147836d1bdfb4",
+      "doc_after_hash": "1d8461b4cd5f1b06",
+      "note": "Reject malformed and non-finite gate measurements and limits, and validate each holdout call cost before accumulation.",
+      "source_type": "agent"
     }
   ]
 }
