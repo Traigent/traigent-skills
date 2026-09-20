@@ -77,7 +77,14 @@ def journey(tmp_path: Path, sdk_version_label: str):
 
 def test_documented_mock_journey_reaches_holdout_gate_without_promotion(journey) -> None:
     result = journey('''
+provider_calls = []
+mock_completion = quickstart.litellm.completion
+def observe_mock_completion(*args, **kwargs):
+    provider_calls.append(1)
+    return mock_completion(*args, **kwargs)
+quickstart.litellm.completion = observe_mock_completion
 result = asyncio.run(quickstart.main())
+assert provider_calls, "journey did not reach the provider boundary"
 assert result.best_config is not None
 assert len(result.trials) == 6
 assert result.cloud_url is None
