@@ -319,6 +319,13 @@ def test_inferential_serialization_preserves_sub_micro_values(tmp_path: Path) ->
     assert float(csv_row["permutation_p_floor"]) == 2e-7
     assert video["top_variables"][0]["p_value"] == 4e-7
     assert video["top_variables"][0]["p_adjusted"] == 8e-7
+    insights_path = tmp_path / "insights.md"
+    module.write_insights_md(
+        insights_path, [row], n_trials=40, objective="accuracy", confidence=0.9,
+        heldout=None, sdk_note="fixture",
+    )
+    insights = insights_path.read_text(encoding="utf-8")
+    assert "raw p=4e-07, Holm-adjusted p=8e-07" in insights
 
 
 def test_low_permutation_resolution_is_explicit() -> None:

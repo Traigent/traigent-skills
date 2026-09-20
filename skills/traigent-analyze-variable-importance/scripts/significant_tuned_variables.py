@@ -839,7 +839,7 @@ def write_insights_md(
                 f"{index}. `{row.knob}`: {row.spread * 100:.2f} pp spread, "
                 f"variance share {row.variance_share:.3f}, "
                 f"{int(confidence * 100)}% CI [{row.ci_low * 100:.2f}, {row.ci_high * 100:.2f}] pp, "
-                f"raw p={row.p_value:.6f}, Holm-adjusted p={row.p_adjusted:.6f} "
+                f"raw p={row.p_value:.6g}, Holm-adjusted p={row.p_adjusted:.6g} "
                 f"across {row.family_size} eligible knobs, `{row.label}` "
                 f"(`{row.inference_status}`). Best observed value: `{display_value(row.best_value)}` "
                 f"({row.best_value_mean_acc:.3f} mean {objective}); {cost_clause}."
@@ -969,7 +969,7 @@ def main() -> int:
                 f"{index}. {row.knob}: spread={row.spread:.6f}, "
                 f"variance_share={row.variance_share:.6f}, "
                 f"ci=[{row.ci_low:.6f}, {row.ci_high:.6f}], "
-                f"raw_p={row.p_value:.6f}, adjusted_p={row.p_adjusted:.6f}, "
+                f"raw_p={row.p_value:.6g}, adjusted_p={row.p_adjusted:.6g}, "
                 f"family={row.family_size}, status={row.inference_status}, "
                 f"label={row.label}, best={display_value(row.best_value)}"
             )

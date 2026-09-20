@@ -77,12 +77,13 @@ def journey(tmp_path: Path, sdk_version_label: str):
 
 def test_documented_mock_journey_reaches_holdout_gate_without_promotion(journey) -> None:
     result = journey('''
+from traigent.integrations.utils.mock_adapter import MockAdapter
 provider_calls = []
-mock_completion = quickstart.litellm.completion
+mock_completion = MockAdapter.get_mock_response
 def observe_mock_completion(*args, **kwargs):
     provider_calls.append(1)
     return mock_completion(*args, **kwargs)
-quickstart.litellm.completion = observe_mock_completion
+MockAdapter.get_mock_response = staticmethod(observe_mock_completion)
 result = asyncio.run(quickstart.main())
 assert provider_calls, "journey did not reach the provider boundary"
 assert result.best_config is not None
@@ -125,13 +126,14 @@ def test_documented_journey_exhausted_budget_stops_before_provider(journey, sdk_
         pytest.skip("ExecutionBudget was added in SDK 0.27.0")
     journey('''
 from traigent import ExecutionBudget
+from traigent.integrations.utils.mock_adapter import MockAdapter
 budget = ExecutionBudget(max_cost_usd=0.01)
 budget.debit_trial(cost=0.01)
 calls = []
 def unexpected_provider(*args, **kwargs):
     calls.append(1)
     raise AssertionError("exhausted budget entered provider")
-quickstart.litellm.completion = unexpected_provider
+MockAdapter.get_mock_response = staticmethod(unexpected_provider)
 result = quickstart.classify_query.optimize_sync(max_trials=6, budget=budget)
 assert result.stop_reason == "execution_budget", result.stop_reason
 assert not result.trials
