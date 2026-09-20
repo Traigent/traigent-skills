@@ -8,7 +8,7 @@ metadata:
   traigent-stage: javascript
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.6"
+  version: "1.0.7"
 ---
 
 # Traigent JS/TS SDK
@@ -26,7 +26,15 @@ npm install
 npm run build
 ```
 
-Then consume the local build from your project — run `npm link` in the cloned repo and `npm link @traigent/sdk` in your project, or add it as a path/`file:` dependency. Supported Node: 18, 20, 22. (Public npm publishing is tracked in Traigent/traigent-js#165.)
+Then consume the local build from your project. Under **plain npm**, `npm link` in the cloned repo plus
+`npm link @traigent/sdk` in your project works. Under **pnpm or yarn**, prefer a path dependency
+(e.g. `"@traigent/sdk": "file:../traigent-js"`) instead — both tools' strict, symlink-isolated
+`node_modules` layout (pnpm's content-addressed store, Yarn PnP/workspaces) commonly breaks a global
+`npm link`, surfacing as a module-resolution or duplicate-instance error rather than a clean import
+failure. Under pnpm specifically, prefer **`link:../traigent-js`** over `file:` — pnpm's `file:`
+protocol hard-links/copies the package at install time, so it goes stale after every rebuild until
+you reinstall, while `link:` is a live symlink that always picks up your latest `npm run build`.
+Supported Node: 18, 20, 22. (Public npm publishing is tracked in Traigent/traigent-js#165.)
 
 ## Core Pattern
 
@@ -102,6 +110,11 @@ answerQuestion.applyBestConfig(result);
 - Before any full run, verify with a tiny real optimization that cost and your other KPIs are actually tracked: trial metrics must include numeric cost and populated objective metrics, with an `accuracy` metric by default unless accuracy does not apply. If not, return the cost metrics directly before scaling up. The probe is itself a paid run — the same dry-run-first / explicit-user-approval gate applies to it.
 <!-- /PROTECTED -->
 - Trial context is available during wrapped execution. Use `getTrialParam`, `getTrialConfig`, `TrialContext.run`, `isInTrial`, and `wrapCallback` rather than module-level globals.
+- **Trial context propagation is Node's `AsyncLocalStorage`** (`node:async_hooks`), so it survives `await`
+  and native Promise chains automatically but is *not* guaranteed across callback-style APIs, worker
+  threads, or some third-party libraries/older transpiled ESM output that break the async call chain
+  (e.g. a callback fired from a native binding, or a bundler that re-implements Promises) — wrap those
+  boundaries with `wrapCallback` or `bindContext` rather than assuming the context follows.
 - JS supports `context`, `parameter`, and `seamless` injection modes. Use `context` unless the host app naturally accepts a config parameter or intentionally opts into seamless framework/rewrite support.
 - `algorithm: 'auto'` that cannot reach the backend **falls back to a local `random` search** with only a `console.warn` (`[traigent] algorithm="auto" could not reach the Traigent backend; falling back to local random search.`). Read `result.metadata?.source` before reporting: `'local_fallback'` is not the managed run and must not be presented as one; `'cloud_brain'` is. A backend 401/402/403/429 throws instead of falling back. There is no JS equivalent of Python's `TRAIGENT_REQUIRE_CLOUD` yet (Traigent/traigent-js#355).
 - There is no guided JS first run: `traigent-first-run` optimizes a Python callable, so a JS agent that went through it was measured through a thin Python adapter or a generated substitute, not natively. Treat that result as a workflow demonstration for the JS agent, and start its own measurement here.

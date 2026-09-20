@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0ce2ea4d313c2789",
+  "doc_hash": "0a75be179e999c84",
   "reference_hashes": {
     "references/dspy.md": "59680e5b6e0e1570",
     "references/langchain.md": "ffe92eb4d431f3b9",
@@ -90,6 +90,17 @@
       "doc_after_hash": "0ce2ea4d313c2789",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-150-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "0ce2ea4d313c2789",
+      "doc_after_hash": "0a75be179e999c84",
+      "note": "Rebuild issue #150 on current main: align integration dependency floors, mark the DSPy floor unverified, and preserve missing versus measured-zero best-score and cost telemetry in both W&B and MLflow examples.",
+      "source_type": "agent"
     }
   ]
 }

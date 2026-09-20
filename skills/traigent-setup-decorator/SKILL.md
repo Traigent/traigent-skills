@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.15"
+  version: "1.0.16"
 ---
 
 # Traigent Decorator Setup
@@ -118,6 +118,21 @@ schema = ObjectiveSchema(
     ],
     weights_sum=1.0,
     weights_normalized={"accuracy": 0.7, "cost": 0.3},
+)
+```
+
+**`weights_sum`/`weights_normalized` are not free-form fields — they are validated against the
+per-objective `weight=` values at construction time.** `ObjectiveSchema.__post_init__` recomputes the
+sum and each normalized share from `objectives` and raises `ValueError` immediately if your hand-computed
+`weights_sum`/`weights_normalized` disagree (there is no silent "which one wins": construction fails
+fast). Prefer the classmethod below, which derives both fields for you so they can never disagree:
+
+```python
+schema = ObjectiveSchema.from_objectives(
+    objectives=[
+        ObjectiveDefinition(name="accuracy", weight=0.7, orientation="maximize"),
+        ObjectiveDefinition(name="cost", weight=0.3, orientation="minimize"),
+    ],
 )
 
 @traigent.optimize(

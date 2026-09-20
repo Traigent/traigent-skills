@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "00748cff24a5c11c",
+  "doc_hash": "cd33f88b27ee09a6",
   "reference_hashes": {
     "references/constraints.md": "3caf1202f0770edb",
     "references/parameter-types.md": "aec5c6f990a712d3",
@@ -100,6 +100,17 @@
       "doc_before_hash": "34271cc9337c7e17",
       "doc_after_hash": "00748cff24a5c11c",
       "note": "rebuild PR #294 on current main: distinguish open configuration keys from SDK catalog proposals and demo recipe names, document the code-editing catalog family, separate conflicting context_order and schema_context vocabularies, map the public Explorer taxonomy, and point composite control-flow details to the owning skill",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issue-150-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "00748cff24a5c11c",
+      "doc_after_hash": "cd33f88b27ee09a6",
+      "note": "Rebuild issue #150 on current main: check SatResult.status against SatStatus.UNSAT and read unsat_core instead of relying on object truthiness.",
       "source_type": "agent"
     }
   ]

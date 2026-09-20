@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1583f7f0bb3152c2",
+  "doc_hash": "b04e83488cd0c177",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -201,6 +201,17 @@
       "doc_after_hash": "1583f7f0bb3152c2",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "issue-150-rebuild-on-main-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "1583f7f0bb3152c2",
+      "doc_after_hash": "b04e83488cd0c177",
+      "note": "Rebuild issue #150 on current main: distinguish required and optional delegations, document dict-spread collision precedence, and keep variable-importance as an optional deep dive.",
+      "source_type": "agent"
     }
   ]
 }
