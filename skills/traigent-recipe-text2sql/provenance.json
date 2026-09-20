@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "5d0779ab3989b3c2",
+  "doc_hash": "9c828ebbde1432f3",
   "reference_hashes": {
-    "references/quickstart_text2sql.md": "791f802cfee26f32"
+    "references/quickstart_text2sql.md": "89d81d586ad56ad6"
   },
   "entries": [
     {
@@ -108,6 +108,17 @@
       "doc_after_hash": "5d0779ab3989b3c2",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "rebuild-pr-292-real-persistence-gate-2026-09-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-20T00:00:00Z",
+      "doc_before_hash": "5d0779ab3989b3c2",
+      "doc_after_hash": "9c828ebbde1432f3",
+      "note": "rebuild PR #292 on current main: teach vanilla agents to implement knobs before declaring them, require JSON-type-consistent spaces and defaults, keep evaluator metrics aligned with declared objectives, require unique example ids, and make every real walkthrough without cloud_url diagnose rejection or fallback and exit nonzero while preserving mock and linked-real success",
+      "source_type": "agent"
     }
   ]
 }

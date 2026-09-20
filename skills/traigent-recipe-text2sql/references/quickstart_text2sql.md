@@ -279,8 +279,12 @@ def exec_eval(func, config, example) -> ExampleResult:
         input_data=inp if isinstance(inp, dict) else {"input": question},
         expected_output=gold,
         actual_output=pred,
-        metrics={"accuracy": accuracy, "cost": _COST["cost"], "latency": latency_ms,
-                 "exec_accuracy": accuracy},
+        # Emit exactly the declared OBJECTIVES (below) — an extra metric name like
+        # "exec_accuracy" is not a declared objective and is a latent footgun if
+        # metric-name validation ever tightens (it's also what a misleading 400
+        # hint on a mismatched space blames first). `accuracy` already IS the
+        # execution-match score; don't duplicate it under another name.
+        metrics={"accuracy": accuracy, "cost": _COST["cost"], "latency": latency_ms},
         execution_time=elapsed_s,  # execution_time stays SECONDS (SDK convention)
         success=success,
         error_message=err,
@@ -290,6 +294,12 @@ def exec_eval(func, config, example) -> ExampleResult:
 # --------------------------------------------------------------------------- #
 # 5. Configure + run: ExecutionOptions(offline=...) + algorithm arg
 # --------------------------------------------------------------------------- #
+# CORRECTNESS RULE, not a style tip: every knob's values here and its
+# `default_config`/BASELINE entry (below) must be JSON-TYPE-CONSISTENT. The
+# backend's config validation is fail-closed and type-strict — int `0` is NOT
+# treated the same as float `0.0`, so a knob declared as floats (`temperature`)
+# with an int default, or vice versa, can reject the run. Discrete/int knobs
+# are safest STRING-encoded (`fewshot_k` below) and `int()`'d at the call site.
 CONFIG_SPACE = {
     "model": ["openrouter/openai/gpt-4o-mini", "openrouter/deepseek/deepseek-chat"],
     "temperature": [0.0, 0.2],
@@ -363,7 +373,35 @@ def main() -> int:
     print("successful_trials:", getattr(result, "successful_trials", None),
           "/", getattr(result, "trials", None))
     if args.real:
-        print("Open the View link above to see your experiment in the portal.")
+        # cloud_url GATE: with offline=False the run should be portal-tracked.
+        # A missing cloud_url on a --real run is EASY TO MISS — it looks like a
+        # success (trials ran, a best_config came back, and the SDK's own
+        # fallback warning banner is easy to scroll past) but never reached the
+        # portal. Verify the link exists before calling the run "cloud-tracked".
+        cloud_url = getattr(result, "cloud_url", None)
+        if cloud_url:
+            print(f"[traigent] Portal run: {cloud_url}")
+        else:
+            metadata = getattr(result, "metadata", None) or {}
+            rejection = metadata.get("persistence_rejection_reason")
+            fallback = metadata.get("fallback_reason")
+            source = metadata.get("source")
+            if rejection:
+                # A backend rejection (e.g. duplicate example_id) — not a key
+                # or connectivity problem. Fix the request, not the credentials.
+                print(f"[traigent] WARNING: --real run has no cloud_url — the backend "
+                      f"REJECTED the submission: persistence_rejection_reason={rejection!r} "
+                      f"(source={source!r}). Fix the request; this is not a key or "
+                      f"connectivity issue.")
+            elif fallback:
+                print(f"[traigent] WARNING: --real run has no cloud_url — it fell back to "
+                      f"local-only: fallback_reason={fallback!r} (source={source!r}). "
+                      f"Check TRAIGENT_API_KEY and connectivity.")
+            else:
+                print(f"[traigent] WARNING: --real run has no cloud_url and was NOT synced "
+                      f"to the portal (source={source!r}). Check TRAIGENT_API_KEY and "
+                      f"connectivity before trusting this as a cloud-tracked run.")
+            return 1
     return 0
 
 
