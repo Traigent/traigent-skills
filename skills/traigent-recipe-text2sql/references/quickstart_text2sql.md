@@ -127,6 +127,16 @@ _READ_ONLY_FUNCTIONS = frozenset({
     "random", "randomblob", "replace", "round", "rtrim", "sign", "strftime",
     "substr", "substring", "sum", "time", "total", "trim", "typeof",
     "unicode", "unixepoch", "unlikely", "upper", "zeroblob",
+    # JSON arrow operators reach the authorizer as functions named -> and ->>.
+    "->", "->>",
+    # Window functions and math built-ins are read-only too. Denying them
+    # would silently score a correct prediction 0, biasing accuracy.
+    "row_number", "rank", "dense_rank", "percent_rank", "cume_dist", "ntile",
+    "lag", "lead", "first_value", "last_value", "nth_value",
+    "acos", "acosh", "asin", "asinh", "atan", "atan2", "atanh", "ceil",
+    "ceiling", "cos", "cosh", "degrees", "exp", "floor", "ln", "log", "log10",
+    "log2", "mod", "pi", "pow", "power", "radians", "sin", "sinh", "sqrt",
+    "tan", "tanh", "trunc",
 })
 
 
@@ -153,7 +163,17 @@ def _run(sql: str):
         con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
         con.set_authorizer(_read_only_authorizer)
         con.set_progress_handler(lambda: 1, 100_000)  # non-zero return aborts after ~100k VM steps
-        rows = con.execute(sql).fetchall()
+        # The step watchdog does not bound memory: one randomblob(1e9) would
+        # allocate ~1 GB. Cap each value and row (1 MB) and the column count, and
+        # stop collecting once the whole result passes 50 MB.
+        con.setlimit(sqlite3.SQLITE_LIMIT_LENGTH, 1_000_000)
+        con.setlimit(sqlite3.SQLITE_LIMIT_COLUMN, 100)
+        rows, size = [], 0
+        for row in con.execute(sql):
+            size += sum(len(v) if isinstance(v, (str, bytes)) else 8 for v in row)
+            if size > 50_000_000:
+                raise MemoryError("query result exceeds 50 MB")
+            rows.append(row)
         return True, rows
     except Exception:
         return False, None
@@ -212,7 +232,22 @@ def exec_match(pred_sql: str, gold_sql: str) -> float:
 # --------------------------------------------------------------------------- #
 _SYSTEM = ("You are an expert SQLite analyst. Given a schema and a question, write "
            "ONE valid SQLite query that answers it. Output only the SQL.")
-_COST = {"cost": 0.0, "latency": 0.0}
+_COST = {"cost": 0.0, "latency": 0.0, "unpriced": False}
+_RUN = {"real": False, "unpriced_calls": 0}  # "real" is set by main() for --real
+
+
+def unpriced_models(models: list[str]) -> list[str]:
+    # A model LiteLLM cannot price would report cost 0.0 and win the cost
+    # objective for free. Check every candidate before a --real run spends.
+    missing = []
+    for model in models:
+        try:
+            info = litellm.get_model_info(model)
+        except Exception:
+            info = {}
+        if info.get("input_cost_per_token") is None or info.get("output_cost_per_token") is None:
+            missing.append(model)
+    return missing
 
 
 def _complete(model: str, temperature: float, messages: list[dict]) -> str:
@@ -222,7 +257,10 @@ def _complete(model: str, temperature: float, messages: list[dict]) -> str:
     try:
         _COST["cost"] += float(litellm.completion_cost(completion_response=resp) or 0.0)
     except Exception:
-        pass
+        # Unknown, not free: adding 0.0 would let an unpriced model win the
+        # cost objective. exec_eval fails the row and main() rejects the run.
+        _COST["unpriced"] = True
+        _RUN["unpriced_calls"] += 1
     text = str(resp.choices[0].message.content or "")
     # strip markdown fences / prose; keep the first statement
     import re
@@ -262,6 +300,7 @@ def exec_eval(func, config, example) -> ExampleResult:
     gold = example.expected_output
     _COST["cost"] = 0.0
     _COST["latency"] = 0.0
+    _COST["unpriced"] = False
     t0 = time.time()
     try:
         pred = func(question, "store")
@@ -269,6 +308,12 @@ def exec_eval(func, config, example) -> ExampleResult:
         success, err = True, None
     except Exception as e:
         pred, accuracy, success, err = "", 0.0, False, str(e)
+    if success and _COST["unpriced"] and _RUN["real"]:
+        # A real call LiteLLM could not price has an unknown cost. Fail the row.
+        # The SDK still averages a failed row's cost into the trial, so main()
+        # also exits nonzero; register a price or pick a priced model.
+        success = False
+        err = "cost could not be measured: LiteLLM has no price for this model"
     elapsed_s = time.time() - t0
     latency_ms = _COST["latency"] or elapsed_s * 1000.0  # metric unit: ms
     return ExampleResult(
@@ -342,7 +387,13 @@ def main() -> int:
         if not os.environ.get("TRAIGENT_API_KEY"):
             print("ERROR: TRAIGENT_API_KEY not set (.env).")
             return 2
+        unpriced = unpriced_models(CONFIG_SPACE["model"])
+        if unpriced:
+            print(f"ERROR: LiteLLM has no price for {unpriced}; their cost would be "
+                  "scored as 0.0. Register a price (litellm.register_model) or drop them.")
+            return 2
         os.environ["TRAIGENT_RUN_COST_LIMIT"] = str(args.budget)
+        _RUN["real"] = True
         # --real IS the user's approval: the human chose the flag and the budget.
         # An agent must never invoke --real on the user's behalf without first
         # showing the permutation count + budget and getting an explicit go.
@@ -372,6 +423,10 @@ def main() -> int:
     print("best_config:", getattr(result, "best_config", None) or getattr(result, "best_configuration", None))
     print("successful_trials:", getattr(result, "successful_trials", None),
           "/", getattr(result, "trials", None))
+    if args.real and _RUN["unpriced_calls"]:
+        print(f"[traigent] ERROR: {_RUN['unpriced_calls']} call(s) could not be priced, so "
+              "the cost objective is not trustworthy for this run. Do not promote its winner.")
+        return 1
     if args.real:
         # cloud_url GATE: with offline=False the run should be portal-tracked.
         # A missing cloud_url on a --real run is EASY TO MISS — it looks like a

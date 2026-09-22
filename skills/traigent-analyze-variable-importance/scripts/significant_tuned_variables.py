@@ -338,7 +338,11 @@ def permutation_spread_pvalue(
         # tolerance (as in scipy.stats.permutation_test), so tiny-scale metrics
         # do not collapse every permutation into a tie.
         if null_spread >= observed or math.isclose(
-            null_spread, observed, rel_tol=100 * sys.float_info.epsilon, abs_tol=0.0
+            null_spread, observed, rel_tol=100 * sys.float_info.epsilon,
+            # Roundoff in the spread grows with the group means, not the spread:
+            # large-offset objectives (token counts, latency in ms) need an
+            # absolute term scaled by the means, or true ties are dropped.
+            abs_tol=100 * sys.float_info.epsilon * max(abs(m) for m in group_means),
         ):
             at_or_above += 1
     return (at_or_above + 1) / (draws + 1)
@@ -581,46 +585,44 @@ def heldout_card_metrics(
     if not heldout:
         return (None, None)
 
-    baseline = heldout.get("baseline")
-    optimized = heldout.get("optimized")
-    delta = heldout.get("delta")
-    if not isinstance(baseline, dict):
-        baseline = {}
-    if not isinstance(optimized, dict):
-        optimized = {}
-    if not isinstance(delta, dict):
-        delta = {}
+    sections: dict[str, dict[str, Any]] = {}
+    for name in ("baseline", "optimized", "delta"):
+        section = heldout.get(name)
+        sections[name] = section if isinstance(section, dict) else {}
 
-    acc_delta = delta.get(objective)
-    if not isinstance(acc_delta, (int, float)):
-        base_acc = baseline.get(objective)
-        opt_acc = optimized.get(objective)
-        if isinstance(base_acc, (int, float)) and isinstance(opt_acc, (int, float)):
-            acc_delta = float(opt_acc) - float(base_acc)
-        else:
-            acc_delta = None
-    accuracy_pp = (
-        float(acc_delta) * 100.0 if isinstance(acc_delta, (int, float)) else None
-    )
+    def number(name: str, key: str, *, nonnegative: bool = False) -> float | None:
+        # Same rule as trial evidence: a NaN or boolean here would reach the
+        # video card as invalid JSON or a fake measurement.
+        return measured_number(
+            sections[name].get(key), f"heldout.{name}.{key}", nonnegative=nonnegative
+        )
 
-    cost_key = None
-    for key in ("cost", "mock_cost"):
-        if isinstance(baseline.get(key), (int, float)) or isinstance(
-            optimized.get(key), (int, float)
-        ):
-            cost_key = key
-            break
+    # Validate every present value, including ones a reported delta makes unused.
+    acc_delta = number("delta", objective)
+    base_acc = number("baseline", objective)
+    opt_acc = number("optimized", objective)
+    if acc_delta is None and base_acc is not None and opt_acc is not None:
+        acc_delta = opt_acc - base_acc
+    accuracy_pp = acc_delta * 100.0 if acc_delta is not None else None
+
+    costs = {
+        key: (
+            number("baseline", key, nonnegative=True),
+            number("optimized", key, nonnegative=True),
+            number("delta", key),
+        )
+        for key in ("cost", "mock_cost")
+    }
     cost_delta_pct = None
-    if cost_key:
-        base_cost = baseline.get(cost_key)
-        opt_cost = optimized.get(cost_key)
-        if isinstance(base_cost, (int, float)) and float(base_cost) != 0.0:
-            if isinstance(opt_cost, (int, float)):
-                cost_delta_pct = (
-                    (float(opt_cost) - float(base_cost)) / float(base_cost)
-                ) * 100.0
-            elif isinstance(delta.get(cost_key), (int, float)):
-                cost_delta_pct = (float(delta[cost_key]) / float(base_cost)) * 100.0
+    for base_cost, opt_cost, cost_delta in costs.values():
+        if base_cost is None and opt_cost is None:
+            continue
+        if base_cost is not None and base_cost != 0.0:
+            if opt_cost is not None:
+                cost_delta_pct = ((opt_cost - base_cost) / base_cost) * 100.0
+            elif cost_delta is not None:
+                cost_delta_pct = (cost_delta / base_cost) * 100.0
+        break
 
     return (accuracy_pp, cost_delta_pct)
 

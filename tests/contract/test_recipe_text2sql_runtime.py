@@ -42,6 +42,7 @@ def _run_main(
     monkeypatch.setitem(globals_, "build_db", lambda: None)
     monkeypatch.setitem(globals_, "check_golds", lambda: None)
     monkeypatch.setitem(globals_, "write_dataset", lambda: None)
+    monkeypatch.setitem(globals_, "unpriced_models", lambda models: [])
 
     class Decorated:
         def optimize_sync(self, **kwargs):
@@ -93,7 +94,82 @@ def test_extracted_sqlite_watchdog_aborts_recursive_query(recipe, tmp_path) -> N
         "WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers) "
         "SELECT sum(n) FROM numbers"
     ) == (False, None)
+    # Control: the same recursion, bounded, must succeed — otherwise the test
+    # would also pass if the authorizer simply denied recursive CTEs.
+    assert recipe._run(
+        "WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers "
+        "WHERE n < 10) SELECT sum(n) FROM numbers"
+    ) == (True, [(55,)])
     assert recipe._run("SELECT COUNT(*) FROM products") == (True, [(4,)])
+
+
+def test_extracted_run_helper_caps_blob_and_string_size(recipe, tmp_path) -> None:
+    # The step watchdog does not bound memory: one randomblob() call can
+    # allocate ~1 GB per trial. A length limit rejects it instead.
+    recipe._run.__globals__["DB_PATH"] = tmp_path / "store.sqlite"
+    recipe.build_db()
+    assert recipe._run("SELECT length(randomblob(100000000))") == (False, None)
+    assert recipe._run("SELECT length(randomblob(16))") == (True, [(16,)])
+    # A per-value cap alone does not bound the result: many large values in one
+    # row, or many rows, must also be refused.
+    wide = ", ".join(["randomblob(900000)"] * 60)
+    assert recipe._run(f"SELECT {wide}") == (False, None)
+    tall = ("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 80) "
+            "SELECT randomblob(900000) FROM n")
+    assert recipe._run(tall) == (False, None)
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT name, row_number() OVER (ORDER BY price) FROM products",
+        "SELECT name, rank() OVER (PARTITION BY category ORDER BY price) FROM products",
+        "SELECT name, lag(price) OVER (ORDER BY price) FROM products",
+        "SELECT json_object('p', price) ->> 'p' FROM products",
+        "SELECT json_object('p', price) -> 'p' FROM products",
+        "SELECT round(sqrt(price), 2), floor(price), power(price, 2) FROM products",
+    ],
+)
+def test_extracted_run_helper_accepts_read_only_sql_features(recipe, tmp_path, sql) -> None:
+    # Denying a read-only feature scores a correct prediction 0 without any
+    # error, which biases the accuracy objective rather than protecting the DB.
+    recipe._run.__globals__["DB_PATH"] = tmp_path / "store.sqlite"
+    recipe.build_db()
+    ok, rows = recipe._run(sql)
+    assert ok and len(rows) == 4, sql
+
+
+@pytest.mark.parametrize(("real", "success"), [(True, False), (False, True)])
+def test_extracted_evaluator_does_not_score_an_unpriced_real_call_as_free(
+    recipe, tmp_path, monkeypatch, real, success
+) -> None:
+    globals_ = recipe.exec_eval.__globals__
+    monkeypatch.setitem(globals_, "DB_PATH", tmp_path / "store.sqlite")
+    recipe.build_db()
+
+    def unpriceable(**kwargs):
+        raise ValueError("model not in the price map")
+
+    monkeypatch.setitem(globals_, "litellm", SimpleNamespace(
+        completion=lambda **kwargs: SimpleNamespace(choices=[SimpleNamespace(
+            message=SimpleNamespace(content="SELECT COUNT(*) FROM products"))]),
+        completion_cost=unpriceable,
+    ))
+    monkeypatch.setitem(recipe._RUN, "real", real)
+
+    def agent(question, db_id):
+        return recipe._complete("unpriced/model", 0.0, [{"role": "user", "content": question}])
+
+    example = SimpleNamespace(
+        input_data={"input": "How many products?"},
+        expected_output="SELECT COUNT(*) FROM products",
+        metadata={"id": "store_q0"},
+    )
+    result = recipe.exec_eval(agent, {}, example)
+    assert result.success is success
+    if not success:
+        # A real run fails the row loudly instead of reporting cost 0.0.
+        assert "cost" in result.error_message
 
 
 def test_extracted_real_recipe_missing_credentials_stops_before_optimization(
@@ -212,3 +288,62 @@ def test_extracted_recipe_keeps_mock_success_path(
     )
 
     assert _run_main(recipe, monkeypatch, result, "--mock") == 0
+
+
+def test_extracted_real_recipe_refuses_unpriced_models_before_spending(
+    recipe, tmp_path, monkeypatch, capsys
+) -> None:
+    globals_ = recipe.main.__globals__
+    monkeypatch.setitem(globals_, "build_db", lambda: None)
+    monkeypatch.setitem(globals_, "check_golds", lambda: None)
+    monkeypatch.setitem(globals_, "write_dataset", lambda: None)
+    monkeypatch.setitem(globals_, "unpriced_models", lambda models: [models[0]])
+    monkeypatch.setenv("TRAIGENT_API_KEY", "test-only-key")
+    monkeypatch.setattr(sys, "argv", ["quickstart_text2sql.py", "--real"])
+
+    def unexpected_optimization(*args, **kwargs):
+        pytest.fail("an unpriced model reached a paid run")
+
+    monkeypatch.setattr(recipe.traigent, "optimize", unexpected_optimization)
+    assert recipe.main() == 2
+    assert "no price" in capsys.readouterr().out
+
+
+def test_extracted_unpriced_models_flags_unknown_and_keeps_priced(recipe, monkeypatch) -> None:
+    prices = {"priced/model": {"input_cost_per_token": 1e-7, "output_cost_per_token": 2e-7},
+              "partial/model": {"input_cost_per_token": 1e-7}}
+
+    def get_model_info(model):
+        if model not in prices:
+            raise ValueError("unknown model")
+        return prices[model]
+
+    monkeypatch.setitem(recipe.unpriced_models.__globals__, "litellm",
+                        SimpleNamespace(get_model_info=get_model_info))
+    assert recipe.unpriced_models(["priced/model", "partial/model", "unknown/model"]) == [
+        "partial/model", "unknown/model"]
+
+
+def test_extracted_real_recipe_rejects_a_run_with_unpriced_calls(
+    recipe, monkeypatch, capsys
+) -> None:
+    monkeypatch.setitem(recipe.main.__globals__, "unpriced_models", lambda models: [])
+    monkeypatch.setitem(recipe._RUN, "unpriced_calls", 0)
+    result = SimpleNamespace(
+        cloud_url="https://portal.traigent.ai/runs/test",
+        metadata={}, best_config={"model": "test"}, successful_trials=1, trials=1,
+    )
+
+    class Decorated:
+        def optimize_sync(self, **kwargs):
+            recipe._RUN["unpriced_calls"] += 1  # one call LiteLLM could not price
+            return result
+
+    monkeypatch.setitem(recipe.main.__globals__, "build_db", lambda: None)
+    monkeypatch.setitem(recipe.main.__globals__, "check_golds", lambda: None)
+    monkeypatch.setitem(recipe.main.__globals__, "write_dataset", lambda: None)
+    monkeypatch.setattr(recipe.traigent, "optimize", lambda **kwargs: lambda f: Decorated())
+    monkeypatch.setenv("TRAIGENT_API_KEY", "test-only-key")
+    monkeypatch.setattr(sys, "argv", ["quickstart_text2sql.py", "--real"])
+    assert recipe.main() == 1
+    assert "could not be priced" in capsys.readouterr().out

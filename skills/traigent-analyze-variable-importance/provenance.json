@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1016f70cb93d68f4",
+  "doc_hash": "626c69a4bc72c448",
   "entries": [
     {
       "edit_id": "genesis",
@@ -106,6 +106,17 @@
       "doc_before_hash": "f1effe17f06364ab",
       "doc_after_hash": "1016f70cb93d68f4",
       "note": "Reject invalid objective and cost measurements before inference and count floating-point permutation ties with a scale-relative tolerance.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "pr300-followups-2026-09-23",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "1016f70cb93d68f4",
+      "doc_after_hash": "626c69a4bc72c448",
+      "note": "Scale the permutation tie tolerance by the group means so large-offset objectives keep true ties, and apply the finite-number rule to heldout report values.",
       "source_type": "agent"
     }
   ]
