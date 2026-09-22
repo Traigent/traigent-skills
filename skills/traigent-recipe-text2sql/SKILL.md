@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.8"
+  version: "1.0.9"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -103,8 +103,11 @@ Before the first paid run, execute every gold once and exclude, by id, any that 
 returns zero rows: an empty gold scores 1.0 for every wrong query that also returns nothing,
 and a gold that fails to run scores 0.0 for every candidate, so neither separates
 configurations. Report accuracy on the scoreable subset with that count. Run candidate SQL
-only on a read-only handle with a watchdog — never on the writable DB the agent could mutate
-(the runnable reference below does both).
+only on a read-only handle with a watchdog and a size cap — never on the writable DB the agent
+could mutate (the runnable reference below does both). Keep the read-only allowlist broad
+enough for correct answers (window functions, JSON `->`/`->>`, math built-ins): a denied
+feature scores a correct prediction 0 with no error. A real call LiteLLM cannot price has
+an unknown cost, not a zero one; the reference fails that row instead of reporting 0.0.
 
 ```python
 from collections import Counter

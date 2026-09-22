@@ -46,12 +46,18 @@ def test_infinite_objective_cannot_be_labelled_significant_via_python_api():
         module.analyze_importance(trials, None, 0.95, 999, "randomized")
 
 
-@pytest.mark.parametrize("scale", [1, 10**-15])
-def test_permutation_ties_match_exact_rational_oracle(monkeypatch, scale):
+@pytest.mark.parametrize(
+    ("scale", "offset"),
+    # Offsets 10 and 70 put the group means far above the spread, so roundoff
+    # in the means exceeds a spread-relative tolerance (large-offset objectives
+    # such as token counts or latency in ms).
+    [(1, 0), (10**-15, 0), (1, 10), (1, 70)],
+)
+def test_permutation_ties_match_exact_rational_oracle(monkeypatch, scale, offset):
     module = _load_module()
     # Enumerate all label shuffles instead of tolerating Monte Carlo error.
-    exact = [Fraction(i, 10) for i in (4, 5, 4, 1, 3, 7)]
-    values = [float(x) * scale for x in exact]
+    exact = [Fraction(i, 10) * Fraction(scale) + offset for i in (4, 5, 4, 1, 3, 7)]
+    values = [float(x) for x in exact]
     permutations = list(itertools.permutations(range(6)))
 
     def statistic(items):
@@ -481,3 +487,25 @@ def test_video_card_uses_per_knob_effect_not_run_level_delta(tmp_path: Path) -> 
     assert top["schema"]["accuracy_pp"] != top["style"]["accuracy_pp"]
     # Run-level delta is preserved once, at card level.
     assert payload["heldout_accuracy_pp"] == 18.0
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), True])
+@pytest.mark.parametrize("field", ["baseline", "optimized", "delta"])
+def test_invalid_heldout_numbers_cannot_reach_the_video_card(field, value):
+    module = _load_module()
+    heldout = {
+        "baseline": {"accuracy": 0.5, "cost": 1.0},
+        "optimized": {"accuracy": 0.6, "cost": 0.8},
+        "delta": {"accuracy": 0.1},
+    }
+    heldout[field]["accuracy"] = value
+    with pytest.raises(ValueError, match=rf"heldout\.{field}\.accuracy"):
+        module.heldout_card_metrics(heldout, "accuracy")
+
+
+def test_invalid_heldout_cost_cannot_reach_the_video_card():
+    module = _load_module()
+    heldout = {"baseline": {"accuracy": 0.5, "cost": float("nan")},
+               "optimized": {"accuracy": 0.6, "cost": 0.8}}
+    with pytest.raises(ValueError, match=r"heldout\.baseline\.cost"):
+        module.heldout_card_metrics(heldout, "accuracy")

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.2"
+  version: "1.1.3"
 ---
 
 # Show Significant Tuned Variables
@@ -58,7 +58,10 @@ The script accepts:
 Present objectives must be finite numeric values; booleans, NaN and infinity are rejected with
 the input file and row number. Supplied costs must also be finite and nonnegative. Missing costs
 remain unavailable, while a measured zero stays zero. Permutation comparisons count numerical
-roundoff ties conservatively using a relative tolerance, including for tiny-scale objectives.
+roundoff ties conservatively using a tolerance scaled by both the spread and the group means,
+so tiny-scale objectives and large-offset ones (token counts, latency in ms) both keep their
+true ties. Numbers in a `--heldout` report follow the same finite-number rule, and costs there
+must be nonnegative.
 
 An SDK result saved with `save_to=` (for example `traigent-runs/optimized-results.json` after the
 guided first run) is one JSON object whose `trials[]` already carry `config` and `metrics` (the

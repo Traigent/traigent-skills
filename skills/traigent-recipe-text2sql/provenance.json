@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9c828ebbde1432f3",
+  "doc_hash": "7fff34dc6dba2dbb",
   "reference_hashes": {
-    "references/quickstart_text2sql.md": "89d81d586ad56ad6"
+    "references/quickstart_text2sql.md": "5d2dbfd5b3390671"
   },
   "entries": [
     {
@@ -129,6 +129,17 @@
       "doc_before_hash": "5d0779ab3989b3c2",
       "doc_after_hash": "9c828ebbde1432f3",
       "note": "rebuild PR #292 on current main: teach vanilla agents to implement knobs before declaring them, require JSON-type-consistent spaces and defaults, keep evaluator metrics aligned with declared objectives, require unique example ids, and make every real walkthrough without cloud_url diagnose rejection or fallback and exit nonzero while preserving mock and linked-real success",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "pr300-followups-2026-09-23",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "9c828ebbde1432f3",
+      "doc_after_hash": "7fff34dc6dba2dbb",
+      "note": "Cap SQLite string/blob size, allow read-only window, JSON-arrow and math functions so correct SQL is not scored 0, and fail real rows whose call cost LiteLLM cannot price instead of reporting 0.0.",
       "source_type": "agent"
     }
   ]

@@ -93,7 +93,75 @@ def test_extracted_sqlite_watchdog_aborts_recursive_query(recipe, tmp_path) -> N
         "WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers) "
         "SELECT sum(n) FROM numbers"
     ) == (False, None)
+    # Control: the same recursion, bounded, must succeed — otherwise the test
+    # would also pass if the authorizer simply denied recursive CTEs.
+    assert recipe._run(
+        "WITH RECURSIVE numbers(n) AS (SELECT 1 UNION ALL SELECT n + 1 FROM numbers "
+        "WHERE n < 10) SELECT sum(n) FROM numbers"
+    ) == (True, [(55,)])
     assert recipe._run("SELECT COUNT(*) FROM products") == (True, [(4,)])
+
+
+def test_extracted_run_helper_caps_blob_and_string_size(recipe, tmp_path) -> None:
+    # The step watchdog does not bound memory: one randomblob() call can
+    # allocate ~1 GB per trial. A length limit rejects it instead.
+    recipe._run.__globals__["DB_PATH"] = tmp_path / "store.sqlite"
+    recipe.build_db()
+    assert recipe._run("SELECT length(randomblob(100000000))") == (False, None)
+    assert recipe._run("SELECT length(randomblob(16))") == (True, [(16,)])
+
+
+@pytest.mark.parametrize(
+    "sql",
+    [
+        "SELECT name, row_number() OVER (ORDER BY price) FROM products",
+        "SELECT name, rank() OVER (PARTITION BY category ORDER BY price) FROM products",
+        "SELECT name, lag(price) OVER (ORDER BY price) FROM products",
+        "SELECT json_object('p', price) ->> 'p' FROM products",
+        "SELECT json_object('p', price) -> 'p' FROM products",
+        "SELECT round(sqrt(price), 2), floor(price), power(price, 2) FROM products",
+    ],
+)
+def test_extracted_run_helper_accepts_read_only_sql_features(recipe, tmp_path, sql) -> None:
+    # Denying a read-only feature scores a correct prediction 0 without any
+    # error, which biases the accuracy objective rather than protecting the DB.
+    recipe._run.__globals__["DB_PATH"] = tmp_path / "store.sqlite"
+    recipe.build_db()
+    ok, rows = recipe._run(sql)
+    assert ok and len(rows) == 4, sql
+
+
+@pytest.mark.parametrize(("real", "success"), [(True, False), (False, True)])
+def test_extracted_evaluator_does_not_score_an_unpriced_real_call_as_free(
+    recipe, tmp_path, monkeypatch, real, success
+) -> None:
+    globals_ = recipe.exec_eval.__globals__
+    monkeypatch.setitem(globals_, "DB_PATH", tmp_path / "store.sqlite")
+    recipe.build_db()
+
+    def unpriceable(**kwargs):
+        raise ValueError("model not in the price map")
+
+    monkeypatch.setitem(globals_, "litellm", SimpleNamespace(
+        completion=lambda **kwargs: SimpleNamespace(choices=[SimpleNamespace(
+            message=SimpleNamespace(content="SELECT COUNT(*) FROM products"))]),
+        completion_cost=unpriceable,
+    ))
+    monkeypatch.setitem(recipe._RUN, "real", real)
+
+    def agent(question, db_id):
+        return recipe._complete("unpriced/model", 0.0, [{"role": "user", "content": question}])
+
+    example = SimpleNamespace(
+        input_data={"input": "How many products?"},
+        expected_output="SELECT COUNT(*) FROM products",
+        metadata={"id": "store_q0"},
+    )
+    result = recipe.exec_eval(agent, {}, example)
+    assert result.success is success
+    if not success:
+        # A real run fails the row loudly instead of reporting cost 0.0.
+        assert "cost" in result.error_message
 
 
 def test_extracted_real_recipe_missing_credentials_stops_before_optimization(
