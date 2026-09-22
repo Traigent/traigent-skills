@@ -42,6 +42,7 @@ def _run_main(
     monkeypatch.setitem(globals_, "build_db", lambda: None)
     monkeypatch.setitem(globals_, "check_golds", lambda: None)
     monkeypatch.setitem(globals_, "write_dataset", lambda: None)
+    monkeypatch.setitem(globals_, "unpriced_models", lambda models: [])
 
     class Decorated:
         def optimize_sync(self, **kwargs):
@@ -109,6 +110,13 @@ def test_extracted_run_helper_caps_blob_and_string_size(recipe, tmp_path) -> Non
     recipe.build_db()
     assert recipe._run("SELECT length(randomblob(100000000))") == (False, None)
     assert recipe._run("SELECT length(randomblob(16))") == (True, [(16,)])
+    # A per-value cap alone does not bound the result: many large values in one
+    # row, or many rows, must also be refused.
+    wide = ", ".join(["randomblob(900000)"] * 60)
+    assert recipe._run(f"SELECT {wide}") == (False, None)
+    tall = ("WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 80) "
+            "SELECT randomblob(900000) FROM n")
+    assert recipe._run(tall) == (False, None)
 
 
 @pytest.mark.parametrize(
@@ -280,3 +288,62 @@ def test_extracted_recipe_keeps_mock_success_path(
     )
 
     assert _run_main(recipe, monkeypatch, result, "--mock") == 0
+
+
+def test_extracted_real_recipe_refuses_unpriced_models_before_spending(
+    recipe, tmp_path, monkeypatch, capsys
+) -> None:
+    globals_ = recipe.main.__globals__
+    monkeypatch.setitem(globals_, "build_db", lambda: None)
+    monkeypatch.setitem(globals_, "check_golds", lambda: None)
+    monkeypatch.setitem(globals_, "write_dataset", lambda: None)
+    monkeypatch.setitem(globals_, "unpriced_models", lambda models: [models[0]])
+    monkeypatch.setenv("TRAIGENT_API_KEY", "test-only-key")
+    monkeypatch.setattr(sys, "argv", ["quickstart_text2sql.py", "--real"])
+
+    def unexpected_optimization(*args, **kwargs):
+        pytest.fail("an unpriced model reached a paid run")
+
+    monkeypatch.setattr(recipe.traigent, "optimize", unexpected_optimization)
+    assert recipe.main() == 2
+    assert "no price" in capsys.readouterr().out
+
+
+def test_extracted_unpriced_models_flags_unknown_and_keeps_priced(recipe, monkeypatch) -> None:
+    prices = {"priced/model": {"input_cost_per_token": 1e-7, "output_cost_per_token": 2e-7},
+              "partial/model": {"input_cost_per_token": 1e-7}}
+
+    def get_model_info(model):
+        if model not in prices:
+            raise ValueError("unknown model")
+        return prices[model]
+
+    monkeypatch.setitem(recipe.unpriced_models.__globals__, "litellm",
+                        SimpleNamespace(get_model_info=get_model_info))
+    assert recipe.unpriced_models(["priced/model", "partial/model", "unknown/model"]) == [
+        "partial/model", "unknown/model"]
+
+
+def test_extracted_real_recipe_rejects_a_run_with_unpriced_calls(
+    recipe, monkeypatch, capsys
+) -> None:
+    monkeypatch.setitem(recipe.main.__globals__, "unpriced_models", lambda models: [])
+    monkeypatch.setitem(recipe._RUN, "unpriced_calls", 0)
+    result = SimpleNamespace(
+        cloud_url="https://portal.traigent.ai/runs/test",
+        metadata={}, best_config={"model": "test"}, successful_trials=1, trials=1,
+    )
+
+    class Decorated:
+        def optimize_sync(self, **kwargs):
+            recipe._RUN["unpriced_calls"] += 1  # one call LiteLLM could not price
+            return result
+
+    monkeypatch.setitem(recipe.main.__globals__, "build_db", lambda: None)
+    monkeypatch.setitem(recipe.main.__globals__, "check_golds", lambda: None)
+    monkeypatch.setitem(recipe.main.__globals__, "write_dataset", lambda: None)
+    monkeypatch.setattr(recipe.traigent, "optimize", lambda **kwargs: lambda f: Decorated())
+    monkeypatch.setenv("TRAIGENT_API_KEY", "test-only-key")
+    monkeypatch.setattr(sys, "argv", ["quickstart_text2sql.py", "--real"])
+    assert recipe.main() == 1
+    assert "could not be priced" in capsys.readouterr().out

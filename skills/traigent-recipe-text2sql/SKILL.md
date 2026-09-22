@@ -107,7 +107,9 @@ only on a read-only handle with a watchdog and a size cap — never on the writa
 could mutate (the runnable reference below does both). Keep the read-only allowlist broad
 enough for correct answers (window functions, JSON `->`/`->>`, math built-ins): a denied
 feature scores a correct prediction 0 with no error. A real call LiteLLM cannot price has
-an unknown cost, not a zero one; the reference fails that row instead of reporting 0.0.
+an unknown cost, not a zero one: the reference refuses a `--real` run whose models have no
+LiteLLM price, and exits nonzero if a call still cannot be priced. Failing only that row is not
+enough, because the SDK averages a failed row's reported cost into the trial.
 
 ```python
 from collections import Counter
