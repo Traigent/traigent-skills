@@ -112,13 +112,15 @@ No `get_config()` call. Traigent uses AST (Abstract Syntax Tree) transformation 
 def answer_question(question: str) -> str:
     model = "gpt-4o-mini"      # rewritten per trial: the name matches a config key
     temperature = 0.7          # rewritten per trial
-    response = openai.chat.completions.create(
+    response = litellm.completion(
         model=model,
         temperature=temperature,
         messages=[{"role": "user", "content": question}],
     )
     return response.choices[0].message.content
 ```
+
+> Mock mode covers LiteLLM/LangChain calls only — a raw `openai` / `anthropic` client in the body makes real, billable calls even during a "keyless" mock dry-run.
 
 ### How It Works
 
@@ -135,7 +137,7 @@ def answer_question(question: str) -> str:
 
 ### Limitations
 
-- Works best with direct API calls (e.g., `openai.chat.completions.create(...)`)
+- Works with any call whose arguments come from named locals; keep `litellm.completion` in the body for a keyless mock dry-run
 - May not detect LLM calls that are deeply nested or dynamically constructed
 - Context mode gives more explicit control and is recommended for production
 
