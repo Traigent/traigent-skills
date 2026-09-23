@@ -476,6 +476,22 @@ def test_a_misordered_but_stable_scorer_takes_the_scorer_branch() -> None:
     )
     assert step["branch"] == "d"
     assert "did not rank a known-good answer above a known-bad one" in step["line"]
+    # It IS repeatable: the remedy is what it measures, not its repeatability.
+    assert "make it repeatable" not in step["line"]
+    assert "fix what it measures" in step["line"]
+
+
+def test_an_unstable_scorer_is_told_to_make_it_repeatable() -> None:
+    entry = _entry([_knob("model", "read")])
+    unstable = {
+        "ran": True,
+        "scores": {"good": [0.1, 0.9], "partial": [0.5], "bad": [0.0]},
+        "errors": [],
+    }
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [_dataset(80, 40)], unstable, _scorer()
+    )
+    assert "make it repeatable" in step["line"]
 
 
 def test_the_dataset_branch_never_outranks_an_unreliable_scorer() -> None:

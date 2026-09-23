@@ -1906,6 +1906,18 @@ def probe_symptom(metrics: dict) -> str:
     )
 
 
+def probe_remedy(metrics: dict) -> str:
+    """What to do about the symptom ``probe_symptom`` names.
+
+    An unstable scorer needs to be made repeatable; a stable one that ranks a
+    known-bad answer at or above a known-good one IS repeatable, and what it
+    measures is what needs fixing.
+    """
+    if not metrics["stable"]:
+        return "make it repeatable"
+    return "fix what it measures"
+
+
 # --------------------------------------------------------------------------
 # setup checks
 # --------------------------------------------------------------------------
@@ -2467,13 +2479,14 @@ def next_step(
 
     if metrics["verdict"] == "ran" and not (metrics["stable"] and metrics["ordered"]):
         symptom = probe_symptom(metrics)
+        remedy = probe_remedy(metrics)
         return {
             "branch": "d",
             "skills": ["traigent-eval-build", "traigent-eval-audit"],
             "line": (
                 f"`{probed.function}` at {probed.file}:{probed.line} {symptom}, so a "
-                "configuration comparison would be measuring the scorer — make it "
-                "repeatable with `traigent-eval-build`, then assess it with "
+                f"configuration comparison would be measuring the scorer — {remedy} "
+                "with `traigent-eval-build`, then assess it with "
                 "`traigent-eval-audit`."
             ),
         }

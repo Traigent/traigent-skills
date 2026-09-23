@@ -55,6 +55,7 @@ from audit_project import (  # noqa: E402
     install_network_guard,
     printable_text,
     probe_metrics,
+    probe_remedy,
     probe_symptom,
     verify_network_guard,
 )
@@ -421,6 +422,7 @@ class Tier1:
     # read with the same rule Tier 1 used, never just whether it ran.
     probe_verdict: str
     probe_symptom: str
+    probe_remedy: str
     model_ids: list[str]
     dataset_candidates: int
     python_files: int
@@ -467,7 +469,7 @@ def load_tier1(path: Path) -> Tier1:
     keys = setup.get("keys") or {}
     next_step = report.get("next_step") or {}
     metrics = probe_metrics(probe) if probe else {"verdict": "none"}
-    symptom = ""
+    symptom = remedy = ""
     if metrics["verdict"] == "none":
         verdict = "none"
     elif metrics["verdict"] != "ran":
@@ -477,6 +479,7 @@ def load_tier1(path: Path) -> Tier1:
     else:
         verdict = "unreliable"
         symptom = probe_symptom(metrics)
+        remedy = probe_remedy(metrics)
 
     return Tier1(
         path=path,
@@ -492,6 +495,7 @@ def load_tier1(path: Path) -> Tier1:
                  if isinstance(item, dict)],
         probe_verdict=verdict,
         probe_symptom=symptom,
+        probe_remedy=remedy,
         model_ids=[str(item) for item in (setup.get("model_ids_declared") or [])],
         dataset_candidates=int(files.get("dataset_candidates") or 0),
         python_files=int(files.get("python_parsed") or 0),
@@ -531,8 +535,8 @@ def motivation(check_id: str, tier1: Tier1, run_id: str | None) -> str:
             basis = (
                 "Tier 1 repeat-scored your scorer and it is NOT reliable: it "
                 f"{tier1.probe_symptom}, so a configuration comparison would be "
-                "measuring the scorer. Make it repeatable first with "
-                "`traigent-eval-build`"
+                "measuring the scorer. First "
+                f"{tier1.probe_remedy}, with `traigent-eval-build`"
             )
         elif tier1.probe_verdict == "repeatable":
             basis = (

@@ -10,9 +10,10 @@ from __future__ import annotations
 
 import json
 import re
+import shutil
 from pathlib import Path
 
-from conftest import _tier1_report, recorded_argv, run_tier2
+from conftest import FIXTURES, _tier1_report, recorded_argv, run_tier2
 from tier2_fake_backend import LOCAL_SESSION_ID, RUN_ID, FakeBackend
 
 
@@ -255,6 +256,26 @@ def test_an_unrepeatable_scorer_is_never_called_repeatable(weak_tier1: Path) -> 
     assert "found it repeatable" not in card
     assert "NOT reliable" in card
     assert re.search(r"returned \d+ different scores for the same pair", card), card
+
+
+def test_a_stable_but_misranking_scorer_is_told_to_fix_what_it_measures(
+    tmp_path: Path,
+) -> None:
+    """A constant scorer is perfectly repeatable and ranks nothing: the card
+    must say that, not tell the user to make it repeatable."""
+    project = tmp_path / "constant"
+    shutil.copytree(FIXTURES / "healthy", project)
+    (project / "scorer.py").write_text(
+        "def score(output, expected):\n    return 0.5\n", encoding="utf-8"
+    )
+    report = _tier1_report(project, tmp_path / "tier1")
+    completed = run_tier2("--from-audit", str(report), "--run-id", RUN_ID)
+    assert completed.returncode == 0, completed.stderr
+    card = _card(completed.stdout, "evaluator-quality")
+    assert "did not rank a known-good answer above a known-bad one" in card
+    assert "Make it repeatable" not in card
+    assert "found it repeatable" not in card
+    assert "fix what it measures" in card
 
 
 def test_a_repeatable_scorer_is_still_called_repeatable(healthy_tier1: Path) -> None:
