@@ -246,6 +246,8 @@ import traigent
 from traigent import Choices, Range
 from traigent.generation import DatasetGrowthOptions
 
+RETRIES = 3
+
 @traigent.optimize(
     objectives=["accuracy"],
     model=Choices(["gpt-4o-mini", "gpt-4o"]),
@@ -253,6 +255,7 @@ from traigent.generation import DatasetGrowthOptions
     top_p=traigent.Range(0.1, 1.0),
     seed_window=(0, 10),
     max_trails=10,
+    retries_per_trail=RETRIES,
 )
 def f(x):
     return x
@@ -274,8 +277,56 @@ def _planted_kwarg_facts(tmp_path: Path) -> dict[str, ContractFact]:
 def test_optimize_inline_tuned_variables_are_not_kwarg_facts(tmp_path: Path) -> None:
     # Inline tuned variables are free-form names, so they are not facts. A list
     # still is one: the SDK rejects `x=[1, 2]` as an unknown keyword on purpose.
+    # A name bound to a plain value (RETRIES = 3) is still checked.
     facts = _planted_kwarg_facts(tmp_path)
-    assert facts["traigent.optimize"].kwargs == ("objectives", "max_trails")
+    assert facts["traigent.optimize"].kwargs == (
+        "objectives",
+        "max_trails",
+        "retries_per_trail",
+    )
+
+
+# SDK-valid tuned-variable shapes the extractor must not report: the SDK decides
+# from the runtime value, so indirection through a name or an import alias must
+# not turn a correct knob into "kwarg not accepted".
+_MUST_ACCEPT_SHAPES = {
+    "name bound to a range": (
+        "from traigent import Choices\n"
+        'MODELS = Choices(["gpt-4o-mini", "gpt-4o"])\n',
+        "model=MODELS",
+    ),
+    "aliased range import": (
+        "from traigent import Choices as C\n",
+        'model=C(["gpt-4o-mini", "gpt-4o"])',
+    ),
+    "tuple of bound numbers": (
+        "LO, HI = 0.0, 1.0\n",
+        "temperature=(LO, HI)",
+    ),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_MUST_ACCEPT_SHAPES))
+def test_sdk_valid_inline_tuned_variable_shapes_pass_the_kwargs_gate(
+    tmp_path: Path, shape: str
+) -> None:
+    pytest.importorskip("traigent")
+    prelude, knob = _MUST_ACCEPT_SHAPES[shape]
+    path = tmp_path / "SKILL.md"
+    path.write_text(
+        "```python\nimport traigent\n"
+        + prelude
+        + f'\n@traigent.optimize(objectives=["accuracy"], {knob})\n'
+        + "def f(x):\n    return x\n```\n",
+        encoding="utf-8",
+    )
+    facts = [
+        fact
+        for fact in collect_file("demo", path)
+        if fact.kind == "call_kwargs" and fact.target == "traigent.optimize"
+    ]
+    assert [fact.kwargs for fact in facts] == [("objectives",)]
+    verify_python_fact(facts[0], repo_root=None, sdk_version="installed")
 
 
 @pytest.mark.parametrize(

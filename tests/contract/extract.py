@@ -452,17 +452,25 @@ def _extract_python_block(
                 )
                 imported_roots[alias.asname or alias.name] = f"{module}.{alias.name}"
 
+    bindings = _block_bindings(tree)
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
         target = _call_target(node.func, imported_roots)
         # `@traigent.optimize(temperature=Range(0.0, 1.0))` declares a tuned
         # variable, not an option: its name is free-form, so it is not a fact.
+        # Only a keyword whose value is provably NOT a tuned variable becomes
+        # one; an undecidable value (an unbound name, an unknown call) is left
+        # out rather than reported as a misspelled option.
         kwargs = tuple(
             keyword.arg
             for keyword in node.keywords
             if keyword.arg
-            and not (target in _OPTIMIZE_TARGETS and _is_inline_param(keyword.value))
+            and (
+                target not in _OPTIMIZE_TARGETS
+                or _inline_param_kind(keyword.value, imported_roots, bindings)
+                is False
+            )
         )
         if not kwargs:
             continue
@@ -661,31 +669,142 @@ _INLINE_PARAM_CLASSES = frozenset(
 )
 
 
-def _is_inline_param(value: ast.expr) -> bool:
-    """Mirror the SDK's ``is_inline_param_definition``: a ParameterRange
-    (``Choices([...])``, ``Range.temperature()``, ``traigent.IntRange(1, 5)``)
-    or a two-number tuple. A list is NOT one: the SDK rejects ``x=[1, 2]`` as an
-    unknown keyword so a typo like ``objectivs=[...]`` cannot pass as a knob."""
-    if isinstance(value, ast.Tuple):
-        return len(value.elts) == 2 and all(_is_number(elt) for elt in value.elts)
-    if not isinstance(value, ast.Call):
+# A name bound to something that is certainly not a tuned variable.
+_NOT_INLINE = ast.Constant(value=None)
+# A name whose bound value the block does not show (import, loop target, ...).
+_UNKNOWN = ast.Constant(value=Ellipsis)
+_NOT_INLINE_LITERALS = (
+    ast.Constant,
+    ast.List,
+    ast.Dict,
+    ast.Set,
+    ast.JoinedStr,
+    ast.Lambda,
+    ast.ListComp,
+    ast.DictComp,
+    ast.SetComp,
+)
+_MAX_BINDING_DEPTH = 8
+_NOT_INLINE_BUILTINS = frozenset(
+    {"dict", "list", "set", "str", "int", "float", "bool", "tuple", "sorted", "len"}
+)
+
+
+def _block_bindings(tree: ast.AST) -> dict[str, list[ast.expr]]:
+    """Every value a name is bound to anywhere in the block."""
+    bindings: dict[str, list[ast.expr]] = {}
+
+    def bind(target: ast.expr, value: ast.expr) -> None:
+        if isinstance(target, ast.Name):
+            bindings.setdefault(target.id, []).append(value)
+        elif isinstance(target, (ast.Tuple, ast.List)):
+            same_shape = isinstance(value, (ast.Tuple, ast.List)) and len(
+                value.elts
+            ) == len(target.elts)
+            for index, element in enumerate(target.elts):
+                if isinstance(element, ast.Starred):
+                    element = element.value
+                bind(element, value.elts[index] if same_shape else _UNKNOWN)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            for target in node.targets:
+                bind(target, node.value)
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            bind(node.target, node.value)
+        elif isinstance(node, (ast.AugAssign, ast.For, ast.AsyncFor)):
+            bind(node.target, _UNKNOWN)
+        elif isinstance(node, ast.NamedExpr):
+            bind(node.target, node.value)
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            bindings.setdefault(node.name, []).append(_NOT_INLINE)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            for alias in node.names:
+                name = alias.asname or alias.name.split(".", 1)[0]
+                bindings.setdefault(name, []).append(_UNKNOWN)
+    return bindings
+
+
+def _inline_param_kind(
+    value: ast.expr,
+    imported_roots: dict[str, str],
+    bindings: dict[str, list[ast.expr]],
+    depth: int = 0,
+) -> bool | None:
+    """Mirror the SDK's ``is_inline_param_definition`` on source: True for a
+    ParameterRange (``Choices([...])``, ``C([...])`` after ``import Choices as
+    C``, ``Range.temperature()``) or a two-number tuple, including through a
+    name bound in the same block; False when the value is certainly not one;
+    None when the block cannot tell. A list is NOT one: the SDK rejects
+    ``x=[1, 2]`` as an unknown keyword so a typo like ``objectivs=[...]``
+    cannot pass as a knob."""
+    if depth > _MAX_BINDING_DEPTH or value is _UNKNOWN:
+        return None
+    if value is _NOT_INLINE or isinstance(value, _NOT_INLINE_LITERALS):
         return False
-    current: ast.AST = value.func
-    while isinstance(current, ast.Attribute):
-        if current.attr in _INLINE_PARAM_CLASSES:
+    if isinstance(value, ast.Name):
+        bound = bindings.get(value.id)
+        if not bound:
+            return None
+        kinds = {
+            _inline_param_kind(item, imported_roots, bindings, depth + 1)
+            for item in bound
+        }
+        return kinds.pop() if len(kinds) == 1 else None
+    if isinstance(value, ast.Tuple):
+        if len(value.elts) != 2:
+            return False
+        kinds = {
+            _number_kind(element, bindings, depth) for element in value.elts
+        }
+        if kinds == {True}:
             return True
+        return False if False in kinds else None
+    if isinstance(value, ast.Call):
+        return _is_param_range_call(value.func, imported_roots)
+    return None
+
+
+def _is_param_range_call(func: ast.expr, imported_roots: dict[str, str]) -> bool | None:
+    names: list[str] = []
+    current: ast.AST = func
+    while isinstance(current, ast.Attribute):
+        names.append(current.attr)
         current = current.value
-    return isinstance(current, ast.Name) and current.id in _INLINE_PARAM_CLASSES
+    if isinstance(current, ast.Name):
+        names.append(current.id)
+    resolved = _call_target(func, imported_roots)
+    if resolved:
+        names.extend(resolved.split("."))
+    if any(name in _INLINE_PARAM_CLASSES for name in names):
+        return True
+    if resolved and _rooted_at_traigent(resolved) and resolved.rsplit(".", 1)[-1][:1].isupper():
+        # Another traigent class, e.g. EvaluationOptions(...): not a range.
+        return False
+    if isinstance(func, ast.Name) and func.id in _NOT_INLINE_BUILTINS:
+        return False
+    # A traigent factory function or an unknown helper might return a range.
+    return None
 
 
-def _is_number(node: ast.expr) -> bool:
+def _number_kind(
+    node: ast.expr, bindings: dict[str, list[ast.expr]], depth: int
+) -> bool | None:
+    if depth > _MAX_BINDING_DEPTH or node is _UNKNOWN:
+        return None
     if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
         node = node.operand
-    return (
-        isinstance(node, ast.Constant)
-        and isinstance(node.value, (int, float))
-        and not isinstance(node.value, bool)
-    )
+    if isinstance(node, ast.Constant):
+        return isinstance(node.value, (int, float)) and not isinstance(
+            node.value, bool
+        )
+    if isinstance(node, ast.Name):
+        bound = bindings.get(node.id)
+        if not bound:
+            return None
+        kinds = {_number_kind(item, bindings, depth + 1) for item in bound}
+        return kinds.pop() if len(kinds) == 1 else None
+    return None
 
 
 def _call_target(func: ast.AST, imported_roots: dict[str, str]) -> str | None:
