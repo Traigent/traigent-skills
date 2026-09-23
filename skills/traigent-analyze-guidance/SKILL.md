@@ -57,8 +57,12 @@ the service computes; it is not a local calculator, and a plausible-looking numb
 here is a fabricated one.
 
 **When the service returns no economics result:** say so plainly — "Traigent hasn't returned
-a budget for this run, so I don't have one to give you" — and stop, or continue in Mode C
-with **no budget number at all**. Diagnosis without a budget is a valid answer; an invented
+a budget for this run, so I don't have one to give you" — then present the options and the
+approval ask with **no budget number at all** of your own (no daily budget, floor, or payback
+figure). Still state the run's own spend cap and its dry-run cost estimate in that ask, and say
+that the Traigent service sizes the budget and has not returned one yet; do not present `$0` as
+the recommendation unless the service returns `$0`. Without a run to approve, continue in
+Mode C, still with no budget number. Diagnosis without a budget is a valid answer; an invented
 budget is not. There is no local fallback calculator, and until the economics service ships
 there may simply be no number available.
 
