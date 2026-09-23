@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.10"
+  version: "1.0.11"
 ---
 
 # Traigent Build Evaluator
@@ -19,7 +19,7 @@ Use this skill after the metric is chosen and the user needs concrete evaluator 
 
 - For metric selection first, use `traigent-eval-choose-metric`.
 - Mock/offline check before paid runs with `TRAIGENT_OFFLINE_MODE`, `enable_mock_mode_for_quickstart()`, and a tiny local dataset.
-- Ask for explicit approval and set `TRAIGENT_RUN_COST_LIMIT` before any evaluator calls paid LLMs or backend services.
+- Ask for explicit approval and set `TRAIGENT_RUN_COST_LIMIT` before any evaluator calls paid LLMs or backend services. For custom evaluators that make several calls per row, see the cost-metering caveat in `references/evaluator-templates.md`: on traigent <= 0.27.0 only the first LLM call per row is metered.
 - A judge call placed inside `metric_functions` is **not** in the SDK's cost ledger: on 0.27.0 the local evaluator settles an example's cost from the agent's captured responses before it calls your metric functions, and `TRAIGENT_RUN_COST_LIMIT` admits trials on that recorded cost (Traigent/Traigent#2297). Budget judge calls as their own line (calls per scored row × price × rows × trials), cap them in your own code, and never rely on the SDK limit to stop judge spend.
 - Disjointness invariant: any slice used to tune a threshold, rubric, or metric must be disjoint from the holdout used to claim the result (see `traigent-eval-audit`). The example dataset paths below stand for your *tuning* slice.
 - For full templates by method, read `references/evaluator-templates.md`.
@@ -34,9 +34,11 @@ Prefer the smallest evaluator surface that measures the chosen objective.
 | 2 | `scoring_function` | `scoring_function(output, expected) -> float` | One numeric score per example is enough. |
 | 3 | `metric_functions` | `{name: (output, expected, input_data) -> float}` | Multiple named metrics or input-aware checks are needed. |
 | 4 | `custom_evaluator` | `custom_evaluator(func, config, example) -> ExampleResult` | The evaluator must call the function itself, collect timing/cost, run a judge, repeat samples, or fail closed. |
-| 5 | `BaseEvaluator` subclass | `async evaluate(self, func, config, dataset, *, sample_lease=None, progress_callback=None) -> EvaluationResult` | You need full batch control, custom concurrency, leases, progress callbacks, or a reusable evaluator class. |
+| 5 | `BaseEvaluator` subclass | not wireable through `@traigent.optimize` on traigent <= 0.27.0 | The `custom_evaluator=` evaluation option accepts only a `(func, config, example)` callable and the decorator's `evaluator=` accepts only an external-service evaluator. Tier 4 is the highest tier you can wire today. |
 
 The built-in `latency` metric uses the bare key `latency`, reported in milliseconds on SDKs after 0.22.0 (see version-matrix: `latency-unit`).
+
+A `custom_evaluator` does not produce `latency`. If `latency` is an objective, put `metrics["latency"]` (milliseconds) on every `ExampleResult`, or the objective reads 0.0 on every trial and silently ranks nothing. `ExampleResult.execution_time` is in seconds, so convert before copying it across.
 
 **No `expected_output` at all?** Tiers 1-3 assume a gold label to compare against. For
 subjective/generative tasks with no labels, skip straight to Tier 4 with the **"LLM judge with
@@ -51,7 +53,8 @@ import traigent
 from traigent.api.decorators import EvaluationOptions
 
 def exact_match_score(output, expected) -> float:
-    return 1.0 if str(output).strip() == str(expected).strip() else 0.0
+    # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
+    return 1.0 if str(output).strip().lower() == str(expected).strip().lower() else 0.0
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
@@ -76,6 +79,7 @@ import json
 
 import traigent
 from traigent.api.decorators import EvaluationOptions
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 def valid_json_metric(output, expected, input_data) -> float:
     try:
@@ -105,7 +109,12 @@ def expected_field_metric(output, expected, input_data) -> float:
             "label_accuracy": expected_field_metric,
         },
     ),
-    objectives=["label_accuracy", "valid_json"],
+    # Custom metric names need a declared orientation; only built-ins such as
+    # accuracy, cost and latency have one.
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="label_accuracy", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="valid_json", orientation="maximize", weight=1.0),
+    ]),
     configuration_space={"temperature": [0.0, 0.2]},
 )
 def extract(text: str) -> str:
@@ -131,6 +140,7 @@ read the key the dataset contract routed there (see `traigent-dataset-curate` fo
 
 ```python
 from text2sql.execaccuracy import execution_accuracy  # opens metadata["db_path"], runs pred vs gold
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 def exec_acc(output, expected, metadata) -> float:   # NAME the param `metadata`
     return execution_accuracy(output, expected["sql"], metadata["db_path"])
@@ -138,9 +148,11 @@ def exec_acc(output, expected, metadata) -> float:   # NAME the param `metadata`
 @traigent.optimize(
     evaluation=EvaluationOptions(
         eval_dataset="eval/salesco_30.jsonl",        # rows: {"input": {...}, "output": {"sql": "<gold>"}, "db_path": "..."}
-        metric_functions={"exec_acc": exec_acc},     # Tier 3 — no climb to Tier 4/5 needed
+        metric_functions={"exec_acc": exec_acc},     # Tier 3 — no climb to Tier 4 needed
     ),
-    objectives=["exec_acc"],
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="exec_acc", orientation="maximize", weight=1.0),  # custom name: declare it
+    ]),
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def to_sql(question: str, schema: str = "", db_id: str = "") -> str:
@@ -148,8 +160,8 @@ def to_sql(question: str, schema: str = "", db_id: str = "") -> str:
 ```
 
 A param named `input_data` would receive the nested `input` dict, **not** `db_path` — that is the
-silent trap. (Tier-4/5 alternative: read `example.metadata["db_path"]` directly inside a
-`custom_evaluator` / `BaseEvaluator`.)
+silent trap. (Tier-4 alternative: read `example.metadata["db_path"]` directly inside a
+`custom_evaluator`.)
 
 ### Tier 4: custom evaluator
 
@@ -164,7 +176,8 @@ def evaluate_answer(func, config, example) -> ExampleResult:
     started = time.perf_counter()
     try:
         prediction = func(**example.input_data)
-        score = 1.0 if str(prediction).strip() == str(example.expected_output).strip() else 0.0
+        # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
+        score = 1.0 if str(prediction).strip().lower() == str(example.expected_output).strip().lower() else 0.0
         error_message = None
         success = True
     except Exception as exc:
@@ -173,13 +186,14 @@ def evaluate_answer(func, config, example) -> ExampleResult:
         error_message = str(exc)
         success = False
 
+    elapsed_s = time.perf_counter() - started
     return ExampleResult(
         example_id=str(example.metadata.get("id", "unknown")),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=prediction,
-        metrics={"accuracy": score},
-        execution_time=time.perf_counter() - started,
+        metrics={"accuracy": score, "latency": elapsed_s * 1000.0},  # latency objective is milliseconds
+        execution_time=elapsed_s,  # ExampleResult field is seconds
         success=success,
         error_message=error_message,
         metadata={"method": "deterministic_exact_match"},
@@ -201,56 +215,9 @@ def answer(question: str) -> str:
     return resp.choices[0].message.content
 ```
 
-### Tier 5: BaseEvaluator subclass
+### Tier 5: BaseEvaluator subclass (not wireable today)
 
-```python
-import time
-from typing import Any
-
-from traigent.api.types import ExampleResult
-from traigent.evaluators import BaseEvaluator, Dataset
-from traigent.evaluators.base import EvaluationResult
-
-class ExactMatchEvaluator(BaseEvaluator):
-    async def evaluate(
-        self,
-        func,
-        config: dict[str, Any],
-        dataset: Dataset,
-        *,
-        sample_lease=None,
-        progress_callback=None,
-    ) -> EvaluationResult:
-        results = []
-        started = time.perf_counter()
-
-        for index, example in enumerate(dataset):
-            prediction = func(**example.input_data)
-            score = 1.0 if str(prediction).strip() == str(example.expected_output).strip() else 0.0
-            result = ExampleResult(
-                example_id=str(example.metadata.get("id", index)),
-                input_data=example.input_data,
-                expected_output=example.expected_output,
-                actual_output=prediction,
-                metrics={"accuracy": score},
-                execution_time=0.0,
-                success=True,
-                metadata={"method": "exact_match"},
-            )
-            results.append(result)
-            if progress_callback is not None:
-                progress_callback(index, {"accuracy": score})
-
-        accuracy = sum(r.metrics["accuracy"] for r in results) / len(results) if results else 0.0
-        return EvaluationResult(
-            config=config,
-            example_results=results,
-            aggregated_metrics={"accuracy": accuracy},
-            total_examples=len(results),
-            successful_examples=len(results),
-            duration=time.perf_counter() - started,
-        )
-```
+Do not write a `BaseEvaluator` subclass to plug into `@traigent.optimize`: no public option accepts one on traigent <= 0.27.0. Passing an instance as the `custom_evaluator=` evaluation option fails validation with `Input should be callable`, and passing the class fails with `custom_evaluator must accept (func, config, example)`. The top-level `custom_evaluator=` argument of `@traigent.optimize` and of `optimize_sync()` accepts an instance at first, then fails when the run starts with `custom_evaluator must be callable`. The decorator's `evaluator=` takes only an external-service evaluator. Use a Tier 4 `custom_evaluator` for per-row control (calling the function, timing, judges, repeats, fail-closed handling).
 
 ## The EvaluationExample input contract
 

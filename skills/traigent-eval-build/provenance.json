@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d513050d256f0d46",
+  "doc_hash": "283249089d05c914",
   "reference_hashes": {
-    "references/evaluator-templates.md": "5c783861911a82e1"
+    "references/evaluator-templates.md": "f09d3965ac694c29"
   },
   "entries": [
     {
@@ -97,6 +97,72 @@
       "doc_after_hash": "d513050d256f0d46",
       "note": "rebase PR #288 onto current main and sync interaction-policy v2: recommend next skills only after result-bearing steps or explicit decisions, cap recommendations at three, and attach one eligibility reason per recommendation",
       "source_type": "human"
+    },
+    {
+      "edit_id": "audit-2026-09-23-326",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "d513050d256f0d46",
+      "doc_after_hash": "914dd5d17283d11e",
+      "note": "Make the Tier 2, Tier 4 and Tier 5 comparators case-insensitive (.strip().lower()) to match the SDK built-in accuracy, so a correct answer in a different letter case no longer scores 0.0.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-329",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "914dd5d17283d11e",
+      "doc_after_hash": "236e2e18b5a2ecc9",
+      "note": "Point the cost-limit advice at the new cost-metering caveat: on traigent <= 0.27.0 only the first LLM call per row in a custom evaluator is metered.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-330",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "236e2e18b5a2ecc9",
+      "doc_after_hash": "449adb744ba86c3f",
+      "note": "Emit latency in milliseconds from the Tier 4 custom evaluator and state that a custom_evaluator must put metrics['latency'] on every row, or a latency objective reads 0.0.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-331",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "449adb744ba86c3f",
+      "doc_after_hash": "1e5486adf4308b06",
+      "note": "Mark Tier 5 (BaseEvaluator subclass) as not wireable through @traigent.optimize on the released SDK and replace its example with a note pointing to Tier 4.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-331-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "1e5486adf4308b06",
+      "doc_after_hash": "bf970067de631e68",
+      "note": "Scope the Tier 5 not-wireable claim to traigent <= 0.27.0 and name the top-level and optimize_sync custom_evaluator paths that accept an instance and then fail at run time.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-325-331-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "bf970067de631e68",
+      "doc_after_hash": "283249089d05c914",
+      "note": "Declare the orientation of every custom objective name (label_accuracy, valid_json, exec_acc) with ObjectiveSchema; newer SDK builds refuse an undeclared custom name.",
+      "source_type": "agent"
     }
   ]
 }

@@ -46,7 +46,9 @@ jobs:
     name: released-contracts
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # Three SDK buckets run serially (contracts + skill suites each); the
+    # executed-template contract tests put the job past 20 minutes.
+    timeout-minutes: 40
 
     steps:
       - name: Checkout

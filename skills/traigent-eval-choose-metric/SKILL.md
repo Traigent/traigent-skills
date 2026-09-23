@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.5"
+  version: "1.1.6"
 ---
 
 # Traigent Choose Metric
@@ -17,7 +17,7 @@ metadata:
 
 Use this skill before configuring `@traigent.optimize()` when the user has not yet pinned what "good" means.
 
-- Prefer plain `objectives=["accuracy", "cost"]` lists unless the project already needs weighted objective schemas.
+- Prefer plain `objectives=["accuracy", "cost"]` lists when every name is a built-in metric. A custom metric name (a `metric_functions` key such as `valid_schema`) needs a declared orientation; see "From answers to objectives".
 - Use built-in metric names when they match the job: `accuracy`, `success_rate`, `error_rate`, `avg_output_length`, `cost`, `latency`.
 - Use custom `metric_functions` when the task has checkable domain logic that a built-in metric cannot express.
 - If the key property is a must-not-violate safety condition, treat it as a gate or constraint, not as an ordinary objective.
@@ -116,11 +116,15 @@ import json
 
 import traigent
 from traigent.api.decorators import EvaluationOptions
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 def valid_schema_metric(output, expected, input_data) -> float:
     try:
-        data = json.loads(output)
-    except json.JSONDecodeError:
+        data = output if isinstance(output, dict) else json.loads(output)  # agent may return a dict
+    except (json.JSONDecodeError, TypeError):
+        return 0.0
+    # Valid JSON that is not an object (42, null, a list of field names) is a wrong answer.
+    if not isinstance(data, dict):
         return 0.0
     required = {"invoice_id", "amount_due", "due_date"}
     return 1.0 if required.issubset(data) else 0.0
@@ -132,7 +136,10 @@ def valid_schema_metric(output, expected, input_data) -> float:
     ),
     # Schema validity is the primary target here (accuracy skipped: format-only
     # task). Add an accuracy metric if answer correctness also matters.
-    objectives=["valid_schema", "cost"],
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="valid_schema", orientation="maximize", weight=1.0),  # custom name: declare it
+        ObjectiveDefinition(name="cost", orientation="minimize", weight=1.0),
+    ]),
     configuration_space={"temperature": [0.0, 0.2]},
 )
 def extract_invoice(text: str) -> str:
@@ -144,7 +151,7 @@ def extract_invoice(text: str) -> str:
     )
 ```
 
-If you need weighted objective schemas, verify the exact `ObjectiveSchema` and `ObjectiveDefinition` import path against the installed SDK first. The public examples should prefer plain objective lists unless weights are essential.
+Declare objectives with `from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema` whenever a name is not a built-in metric, or when you need weights. A plain list knows the orientation of built-in names only (such as `accuracy`, `success_rate`, `cost`, `latency`). On traigent <= 0.27.0 it defaults any other name to `maximize`, so a custom objective that should be minimized (for example `judge_cost`) ranks the costlier configuration higher; newer SDK builds refuse an undeclared custom name outright. Give every custom name an `ObjectiveDefinition(name=..., orientation=...)`, with `weight=1.0` for each objective to keep the plain list's equal weighting.
 
 ## Multi-objective patterns
 
@@ -154,8 +161,8 @@ Use `accuracy + cost` as the default two-objective pattern for LLM tasks. It kee
 |---|---|
 | `["accuracy"]` | Early correctness tuning with a fixed budget outside the objective. |
 | `["accuracy", "cost"]` | Default for answer quality where spend matters. |
-| `["accuracy", "latency"]` | User-facing online flows where response time matters (bare `latency` key, in ms on SDKs after 0.22.0 — see version-matrix: `latency-unit`). |
-| `["valid_schema", "accuracy", "cost"]` | Extraction tasks with machine-checkable output format. |
+| `["accuracy", "latency"]` | User-facing online flows where response time matters (bare `latency` key, in ms on SDKs after 0.22.0 — see version-matrix: `latency-unit`). A `custom_evaluator` must put `metrics["latency"]` in ms on every row itself, or `latency` reads 0.0 on every trial — see `traigent-eval-build`. |
+| `["valid_schema", "accuracy", "cost"]` | Extraction tasks with machine-checkable output format. `valid_schema` is a custom name, so declare it with `ObjectiveSchema` as in the example above. |
 | `["success_rate", "cost"]` | Tool or agent workflows where execution success is the main signal. |
 
 Treat safety properties as constraints or gates when a violation is unacceptable. Do not let a safety score be traded away for better average accuracy or lower cost. Hand off to the relevant gate/release policy skill when the user needs approval semantics.

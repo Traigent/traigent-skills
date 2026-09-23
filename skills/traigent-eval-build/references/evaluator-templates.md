@@ -13,6 +13,7 @@ import re
 import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 def extract_fields(text: str, required_fields: list[str], *, temperature: float = 0.0) -> str:
     prompt = (
@@ -31,12 +32,23 @@ def normalize_text(value) -> str:
     return re.sub(r"\s+", " ", str(value).strip().lower())
 
 def exact_normalized_metric(output, expected, input_data) -> float:
+    # A JSON gold (dict/list) is compared as parsed JSON: str(expected) would be
+    # Python's single-quoted repr and never equal the model's JSON text.
+    if isinstance(expected, (dict, list)):
+        try:
+            parsed = output if isinstance(output, (dict, list)) else json.loads(output)
+        except (json.JSONDecodeError, TypeError):
+            return 0.0
+        return 1.0 if parsed == expected else 0.0
     return 1.0 if normalize_text(output) == normalize_text(expected) else 0.0
 
 def valid_schema_metric(output, expected, input_data) -> float:
     try:
-        data = json.loads(output)
-    except json.JSONDecodeError:
+        data = output if isinstance(output, dict) else json.loads(output)  # agent may return a dict
+    except (json.JSONDecodeError, TypeError):
+        return 0.0
+    # Valid JSON that is not an object (42, null, a list of field names) is a wrong answer.
+    if not isinstance(data, dict):
         return 0.0
     required_fields = set(input_data.get("required_fields", []))
     return 1.0 if required_fields.issubset(data) else 0.0
@@ -49,7 +61,12 @@ def valid_schema_metric(output, expected, input_data) -> float:
             "valid_schema": valid_schema_metric,
         },
     ),
-    objectives=["exact_normalized", "valid_schema"],
+    # Custom metric names need a declared orientation (only built-ins such as
+    # accuracy, cost and latency have one).
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="exact_normalized", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="valid_schema", orientation="maximize", weight=1.0),
+    ]),
     configuration_space={"temperature": [0.0, 0.2]},
 )
 def extract(text: str, required_fields: list[str]) -> str:
@@ -61,8 +78,15 @@ def extract(text: str, required_fields: list[str]) -> str:
 
 Use this only when deterministic labels are insufficient. The judge score is a model opinion under the rubric. Parse failures fail closed to `0.0`, and judge cost is counted in metrics.
 
+Three things the template does on purpose:
+
+- **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list only knows the orientation of built-in names such as `accuracy`, `cost` and `latency`. On traigent <= 0.27.0 it orients any other name (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher, and newer SDK builds refuse an undeclared custom name. Declare every custom objective's orientation with `ObjectiveSchema`.
+- **Only the agent call is metered.** The SDK's `cost` and `TRAIGENT_RUN_COST_LIMIT` see the first LLM call per row, not the judge call; see "Cost metering caveat for multi-call evaluators" below.
+- **The judge budget is sized and reset per run.** Start every run with `run_with_judge_budget()`: it builds a fresh `JudgeBudget` for that run, refuses to start when the approved cap cannot cover `rows × max_trials × price`, and raises after the run if any judge call was refused. A refused row fails closed with `judge_budget_exhausted` and scores `0.0`, and the SDK averages that row into its trial, so **any refusal invalidates the ranking**: the trials were no longer scored on the same rows. Calling `optimize_sync()` directly, with no budget set, fails every trial instead of spending unbudgeted. Spend limits are not tuned variables, so they stay out of `configuration_space`.
+
 ```python
 import json
+import threading
 import time
 from typing import Any
 
@@ -70,9 +94,51 @@ import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 JUDGE_MODEL = "judge-model-name"
 JUDGE_COST_PER_CALL_USD = 0.002
+
+class JudgeBudget:
+    """Judge spend cap for ONE optimization run: refuses a call instead of overspending."""
+
+    def __init__(self, cap_usd: float, per_call_usd: float) -> None:
+        self.cap, self.per_call, self.spent, self.refused = cap_usd, per_call_usd, 0.0, 0
+        self._lock = threading.Lock()  # custom evaluators may run in worker threads
+
+    def try_spend(self) -> bool:
+        with self._lock:
+            if self.spent + self.per_call > self.cap + 1e-12:
+                self.refused += 1
+                return False
+            self.spent += self.per_call
+            return True
+
+JUDGE_BUDGET: JudgeBudget | None = None  # set per run by run_with_judge_budget()
+
+def run_with_judge_budget(optimized, *, rows: int, max_trials: int, cap_usd: float, **optimize_kwargs):
+    """Run one optimization with its own judge budget, sized to the run.
+
+    A refused judge call scores its row 0.0 and the SDK averages that row into the
+    trial, so a single refusal makes the trial ranking meaningless. Refuse to start
+    when the cap cannot cover every row of every trial, and raise if a call was
+    refused anyway.
+    """
+    global JUDGE_BUDGET
+    needed_usd = rows * max_trials * JUDGE_COST_PER_CALL_USD
+    if cap_usd + 1e-12 < needed_usd:
+        raise ValueError(
+            f"judge cap ${cap_usd:.4f} does not cover {rows} rows x {max_trials} trials "
+            f"(${needed_usd:.4f}); shrink the run or raise the approved cap"
+        )
+    JUDGE_BUDGET = JudgeBudget(cap_usd=cap_usd, per_call_usd=JUDGE_COST_PER_CALL_USD)  # fresh per run
+    result = optimized.optimize_sync(max_trials=max_trials, **optimize_kwargs)
+    if JUDGE_BUDGET.refused:
+        raise RuntimeError(
+            f"{JUDGE_BUDGET.refused} judge call(s) refused (judge_budget_exhausted): "
+            "trials were scored on different rows, so do not use this ranking"
+        )
+    return result
 
 def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
     response = litellm.completion(
@@ -100,6 +166,8 @@ def build_judge_prompt(output: Any, expected: Any, input_data: dict[str, Any]) -
 def parse_judge_response(raw: str) -> tuple[float, str, bool]:
     try:
         data = json.loads(raw)
+        if isinstance(data["score"], bool):  # true/false is not a score
+            raise TypeError("boolean score")
         score = float(data["score"])
         reason = str(data.get("reason", ""))
     except (json.JSONDecodeError, KeyError, TypeError, ValueError):
@@ -110,11 +178,10 @@ def parse_judge_response(raw: str) -> tuple[float, str, bool]:
 
 def llm_judge_evaluator(func, config, example) -> ExampleResult:
     started = time.perf_counter()
-    max_judge_calls = int(config.get("max_judge_calls", 1))
-    max_judge_cost_usd = float(config.get("max_judge_cost_usd", 0.01))
-    estimated_cost = max_judge_calls * JUDGE_COST_PER_CALL_USD
+    if JUDGE_BUDGET is None:
+        raise RuntimeError("no judge budget for this run: start it with run_with_judge_budget()")
 
-    if max_judge_calls < 1 or estimated_cost > max_judge_cost_usd:
+    if not JUDGE_BUDGET.try_spend():
         return ExampleResult(
             example_id=str(example.metadata.get("id", "unknown")),
             input_data=example.input_data,
@@ -123,7 +190,7 @@ def llm_judge_evaluator(func, config, example) -> ExampleResult:
             metrics={"quality": 0.0, "judge_cost": 0.0},
             execution_time=time.perf_counter() - started,
             success=False,
-            error_message="judge_cost_guardrail",
+            error_message="judge_budget_exhausted",
             metadata={"method": "llm_judge", "parse_policy": "fail_closed"},
         )
 
@@ -158,21 +225,36 @@ def llm_judge_evaluator(func, config, example) -> ExampleResult:
         eval_dataset="eval/qa.jsonl",
         custom_evaluator=llm_judge_evaluator,
     ),
-    objectives=["quality", "judge_cost"],
-    configuration_space={
-        "temperature": [0.0, 0.3],
-        "max_judge_calls": [1],
-        "max_judge_cost_usd": [0.01],
-    },
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="quality", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="judge_cost", orientation="minimize", weight=0.2),
+    ]),
+    configuration_space={"temperature": [0.0, 0.3]},
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
     return prompt_model(question, temperature=cfg["temperature"])
+
+# One run, one budget: cap_usd is the judge spend the user approved for this run.
+# results = run_with_judge_budget(answer, rows=50, max_trials=8, cap_usd=1.00)
 ```
+
+## Cost metering caveat for multi-call evaluators
+
+> **Cost metering caveat (traigent <= 0.27.0):** inside a `custom_evaluator`, the SDK meters only the **first**
+> LLM call per row. A template that calls the agent N times, or calls the agent and then a judge, reports
+> about 1/N of its real cost in `cost`, and `TRAIGENT_RUN_COST_LIMIT` is enforced against that figure. Budget
+> `calls_per_row × rows × trials × price` yourself, keep the limit conservative, and do not read the
+> `cost` objective as comparing different repetition counts.
+<!-- contract: literal "response = captured_responses[0]" in traigent.core.evaluator_wrapper -->
+
+This applies to the statistical template below (`EVAL_REPS` agent calls per row) and to the LLM-judge and hybrid templates (one agent call plus one judge call per row).
 
 ## Statistical agreement over repeated calls
 
 Use this when the same configuration can produce different outputs and stability matters.
+
+The repetition count is part of the measuring instrument, not a knob: agreement (the modal share of `n` samples) is biased upward at small `n`, so trials measured with different counts are not comparable and fewer repetitions look more stable. Keep `EVAL_REPS` fixed for the whole run and out of `configuration_space`. The `accuracy` objective is per-sample correctness, which is what one production call achieves; `agreement` and `majority_accuracy` are diagnostics: they are not objectives, so they do not appear in `trial.metrics`; read them per row from `trial.metadata["example_results"]`. If production really does N-sample majority voting, then majority accuracy is the right objective and `EVAL_REPS` must be that production N.
 
 ```python
 import time
@@ -191,28 +273,32 @@ def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
     )
     return response.choices[0].message.content or ""
 
+EVAL_REPS = 5  # fixed for the whole run; never a tuned variable
+
 def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
     started = time.perf_counter()
-    reps = int(config.get("eval_reps", 5))
-    outputs = [func(**example.input_data) for _ in range(reps)]
+    outputs = [func(**example.input_data) for _ in range(EVAL_REPS)]
     # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
-    counts = Counter(str(output).strip().lower() for output in outputs)
-    most_common, count = counts.most_common(1)[0]
-    agreement = count / reps if reps else 0.0
+    normalized = [str(output).strip().lower() for output in outputs]
     expected = str(example.expected_output).strip().lower()
-    accuracy = 1.0 if most_common == expected else 0.0
+    counts = Counter(normalized)
+    most_common, count = counts.most_common(1)[0]
 
     return ExampleResult(
         example_id=str(example.metadata.get("id", "unknown")),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=most_common,
-        metrics={"accuracy": accuracy, "agreement": agreement},
+        metrics={
+            "accuracy": sum(o == expected for o in normalized) / EVAL_REPS,  # what one production call achieves
+            "agreement": count / EVAL_REPS,  # diagnostic, same n for every trial
+            "majority_accuracy": 1.0 if most_common == expected else 0.0,  # diagnostic
+        },
         execution_time=time.perf_counter() - started,
         success=True,
         metadata={
             "method": "statistical_agreement",
-            "reps": reps,
+            "reps": EVAL_REPS,
             "unique_outputs": len(counts),
         },
     )
@@ -222,11 +308,8 @@ def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
         eval_dataset="eval/qa.jsonl",
         custom_evaluator=statistical_agreement_evaluator,
     ),
-    objectives=["accuracy", "agreement", "cost"],
-    configuration_space={
-        "temperature": [0.2, 0.7],
-        "eval_reps": [3, 5],
-    },
+    objectives=["accuracy", "cost"],
+    configuration_space={"temperature": [0.2, 0.7]},
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
@@ -235,18 +318,62 @@ def answer(question: str) -> str:
 
 ## Hybrid deterministic gate then judge
 
-Use this when invalid outputs should fail before spending judge calls.
+Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge) and only the first is metered; see "Cost metering caveat for multi-call evaluators" above. Judge spend is capped the same way as in the LLM-judge template: start each run with `run_with_judge_budget()`, which sizes and resets the budget for that run and raises if any judge call was refused, because a refused row (`judge_budget_exhausted`, quality `0.0`) invalidates the ranking.
 
 ```python
 import json
+import threading
 import time
 
 import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 JUDGE_MODEL = "judge-model-name"
+JUDGE_COST_PER_CALL_USD = 0.002
+
+class JudgeBudget:
+    """Judge spend cap for ONE optimization run: refuses a call instead of overspending."""
+
+    def __init__(self, cap_usd: float, per_call_usd: float) -> None:
+        self.cap, self.per_call, self.spent, self.refused = cap_usd, per_call_usd, 0.0, 0
+        self._lock = threading.Lock()  # custom evaluators may run in worker threads
+
+    def try_spend(self) -> bool:
+        with self._lock:
+            if self.spent + self.per_call > self.cap + 1e-12:
+                self.refused += 1
+                return False
+            self.spent += self.per_call
+            return True
+
+JUDGE_BUDGET: JudgeBudget | None = None  # set per run by run_with_judge_budget()
+
+def run_with_judge_budget(optimized, *, rows: int, max_trials: int, cap_usd: float, **optimize_kwargs):
+    """Run one optimization with its own judge budget, sized to the run.
+
+    A refused judge call scores its row 0.0 and the SDK averages that row into the
+    trial, so a single refusal makes the trial ranking meaningless. Refuse to start
+    when the cap cannot cover every row of every trial, and raise if a call was
+    refused anyway.
+    """
+    global JUDGE_BUDGET
+    needed_usd = rows * max_trials * JUDGE_COST_PER_CALL_USD
+    if cap_usd + 1e-12 < needed_usd:
+        raise ValueError(
+            f"judge cap ${cap_usd:.4f} does not cover {rows} rows x {max_trials} trials "
+            f"(${needed_usd:.4f}); shrink the run or raise the approved cap"
+        )
+    JUDGE_BUDGET = JudgeBudget(cap_usd=cap_usd, per_call_usd=JUDGE_COST_PER_CALL_USD)  # fresh per run
+    result = optimized.optimize_sync(max_trials=max_trials, **optimize_kwargs)
+    if JUDGE_BUDGET.refused:
+        raise RuntimeError(
+            f"{JUDGE_BUDGET.refused} judge call(s) refused (judge_budget_exhausted): "
+            "trials were scored on different rows, so do not use this ranking"
+        )
+    return result
 
 def extract_json(text: str, *, temperature: float = 0.0) -> str:
     response = litellm.completion(
@@ -287,6 +414,8 @@ def judge_json_quality(output: dict, expected: dict, input_data: dict) -> tuple[
     raw = judge_response.choices[0].message.content or ""
     try:
         parsed = json.loads(raw)
+        if isinstance(parsed["score"], bool):  # true/false is not a score
+            raise TypeError("boolean score")
         score = float(parsed["score"])
         reason = str(parsed.get("reason", ""))
     except (json.JSONDecodeError, KeyError, TypeError, ValueError):
@@ -313,14 +442,28 @@ def hybrid_evaluator(func, config, example) -> ExampleResult:
             metadata={"method": "hybrid_gate_then_judge", "judge_called": False},
         )
 
+    if JUDGE_BUDGET is None:
+        raise RuntimeError("no judge budget for this run: start it with run_with_judge_budget()")
+    if not JUDGE_BUDGET.try_spend():
+        return ExampleResult(
+            example_id=str(example.metadata.get("id", "unknown")),
+            input_data=example.input_data,
+            expected_output=example.expected_output,
+            actual_output=data,
+            metrics={"valid_json": 1.0, "quality": 0.0, "judge_cost": 0.0},
+            execution_time=time.perf_counter() - started,
+            success=False,
+            error_message="judge_budget_exhausted",
+            metadata={"method": "hybrid_gate_then_judge", "judge_called": False},
+        )
+
     score, reason, parsed = judge_json_quality(data, example.expected_output, example.input_data)
-    judge_cost = 0.002
     return ExampleResult(
         example_id=str(example.metadata.get("id", "unknown")),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=data,
-        metrics={"valid_json": 1.0, "quality": score, "judge_cost": judge_cost},
+        metrics={"valid_json": 1.0, "quality": score, "judge_cost": JUDGE_COST_PER_CALL_USD},
         execution_time=time.perf_counter() - started,
         success=parsed,
         error_message=None if parsed else reason,
@@ -337,10 +480,17 @@ def hybrid_evaluator(func, config, example) -> ExampleResult:
         eval_dataset="eval/extraction.jsonl",
         custom_evaluator=hybrid_evaluator,
     ),
-    objectives=["valid_json", "quality", "judge_cost"],
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="valid_json", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="quality", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="judge_cost", orientation="minimize", weight=0.2),
+    ]),
     configuration_space={"temperature": [0.0, 0.2]},
 )
 def extract(text: str) -> str:
     cfg = traigent.get_config()
     return extract_json(text, temperature=cfg["temperature"])
+
+# One run, one budget: rows x max_trials is an upper bound here (gate failures skip the judge).
+# results = run_with_judge_budget(extract, rows=50, max_trials=8, cap_usd=1.00)
 ```
