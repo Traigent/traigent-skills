@@ -412,18 +412,22 @@ from traigent.testing import enable_mock_mode_for_quickstart
 enable_mock_mode_for_quickstart()  # raises in production
 ```
 
-**Legacy fallback (env-var, dev/test only):**
+**Legacy fallback (env-var, dev/test only, deprecated):**
+
+`TRAIGENT_MOCK_LLM=true` is deprecated on traigent 0.27.0 (a DeprecationWarning, hidden by default, says it "will be removed in a future release"). Use `traigent.testing.enable_mock_mode_for_quickstart()` in code, e.g. from a pytest fixture/conftest, for new setups.
 
 ```bash
-# Mock LLM responses (no API keys needed) — hard-blocked in production
+# Deprecated: mock LLM responses (no API keys needed) — hard-blocked in production
 export TRAIGENT_MOCK_LLM=true
 ```
 
-```python
-import os
-os.environ["TRAIGENT_MOCK_LLM"] = "true"
+A complete keyless dry-run with the in-code API:
 
+```python
 import traigent
+from traigent.testing import enable_mock_mode_for_quickstart
+
+enable_mock_mode_for_quickstart()
 
 @traigent.optimize(
     eval_dataset="test_data.jsonl",
@@ -539,7 +543,9 @@ print(traigent.__version__)
 
 # Check common diagnostic environment settings
 import os
-print(f"Mock LLM: {os.getenv('TRAIGENT_MOCK_LLM', 'false')}")
+from traigent.testing import is_mock_mode_enabled
+print(f"Mock mode (in code): {is_mock_mode_enabled()}")
+print(f"TRAIGENT_MOCK_LLM (deprecated env var): {os.getenv('TRAIGENT_MOCK_LLM', 'unset')}")
 import logging
 print("traigent log level:", logging.getLevelName(logging.getLogger("traigent").getEffectiveLevel()))
 ```

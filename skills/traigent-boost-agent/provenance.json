@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c882848d41a4aa75",
+  "doc_hash": "527998aaeedcdd8a",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -222,6 +222,17 @@
       "doc_before_hash": "b04e83488cd0c177",
       "doc_after_hash": "c882848d41a4aa75",
       "note": "Step 7 builds the configuration space from the Step 5 generate_config rows the function actually reads (WIRED filter) instead of the removed recommend_configuration_space() dict; the instrument recipe admits only wired rows and every stage_tuned_params name is in the space.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-343",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c882848d41a4aa75",
+      "doc_after_hash": "527998aaeedcdd8a",
+      "note": "Mock note no longer lists TRAIGENT_MOCK_LLM as a hermetic-startup env var without saying it is deprecated in favor of enable_mock_mode_for_quickstart().",
       "source_type": "agent"
     }
   ]

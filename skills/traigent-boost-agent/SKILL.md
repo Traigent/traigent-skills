@@ -140,7 +140,7 @@ traigent check my_script.py --dry-run                         # discovers @traig
 
 Enable mock mode in code, then run the full optimization pipeline end to end (decorator wiring, config sampling, dataset loading, trial execution, scoring) with LLM calls intercepted. Mock mode is hard-blocked when `ENVIRONMENT=production`. For mock-mode setup mechanics and scope (what is and isn't intercepted, mock vs offline), see `traigent-setup-quickstart`.
 
-> A **connected** mock run (`offline=False` with a key) consumes the plan's `optimization_samples` quota like any other run; an `offline=True` mock run makes no backend call and touches no quota. Mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`).
+> A **connected** mock run (`offline=False` with a key) consumes the plan's `optimization_samples` quota like any other run; an `offline=True` mock run makes no backend call and touches no quota. Mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`; `TRAIGENT_MOCK_LLM` is deprecated in favor of `enable_mock_mode_for_quickstart()`).
 
 ```python
 import os
