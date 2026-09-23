@@ -76,7 +76,7 @@ The `analytics_get_example_insights` MCP tool (or `GET /api/v1/analytics/runs/{r
 | Scores are flat everywhere | Add harder or more discriminating examples, then rerun a small controlled search | `traigent-dataset-curate` |
 | Winner ties baseline but product tradeoff still feels wrong | Revisit the objective, weights, or decision threshold before changing code | `traigent-eval-choose-metric` |
 | Evaluator flips on repetitions or judge output is noisy | Audit agreement, repetition stability, bias, parse failures, and calibration | `traigent-eval-audit` |
-| Evaluator cannot express the chosen metric | Wire a stronger deterministic, statistical, hybrid, or `BaseEvaluator` path | `traigent-eval-build` |
+| Evaluator cannot express the chosen metric | Wire a stronger deterministic, statistical, or hybrid scorer through `scoring_function`, `metric_functions` or `custom_evaluator` | `traigent-eval-build` |
 | One tuned variable dominates the run | Narrow that variable's range and rerun with a focused hypothesis | `traigent-optimize-config-space` |
 | Scalar knobs are not enough for the agent shape | Add a composite pattern that matches the codebase shape | `traigent-optimize-composite-knobs` |
 | Search stopped because of budget or trials | Adjust algorithm, `max_trials`, parallelism, model mix, or cost limit after approval | `traigent-optimize-run` |
