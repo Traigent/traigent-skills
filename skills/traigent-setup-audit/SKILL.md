@@ -99,7 +99,7 @@ error. A finding is not a failure.
 | Area | What is read | What is reported |
 |---|---|---|
 | Agent | `@traigent.optimize` decorators, parsed with `ast` | entry points with `file:line`; each declared knob marked read, never read, or possibly read through a mapping |
-| Dataset | JSONL / JSON arrays / CSV whose rows carry an input-like key (`input`, `input_data`, `question`, `prompt`, `query`, `messages`) | rows keyed by anything but `input`/`input_data`, the only input keys `eval_dataset` loads; row count against the `traigent-dataset-curate` minimums; rows with no gold key; exact and near-duplicate inputs; whether a holdout slice exists, how large it is, and whether it overlaps another slice; label balance where the gold values are few and repeated |
+| Dataset | JSONL / JSON arrays / CSV whose rows carry an input-like key (`input`, `input_data`, `question`, `prompt`, `query`, `messages`) | the count of rows with no `input`/`input_data` key (keyed `question`/`prompt`/`query`/`messages`, or with no input-like key at all), since `eval_dataset` loads only those two keys and refuses the whole file on the first such row; row count against the `traigent-dataset-curate` minimums; rows with no gold key; exact and near-duplicate inputs; whether a holdout slice exists, how large it is, and whether it overlaps another slice; label balance where the gold values are few and repeated |
 | Scorer | functions named `score*`/`evaluate*`/`grade*`/`metric*`, or taking `expected` second | classification (deterministic / LLM judge / code-executing / hybrid); for a deterministic one, repeat-scoring plus a known-good, partial and known-bad probe |
 | Setup | the project interpreter, the environment, `.env*` files, `git check-ignore` | installed SDK version; which key **names** are set; whether `.env` is git-ignored; which model ids the configuration space declares |
 
@@ -166,7 +166,7 @@ would be measured with is still unreliable:
 | the probed scorer is not repeatable, or ranks a known-bad answer above a known-good one | `traigent-eval-build`, then `traigent-eval-audit` |
 | a scorer exists but none could be measured here | `traigent-eval-audit` |
 | no evaluation dataset found | `traigent-dataset-curate` |
-| a dataset whose rows use an input key `eval_dataset` does not load (anything but `input`/`input_data`) | `traigent-dataset-curate` |
+| a dataset with any row that has no `input`/`input_data` key | `traigent-dataset-curate` |
 | a dataset under the tuning or holdout minimum | `traigent-dataset-curate` |
 | nothing above fires | `traigent-optimize-run`, mock dry-run first |
 

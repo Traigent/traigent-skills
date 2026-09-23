@@ -29,10 +29,15 @@ def _audit_module():
 
 
 def _sdk_rejects(path: Path) -> bool:
+    """True when the SDK refuses the file for a row with no input key.
+
+    Other refusals (a torn JSON line, for example) are a different defect and
+    are not what this contract pins.
+    """
     try:
         Dataset.from_jsonl(str(path))
-    except ValidationError:
-        return True
+    except ValidationError as exc:
+        return "Missing 'input'" in str(exc)
     return False
 
 
@@ -47,6 +52,10 @@ def test_every_fixture_dataset_the_sdk_rejects_is_flagged_by_the_audit() -> None
     # Teeth: the bank holds at least one file the SDK refuses, so an empty
     # loop cannot pass this test vacuously.
     assert rejected, "no fixture dataset is rejected by the SDK loader"
+    # Both shapes are in the bank: rows keyed by a non-SDK input key, and a
+    # stray row with no input-like key at all.
+    names = {path.relative_to(FIXTURES).parts[0] for path in rejected}
+    assert {"question-keys", "stray-row"} <= names, names
 
     unflagged = []
     for path in rejected:

@@ -1067,6 +1067,9 @@ class DatasetReport:
     # Informational lines (how the holdout slice was declared). Printed as
     # evidence, never counted as a problem: a finding is something to fix.
     notes: list[str] = field(default_factory=list)
+    # Rows with neither `input` nor `input_data`: the SDK refuses the whole
+    # file on the first one. One field drives both the finding and the next step.
+    rows_without_sdk_input: int = 0
 
 
 NO_HOLDOUT_FINDING = "no split marker on any row, so no holdout slice is declared"
@@ -1288,17 +1291,22 @@ def analyse_dataset(
         findings.append(
             f"{count} rows is under the {MIN_TUNING}-row first-tuning-slice minimum"
         )
-    unloadable = {
+    other_keys = {
         key: value
         for key, value in sorted(input_key_counts.items())
         if key not in SDK_INPUT_KEYS
     }
-    if unloadable:
+    keyless = len(rows) - sum(input_key_counts.values())
+    rows_without_sdk_input = sum(other_keys.values()) + keyless
+    if rows_without_sdk_input:
+        detail = [f"{value} keyed `{key}`" for key, value in other_keys.items()]
+        if keyless:
+            detail.append(f"{keyless} with no input-like key at all")
         findings.append(
-            f"{sum(unloadable.values())} row(s) use "
-            f"{'/'.join(f'`{key}`' for key in unloadable)} as the input key; "
-            "`eval_dataset` reads only `input` or `input_data`, so the SDK will "
-            "refuse this file — rename the key"
+            f"{rows_without_sdk_input} row(s) have no `input`/`input_data` key "
+            f"({', '.join(detail)}); `eval_dataset` reads only `input` or "
+            "`input_data` and refuses the whole file on the first such row — "
+            "rename or add the key"
         )
     if missing_expected:
         findings.append(
@@ -1358,6 +1366,7 @@ def analyse_dataset(
         holdout_overlap=holdout_overlap[:20],
         label_counts=label_counts,
         findings=findings,
+        rows_without_sdk_input=rows_without_sdk_input,
         input_index=dict(by_input),
         holdout_input_index=dict(holdout_by_input),
         non_holdout_input_index=dict(non_holdout_by_input),
@@ -2495,23 +2504,16 @@ def next_step(
 
     # A dataset the SDK cannot load stops the first run outright, so it outranks
     # a row shortfall.
-    unloadable = [
-        report
-        for report in reports
-        if any(key not in SDK_INPUT_KEYS for key in report.input_key_counts)
-    ]
+    unloadable = [report for report in reports if report.rows_without_sdk_input]
     if unloadable:
         worst = unloadable[0]
-        keys = [key for key in worst.input_key_counts if key not in SDK_INPUT_KEYS]
-        rows = sum(worst.input_key_counts[key] for key in keys)
         return {
             "branch": "f",
             "skills": ["traigent-dataset-curate"],
             "line": (
-                f"{worst.file} has {rows} row(s) keyed by "
-                f"{'/'.join(f'`{key}`' for key in keys)} instead of `input` or "
-                "`input_data`, so `eval_dataset` will refuse to load it — rename "
-                "the key with `traigent-dataset-curate`."
+                f"{worst.file} has {worst.rows_without_sdk_input} row(s) with no "
+                "`input`/`input_data` key, so `eval_dataset` will refuse to load "
+                "it — rename or add the key with `traigent-dataset-curate`."
             ),
         }
 
@@ -2802,6 +2804,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
                 "label_counts": report.label_counts,
                 "findings": report.findings,
                 "notes": report.notes,
+                "rows_without_sdk_input_key": report.rows_without_sdk_input,
             }
             for report in reports
         ],

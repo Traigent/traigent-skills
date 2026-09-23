@@ -359,13 +359,35 @@ def test_a_dataset_the_sdk_cannot_load_is_routed_to_curate() -> None:
     entry = _entry([_knob("model", "read")])
     dataset = _dataset(80, 40)
     dataset.input_key_counts = {"question": 80}
+    dataset.rows_without_sdk_input = 80
     step = audit.next_step(
         _inventory([entry], [_scorer()]), [dataset], GOOD_PROBE, _scorer()
     )
     assert step["branch"] == "f"
     assert step["skills"] == ["traigent-dataset-curate"]
-    assert "80 row(s) keyed by `question`" in step["line"]
+    assert "80 row(s) with no `input`/`input_data` key" in step["line"]
     assert "all check out" not in step["line"]
+
+
+def test_a_row_with_no_input_like_key_is_counted_not_dropped(tmp_path: Path) -> None:
+    """The SDK refuses the whole file on one row without `input`/`input_data`,
+    even a row the audit's discovery keys do not recognise at all."""
+    path = tmp_path / "data.jsonl"
+    rows = [{"input": f"question {i}", "output": f"a{i}"} for i in range(40)]
+    rows.append({"text": "a stray row", "output": "x"})
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    reports, _, _, _ = audit.scan_datasets([path], tmp_path)
+    assert reports[0].rows_without_sdk_input == 1
+    assert any(
+        "1 row(s) have no `input`/`input_data` key" in finding
+        for finding in reports[0].findings
+    ), reports[0].findings
+    entry = _entry([_knob("model", "read")])
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), reports, GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert "1 row(s) with no `input`/`input_data` key" in step["line"]
 
 
 def test_the_question_keys_fixture_is_flagged_and_routed(tmp_path: Path) -> None:
