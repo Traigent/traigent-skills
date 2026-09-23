@@ -38,6 +38,8 @@ Prefer the smallest evaluator surface that measures the chosen objective.
 
 The built-in `latency` metric uses the bare key `latency`, reported in milliseconds on SDKs after 0.22.0 (see version-matrix: `latency-unit`).
 
+A `custom_evaluator` does not produce `latency`. If `latency` is an objective, put `metrics["latency"]` (milliseconds) on every `ExampleResult`, or the objective reads 0.0 on every trial and silently ranks nothing. `ExampleResult.execution_time` is in seconds, so convert before copying it across.
+
 **No `expected_output` at all?** Tiers 1-3 assume a gold label to compare against. For
 subjective/generative tasks with no labels, skip straight to Tier 4 with the **"LLM judge with
 rubric, strict parse, and cost guardrails"** template in `references/evaluator-templates.md` —
@@ -175,13 +177,14 @@ def evaluate_answer(func, config, example) -> ExampleResult:
         error_message = str(exc)
         success = False
 
+    elapsed_s = time.perf_counter() - started
     return ExampleResult(
         example_id=str(example.metadata.get("id", "unknown")),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=prediction,
-        metrics={"accuracy": score},
-        execution_time=time.perf_counter() - started,
+        metrics={"accuracy": score, "latency": elapsed_s * 1000.0},  # latency objective is milliseconds
+        execution_time=elapsed_s,  # ExampleResult field is seconds
         success=success,
         error_message=error_message,
         metadata={"method": "deterministic_exact_match"},

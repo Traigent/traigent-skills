@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f44e74ed08f029e8",
+  "doc_hash": "f6eed494191ada7a",
   "entries": [
     {
       "edit_id": "genesis",
@@ -95,6 +95,17 @@
       "doc_before_hash": "1e7478a0c851ad0f",
       "doc_after_hash": "f44e74ed08f029e8",
       "note": "Give the ObjectiveDefinition/ObjectiveSchema import path and state that a custom objective to be minimized (e.g. judge_cost) must be declared, because a plain list defaults unknown names to maximize.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-330",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "f44e74ed08f029e8",
+      "doc_after_hash": "f6eed494191ada7a",
+      "note": "Note on the accuracy+latency pattern that a custom_evaluator must emit metrics['latency'] in ms itself, or latency reads 0.0 on every trial.",
       "source_type": "agent"
     }
   ]

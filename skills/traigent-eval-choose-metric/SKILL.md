@@ -157,7 +157,7 @@ Use `accuracy + cost` as the default two-objective pattern for LLM tasks. It kee
 |---|---|
 | `["accuracy"]` | Early correctness tuning with a fixed budget outside the objective. |
 | `["accuracy", "cost"]` | Default for answer quality where spend matters. |
-| `["accuracy", "latency"]` | User-facing online flows where response time matters (bare `latency` key, in ms on SDKs after 0.22.0 — see version-matrix: `latency-unit`). |
+| `["accuracy", "latency"]` | User-facing online flows where response time matters (bare `latency` key, in ms on SDKs after 0.22.0 — see version-matrix: `latency-unit`). A `custom_evaluator` must put `metrics["latency"]` in ms on every row itself, or `latency` reads 0.0 on every trial — see `traigent-eval-build`. |
 | `["valid_schema", "accuracy", "cost"]` | Extraction tasks with machine-checkable output format. |
 | `["success_rate", "cost"]` | Tool or agent workflows where execution success is the main signal. |
 
