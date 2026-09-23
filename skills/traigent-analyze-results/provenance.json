@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d20199c09765c0fc",
+  "doc_hash": "c0175e1d49ce3513",
   "reference_hashes": {
     "references/convergence-patterns.md": "7f77c824d3199e61",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -308,6 +308,17 @@
       "doc_before_hash": "1364e33bb5f4747c",
       "doc_after_hash": "d20199c09765c0fc",
       "note": "State that a zero tie band keeps the strict Pareto points and shows configs tied exactly on both metrics once.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-311-r2b",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "d20199c09765c0fc",
+      "doc_after_hash": "c0175e1d49ce3513",
+      "note": "Drop configs with a NaN accuracy or cost before the Pareto helper and print how many were excluded.",
       "source_type": "agent"
     }
   ]

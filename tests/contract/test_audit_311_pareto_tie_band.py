@@ -245,3 +245,52 @@ def test_exact_ties_are_shown_once_and_the_recipe_says_so(
     )
     assert "configs that tie exactly on both are shown once" in " ".join(text.split())
     assert "With TIE_BAND = 0 this is the strict Pareto frontier." not in text
+
+
+def _recipe_block(repo_root: Path) -> str:
+    text = (repo_root / SKILL).read_text(encoding="utf-8")
+    return next(b for b in FENCE_RE.findall(text) if "def pareto_front(" in b)
+
+
+def test_recipe_drops_configs_missing_a_metric_before_the_frontier(
+    repo_root: Path,
+) -> None:
+    block = _recipe_block(repo_root)
+    dropna_at = block.find('df = df.dropna(subset=["accuracy", "cost"])')
+    assert dropna_at != -1, "the recipe must drop configs with a NaN metric"
+    assert block.index('df["samples_count"] >= MIN_SAMPLES') < dropna_at
+    assert dropna_at < block.index("frontier = pareto_front(df)")
+    assert "Excluded" in block[dropna_at:]
+
+
+def test_recipe_nan_handling_on_real_pandas(repo_root: Path) -> None:
+    pd = pytest.importorskip("pandas")
+    block = _recipe_block(repo_root)
+    tree = ast.parse(block)
+    start = next(
+        i
+        for i, node in enumerate(tree.body)
+        if "samples_count" in (ast.get_source_segment(block, node) or "")
+        and isinstance(node, ast.Assign)
+    )
+    stop = next(
+        i
+        for i, node in enumerate(tree.body)
+        if isinstance(node, ast.FunctionDef) and node.name == "pareto_front"
+    )
+    guard = "\n".join(
+        ast.get_source_segment(block, node) or "" for node in tree.body[start:stop]
+    )
+    nan = float("nan")
+    namespace = {
+        "MIN_SAMPLES": 1,
+        "df": pd.DataFrame(
+            [
+                {"model": "ok", "samples_count": 1, "accuracy": 0.8, "cost": 1.0},
+                {"model": "no_acc", "samples_count": 1, "accuracy": nan, "cost": 0.5},
+                {"model": "no_cost", "samples_count": 1, "accuracy": 0.95, "cost": nan},
+            ]
+        ),
+    }
+    exec(guard, namespace)
+    assert namespace["df"]["model"].tolist() == ["ok"]

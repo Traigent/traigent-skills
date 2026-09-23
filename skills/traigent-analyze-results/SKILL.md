@@ -601,6 +601,12 @@ if not (
 ):
     raise SystemExit("TIE_BAND must be a finite number >= 0: your measured rerun spread.")
 df = df[df["samples_count"] >= MIN_SAMPLES]
+# A config missing either metric (NaN) cannot be placed on the frontier: drop it and say so,
+# rather than letting NaN comparisons silently keep or discard it.
+n_configs = len(df)
+df = df.dropna(subset=["accuracy", "cost"])  # use your run's actual metric names
+if len(df) < n_configs:
+    print(f"Excluded {n_configs - len(df)} config(s) with no accuracy or cost value")
 
 # Non-dominated (Pareto) frontier with a tie band: maximize accuracy, minimize cost. Walk from
 # cheapest to most expensive and keep a config only if it beats every cheaper KEPT config by more
