@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6b2f6ae1bdc72c76",
+  "doc_hash": "c9b1e7e0bf2b3844",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -140,6 +140,17 @@
       "doc_before_hash": "ee3e55ba0f75f7f7",
       "doc_after_hash": "6b2f6ae1bdc72c76",
       "note": "parse_judge_output now fails closed on non-object payloads, boolean scores, NaN, Infinity and scores outside [0, 1], so a wrong-scale or malformed judge score can no longer clear the calibration thresholds.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-333",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "6b2f6ae1bdc72c76",
+      "doc_after_hash": "c9b1e7e0bf2b3844",
+      "note": "State the gold-slice pass rule as a 95% Wilson lower bound with worked minimum counts, raise the slice floor to 30, and choose the judge threshold on rows disjoint from the ones the bars are reported on (or cross-validate).",
       "source_type": "agent"
     }
   ]
