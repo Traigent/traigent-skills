@@ -59,7 +59,7 @@ from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    results = await func.optimize(max_trials=100, algorithm="random")
+    results = func.optimize_sync(max_trials=100, algorithm="random")
 except CostLimitExceeded as e:          # forward-compatible budget exception
     if e.estimated is None:
         print(f"Cost limit exceeded before the run; estimate unavailable; limit ${e.limit:.2f}")
@@ -218,7 +218,7 @@ python optimize_production.py
 After optimization, cost information is available on the result object:
 
 ```python
-results = await func.optimize(max_trials=10, algorithm="grid")
+results = func.optimize_sync(max_trials=10, algorithm="grid")
 
 print(f"Total cost: ${results.total_cost:.4f}")
 print(f"Total tokens: {results.total_tokens}")

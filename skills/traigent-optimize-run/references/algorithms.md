@@ -3,7 +3,7 @@
 Traigent uses `algorithm="auto"` by default for connected real runs and also supports explicit local search algorithms (`"grid"`, `"random"`). Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`); they never run locally or offline (see the note below the comparison table). Pass the algorithm name as a string to `optimize()` or `optimize_sync()`.
 
 ```python
-results = await func.optimize(max_trials=10)  # default algorithm="auto"
+results = func.optimize_sync(max_trials=10)  # default algorithm="auto"
 ```
 
 > `auto` with no key found, or a connectivity/5xx/400 failure at session creation, degrades to a local `random` search and still returns a result (a rejected key raises instead): launch a run approved as managed search with `TRAIGENT_REQUIRE_CLOUD=1`, and treat `results.metadata.get("source") == "local_fallback"` as a failure to investigate (see the callout under Quick Comparison in `SKILL.md`).
@@ -25,7 +25,7 @@ results = await func.optimize(max_trials=10)  # default algorithm="auto"
 Enumerates every combination in the configuration space, so the best in-space configuration on the evaluation dataset is always found.
 
 ```python
-results = await func.optimize(algorithm="grid")
+results = func.optimize_sync(algorithm="grid")
 ```
 
 ### Parameter Order
@@ -33,7 +33,7 @@ results = await func.optimize(algorithm="grid")
 Control which parameters vary fastest vs slowest:
 
 ```python
-results = await func.optimize(
+results = func.optimize_sync(
     algorithm="grid",
     parameter_order={"model": 0, "temperature": 1, "max_tokens": 2},
 )
@@ -61,7 +61,7 @@ Lower values vary slowest (outer loop), higher values vary fastest (inner loop).
 Samples configurations uniformly at random from the config space. Each trial is independent.
 
 ```python
-results = await func.optimize(max_trials=20, algorithm="random")
+results = func.optimize_sync(max_trials=20, algorithm="random")
 ```
 
 ### When to Use
@@ -84,10 +84,10 @@ A probabilistic surrogate model predicts which configurations are likely to perf
 
 ```python
 # Connected only (TRAIGENT_API_KEY set, offline=False, SDK 0.20.1+):
-results = await func.optimize(max_trials=30, algorithm="bayesian")
+results = func.optimize_sync(max_trials=30, algorithm="bayesian")
 
 # Default connected smart path when you don't need a specific strategy:
-results = await func.optimize(max_trials=30, algorithm="auto")
+results = func.optimize_sync(max_trials=30, algorithm="auto")
 ```
 
 Use `"auto"` for connected real runs when you do not need a specific named strategy; use `"random"` only when you explicitly want local search.
@@ -98,7 +98,7 @@ Advanced Optuna-style optimization dispatched to the Traigent cloud. On an authe
 
 ```python
 # Connected only (TRAIGENT_API_KEY set, offline=False, SDK 0.20.1+):
-results = await func.optimize(max_trials=50, algorithm="optuna")
+results = func.optimize_sync(max_trials=50, algorithm="optuna")
 ```
 
 ## Choosing an Algorithm
@@ -142,5 +142,5 @@ def my_func(query: str) -> str:
 
 # Override at runtime — "auto"/"grid"/"random" work anywhere; named smart
 # algorithms (e.g. "bayesian") are connected-only (SDK 0.20.1+, see above).
-results = await my_func.optimize(algorithm="random", max_trials=20)
+results = my_func.optimize_sync(algorithm="random", max_trials=20)
 ```

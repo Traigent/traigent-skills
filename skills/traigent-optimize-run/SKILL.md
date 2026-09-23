@@ -74,7 +74,7 @@ See `traigent-analyze-results` for the full field reference.
 > ```python
 > from traigent.testing import enable_mock_mode_for_quickstart
 > enable_mock_mode_for_quickstart()
-> results = await answer.optimize(max_trials=10, algorithm="grid")  # mock, no cost
+> results = answer.optimize_sync(max_trials=10, algorithm="grid")  # mock, no cost
 > print(f"Mock pipeline OK: {len(results.trials)} trials, {len(results.failed_trials)} failed")
 > # Estimate the REAL run's cost before approving. There is no `results.estimated_cost_usd`
 > # accessor — the upper bound is (max_trials x dataset_size) LLM calls; price that against
@@ -111,6 +111,8 @@ See `traigent-analyze-results` for the full field reference.
 <!-- /PROTECTED -->
 
 ```python
+import asyncio
+
 import traigent
 import litellm  # pip install "traigent>=0.19" — the canonical runnable LLM call
 
@@ -132,8 +134,13 @@ def answer(question: str) -> str:
     )
     return resp.choices[0].message.content
 
-# Run optimization (real — only after dry-run approval)
-results = await answer.optimize(max_trials=10)  # default algorithm="auto"
+# Run optimization (real — only after dry-run approval). `optimize()` is a coroutine:
+# await it inside async code; from a plain script, drive it with asyncio.run().
+async def main():
+    return await answer.optimize(max_trials=10)  # default algorithm="auto"
+
+
+results = asyncio.run(main())
 ```
 
 ### optimize() Parameters
@@ -194,10 +201,10 @@ answers must not be written to the SDK's per-example logs (they are by default).
 Exhaustive search over all configurations in the config space. Deterministic and complete.
 
 ```python
-results = await func.optimize(max_trials=24, algorithm="grid")
+results = func.optimize_sync(max_trials=24, algorithm="grid")
 
 # Control iteration order with parameter_order
-results = await func.optimize(
+results = func.optimize_sync(
     algorithm="grid",
     parameter_order={"model": 0, "temperature": 1},  # model varies slowest
 )
@@ -210,7 +217,7 @@ results = await func.optimize(
 Samples configurations randomly from the config space. Good for large spaces where exhaustive search is impractical.
 
 ```python
-results = await func.optimize(max_trials=20, algorithm="random")
+results = func.optimize_sync(max_trials=20, algorithm="random")
 ```
 
 **Best for**: Large config spaces, quick exploration, when you have a limited trial budget.
@@ -224,10 +231,10 @@ results = await func.optimize(max_trials=20, algorithm="random")
 ```python
 # Connected-only — requires TRAIGENT_API_KEY and offline=False; on SDK 0.20.1+
 # binds the named strategy server-side (fails on 0.20.0 and always with offline=True):
-# results = await func.optimize(max_trials=30, algorithm="bayesian")
+# results = func.optimize_sync(max_trials=30, algorithm="bayesian")
 
 # Default connected smart path:
-results = await func.optimize(max_trials=30, algorithm="auto")
+results = func.optimize_sync(max_trials=30, algorithm="auto")
 ```
 
 ### Quick Comparison
@@ -335,7 +342,7 @@ applies inside each call; the shared cap is the binding one, and a run it stops 
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    results = await func.optimize(max_trials=100, algorithm="random")
+    results = func.optimize_sync(max_trials=100, algorithm="random")
 except CostLimitExceeded as e:
     if e.estimated is None:
         print(f"Cost limit exceeded before the run; estimate unavailable; limit ${e.limit:.2f}")
@@ -425,7 +432,7 @@ Optimization can stop for several reasons. Check `results.stop_reason`:
 | `"network_error"` | Connectivity failure; inspect the failure before retrying. |
 
 ```python
-results = await func.optimize(max_trials=20, algorithm="grid")
+results = func.optimize_sync(max_trials=20, algorithm="grid")
 
 print(f"Stop reason: {results.stop_reason}")
 print(f"Trials completed: {len(results.trials)}")
@@ -458,7 +465,7 @@ def my_func(query: str) -> str:
     resp = litellm.completion(model=cfg["model"], messages=[{"role": "user", "content": query}])
     return resp.choices[0].message.content
 
-results = await my_func.optimize(max_trials=10, algorithm="random")
+results = my_func.optimize_sync(max_trials=10, algorithm="random")
 ```
 
 ### ParallelConfig Fields
@@ -477,7 +484,7 @@ the ranked trial table. Call `print_results_table()` only when you need to re-pr
 later, or when you need custom `objectives` / `config_space` display arguments.
 
 ```python
-results = await func.optimize(max_trials=10, algorithm="grid")  # auto-prints the ranked table
+results = func.optimize_sync(max_trials=10, algorithm="grid")  # auto-prints the ranked table
 
 # Optional: re-print later, or override the display metadata.
 from traigent.utils.results_table import print_results_table
@@ -497,7 +504,7 @@ The table highlights the best trial with ★ and colors the best metric value pe
 `OptimizationResult` contains everything from the optimization run:
 
 ```python
-results = await func.optimize(max_trials=10, algorithm="grid")
+results = func.optimize_sync(max_trials=10, algorithm="grid")
 
 # Best configuration and score
 print(results.best_config)     # {"model": "gpt-4o", "temperature": 0.5}
