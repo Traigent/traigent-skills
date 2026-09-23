@@ -34,14 +34,26 @@ socket.socket.connect_ex = deny_connect
 
 import traigent
 from traigent.api.decorators import EvaluationOptions
+from traigent.core.objectives import create_default_objectives
 
 with open("qa.jsonl", "w") as fh:
     for q, a in [("a", "A"), ("b", "B"), ("c", "C")]:
         fh.write(json.dumps({"input": {"q": q}, "output": a}) + "\\n")
 
+import litellm
+
 def answer(q):
     traigent.get_config()
-    return q.upper() if q != "c" else "wrong"
+    text = q.upper() if q != "c" else "wrong"
+    # A cost objective needs measured usage: SDKs after 0.27.0 refuse an
+    # all-$0 cost column. litellm's mock_response returns a real response with
+    # token usage and makes no network call, so cost is measured, not faked.
+    litellm.completion(
+        model="gpt-4o-mini",
+        messages=[{"role": "user", "content": q}],
+        mock_response=text,
+    )
+    return text
 
 def exec_acc(output, expected, input_data=None):
     return 1.0
@@ -53,7 +65,10 @@ cases = {
     "single_builtin": dict(objectives=["accuracy"], eval_dataset="qa.jsonl"),
     "multi_objective": dict(objectives=["accuracy", "cost"], eval_dataset="qa.jsonl"),
     "custom_metric_function": dict(
-        objectives=["exec_acc"],
+        # Custom metric names need an explicit direction on SDKs after 0.27.0.
+        objectives=create_default_objectives(
+            ["exec_acc"], orientations={"exec_acc": "maximize"}
+        ),
         evaluation=EvaluationOptions(
             eval_dataset="qa.jsonl", metric_functions={"exec_acc": exec_acc}
         ),
