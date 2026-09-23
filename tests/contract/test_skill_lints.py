@@ -755,10 +755,13 @@ def _scan_option_field_tables(
 ) -> list[str]:
     """A reference table (header row says Field/Kwarg/Parameter) in a section
     that names exactly one of the three option classes must only list real
-    fields of that class. Scoped to the innermost heading plus its immediate
-    parent (at most two levels) so an unrelated mention elsewhere in a long
-    document can never supply the class -- ambiguous or absent context means
-    "skip", never "guess"."""
+    fields of that class. The class is read from the table's own section (its
+    heading and the text above the table) plus its parent's heading and intro,
+    the text before the parent's first subsection. A sibling subsection, an
+    earlier section, or the prose under the document's level-1 title never
+    supplies the class, only the title line itself does, so an unrelated
+    mention elsewhere in the skill cannot turn another table into an options
+    table. Ambiguous or absent context means "skip", never "guess"."""
     violations: list[str] = []
     lines = text.splitlines()
     fenced = _fenced_line_numbers(text)
@@ -782,9 +785,10 @@ def _scan_option_field_tables(
             idx += 1
             continue
 
-        if stack and line.strip():
-            for entry in stack:
-                entry[1].append(line)
+        # Only the innermost section collects text, so a parent keeps just its
+        # heading and intro, never a sibling subsection's prose.
+        if stack and line.strip() and not (len(stack) == 1 and stack[0][0] == 1):
+            stack[-1][1].append(line)
 
         if (
             idx + 1 < n
@@ -1605,6 +1609,69 @@ def test_option_field_table_lint_has_teeth(tmp_path: Path) -> None:
     assert not _scan_option_field_tables(
         "unrelated", unrelated, unrelated.read_text(), tmp_path
     ), "field-table lint false-positive on a table not about any option class"
+
+
+# Tables that are NOT about an option class, in a skill that also mentions
+# EvaluationOptions elsewhere. Only the table's own section (plus its parent's
+# heading and intro) says what the table documents, so none of these is an
+# EvaluationOptions field table.
+_UNRELATED_FIELD_TABLES = {
+    "class named in the skill intro": (
+        "# Build an evaluator\n\n"
+        "Wire the scorer through `EvaluationOptions` when you decorate.\n\n"
+        "## ExampleResult contract\n\n"
+    ),
+    "class named in a sibling section": (
+        "# Build an evaluator\n\n"
+        "## Evaluation\n\n"
+        "### Options\n\n"
+        '`EvaluationOptions(eval_dataset="d.jsonl")` sets the dataset.\n\n'
+        "### ExampleResult contract\n\n"
+    ),
+    "class named in an earlier top-level section": (
+        "# Build an evaluator\n\n"
+        "## Wiring\n\n"
+        "Pass `evaluation=EvaluationOptions(...)` on the decorator.\n\n"
+        "## ExampleResult contract\n\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("shape", sorted(_UNRELATED_FIELD_TABLES))
+def test_option_field_table_lint_ignores_unrelated_tables(
+    tmp_path: Path, shape: str
+) -> None:
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text(
+        _UNRELATED_FIELD_TABLES[shape]
+        + "| Field | Type | Meaning |\n"
+        "|---|---|---|\n"
+        "| `score` | `float` | Per-example score |\n"
+        "| `definitely_not_an_option_field_zz` | `str` | Not an option |\n",
+        encoding="utf-8",
+    )
+    assert not _scan_option_field_tables("demo", skill, skill.read_text(), tmp_path)
+
+
+def test_option_field_table_lint_reads_a_class_named_in_the_title(
+    tmp_path: Path,
+) -> None:
+    # The document title still scopes its tables when it names the class.
+    if _EVALUATION_OPTIONS_FIELDS is None:
+        pytest.skip("installed SDK has no EvaluationOptions")
+    skill = tmp_path / "skills" / "demo" / "SKILL.md"
+    skill.parent.mkdir(parents=True)
+    skill.write_text(
+        "# EvaluationOptions reference\n\n"
+        "## Fields\n\n"
+        "| Field | Type | Description |\n"
+        "|---|---|---|\n"
+        "| `definitely_not_an_option_field_zz` | `str` | Bogus field |\n",
+        encoding="utf-8",
+    )
+    violations = _scan_option_field_tables("demo", skill, skill.read_text(), tmp_path)
+    assert violations and "definitely_not_an_option_field_zz" in violations[0]
 
 
 class _FakeSdkVersionConfig:

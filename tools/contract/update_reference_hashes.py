@@ -54,12 +54,20 @@ def insert_after_doc_hash(
     return updated
 
 
+def render(provenance: dict[str, Any], current: str) -> str:
+    """Serialize in the file's own style: 2-space indent, trailing newline, and
+    non-ASCII text kept as UTF-8 unless the file already escapes it as ``\\uXXXX``.
+    Both spellings decode to the same JSON, so --check reports only real changes."""
+    escaped = current.isascii() and "\\u" in current
+    return json.dumps(provenance, indent=2, ensure_ascii=escaped) + "\n"
+
+
 def update_skill(skill_dir: Path, check: bool) -> bool:
     provenance_path = skill_dir / "provenance.json"
-    provenance = json.loads(provenance_path.read_text(encoding="utf-8"))
-    updated = insert_after_doc_hash(provenance, reference_hashes(skill_dir))
-    rendered = json.dumps(updated, indent=2) + "\n"
     current = provenance_path.read_text(encoding="utf-8")
+    provenance = json.loads(current)
+    updated = insert_after_doc_hash(provenance, reference_hashes(skill_dir))
+    rendered = render(updated, current)
     changed = rendered != current
     if changed and not check:
         provenance_path.write_text(rendered, encoding="utf-8")
