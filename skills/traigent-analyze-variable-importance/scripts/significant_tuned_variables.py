@@ -23,7 +23,9 @@ from types import SimpleNamespace
 from typing import Any
 
 BOOTSTRAP_SEED = 55
-DEFAULT_BOOTSTRAP_DRAWS = 1000
+# Permutation resolution needs draws + 1 >= 10 * family_size / alpha: at the default
+# alpha of 0.05, 2000 draws resolve families of up to 10 eligible knobs.
+DEFAULT_BOOTSTRAP_DRAWS = 2000
 MIN_TRIALS_PER_KNOB = 20
 MIN_TRIALS_PER_VALUE = 5
 PERMUTATION_RESOLUTION_MULTIPLIER = 10
@@ -997,6 +999,15 @@ def write_insights_md(
                 "",
             ]
         )
+    short = [row for row in rows if row.inference_status == "insufficient_permutation_resolution"]
+    if short:
+        needed = math.ceil(PERMUTATION_RESOLUTION_MULTIPLIER * short[0].family_size / alpha)
+        lines.extend(
+            [
+                f"Permutation resolution is too low for {short[0].family_size} eligible knobs at alpha={alpha:g}: rerun with `--bootstrap-draws {needed}` or more (draws + 1 must be at least 10 x knobs / alpha).",
+                "",
+            ]
+        )
     lines.extend(["## Ranking", ""])
     if rows:
         for index, row in enumerate(rows, 1):
@@ -1091,7 +1102,10 @@ def parse_args() -> argparse.Namespace:
         "--bootstrap-draws",
         type=int,
         default=DEFAULT_BOOTSTRAP_DRAWS,
-        help="Bootstrap draws per knob; default 1000",
+        help=(
+            "Bootstrap and permutation draws per knob; default 2000. A significant "
+            "label needs draws + 1 >= 10 * eligible knobs / alpha"
+        ),
     )
     parser.add_argument(
         "--sampling-design",

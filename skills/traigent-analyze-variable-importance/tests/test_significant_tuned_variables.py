@@ -712,3 +712,53 @@ def test_insights_renders_sdk_cross_check_table(tmp_path: Path) -> None:
     text = path.read_text(encoding="utf-8")
     assert "## SDK cross-check" in text
     assert "| `knob` | 0.75 | [0.5, 0.9] | 40 |" in text
+
+
+def _six_knob_factorial(count: int = 128) -> list[dict]:
+    """Two replicates of a full 2^6 factorial: every knob exactly independent."""
+    rows = []
+    for index in range(count):
+        config = {f"k{j}": (index >> j) & 1 for j in range(6)}
+        # A real effect on k0 only, plus a small deterministic wobble.
+        accuracy = (0.8 if config["k0"] else 0.4) + 0.01 * ((index * 7) % 5)
+        rows.append({"accuracy": accuracy, "config": config})
+    return rows
+
+
+def test_default_draws_resolve_a_six_knob_family(tmp_path: Path) -> None:
+    """Review of #317: at the default alpha the default draws must cover a 6-knob family."""
+    trials_path = tmp_path / "trials.jsonl"
+    output_dir = tmp_path / "out"
+    write_jsonl(trials_path, _six_knob_factorial())
+    subprocess.run(
+        [
+            sys.executable, str(SCRIPT), "--trials", str(trials_path),
+            "--output-dir", str(output_dir), "--sampling-design", "randomized",
+        ],
+        check=True, text=True, capture_output=True,
+    )
+    ranking = json.loads((output_dir / "importance.json").read_text(encoding="utf-8"))
+    by_knob = {row["knob"]: row for row in ranking}
+    assert by_knob["k0"]["family_size"] == 6
+    assert by_knob["k0"]["inference_status"] == "tested"
+    assert by_knob["k0"]["label"] == "significant"
+
+
+def test_resolution_shortfall_names_the_draws_flag(tmp_path: Path) -> None:
+    trials_path = tmp_path / "trials.jsonl"
+    output_dir = tmp_path / "out"
+    write_jsonl(trials_path, _six_knob_factorial())
+    subprocess.run(
+        [
+            sys.executable, str(SCRIPT), "--trials", str(trials_path),
+            "--output-dir", str(output_dir), "--sampling-design", "randomized",
+            "--bootstrap-draws", "500",
+        ],
+        check=True, text=True, capture_output=True,
+    )
+    ranking = json.loads((output_dir / "importance.json").read_text(encoding="utf-8"))
+    assert {row["inference_status"] for row in ranking} == {
+        "insufficient_permutation_resolution"
+    }
+    insights = (output_dir / "insights.md").read_text(encoding="utf-8")
+    assert "--bootstrap-draws 1200" in insights

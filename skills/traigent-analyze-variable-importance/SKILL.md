@@ -61,6 +61,10 @@ The script accepts:
   `0.05`, at most `0.10`). It is written into every `importance.json` row and `video_card.json`.
 - `--confidence`: bootstrap CI confidence for the whiskers (default `0.9`). Display only; it does
   not change any label.
+- `--bootstrap-draws`: bootstrap and permutation draws per knob (default `2000`). A `significant`
+  label needs `draws + 1 >= 10 x eligible knobs / alpha`; the default covers up to 10 knobs at
+  alpha 0.05. When `insufficient_permutation_resolution` appears, `insights.md` names the draws to
+  rerun with.
 
 Present objectives must be finite numeric values; booleans, NaN and infinity are rejected with
 the input file and row number. Supplied costs must also be finite and nonnegative. Missing costs
