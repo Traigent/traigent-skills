@@ -31,12 +31,22 @@ def normalize_text(value) -> str:
     return re.sub(r"\s+", " ", str(value).strip().lower())
 
 def exact_normalized_metric(output, expected, input_data) -> float:
+    # A JSON gold (dict/list) is compared as parsed JSON: str(expected) would be
+    # Python's single-quoted repr and never equal the model's JSON text.
+    if isinstance(expected, (dict, list)):
+        try:
+            return 1.0 if json.loads(output) == expected else 0.0
+        except (json.JSONDecodeError, TypeError):
+            return 0.0
     return 1.0 if normalize_text(output) == normalize_text(expected) else 0.0
 
 def valid_schema_metric(output, expected, input_data) -> float:
     try:
         data = json.loads(output)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, TypeError):
+        return 0.0
+    # Valid JSON that is not an object (42, null, a list of field names) is a wrong answer.
+    if not isinstance(data, dict):
         return 0.0
     required_fields = set(input_data.get("required_fields", []))
     return 1.0 if required_fields.issubset(data) else 0.0

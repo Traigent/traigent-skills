@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.5"
+  version: "1.1.6"
 ---
 
 # Traigent Choose Metric
@@ -120,7 +120,10 @@ from traigent.api.decorators import EvaluationOptions
 def valid_schema_metric(output, expected, input_data) -> float:
     try:
         data = json.loads(output)
-    except json.JSONDecodeError:
+    except (json.JSONDecodeError, TypeError):
+        return 0.0
+    # Valid JSON that is not an object (42, null, a list of field names) is a wrong answer.
+    if not isinstance(data, dict):
         return 0.0
     required = {"invoice_id", "amount_due", "due_date"}
     return 1.0 if required.issubset(data) else 0.0
