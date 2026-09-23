@@ -455,10 +455,17 @@ def _extract_python_block(
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
-        kwargs = tuple(keyword.arg for keyword in node.keywords if keyword.arg)
+        target = _call_target(node.func, imported_roots)
+        # `@traigent.optimize(temperature=Range(0.0, 1.0))` declares a tuned
+        # variable, not an option: its name is free-form, so it is not a fact.
+        kwargs = tuple(
+            keyword.arg
+            for keyword in node.keywords
+            if keyword.arg
+            and not (target in _OPTIMIZE_TARGETS and _is_inline_param(keyword.value))
+        )
         if not kwargs:
             continue
-        target = _call_target(node.func, imported_roots)
         if target and _rooted_at_traigent(target):
             facts.append(
                 ContractFact(
@@ -646,6 +653,39 @@ def _import_from_module(node: ast.ImportFrom) -> str:
 
 def _rooted_at_traigent(value: str | None) -> bool:
     return bool(value == "traigent" or (value and value.startswith("traigent.")))
+
+
+_OPTIMIZE_TARGETS = frozenset({"traigent.optimize", "traigent.api.decorators.optimize"})
+_INLINE_PARAM_CLASSES = frozenset(
+    {"Range", "IntRange", "LogRange", "Choices", "TextDocument"}
+)
+
+
+def _is_inline_param(value: ast.expr) -> bool:
+    """Mirror the SDK's ``is_inline_param_definition``: a ParameterRange
+    (``Choices([...])``, ``Range.temperature()``, ``traigent.IntRange(1, 5)``)
+    or a two-number tuple. A list is NOT one: the SDK rejects ``x=[1, 2]`` as an
+    unknown keyword so a typo like ``objectivs=[...]`` cannot pass as a knob."""
+    if isinstance(value, ast.Tuple):
+        return len(value.elts) == 2 and all(_is_number(elt) for elt in value.elts)
+    if not isinstance(value, ast.Call):
+        return False
+    current: ast.AST = value.func
+    while isinstance(current, ast.Attribute):
+        if current.attr in _INLINE_PARAM_CLASSES:
+            return True
+        current = current.value
+    return isinstance(current, ast.Name) and current.id in _INLINE_PARAM_CLASSES
+
+
+def _is_number(node: ast.expr) -> bool:
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.USub, ast.UAdd)):
+        node = node.operand
+    return (
+        isinstance(node, ast.Constant)
+        and isinstance(node.value, (int, float))
+        and not isinstance(node.value, bool)
+    )
 
 
 def _call_target(func: ast.AST, imported_roots: dict[str, str]) -> str | None:

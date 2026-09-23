@@ -340,13 +340,17 @@ def _assert_call_kwargs(
     except (TypeError, ValueError) as exc:
         pytest.skip(f"{target} has no inspectable signature: {exc}")
 
+    accepted: set[str] = set(signature.parameters)
     if any(
         parameter.kind is inspect.Parameter.VAR_KEYWORD
         for parameter in signature.parameters.values()
     ):
-        pytest.skip(f"{target} accepts **kwargs")
+        closed = _closed_kwarg_set(obj, signature)
+        if closed is None:
+            pytest.skip(f"{target} accepts **kwargs")
+        accepted = closed
 
-    missing = [name for name in fact.kwargs if name not in signature.parameters]
+    missing = [name for name in fact.kwargs if name not in accepted]
     if missing:
         message = format_dead_teaching(
             fact,
@@ -356,6 +360,47 @@ def _assert_call_kwargs(
             problem=f"kwarg not accepted: {', '.join(missing)}",
         )
         raise AssertionError(message)
+
+
+def _closed_kwarg_set(obj: Any, signature: inspect.Signature) -> set[str] | None:
+    """Accepted keyword names for a ``**kwargs`` target that still rejects
+    unknown names at runtime, or None when the target is genuinely open.
+
+    * a pydantic model with ``extra="forbid"`` (``DatasetGrowthOptions``,
+      ``EvaluationOptions``, ...) accepts exactly its fields and their aliases;
+    * ``traigent.optimize`` routes ``**runtime_overrides`` through
+      ``_validate_runtime_overrides``, which accepts only ``_DIRECT_OPTION_KEYS``
+      and ``_ALLOWED_RUNTIME_OVERRIDE_KEYS`` once inline tuned variables are
+      removed (the extractor already drops those). The same private names are
+      read by tools/contract/refresh_python_api.py for the API snapshot.
+    """
+    fields = getattr(obj, "model_fields", None)
+    config = getattr(obj, "model_config", None)
+    if isinstance(fields, dict) and isinstance(config, dict):
+        if config.get("extra") != "forbid":
+            return None
+        names = set(fields)
+        names.update(
+            alias
+            for field in fields.values()
+            for alias in (getattr(field, "alias", None),)
+            if isinstance(alias, str)
+        )
+        return names
+
+    decorators = importlib.import_module("traigent.api.decorators")
+    if obj is not getattr(decorators, "optimize", None):
+        return None
+    direct = getattr(decorators, "_DIRECT_OPTION_KEYS", None)
+    overrides = getattr(decorators, "_ALLOWED_RUNTIME_OVERRIDE_KEYS", None)
+    if direct is None or overrides is None:
+        return None
+    named = {
+        name
+        for name, parameter in signature.parameters.items()
+        if parameter.kind is not inspect.Parameter.VAR_KEYWORD
+    }
+    return named | set(direct) | set(overrides)
 
 
 def resolve_dotted(target: str) -> Any:
