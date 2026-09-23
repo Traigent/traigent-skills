@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b04e83488cd0c177",
+  "doc_hash": "c882848d41a4aa75",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/insights-and-iteration.md": "2fbc6034f8bd71d2",
-    "references/instrument-recipe.md": "3f2fa48719c9220c"
+    "references/instrument-recipe.md": "90fd94a07e27b711"
   },
   "entries": [
     {
@@ -67,7 +67,7 @@
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "d383427cef704ca1",
       "doc_after_hash": "3f0f4cc4a8be4e45",
-      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class — keep core import or deep-import traigent.analytics.example_insights when plugin installed",
+      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class \u2014 keep core import or deep-import traigent.analytics.example_insights when plugin installed",
       "source_type": "human"
     },
     {
@@ -111,7 +111,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "4665b7cf92bd385a",
       "doc_after_hash": "be83fe17856839da",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -211,6 +211,17 @@
       "doc_before_hash": "1583f7f0bb3152c2",
       "doc_after_hash": "b04e83488cd0c177",
       "note": "Rebuild issue #150 on current main: distinguish required and optional delegations, document dict-spread collision precedence, and keep variable-importance as an optional deep dive.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-318",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "b04e83488cd0c177",
+      "doc_after_hash": "c882848d41a4aa75",
+      "note": "Step 7 builds the configuration space from the Step 5 generate_config rows the function actually reads (WIRED filter) instead of the removed recommend_configuration_space() dict; the instrument recipe admits only wired rows and every stage_tuned_params name is in the space.",
       "source_type": "agent"
     }
   ]

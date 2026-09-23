@@ -440,11 +440,20 @@ for rec in suggested.recommendations:
 7. INSTRUMENT minimally and preserve behavior.
    - Wrap the chosen scoreable function with `@traigent.optimize`.
    - Keep the original function signature stable: same name and input parameters. If production callers require a plain output but evaluation returns `(output, metrics)`, add a thin outer adapter rather than changing the call-site inputs.
-   - Merge catalog recommendations, local knobs, and composite members:
+   - Merge the Step 5 rows you have wired, local knobs, and composite members. `generate_config` returns rows, not a ready space: admit a row only after the function reads that knob — a declared knob the function never reads is a silent no-op that still multiplies the search:
 
 ```python
+# Knobs this function actually reads at the call site. Add a knob here only after wiring it.
+WIRED = {"prompting_strategy"}  # example
+
+SUGGESTED_CHOICES = {
+    rec.name: rec.range_kwargs["values"]
+    for rec in suggested.recommendations
+    if rec.range_type == "Choices" and rec.name in WIRED
+}
+
 CONFIGURATION_SPACE = {
-    **recommendations["configuration_space"],
+    **SUGGESTED_CHOICES,
     "model": ["gpt-4o-mini", "gpt-4o"],
     "temperature": [0.0, 0.2, 0.7],
     "candidate_count": [1, 2, 3],
@@ -454,7 +463,7 @@ CONFIGURATION_SPACE = {
 
    - **Key-collision precedence:** this is plain dict-unpacking order — a later `**spread` or literal
      key silently overwrites an earlier one with the same name. As written above, `**COMPOSITE.members`
-     wins over `recommendations["configuration_space"]` and the local knobs on any name collision. If
+     wins over `SUGGESTED_CHOICES` and the local knobs on any name collision. If
      the catalog recommendation for a knob must win instead, reorder so `**COMPOSITE.members` is spread
      first, or rename the colliding key in one of the two sources.
 

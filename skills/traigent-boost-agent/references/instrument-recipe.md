@@ -53,24 +53,22 @@ CONSISTENCY = self_consistency(
     "qa_self_consistency",
     stage="answer",
     cardinality="candidate_count",
-    stage_tuned_params=(
-        "model",
-        "temperature",
-        "retrieval_k",
-        "context_selection_policy",
-        "context_order",
-    ),
+    stage_tuned_params=("model", "temperature", "retrieval_k"),
 )
 
 # generate_config returns ROWS, not a ready configuration_space dict. Build the
-# space from the rows you actually decide to tune -- each carries range_type and
-# range_kwargs (e.g. Choices -> {"values": [...]}, IntRange -> {"low":, "high":}).
-# Take Choices rows literally; convert numeric ranges with Range/IntRange from
-# traigent, and read apply_guidance first for knobs that need runtime wiring.
+# space only from rows the function below actually reads -- a declared knob the
+# function never reads is a silent no-op that still multiplies the search. Each
+# row carries range_type and range_kwargs (e.g. Choices -> {"values": [...]},
+# IntRange -> {"low":, "high":}). Take Choices rows literally; convert numeric
+# ranges with Range/IntRange from traigent, and read apply_guidance first for
+# knobs that need runtime wiring. Add a name to WIRED only after wiring it.
+WIRED = {"context_selection_policy", "context_order", "summary_style", "citation_policy"}
+
 SUGGESTED_CHOICES = {
     rec.name: rec.range_kwargs["values"]
     for rec in SUGGESTED.recommendations
-    if rec.range_type == "Choices"
+    if rec.range_type == "Choices" and rec.name in WIRED
 }
 
 CONFIGURATION_SPACE = {
@@ -78,6 +76,7 @@ CONFIGURATION_SPACE = {
     "model": ["gpt-4o-mini", "gpt-4o"],
     "temperature": [0.0, 0.2, 0.7],
     "candidate_count": [1, 2, 3],
+    "retrieval_k": [2, 4, 8],
     **CONSISTENCY.members,
 }
 
