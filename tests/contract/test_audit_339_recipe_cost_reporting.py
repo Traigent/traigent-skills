@@ -17,12 +17,15 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 from .extract import _iter_fenced_blocks
 
 ROOT = Path(__file__).resolve().parents[2]
 RECIPE = ROOT / "skills" / "traigent-boost-agent" / "references" / "instrument-recipe.md"
 PER_CALL_COST = 0.01
+# docs/version-matrix.md row `cost-unit`: metrics["cost"] is the per-trial total from here on.
+COST_IS_TRIAL_TOTAL_SINCE = "0.23.0"
 EXAMPLES = 3
 
 
@@ -58,10 +61,13 @@ def test_recipe_cost_reaches_total_cost_without_reserved_key_warning(tmp_path: P
             ns = runpy.run_path({str(agent)!r}, run_name="recipe_under_test")
             # The full grid, so trials cover every candidate_count.
             result = ns["answer_question"].optimize_sync(max_trials=math.prod(len(v) for v in ns["CONFIGURATION_SPACE"].values()), algorithm="grid")
+            import traigent
             print("RESULT=" + json.dumps({{
+                "sdk": traigent.__version__,
                 "total_cost": result.total_cost,
                 "trials": [
-                    [int(t.config["candidate_count"]), t.metrics.get("cost")] for t in result.trials
+                    [int(t.config["candidate_count"]), t.metrics.get("total_cost"), t.metrics.get("cost")]
+                    for t in result.trials
                 ],
                 "failed": len(getattr(result, "failed_trials", []) or []),
             }}))
@@ -97,11 +103,17 @@ def test_recipe_cost_reaches_total_cost_without_reserved_key_warning(tmp_path: P
     )
     assert result["failed"] == 0, log[-3000:]
     trials = result["trials"]
-    # Every candidate call is priced: a trial's cost scales with candidate_count.
-    assert len({count for count, _ in trials}) >= 2, trials
-    for count, cost in trials:
-        assert cost == pytest.approx(PER_CALL_COST * EXAMPLES * count), trials
-    assert result["total_cost"] == pytest.approx(sum(cost for _, cost in trials)), result
+    # Every candidate call is priced: a trial's total cost scales with candidate_count.
+    assert len({count for count, _, _ in trials}) >= 2, trials
+    for count, trial_total, _ in trials:
+        assert trial_total == pytest.approx(PER_CALL_COST * EXAMPLES * count), trials
+    assert result["total_cost"] == pytest.approx(sum(total for _, total, _ in trials)), result
+    # The bare "cost" metric is that same per-trial total on SDKs after 0.22.0
+    # (see docs/version-matrix.md: cost-unit); earlier SDKs report the per-example
+    # mean under "cost", below this skill's 0.24.0 floor.
+    if Version(result["sdk"]) >= Version(COST_IS_TRIAL_TOTAL_SINCE):
+        for _, trial_total, cost in trials:
+            assert cost == pytest.approx(trial_total), trials
 
 
 def test_recipe_warns_custom_scorers_about_the_with_usage_wrapper() -> None:
