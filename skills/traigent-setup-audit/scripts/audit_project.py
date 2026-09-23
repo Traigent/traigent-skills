@@ -1933,6 +1933,60 @@ def project_interpreter(root: Path) -> str:
     return sys.executable
 
 
+def _pyvenv_cfg(venv: Path) -> dict[str, str]:
+    """`key = value` lines of a venv's pyvenv.cfg; empty when it cannot be read."""
+    values: dict[str, str] = {}
+    try:
+        text = (venv / "pyvenv.cfg").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return values
+    for line in text.splitlines():
+        key, sep, value = line.partition("=")
+        if sep:
+            values[key.strip().lower()] = value.strip()
+    return values
+
+
+def venv_site_paths(venv: Path) -> tuple[list[str], bool]:
+    """Every directory the venv's interpreter would import an installed package
+    from, found by path: ``(paths, reads_base)``.
+
+    With ``include-system-site-packages = true`` that interpreter also imports
+    from the user site (searched first) and the base installation named by
+    ``home``; those are read too, in the same order. Nothing is executed:
+    ``home`` is written by the project, so its interpreter is not started either.
+    """
+    own = sorted(str(path) for path in venv.glob("lib/python3*/site-packages"))
+    cfg = _pyvenv_cfg(venv)
+    if cfg.get("include-system-site-packages", "false").lower() != "true":
+        return own, False
+    version = cfg.get("version") or cfg.get("version_info") or ""
+    parts = version.split(".")
+    xy = f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else ""
+    user = Path.home()
+    if xy:
+        user_sites = [
+            user / ".local" / "lib" / f"python{xy}" / "site-packages",
+            user / "Library" / "Python" / xy / "lib" / "python" / "site-packages",
+        ]
+    else:
+        user_sites = sorted((user / ".local" / "lib").glob("python3*/site-packages"))
+    base: list[Path] = []
+    home = cfg.get("home")
+    if home:
+        prefix = Path(home).parent
+        lib = f"python{xy}" if xy else "python3*"
+        for pattern in (
+            f"lib/{lib}/site-packages",
+            f"lib/{lib}/dist-packages",
+            "lib/python3/dist-packages",
+            f"local/lib/{lib}/dist-packages",
+        ):
+            base.extend(sorted(prefix.glob(pattern)))
+    paths = [str(path) for path in user_sites] + own + [str(path) for path in base]
+    return paths, True
+
+
 def read_sdk_version(interpreter: str) -> dict:
     """Read the installed SDK version from package metadata; start nothing.
 
@@ -1942,14 +1996,12 @@ def read_sdk_version(interpreter: str) -> dict:
     that: without `site` the venv's site-packages is not on the path at all.)
     Only the scorer probe starts the project interpreter.
     """
+    reads_base = False
     try:
         if interpreter == sys.executable:
             found = md.distributions(name="traigent")
         else:
-            venv = Path(interpreter).parent.parent
-            paths = sorted(
-                str(path) for path in venv.glob("lib/python3*/site-packages")
-            )
+            paths, reads_base = venv_site_paths(Path(interpreter).parent.parent)
             found = md.distributions(name="traigent", path=paths)
         dist = next(iter(found), None)
         version = dist.version if dist is not None else None
@@ -1959,7 +2011,11 @@ def read_sdk_version(interpreter: str) -> dict:
             "traigent_version": None,
             "error_type": type(exc).__name__,
         }
-    return {"interpreter": interpreter, "traigent_version": version}
+    return {
+        "interpreter": interpreter,
+        "traigent_version": version,
+        "read_base_installation": reads_base,
+    }
 
 
 def key_presence(root: Path, files: list[Path]) -> dict:
@@ -2354,11 +2410,17 @@ def setup_area(sdk: dict, keys: dict, ignored: str, model_ids: list[str]) -> dic
     evidence: list[str] = []
     version = sdk.get("traigent_version")
     if version:
-        evidence.append(f"traigent {version} is importable by {sdk['interpreter']}")
+        evidence.append(f"traigent {version} is installed in {sdk['interpreter']}")
     else:
         evidence.append(
             f"traigent is not installed for {sdk['interpreter']}"
             + (f" ({sdk['error_type']})" if sdk.get("error_type") else "")
+            + (
+                " — read by path from its own site-packages, the user site and "
+                "the base installation it includes"
+                if sdk.get("read_base_installation")
+                else ""
+            )
         )
     if keys["names_set_in_environment"]:
         evidence.append(

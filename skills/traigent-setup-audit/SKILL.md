@@ -125,7 +125,9 @@ overlap check runs across the pair by normalized input; per-row split markers, w
 win.
 The SDK version is read from installed package metadata in `.venv`, then
 `.venv-traigent`, then the audit's own interpreter, without starting the project's
-interpreter, and the card names which one answered.
+interpreter, and the card says which one it is installed in. For a venv created
+with `include-system-site-packages = true`, the user site and the base
+installation named in its `pyvenv.cfg` are read too, by path.
 
 A function is reported as a scorer when its **name** says so (`score*`,
 `evaluate*`, `grade*`, `metric*`, `*_score`, `*_scorer`). A second parameter

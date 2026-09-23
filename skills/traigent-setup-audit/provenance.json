@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7c8c65bf0ba9d9e1",
+  "doc_hash": "2f511fc29f60e5aa",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -209,6 +209,17 @@
       "doc_before_hash": "7d1404e1db422b6f",
       "doc_after_hash": "7c8c65bf0ba9d9e1",
       "note": "Dataset row and ladder row now say exactly what is reported: the count of rows with no input/input_data key, including rows with no input-like key at all.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-309-sitepkgs",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "7c8c65bf0ba9d9e1",
+      "doc_after_hash": "2f511fc29f60e5aa",
+      "note": "SDK version line says where it is installed; a venv with include-system-site-packages also reads the user site and base installation by path.",
       "source_type": "agent"
     }
   ]

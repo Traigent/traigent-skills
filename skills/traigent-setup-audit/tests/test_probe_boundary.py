@@ -507,7 +507,85 @@ def test_the_version_check_never_starts_the_project_interpreter(
     report, card = _run(root, tmp_path)
     assert not marker.exists(), marker.read_text(encoding="utf-8")
     assert report["setup"]["sdk"]["traigent_version"] == "0.27.0"
-    assert "traigent 0.27.0 is importable by" in card
+    assert "traigent 0.27.0 is installed in" in card
+
+
+def _write_dist_info(site: Path, version: str) -> None:
+    dist_info = site / f"traigent-{version}.dist-info"
+    dist_info.mkdir(parents=True)
+    (dist_info / "METADATA").write_text(
+        f"Metadata-Version: 2.1\nName: traigent\nVersion: {version}\n",
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize("where", ["base", "user"])
+def test_a_system_site_venv_reads_the_base_installation_too(
+    where: str, monkeypatch, tmp_path: Path
+) -> None:
+    """`include-system-site-packages = true`: the SDK may live in the base
+    installation or the user site, which that interpreter also imports from.
+    Both are read by path; nothing is started."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    base_prefix = tmp_path / "base"
+    (base_prefix / "bin").mkdir(parents=True)
+    root, marker = _project_with_venv(tmp_path, None)
+    (root / ".venv" / "pyvenv.cfg").write_text(
+        f"home = {base_prefix / 'bin'}\n"
+        "include-system-site-packages = true\n"
+        "version = 3.12.3\n",
+        encoding="utf-8",
+    )
+    if where == "base":
+        _write_dist_info(base_prefix / "lib" / "python3.12" / "site-packages", "0.26.0")
+    else:
+        _write_dist_info(
+            home / ".local" / "lib" / "python3.12" / "site-packages", "0.26.0"
+        )
+    report, card = _run(root, tmp_path)
+    assert not marker.exists()
+    assert report["setup"]["sdk"]["traigent_version"] == "0.26.0"
+    assert "traigent 0.26.0 is installed in" in card
+
+
+def test_an_isolated_venv_does_not_read_the_base_installation(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Teeth: with `include-system-site-packages = false` the base copy is not
+    importable by the venv, so it must not be reported."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    base_prefix = tmp_path / "base"
+    (base_prefix / "bin").mkdir(parents=True)
+    root, _ = _project_with_venv(tmp_path, None)
+    (root / ".venv" / "pyvenv.cfg").write_text(
+        f"home = {base_prefix / 'bin'}\n"
+        "include-system-site-packages = false\n"
+        "version = 3.12.3\n",
+        encoding="utf-8",
+    )
+    _write_dist_info(base_prefix / "lib" / "python3.12" / "site-packages", "0.26.0")
+    report, _ = _run(root, tmp_path)
+    assert report["setup"]["sdk"]["traigent_version"] is None
+
+
+def test_with_no_project_venv_the_audits_own_interpreter_is_read(
+    tmp_path: Path,
+) -> None:
+    import importlib.metadata
+
+    try:
+        expected = importlib.metadata.version("traigent")
+    except importlib.metadata.PackageNotFoundError:
+        pytest.skip("the interpreter running the tests has no traigent installed")
+    root = tmp_path / "novenv"
+    root.mkdir()
+    report, _ = _run(root, tmp_path)
+    assert report["setup"]["sdk"]["interpreter"] == sys.executable
+    assert report["setup"]["sdk"]["traigent_version"] == expected
 
 
 def test_a_venv_without_the_sdk_reads_as_not_installed(tmp_path: Path) -> None:
@@ -518,7 +596,9 @@ def test_a_venv_without_the_sdk_reads_as_not_installed(tmp_path: Path) -> None:
     assert "traigent is not installed for" in card
 
 
-needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed")
+needs_git = pytest.mark.skipif(
+    shutil.which("git") is None, reason="git is not installed"
+)
 
 
 def _git(root: Path, *args: str) -> None:
