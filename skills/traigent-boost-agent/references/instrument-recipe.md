@@ -28,15 +28,13 @@ def answer_question(question: str) -> str:
 ```python
 from time import perf_counter
 
+import litellm
 import traigent
-from openai import OpenAI
 from traigent.api.decorators import EvaluationOptions
 from traigent.config_generator import generate_config
 from traigent.knobs.patterns import self_consistency
 from traigent.knobs.runtime import StageRunner, execute_composite
 from traigent.knobs.telemetry import merge_composite_measures
-
-client = OpenAI()
 
 # Reads the target file and proposes tuned variables from the shipped TVar
 # catalog. enrich=False keeps it offline: no LLM call, no spend.
@@ -104,7 +102,9 @@ def _render_context(question: str, cfg: dict) -> str:
 
 def _call_answer_model(question: str, cfg: dict) -> str:
     context = _render_context(question, cfg)
-    response = client.chat.completions.create(
+    # litellm.completion, not a raw provider client: mock mode intercepts only
+    # LiteLLM/LangChain calls, so the dry-run below stays keyless and free.
+    response = litellm.completion(
         model=cfg["model"],
         temperature=float(cfg["temperature"]),
         messages=[
@@ -157,7 +157,11 @@ def answer_question(question: str):
         calibrated_values={},
     )
 
-    output = "" if run.result_kind.value != "output" else str(run.output)
+    if run.result_kind.value != "output":
+        # A composite with no answer is a FAILED example, not an empty answer:
+        # returning "" would let a run where every model call failed pass as green.
+        raise RuntimeError(f"composite produced no output: {run.result_kind.value}")
+    output = str(run.output)
     metrics: dict[str, float] = {
         "latency_ms": (perf_counter() - started) * 1000.0,
         "cost": estimate_last_call_cost_usd(),
@@ -187,6 +191,8 @@ from traigent.testing import enable_mock_mode_for_quickstart
 
 enable_mock_mode_for_quickstart()
 ```
+
+> Mock mode covers LiteLLM/LangChain calls only — a raw `openai` / `anthropic` client in the body makes real, billable calls even during a "keyless" mock dry-run. The After block calls `litellm.completion` for that reason; if you keep your own client, stub it for the dry-run.
 
 Real optimization:
 
