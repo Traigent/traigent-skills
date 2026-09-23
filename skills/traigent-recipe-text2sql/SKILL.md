@@ -1,6 +1,6 @@
 ---
 name: traigent-recipe-text2sql
-description: "End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 20/30 -> 27/30 on its tuning slice on the cheap model."
+description: "End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 20/30 -> 27/30 on its tuning slice on the cheap model (counts that predate the recipe's result_eq comparator and were not re-scored with it)."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -24,7 +24,9 @@ A field-tested, end-to-end recipe that took a plain `gpt-4o-mini` NL->SQL agent
 from **20 of 30 -> 27 of 30** execution-match on the 30-question SPIDER slice it was
 tuned on, **while staying on the cheapest model** (~$0.00009/query). The gains came from
 **prompt-structure knobs on a cheap model**, not from a premium model. Those are counts on
-the tuning slice, not a held-out result — see "The winner on this slice" below.
+the tuning slice, not a held-out result — see "The winner on this slice" below. They also
+predate the `result_eq` comparator taught below and were not re-scored with it, so they are
+not directly comparable to a score you get from this recipe as written.
 
 ## The two-run lesson arc (the demo that lands)
 > **Scope: this minimal-first teaching arc is for the text2SQL EXAMPLE only.** It starts
@@ -104,7 +106,9 @@ returns zero rows: an empty gold scores 1.0 for every wrong query that also retu
 and a gold that fails to run scores 0.0 for every candidate, so neither separates
 configurations. Report accuracy on the scoreable subset with that count. Run candidate SQL
 only on a read-only handle with a watchdog and a size cap — never on the writable DB the agent
-could mutate (the runnable reference below does both). Keep the read-only allowlist broad
+could mutate (the runnable reference below does both). Bound the watchdog by wall-clock time,
+not by a VM-step count: a step cap also aborts correct SQL on a real-size table and scores it 0
+like wrong SQL; report a timed-out query separately from an SQL error. Keep the read-only allowlist broad
 enough for correct answers (window functions, JSON `->`/`->>`, math built-ins): a denied
 feature scores a correct prediction 0 with no error. A real call LiteLLM cannot price has
 an unknown cost, not a zero one: the reference refuses a `--real` run whose models have no
@@ -208,7 +212,7 @@ from traigent.api.decorators import EvaluationOptions, ExecutionOptions
 decorated = traigent.optimize(
     configuration_space=CONFIG_SPACE, objectives=OBJECTIVES, default_config=BASELINE,
     evaluation=EvaluationOptions(eval_dataset=DS, custom_evaluator=exec_eval),
-    execution=ExecutionOptions(offline=False),   # False -> online/cloud; True -> local zero-egress
+    execution=ExecutionOptions(offline=False),   # False -> online/cloud; True -> local, no Traigent backend egress (provider calls still go out)
 )(run_agent)
 result = decorated.optimize_sync(max_trials=25, algorithm="auto")  # or: await decorated.optimize(...)
 ```
@@ -226,7 +230,8 @@ runs end-to-end in minutes and is the ice-breaker for the QuickStart:
 python quickstart_text2sql.py --mock     # no LLM spend; validates wiring (all-zero accuracy expected)
 python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 ```
-Swap the embedded DB + questions for the real SPIDER dev set to scale up — the wiring is identical.
+Swap the embedded DB + questions for the real SPIDER dev set to scale up — the wiring is identical;
+raise the reference's per-query time budget (`_QUERY_BUDGET_S`) if its timeout warning fires on correct SQL.
 
 ## The winner on this slice (tuning score — not a held-out result)
 `gpt-4o-mini · temp 0.2 · fewshot_k 2 · fewshot_selector=similar · generation_path=plan_then_sql · repair off`
@@ -234,7 +239,8 @@ scored **27 of 30** on the rows it was selected on, from a 20-of-30 baseline, at
 ~$0.00009/query; the cheap model + similarity-selected few-shot + plan-then-SQL beat
 both the mid model and (separately) a premium Sonnet config (26 of 30 at 20-50x the
 cost). That is a selection score on public Spider data: the winner was picked on these
-rows, so the number is optimistic and carries no held-out check. Expect the direction on
+rows, so the number is optimistic and carries no held-out check. These counts also predate
+the `result_eq` comparator above and were not re-scored with it. Expect the direction on
 your own agent, and score one recommended config on rows the search never saw before
 quoting a lift.
 

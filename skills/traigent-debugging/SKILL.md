@@ -28,15 +28,19 @@ Use this skill when:
 
 Enable detailed logging to see what Traigent is doing at each step:
 
-```bash
-# Full SDK verbose logging (SDK infrastructure, sampling, backend comms)
-export TRAIGENT_LOG_LEVEL=DEBUG  # read on all current SDK versions
+```python
+import traigent
 
+traigent.configure(logging_level="DEBUG")  # SDK debug output for traigent.* loggers
+# ...then define and run the optimization as usual
+```
+
+```bash
 # Full tracebacks for ConfigurationError (shows raw exception, not user-friendly message)
 export TRAIGENT_DEBUG=1
 ```
 
-These are distinct: `TRAIGENT_LOG_LEVEL=DEBUG` is for SDK-level verbose output; `TRAIGENT_DEBUG=1` is specifically for showing raw ConfigurationError tracebacks.
+`TRAIGENT_LOG_LEVEL` on its own is applied only by `traigent.configure(logging_level=...)`, `traigent.initialize()` and the `traigent` CLI (when set, it overrides the level they are given). In a script that only uses `@traigent.optimize`, exporting it changes LiteLLM's verbosity, not Traigent's. `configure()` reconfigures the root logger; if your application manages its own logging, attach a handler to the `traigent` logger instead (see [Logging Configuration](references/logging-config.md), "Programmatic Logging Configuration"). `TRAIGENT_DEBUG=1` is separate: it only shows raw ConfigurationError tracebacks.
 
 Then run your optimization. Debug output includes:
 - Configuration sampling decisions
@@ -408,18 +412,22 @@ from traigent.testing import enable_mock_mode_for_quickstart
 enable_mock_mode_for_quickstart()  # raises in production
 ```
 
-**Legacy fallback (env-var, dev/test only):**
+**Legacy fallback (env-var, dev/test only, deprecated):**
+
+`TRAIGENT_MOCK_LLM=true` is deprecated on traigent 0.27.0 (a DeprecationWarning, hidden by default, says it "will be removed in a future release"). Use `traigent.testing.enable_mock_mode_for_quickstart()` in code, e.g. from a pytest fixture/conftest, for new setups.
 
 ```bash
-# Mock LLM responses (no API keys needed) — hard-blocked in production
+# Deprecated: mock LLM responses (no API keys needed) — hard-blocked in production
 export TRAIGENT_MOCK_LLM=true
 ```
 
-```python
-import os
-os.environ["TRAIGENT_MOCK_LLM"] = "true"
+A complete keyless dry-run with the in-code API:
 
+```python
 import traigent
+from traigent.testing import enable_mock_mode_for_quickstart
+
+enable_mock_mode_for_quickstart()
 
 @traigent.optimize(
     eval_dataset="test_data.jsonl",
@@ -463,7 +471,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 1. Check dataset: does the file exist and contain valid JSONL?
 2. Check configuration space: is it non-empty with valid lists?
 3. Check for ConfigurationError in output
-4. Enable `TRAIGENT_LOG_LEVEL=DEBUG` and check for early failures
+4. Call `traigent.configure(logging_level="DEBUG")` before the run (the env var alone does not reach a decorated run) and check for early failures
 5. On a cloud/hybrid run, rule out a plan-quota block before looking further — see "Session-create
    fails with `400 VALIDATION_ERROR` / `429 quota_exceeded`" above; a quota block can present as zero
    trials with no other symptom.
@@ -535,8 +543,11 @@ print(traigent.__version__)
 
 # Check common diagnostic environment settings
 import os
-print(f"Mock LLM: {os.getenv('TRAIGENT_MOCK_LLM', 'false')}")
-print(f"Log level: {os.getenv('TRAIGENT_LOG_LEVEL', 'INFO')}")
+from traigent.testing import is_mock_mode_enabled
+print(f"Mock mode (in code): {is_mock_mode_enabled()}")
+print(f"TRAIGENT_MOCK_LLM (deprecated env var): {os.getenv('TRAIGENT_MOCK_LLM', 'unset')}")
+import logging
+print("traigent log level:", logging.getLevelName(logging.getLogger("traigent").getEffectiveLevel()))
 ```
 
 ## Graceful Fallback Pattern

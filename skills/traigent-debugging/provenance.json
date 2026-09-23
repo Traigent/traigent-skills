@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "565bcafed564c205",
+  "doc_hash": "107c8a4668b71133",
   "reference_hashes": {
-    "references/error-reference.md": "a4972fd8548f1357",
-    "references/logging-config.md": "a9ba72306ba70183",
-    "references/mock-mode.md": "7945ee3565727d98"
+    "references/error-reference.md": "dde075e0be420e47",
+    "references/logging-config.md": "158e07e3237bfb61",
+    "references/mock-mode.md": "7fd67abd666522f7"
   },
   "entries": [
     {
@@ -100,6 +100,28 @@
       "doc_before_hash": "bfbb9c9327a321f5",
       "doc_after_hash": "565bcafed564c205",
       "note": "Rebuild issue #195 on current main: correct the TRAIGENT_MOCK_LLM production guard to fail on first SDK use rather than bare import.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-321",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "565bcafed564c205",
+      "doc_after_hash": "967286c0dba116f3",
+      "note": "Quick Diagnostic enables SDK debug output with traigent.configure(logging_level=\"DEBUG\"); TRAIGENT_LOG_LEVEL alone is applied only by configure()/initialize()/the CLI, so on a decorated run it changed LiteLLM's verbosity, not Traigent's. No-trials step 4 and the environment check follow; logging-config.md's default-level row matches a decorated run.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-343",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "967286c0dba116f3",
+      "doc_after_hash": "107c8a4668b71133",
+      "note": "TRAIGENT_MOCK_LLM=true is marked deprecated (0.27.0 DeprecationWarning, scheduled for removal) where it is taught; the full mock dry-run example uses enable_mock_mode_for_quickstart(), and the environment check reports the in-code mock flag.",
       "source_type": "agent"
     }
   ]

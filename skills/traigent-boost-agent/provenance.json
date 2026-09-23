@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b04e83488cd0c177",
+  "doc_hash": "ceef6e423373c532",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/insights-and-iteration.md": "2fbc6034f8bd71d2",
-    "references/instrument-recipe.md": "3f2fa48719c9220c"
+    "references/insights-and-iteration.md": "8f7cd2450d5bb2be",
+    "references/instrument-recipe.md": "db2c3f40e4327736"
   },
   "entries": [
     {
@@ -34,7 +34,7 @@
       "timestamp": "2026-07-05T00:00:00Z",
       "doc_before_hash": "833e433d3fbe83dd",
       "doc_after_hash": "4d7e0e3498961979",
-      "note": "add a short Fast Path Step 5 pointer to traigent-optimize-run's never-mock-the-real-run doctrine (round 2 of sim-testbed findings, 20-cell wave)",
+      "note": "add a short Fast Path Step 5 pointer to traigent-optimize-run's never-mock-the-real-run doctrine (round 2 of internal simulation findings)",
       "source_type": "human"
     },
     {
@@ -56,7 +56,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "389fa849ed70b81e",
       "doc_after_hash": "d383427cef704ca1",
-      "note": "CURATE step: reserve the holdout slice before the first optimization run and record the partition (Traigent/traigent-smartopt#88, #89)",
+      "note": "CURATE step: reserve the holdout slice before the first optimization run and record the partition (internal tracker issues)",
       "source_type": "human"
     },
     {
@@ -100,7 +100,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "23c57e5772586d93",
       "doc_after_hash": "4665b7cf92bd385a",
-      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: characterize value and propose a bounded first experiment. WI-A of the economics model; Spine-Trail st_6443b96904d7",
+      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: characterize value and propose a bounded first experiment. First work item of the economics model.",
       "source_type": "human"
     },
     {
@@ -111,7 +111,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "4665b7cf92bd385a",
       "doc_after_hash": "be83fe17856839da",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the economics wiring after internal review findings: point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. Review repair of the economics model.",
       "source_type": "human"
     },
     {
@@ -122,18 +122,18 @@
       "timestamp": "2026-07-18T00:00:00Z",
       "doc_before_hash": "be83fe17856839da",
       "doc_after_hash": "5b0ee62e049d363e",
-      "note": "Sol NO-GO remediation (WI-A): make 'characterize, never compute a budget locally' the economics-section boundary in this skill (the service authors the budget; no local arithmetic; when no service result, say so and give no number), matching the budget lint now extended across all eight economics skills. The shared reference was realigned to the canonical TraigentSchema economics vocabulary (value_channel/daily_volume_band/error_cost_band/lifecycle_stage/human_cycle_hours_band enums exactly), the Track R2 finding was scoped to a single unvalidated pilot, and followable budget arithmetic was removed from the reference pending the WI-C backend calculator. Spine-Trail st_6443b96904d7",
+      "note": "Internal review remediation (economics model): make 'characterize, never compute a budget locally' the economics-section boundary in this skill (the service authors the budget; no local arithmetic; when no service result, say so and give no number), matching the budget lint now extended across all eight economics skills. The shared reference was realigned to the canonical TraigentSchema economics vocabulary (value_channel/daily_volume_band/error_cost_band/lifecycle_stage/human_cycle_hours_band enums exactly), a research finding was scoped to a single unvalidated pilot, and followable budget arithmetic was removed from the reference pending a planned backend calculator.",
       "source_type": "human"
     },
     {
-      "edit_id": "merge-main-taxonomy-into-econ-wi-a-2026-07-18",
+      "edit_id": "merge-main-taxonomy-into-economics-2026-07-18",
       "op": "manual_edit",
       "status": "accepted",
       "run_id": null,
       "timestamp": "2026-07-18T00:00:00Z",
       "doc_before_hash": "5b0ee62e049d363e",
       "doc_after_hash": "a502d64640e23484",
-      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
       "source_type": "human"
     },
     {
@@ -144,7 +144,7 @@
       "timestamp": "2026-07-26T00:00:00Z",
       "doc_before_hash": "a502d64640e23484",
       "doc_after_hash": "338b3994f9a77d4a",
-      "note": "Step 11 RECOMMEND: reference the Traigent-attributed recommendation (the `attribution` block) as the Traigent-authored next action, presented verbatim via traigent-analyze-guidance, and demote the local symptom-to-action table to the offline/no-attribution fallback. Backend support landed via Traigent/TraigentBackend#2439 and SDK support via Traigent/Traigent#2019 + #2042 (all merged 2026-07-27); the block stays optional and version-dependent, so presentation is conditional on the payload carrying it (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
+      "note": "Step 11 RECOMMEND: reference the Traigent-attributed recommendation (the `attribution` block) as the Traigent-authored next action, presented verbatim via traigent-analyze-guidance, and demote the local symptom-to-action table to the offline/no-attribution fallback. Backend support landed (internal tracker issue) and SDK support via Traigent/Traigent#2019 + #2042 (all merged 2026-07-27); the block stays optional and version-dependent, so presentation is conditional on the payload carrying it (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
       "source_type": "human"
     },
     {
@@ -211,6 +211,39 @@
       "doc_before_hash": "1583f7f0bb3152c2",
       "doc_after_hash": "b04e83488cd0c177",
       "note": "Rebuild issue #150 on current main: distinguish required and optional delegations, document dict-spread collision precedence, and keep variable-importance as an optional deep dive.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-318",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "b04e83488cd0c177",
+      "doc_after_hash": "c882848d41a4aa75",
+      "note": "Step 7 builds the configuration space from the Step 5 generate_config rows the function actually reads (WIRED filter) instead of the removed recommend_configuration_space() dict; the instrument recipe admits only wired rows and every stage_tuned_params name is in the space.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-343",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c882848d41a4aa75",
+      "doc_after_hash": "527998aaeedcdd8a",
+      "note": "Mock note no longer lists TRAIGENT_MOCK_LLM as a hermetic-startup env var without saying it is deprecated in favor of enable_mock_mode_for_quickstart().",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-331",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "527998aaeedcdd8a",
+      "doc_after_hash": "ceef6e423373c532",
+      "note": "The wire-first ladder ends at custom_evaluator and the smoke gate calls a custom_evaluator directly; BaseEvaluator is stated as not wireable through @traigent.optimize on traigent <= 0.27.0 (an instance passed as custom_evaluator fails with ValueError), and the insights symptom table no longer offers a BaseEvaluator path. Version 2.1.14.",
       "source_type": "agent"
     }
   ]

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.13"
+  version: "2.1.14"
 ---
 
 # Traigent Boost Agent
@@ -140,7 +140,7 @@ traigent check my_script.py --dry-run                         # discovers @traig
 
 Enable mock mode in code, then run the full optimization pipeline end to end (decorator wiring, config sampling, dataset loading, trial execution, scoring) with LLM calls intercepted. Mock mode is hard-blocked when `ENVIRONMENT=production`. For mock-mode setup mechanics and scope (what is and isn't intercepted, mock vs offline), see `traigent-setup-quickstart`.
 
-> A **connected** mock run (`offline=False` with a key) consumes the plan's `optimization_samples` quota like any other run; an `offline=True` mock run makes no backend call and touches no quota. Mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`).
+> A **connected** mock run (`offline=False` with a key) consumes the plan's `optimization_samples` quota like any other run; an `offline=True` mock run makes no backend call and touches no quota. Mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`; `TRAIGENT_MOCK_LLM` is deprecated in favor of `enable_mock_mode_for_quickstart()`).
 
 ```python
 import os
@@ -213,7 +213,7 @@ assert my_metric(known_bad, expected_output) <= 0.1, (
 )
 ```
 
-For a `custom_evaluator` / `BaseEvaluator`, call `.evaluate([good_example])` and `.evaluate([bad_example])` directly and assert the returned `metrics` separate. Use **one known-good + one known-bad example only** — this is a smoke gate, not a full audit.
+For a `custom_evaluator`, call it directly on the known-good and the known-bad example (`my_evaluator(my_function, config, example)` returns an `ExampleResult`) and assert the returned `metrics` separate. (`BaseEvaluator` is not wireable through `@traigent.optimize` on traigent <= 0.27.0: an instance passed as `custom_evaluator` fails with `ValueError: custom_evaluator must be callable`; see `traigent-eval-build`.) Use **one known-good + one known-bad example only** — this is a smoke gate, not a full audit.
 
 > **If both assertions pass:** the metric wires correctly — proceed to Step 4.
 >
@@ -378,7 +378,7 @@ answer = my_function("What is Python?")
    - DELEGATE (required): `traigent-eval-choose-metric` owns the metric interview and objective vocabulary.
 
 4. WIRE OR BUILD the evaluator.
-   - Use the wire-first ladder: `eval_dataset` -> `scoring_function` -> `metric_functions` -> `custom_evaluator` -> `BaseEvaluator`.
+   - Use the wire-first ladder: `eval_dataset` -> `scoring_function` -> `metric_functions` -> `custom_evaluator` (`BaseEvaluator` is not wireable through `@traigent.optimize` on traigent <= 0.27.0; see `traigent-eval-build`).
    - Start deterministic when the task has ground truth or checkable domain logic; use LLM judges only when deterministic scoring cannot express the quality target.
    - Audit any LLM judge before trusting it to drive optimization.
    - DELEGATE (required): `traigent-eval-build` owns evaluator code. DELEGATE (deep-dive, optional — only when an LLM judge is used): `traigent-eval-audit` owns judge reliability checks.
@@ -440,11 +440,20 @@ for rec in suggested.recommendations:
 7. INSTRUMENT minimally and preserve behavior.
    - Wrap the chosen scoreable function with `@traigent.optimize`.
    - Keep the original function signature stable: same name and input parameters. If production callers require a plain output but evaluation returns `(output, metrics)`, add a thin outer adapter rather than changing the call-site inputs.
-   - Merge catalog recommendations, local knobs, and composite members:
+   - Merge the Step 5 rows you have wired, local knobs, and composite members. `generate_config` returns rows, not a ready space: admit a row only after the function reads that knob — a declared knob the function never reads is a silent no-op that still multiplies the search:
 
 ```python
+# Knobs this function actually reads at the call site. Add a knob here only after wiring it.
+WIRED = {"prompting_strategy"}  # example
+
+SUGGESTED_CHOICES = {
+    rec.name: rec.range_kwargs["values"]
+    for rec in suggested.recommendations
+    if rec.range_type == "Choices" and rec.name in WIRED
+}
+
 CONFIGURATION_SPACE = {
-    **recommendations["configuration_space"],
+    **SUGGESTED_CHOICES,
     "model": ["gpt-4o-mini", "gpt-4o"],
     "temperature": [0.0, 0.2, 0.7],
     "candidate_count": [1, 2, 3],
@@ -454,7 +463,7 @@ CONFIGURATION_SPACE = {
 
    - **Key-collision precedence:** this is plain dict-unpacking order — a later `**spread` or literal
      key silently overwrites an earlier one with the same name. As written above, `**COMPOSITE.members`
-     wins over `recommendations["configuration_space"]` and the local knobs on any name collision. If
+     wins over `SUGGESTED_CHOICES` and the local knobs on any name collision. If
      the catalog recommendation for a knob must win instead, reorder so `**COMPOSITE.members` is spread
      first, or rename the colliding key in one of the two sources.
 
