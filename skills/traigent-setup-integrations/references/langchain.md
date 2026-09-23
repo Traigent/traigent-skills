@@ -94,6 +94,9 @@ if len(built) < 2:
 print("auto-override applied:", sorted(built))
 ```
 
+On `traigent<=0.27.0` this check exits with `auto-override did not apply` — that is expected on
+those versions; use manual injection.
+
 ### How It Works
 
 1. Traigent scans the `framework_targets` list for the specified classes
