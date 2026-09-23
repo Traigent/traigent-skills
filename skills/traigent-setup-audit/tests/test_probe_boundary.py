@@ -429,3 +429,86 @@ def test_a_nonexistent_bind_is_skipped_rather_than_breaking_the_probe() -> None:
     missing = Path("/definitely/not/here/at/all")
     command = audit.isolation_command(backend, args, terminator, [missing])
     assert str(missing) not in command
+
+
+# --------------------------------------------------------------------------
+# #309 — what the classifier reads, and the version check starts nothing
+# --------------------------------------------------------------------------
+
+
+def test_the_classifier_reads_the_scorers_own_file_only(tmp_path: Path) -> None:
+    """Pinned as TODAY's reach, so widening it is a visible decision.
+
+    A helper module the scorer imports from the project is not read: its
+    `import subprocess` leaves the scorer deterministic. SKILL.md's Safety
+    section says exactly this, and tells the reader to review helpers by hand.
+    """
+    (tmp_path / "helpers.py").write_text(
+        "import subprocess  # imported, never called\n\n"
+        "def normalize(text):\n    return text.strip().lower()\n",
+        encoding="utf-8",
+    )
+    scorer = tmp_path / "scorer.py"
+    scorer.write_text(
+        "from helpers import normalize\n\n"
+        "def score(output, expected):\n"
+        "    return 1.0 if normalize(output) == normalize(expected) else 0.0\n",
+        encoding="utf-8",
+    )
+    kind, _ = audit.classify_module_function(scorer, "score")
+    assert kind == "deterministic"
+    # Control: the same import in the scorer's own file is refused.
+    scorer.write_text(
+        "import subprocess\n\ndef score(output, expected):\n    return 1.0\n",
+        encoding="utf-8",
+    )
+    kind, _ = audit.classify_module_function(scorer, "score")
+    assert kind == "executing"
+
+
+def _project_with_venv(tmp_path: Path, version: str | None) -> tuple[Path, Path]:
+    root = tmp_path / "interp"
+    bin_dir = root / ".venv" / "bin"
+    bin_dir.mkdir(parents=True)
+    (root / "agent.py").write_text(
+        "import traigent\n\n"
+        "@traigent.optimize(configuration_space={'temperature': [0.0, 0.7]})\n"
+        "def answer(q, temperature=0.0):\n    return f'{temperature}:{q}'\n",
+        encoding="utf-8",
+    )
+    marker = tmp_path / "interpreter-ran.txt"
+    shim = bin_dir / "python"
+    shim.write_text(
+        f"#!/bin/sh\necho started >> '{marker}'\nexec '{sys.executable}' \"$@\"\n",
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+    if version is not None:
+        dist_info = (
+            root / ".venv" / "lib" / "python3.12" / "site-packages"
+            / f"traigent-{version}.dist-info"
+        )
+        dist_info.mkdir(parents=True)
+        (dist_info / "METADATA").write_text(
+            f"Metadata-Version: 2.1\nName: traigent\nVersion: {version}\n",
+            encoding="utf-8",
+        )
+    return root, marker
+
+
+def test_the_version_check_never_starts_the_project_interpreter(
+    tmp_path: Path,
+) -> None:
+    root, marker = _project_with_venv(tmp_path, "0.27.0")
+    report, card = _run(root, tmp_path)
+    assert not marker.exists(), marker.read_text(encoding="utf-8")
+    assert report["setup"]["sdk"]["traigent_version"] == "0.27.0"
+    assert "traigent 0.27.0 is importable by" in card
+
+
+def test_a_venv_without_the_sdk_reads_as_not_installed(tmp_path: Path) -> None:
+    root, marker = _project_with_venv(tmp_path, None)
+    report, card = _run(root, tmp_path)
+    assert not marker.exists()
+    assert report["setup"]["sdk"]["traigent_version"] is None
+    assert "traigent is not installed for" in card

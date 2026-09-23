@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import ast
 import csv
+import importlib.metadata as md
 import json
 import os
 import re
@@ -282,33 +283,6 @@ PROBE_TIMEOUT_SECONDS = 30
 # dozens of eval files or scorers stays readable.
 MAX_DATASETS_IN_CARD = 10
 MAX_SCORERS_IN_CARD = 8
-
-_VERSION_PROBE_SOURCE = """
-import json
-import socket
-
-
-class _Refused(RuntimeError):
-    pass
-
-
-def _refuse(*args, **kwargs):
-    raise _Refused("traigent-setup-audit: network disabled in the free audit")
-
-
-socket.socket = _refuse
-socket.create_connection = _refuse
-socket.getaddrinfo = _refuse
-socket.gethostbyname = _refuse
-
-import importlib.metadata as md
-
-try:
-    version = md.version("traigent")
-except Exception:
-    version = None
-print(json.dumps({"traigent_version": version}))
-"""
 
 
 # --------------------------------------------------------------------------
@@ -1931,30 +1905,30 @@ def project_interpreter(root: Path) -> str:
 
 
 def read_sdk_version(interpreter: str) -> dict:
-    command = [interpreter, "-c", _VERSION_PROBE_SOURCE]
+    """Read the installed SDK version from package metadata; start nothing.
+
+    A project venv's interpreter is never executed here: starting it runs the
+    venv's site hooks, which are project code, outside the probe sandbox. Its
+    site-packages is read by path instead. (`python -I -S` is no way round
+    that: without `site` the venv's site-packages is not on the path at all.)
+    Only the scorer probe starts the project interpreter.
+    """
     try:
-        completed = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            timeout=PROBE_TIMEOUT_SECONDS,
-            check=False,
-        )
-    except (subprocess.TimeoutExpired, OSError) as exc:
+        if interpreter == sys.executable:
+            found = md.distributions(name="traigent")
+        else:
+            venv = Path(interpreter).parent.parent
+            paths = sorted(str(path) for path in venv.glob("lib/python3*/site-packages"))
+            found = md.distributions(name="traigent", path=paths)
+        dist = next(iter(found), None)
+        version = dist.version if dist is not None else None
+    except (OSError, ValueError) as exc:
         return {
             "interpreter": interpreter,
             "traigent_version": None,
             "error_type": type(exc).__name__,
         }
-    try:
-        payload = json.loads(completed.stdout.strip().splitlines()[-1])
-    except (ValueError, IndexError):
-        return {
-            "interpreter": interpreter,
-            "traigent_version": None,
-            "error_type": "UnreadableVersionProbe",
-        }
-    return {"interpreter": interpreter, "traigent_version": payload["traigent_version"]}
+    return {"interpreter": interpreter, "traigent_version": version}
 
 
 def key_presence(root: Path, files: list[Path]) -> dict:

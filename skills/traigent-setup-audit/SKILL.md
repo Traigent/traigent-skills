@@ -123,7 +123,8 @@ and are not read as a holdout) is read as a declared holdout slice: its rows are
 count for both files, the holdout file is judged against the holdout minimum only, and the
 overlap check runs across the pair by normalized input; per-row split markers, when present,
 win.
-The SDK version is probed in `.venv`, then `.venv-traigent`, then the audit's own
+The SDK version is read from installed package metadata in `.venv`, then
+`.venv-traigent`, then the audit's own interpreter, without starting the project's
 interpreter, and the card names which one answered.
 
 A function is reported as a scorer when its **name** says so (`score*`,
@@ -511,8 +512,12 @@ that its zero-network property stays provable rather than inherited.
   rather than assuming it.
 - User code runs only in the probe subprocess, only for a scorer classified
   deterministic, under a 30-second timeout — inside a network namespace where one
-  is available. A judge, a code-executing scorer, or anything importing ctypes,
-  `subprocess`, `multiprocessing` or `_socket` is disclosed and routed, never run.
+  is available. The project's interpreter is started for nothing else: the SDK
+  version is read from installed package metadata. A judge, a code-executing
+  scorer, or a scorer **whose own file** imports ctypes, `subprocess`,
+  `multiprocessing` or `_socket` is disclosed and routed, never run. Modules it
+  imports from your project are not read, so at the `python-level` guard review
+  those by hand.
   Naming one with `--scorer` does not override that; the audit refuses it and
   says so.
 - A failure inside your scorer is reported as the exception TYPE and a
