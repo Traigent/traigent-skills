@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "bf970067de631e68",
+  "doc_hash": "283249089d05c914",
   "reference_hashes": {
-    "references/evaluator-templates.md": "da1d9a1d796e593c"
+    "references/evaluator-templates.md": "f09d3965ac694c29"
   },
   "entries": [
     {
@@ -151,6 +151,17 @@
       "doc_before_hash": "1e5486adf4308b06",
       "doc_after_hash": "bf970067de631e68",
       "note": "Scope the Tier 5 not-wireable claim to traigent <= 0.27.0 and name the top-level and optimize_sync custom_evaluator paths that accept an instance and then fail at run time.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-325-331-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "bf970067de631e68",
+      "doc_after_hash": "283249089d05c914",
+      "note": "Declare the orientation of every custom objective name (label_accuracy, valid_json, exec_acc) with ObjectiveSchema; newer SDK builds refuse an undeclared custom name.",
       "source_type": "agent"
     }
   ]

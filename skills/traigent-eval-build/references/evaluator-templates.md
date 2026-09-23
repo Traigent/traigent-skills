@@ -13,6 +13,7 @@ import re
 import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 def extract_fields(text: str, required_fields: list[str], *, temperature: float = 0.0) -> str:
     prompt = (
@@ -60,7 +61,12 @@ def valid_schema_metric(output, expected, input_data) -> float:
             "valid_schema": valid_schema_metric,
         },
     ),
-    objectives=["exact_normalized", "valid_schema"],
+    # Custom metric names need a declared orientation (only built-ins such as
+    # accuracy, cost and latency have one).
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="exact_normalized", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="valid_schema", orientation="maximize", weight=1.0),
+    ]),
     configuration_space={"temperature": [0.0, 0.2]},
 )
 def extract(text: str, required_fields: list[str]) -> str:
@@ -74,7 +80,7 @@ Use this only when deterministic labels are insufficient. The judge score is a m
 
 Three things the template does on purpose:
 
-- **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list orients names the SDK does not recognize (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher. Declare every custom objective's orientation with `ObjectiveSchema`.
+- **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list only knows the orientation of built-in names such as `accuracy`, `cost` and `latency`. On traigent <= 0.27.0 it orients any other name (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher, and newer SDK builds refuse an undeclared custom name. Declare every custom objective's orientation with `ObjectiveSchema`.
 - **Only the agent call is metered.** The SDK's `cost` and `TRAIGENT_RUN_COST_LIMIT` see the first LLM call per row, not the judge call; see "Cost metering caveat for multi-call evaluators" below.
 - **The judge budget is sized and reset per run.** Start every run with `run_with_judge_budget()`: it builds a fresh `JudgeBudget` for that run, refuses to start when the approved cap cannot cover `rows × max_trials × price`, and raises after the run if any judge call was refused. A refused row fails closed with `judge_budget_exhausted` and scores `0.0`, and the SDK averages that row into its trial, so **any refusal invalidates the ranking**: the trials were no longer scored on the same rows. Calling `optimize_sync()` directly, with no budget set, fails every trial instead of spending unbudgeted. Spend limits are not tuned variables, so they stay out of `configuration_space`.
 

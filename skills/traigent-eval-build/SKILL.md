@@ -79,6 +79,7 @@ import json
 
 import traigent
 from traigent.api.decorators import EvaluationOptions
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 def valid_json_metric(output, expected, input_data) -> float:
     try:
@@ -108,7 +109,12 @@ def expected_field_metric(output, expected, input_data) -> float:
             "label_accuracy": expected_field_metric,
         },
     ),
-    objectives=["label_accuracy", "valid_json"],
+    # Custom metric names need a declared orientation; only built-ins such as
+    # accuracy, cost and latency have one.
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="label_accuracy", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="valid_json", orientation="maximize", weight=1.0),
+    ]),
     configuration_space={"temperature": [0.0, 0.2]},
 )
 def extract(text: str) -> str:
@@ -134,6 +140,7 @@ read the key the dataset contract routed there (see `traigent-dataset-curate` fo
 
 ```python
 from text2sql.execaccuracy import execution_accuracy  # opens metadata["db_path"], runs pred vs gold
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 def exec_acc(output, expected, metadata) -> float:   # NAME the param `metadata`
     return execution_accuracy(output, expected["sql"], metadata["db_path"])
@@ -143,7 +150,9 @@ def exec_acc(output, expected, metadata) -> float:   # NAME the param `metadata`
         eval_dataset="eval/salesco_30.jsonl",        # rows: {"input": {...}, "output": {"sql": "<gold>"}, "db_path": "..."}
         metric_functions={"exec_acc": exec_acc},     # Tier 3 — no climb to Tier 4 needed
     ),
-    objectives=["exec_acc"],
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="exec_acc", orientation="maximize", weight=1.0),  # custom name: declare it
+    ]),
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def to_sql(question: str, schema: str = "", db_id: str = "") -> str:
