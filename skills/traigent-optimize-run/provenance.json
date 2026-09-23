@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c693928f7cbc3992",
+  "doc_hash": "9d05b7f639c7e4a6",
   "reference_hashes": {
-    "references/algorithms.md": "ac84bb73eb5f10f8",
+    "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "e54294104cc6df2f",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/execution-budget.md": "23d17308f849017b",
@@ -289,6 +289,17 @@
       "doc_before_hash": "0e24cee57c4154a1",
       "doc_after_hash": "c693928f7cbc3992",
       "note": "Replace module-level await in Python examples with optimize_sync(), and wrap the Async Execution example in async def main() + asyncio.run(), so every example runs when pasted into a .py file.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-355",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c693928f7cbc3992",
+      "doc_after_hash": "9d05b7f639c7e4a6",
+      "note": "Scope the offline=True wording to zero Traigent backend egress: provider calls still go out and LiteLLM fetches its pricing map unless LITELLM_LOCAL_MODEL_COST_MAP=True.",
       "source_type": "agent"
     }
   ]

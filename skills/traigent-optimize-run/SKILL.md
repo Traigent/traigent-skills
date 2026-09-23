@@ -270,7 +270,7 @@ results = func.optimize_sync(max_trials=30, algorithm="auto")
 > baseline trial today. (Field-observed on local SDK 0.21.0: a 2-point grid + `default_config` +
 > `max_trials=2` evaluated only `[default, point-1]`.)
 
-Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero-egress path and does not sync results.
+Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero Traigent backend egress path and does not sync results. It does not stop provider calls, and LiteLLM fetches its public pricing map at import unless `LITELLM_LOCAL_MODEL_COST_MAP=True` is set before importing it.
 
 <!-- PROTECTED -->
 ## Cost Controls
