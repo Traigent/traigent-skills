@@ -219,7 +219,7 @@ generic marketing arithmetic:
 > **Recommended: customer escalation/rework costing `$50–5,000`.** Why: your
 > `classify_ticket` runs ~3.1k times/day, and a misrouted ticket goes to a human queue rather
 > than being retried automatically. At even `$50` per escalation, a 1-point accuracy gain is
-> worth ~`$1.5k`/month — which is why a small, capped test is worth running rather than
+> worth ~`$1.5k`/day — which is why a small, capped test is worth running rather than
 > skipping. The service sizes the daily budget. If wrong tickets are actually just retried
 > for free, pick the first option instead and the budget drops accordingly.
 
@@ -334,11 +334,13 @@ produces and how to present it; it is deliberately **not** a formula, floor/cap 
 recipe you can follow to author a number yourself.
 
 **Until the backend economics calculator ships, there is no budget to compute.** Do not invent
-a daily figure, a floor, a cap, or a payback from these bands locally. Collect and record the
+a daily figure, a floor, or a payback from these bands locally. Collect and record the
 characterization (§6); when no service result is available, present the options and the
-approval ask **without a dollar figure**, say plainly that the Traigent service will size the
-budget and has not returned one yet, and do not present `$0` as the recommendation unless the
-service returns `$0`. A plausible-looking number you produced here is a fabricated one.
+approval ask **without a budget figure of your own** (no daily budget, floor, or payback
+figure), still state the run's own spend cap and its dry-run cost estimate in that ask, say
+plainly that the Traigent service will size the budget and has not returned one yet, and do
+not present `$0` as the recommendation unless the service returns `$0`. A plausible-looking
+number you produced here is a fabricated one.
 
 **What a service-authored proposal contains (present these, do not compute them):**
 
