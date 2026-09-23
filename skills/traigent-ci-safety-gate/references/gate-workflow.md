@@ -46,8 +46,12 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: pip install -r requirements.txt
-      - name: Validate TVL specs
-        run: python -m traigent.tvl tvl/ --strict
+      - name: Validate TVL specs (fail if none found)
+        run: |
+          set -euo pipefail
+          mapfile -t specs < <(find tvl -name '*.tvl.yml' -o -name '*.tvl.yaml' 2>/dev/null)
+          [ "${#specs[@]}" -gt 0 ] || { echo "no *.tvl.yml specs under tvl/" >&2; exit 1; }
+          python -m traigent.tvl "${specs[@]}" --strict --verbose
       - name: Run incumbent holdout in mock mode
         run: python scripts/run_holdout_eval.py --mode mock --config configs/baseline.json --output .gate/incumbent.json
       - name: Run candidate holdout in mock mode
@@ -72,8 +76,12 @@ jobs:
           python-version: "3.12"
       - name: Install
         run: pip install -r requirements.txt
-      - name: Validate TVL specs
-        run: python -m traigent.tvl tvl/ --strict
+      - name: Validate TVL specs (fail if none found)
+        run: |
+          set -euo pipefail
+          mapfile -t specs < <(find tvl -name '*.tvl.yml' -o -name '*.tvl.yaml' 2>/dev/null)
+          [ "${#specs[@]}" -gt 0 ] || { echo "no *.tvl.yml specs under tvl/" >&2; exit 1; }
+          python -m traigent.tvl "${specs[@]}" --strict --verbose
       - name: Run incumbent holdout
         run: python scripts/run_holdout_eval.py --config configs/baseline.json --output .gate/incumbent.json
       - name: Run candidate holdout

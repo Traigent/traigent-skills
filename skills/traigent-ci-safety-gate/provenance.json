@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1d8461b4cd5f1b06",
+  "doc_hash": "7dd1d63238843dd5",
   "reference_hashes": {
-    "references/gate-workflow.md": "f8673205ff09bd3c"
+    "references/gate-workflow.md": "7bcd24af3e94a5ff"
   },
   "entries": [
     {
@@ -98,6 +98,17 @@
       "doc_before_hash": "39d147836d1bdfb4",
       "doc_after_hash": "1d8461b4cd5f1b06",
       "note": "Reject malformed and non-finite gate measurements and limits, and validate each holdout call cost before accumulation.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-323",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "1d8461b4cd5f1b06",
+      "doc_after_hash": "7dd1d63238843dd5",
+      "note": "TVL example spec is named *.tvl.yml, the skill explains that the validator only discovers *.tvl.yml/*.tvl.yaml and exits 0 when it finds none, and every workflow TVL step asserts at least one spec exists before validating.",
       "source_type": "agent"
     }
   ]

@@ -82,8 +82,12 @@ A statistical gate can tell you whether the candidate has enough evidence to pro
 Validate TVL specs in CI before running the gate:
 
 ```bash
-python -m traigent.tvl path/to/promotion-gate.tvl --strict
+python -m traigent.tvl path/to/promotion-gate.tvl.yml --strict
 ```
+
+Name specs `*.tvl.yml` (or `*.tvl.yaml`): the validator discovers only those in a directory, and it
+exits 0 when it finds no spec at all, even after printing `ERROR: File not found` for a missing
+path. So a CI step must assert that at least one spec exists, as the workflows below do.
 
 ## Applying the Winning Config
 
@@ -155,7 +159,12 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.txt
-      - run: python -m traigent.tvl tvl/ --strict
+      - name: Validate TVL specs (fail if none found)
+        run: |
+          set -euo pipefail
+          mapfile -t specs < <(find tvl -name '*.tvl.yml' -o -name '*.tvl.yaml' 2>/dev/null)
+          [ "${#specs[@]}" -gt 0 ] || { echo "no *.tvl.yml specs under tvl/" >&2; exit 1; }
+          python -m traigent.tvl "${specs[@]}" --strict --verbose
       - run: python scripts/run_holdout_eval.py --mode mock --config configs/baseline.json --output .gate/incumbent.json
       - run: python scripts/run_holdout_eval.py --mode mock --config configs/candidate.json --output .gate/candidate.json
       - run: python scripts/traigent_gate.py --incumbent .gate/incumbent.json --candidate .gate/candidate.json --max-cost 0.01 --max-latency-ms 1200
