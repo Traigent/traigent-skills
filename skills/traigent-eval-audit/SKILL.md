@@ -109,7 +109,7 @@ protocol already run once: start from what it left open, on the customer's own e
 
 ## Gold-Set Agreement (Manual Protocol)
 
-Build a human-labeled gold slice of at least 30 examples (50-100 when you can) from the same evaluation dataset distribution the optimizer will use, but **disjoint from the holdout** that will back the final claim — draw it from the tuning slice or from fresh examples, never from holdout rows. Include easy, borderline, and known-bad cases; if known-bad (negative) cases are naturally rare — the common situation for safety gates — **oversample them deliberately**, because the false-pass bar below is meaningless on two negatives. Lock the labels before inspecting judge outputs.
+Build a human-labeled gold slice of at least 30 examples (50-100 when you can) from the same evaluation dataset distribution the optimizer will use, but **disjoint from the holdout** that will back the final claim — draw it from the tuning slice or from fresh examples, never from holdout rows. Include easy, borderline, and known-bad cases; if known-bad (negative) cases are naturally rare — the common situation for safety gates — **oversample them deliberately**, because the false-pass bar below is meaningless on two negatives. Lock the labels before inspecting judge outputs. Below about 60 gold rows, calibrate the threshold with k-fold cross-validation (see "Threshold Calibration") rather than a split: a 30-row slice split in half leaves 15 reporting rows, where even 15/15 cannot clear the 85% agreement bar.
 
 > **The disjointness invariant (applies across all evaluator skills):** any slice used to *tune*
 > a threshold, rubric, prompt, or metric must be disjoint from the holdout used to *claim* the
@@ -125,9 +125,12 @@ Minimum bars for the manual gold-slice protocol before trusting the judge as a p
 
 These bars are estimates from a few dozen examples. The resolution step is 2-4 points (1/n), and the
 sampling noise is larger (about 4-7 points standard error). Treat a bar as cleared only when the
-**95% Wilson lower bound** clears it. For the 85% agreement bar that means at least 30/30 at n=30,
-48/50 at n=50, or 92/100 at n=100. At n=20 it cannot be cleared at all, so grow the slice. Report
-the interval, not only the point estimate, and never report a near-bar pass as confident.
+**95% Wilson lower bound**, computed on the **reporting rows**, clears it. The reporting rows are the
+rows the threshold was not chosen on: the held-out part of a split, or all n rows when every row is
+scored out-of-fold by k-fold cross-validation. For the 85% agreement bar that means at least 30/30 at
+n=30, 48/50 at n=50, or 92/100 at n=100 reporting rows. Below 22 reporting rows it cannot be cleared
+at all (21/21 has a lower bound of 84.5%), so grow the slice. Report the interval, not only the point
+estimate, and never report a near-bar pass as confident.
 
 ```python
 from math import sqrt
@@ -227,9 +230,11 @@ Sweep the judge threshold against the gold slice before using it in optimization
 - For safety gates, prefer lower false-pass rate even if recall drops.
 - For noisy judges, require a margin: do not treat scores near the threshold as confident passes.
 
-Choose the threshold on one part of the gold slice and report the agreement and false-pass bars on
-the other part, or use k-fold cross-validation when the slice is small. Bars measured on the rows
-used to pick the threshold are optimistic.
+Never report the agreement and false-pass bars on the rows used to pick the threshold: those bars
+are optimistic. Below about 60 gold rows, use k-fold cross-validation (for example 5-fold): pick the
+threshold on k-1 folds, apply it to the held-out fold, and report the bars on the pooled out-of-fold
+decisions, so all n rows are reporting rows. With 60 or more rows a split is enough: choose the
+threshold on one part and report the bars on the other, keeping at least 30 reporting rows.
 
 ```python
 def confusion_counts(gold_pass, scores, threshold):

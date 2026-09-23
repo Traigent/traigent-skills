@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c9b1e7e0bf2b3844",
+  "doc_hash": "75961cf8267f4aec",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -151,6 +151,17 @@
       "doc_before_hash": "6b2f6ae1bdc72c76",
       "doc_after_hash": "c9b1e7e0bf2b3844",
       "note": "State the gold-slice pass rule as a 95% Wilson lower bound with worked minimum counts, raise the slice floor to 30, and choose the judge threshold on rows disjoint from the ones the bars are reported on (or cross-validate).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-333-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c9b1e7e0bf2b3844",
+      "doc_after_hash": "75961cf8267f4aec",
+      "note": "Apply the Wilson minimums to the reporting rows (held-out part, or all rows out-of-fold), make k-fold cross-validation the threshold-calibration rule below about 60 gold rows, and keep at least 30 reporting rows when splitting.",
       "source_type": "agent"
     }
   ]
