@@ -130,3 +130,46 @@ def test_the_env_file_path_is_still_covered(tmp_path: Path) -> None:
     # tmp_path is under /tmp: without the sandbox bind this probe never loaded,
     # so the canary was inspecting a report with no probe output to leak.
     assert report["scorer_probe"]["ran"] is True, report["scorer_probe"]
+
+
+# Bit values the environment-probe scorer adds up. The scorer reports which
+# variable NAMES it can see through its score, never a value.
+_ENV_BITS = {
+    "TRAIGENT_API_KEY": 1,
+    "OPENAI_API_KEY": 2,
+    "ANY_TOKEN": 4,
+    "PATH": 8,
+    "HOME": 16,
+}
+_ENV_SCORER = (
+    "import os\n\n"
+    # Read at import, the way the leak-import fixture reads its key.
+    "IMPORT_KEY = os.getenv('TRAIGENT_API_KEY', '')\n"
+    f"BITS = {_ENV_BITS!r}\n\n"
+    "def score(output, expected):\n"
+    "    seen = sum(bit for name, bit in BITS.items() if name in os.environ)\n"
+    "    return float(seen + (32 if IMPORT_KEY else 0))\n"
+)
+
+
+def test_the_scorer_probe_gets_no_key_or_token_variables(
+    sentinel_key, monkeypatch, tmp_path: Path
+) -> None:
+    """The probe runs code the audit does not fully trust: it gets no credential,
+    and still gets the ordinary variables an honest scorer may rely on."""
+    monkeypatch.setenv("OPENAI_API_KEY", SENTINEL)
+    monkeypatch.setenv("ANY_TOKEN", SENTINEL)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    root = tmp_path / "project"
+    root.mkdir()
+    (root / "scorer.py").write_text(_ENV_SCORER, encoding="utf-8")
+    report, card = _run(root, tmp_path)
+    probe = report["scorer_probe"]
+    assert probe["ran"] is True, probe
+    assert probe["scores"]["good"], probe
+    visible = {
+        name for name, bit in _ENV_BITS.items() if int(probe["scores"]["good"][0]) & bit
+    }
+    assert visible == {"PATH", "HOME"}
+    assert int(probe["scores"]["good"][0]) & 32 == 0
+    assert SENTINEL not in card

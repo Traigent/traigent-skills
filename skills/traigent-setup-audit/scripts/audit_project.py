@@ -246,6 +246,9 @@ KEY_ENV_NAMES = (
     "GROQ_API_KEY",
     "COHERE_API_KEY",
 )
+# Name endings that mark a credential. The scorer probe is the one process that
+# runs project code, and a deterministic scorer has no use for any of them.
+SECRET_ENV_SUFFIXES = ("_KEY", "_TOKEN", "_SECRET", "_PASSWORD", "_CREDENTIALS")
 MODEL_KNOB_NAMES = frozenset({"model", "model_name", "llm", "engine", "model_id"})
 
 # Names a knob can be read through without the parser being able to follow it.
@@ -1686,6 +1689,20 @@ def _framed_lines(stdout: str) -> list[str]:
     ]
 
 
+def probe_environment() -> dict[str, str]:
+    """The probe's environment: this process's own, minus every credential name.
+
+    PATH, HOME and locale variables still reach the probe, so an ordinary
+    scorer behaves as it would anywhere else.
+    """
+    return {
+        name: value
+        for name, value in os.environ.items()
+        if name not in KEY_ENV_NAMES
+        and not name.upper().endswith(SECRET_ENV_SUFFIXES)
+    }
+
+
 def run_scorer_probe(
     interpreter: str,
     scorer: ScorerCandidate,
@@ -1715,6 +1732,7 @@ def run_scorer_probe(
             text=True,
             timeout=PROBE_TIMEOUT_SECONDS,
             check=False,
+            env=probe_environment(),
         )
     except subprocess.TimeoutExpired:
         return {"ran": False, "stage": "timeout", "payload_source": source}
