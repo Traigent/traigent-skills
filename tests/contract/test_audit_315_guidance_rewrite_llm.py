@@ -19,7 +19,6 @@ mode against a stub ``answer`` function:
 from __future__ import annotations
 
 import ast
-import os
 import re
 import subprocess
 import sys
@@ -27,6 +26,8 @@ import textwrap
 from pathlib import Path
 
 import pytest
+
+from .test_runnable_snippets import _offline_mock_env
 
 SKILL = Path("skills/traigent-analyze-guidance/SKILL.md")
 FENCE_RE = re.compile(r"```python\n(.*?)```", re.DOTALL)
@@ -65,14 +66,11 @@ def _run(tmp_path: Path, source: str) -> str:
     script.write_text(source, encoding="utf-8")
     home = tmp_path / "home"
     home.mkdir()
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.endswith("_API_KEY") and key != "TRAIGENT_MOCK_LLM"
-    }
-    env.update(
-        {"HOME": str(home), "ENVIRONMENT": "test", "TRAIGENT_OFFLINE_MODE": "true"}
-    )
+    # The shared offline env strips keys and CI markers (the SDK's CI-approval
+    # gate otherwise refuses even mock/offline runs on a CI runner).
+    env = _offline_mock_env()
+    env.pop("TRAIGENT_MOCK_LLM", None)
+    env["HOME"] = str(home)
     completed = subprocess.run(
         [sys.executable, str(script)],
         cwd=tmp_path,

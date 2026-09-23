@@ -11,7 +11,6 @@ pair with the same space must read ``True``.
 from __future__ import annotations
 
 import json
-import os
 import re
 import subprocess
 import sys
@@ -19,6 +18,8 @@ import textwrap
 from pathlib import Path
 
 import pytest
+
+from .test_runnable_snippets import _offline_mock_env
 
 SKILL = Path("skills/traigent-analyze-results/SKILL.md")
 FENCE_RE = re.compile(r"```python\n(.*?)```", re.DOTALL)
@@ -32,20 +33,11 @@ def _comparison_block(repo_root: Path) -> str:
 
 
 def _offline_env(home: Path) -> dict[str, str]:
-    env = {
-        key: value
-        for key, value in os.environ.items()
-        if not key.endswith("_API_KEY")
-        and key not in {"TRAIGENT_MOCK_LLM", "CI", "GITHUB_ACTIONS"}
-    }
-    env.update(
-        {
-            "HOME": str(home),
-            "ENVIRONMENT": "test",
-            "LITELLM_LOCAL_MODEL_COST_MAP": "True",
-            "TRAIGENT_OFFLINE_MODE": "true",
-        }
-    )
+    # The shared offline env strips keys and CI markers (the SDK's CI-approval
+    # gate otherwise refuses even mock/offline runs on a CI runner).
+    env = _offline_mock_env()
+    env.pop("TRAIGENT_MOCK_LLM", None)
+    env["HOME"] = str(home)
     return env
 
 

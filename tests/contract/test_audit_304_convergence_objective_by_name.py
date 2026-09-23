@@ -8,7 +8,6 @@ multi-objective run and checks the curve tracks accuracy, not ``score``.
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import sys
@@ -16,6 +15,8 @@ import textwrap
 from pathlib import Path
 
 import pytest
+
+from .test_runnable_snippets import _offline_mock_env
 
 REFERENCE = Path("skills/traigent-analyze-results/references/convergence-patterns.md")
 FENCE_RE = re.compile(r"```python\n(.*?)```", re.DOTALL)
@@ -29,7 +30,7 @@ def test_reference_code_never_reads_score_as_the_objective(repo_root: Path) -> N
 
 
 def test_best_score_curve_tracks_the_objective_on_a_multi_objective_run(
-    repo_root: Path, tmp_path: Path
+    repo_root: Path, tmp_path: Path, sync_map: dict, sdk_version_label: str
 ) -> None:
     pytest.importorskip("traigent")
     text = (repo_root / REFERENCE).read_text(encoding="utf-8")
@@ -75,14 +76,11 @@ def test_best_score_curve_tracks_the_objective_on_a_multi_objective_run(
     )
     home = tmp_path / "home"
     home.mkdir()
-    env = {
-        k: v
-        for k, v in os.environ.items()
-        if not k.endswith("_API_KEY") and k != "TRAIGENT_MOCK_LLM"
-    }
-    env.update(
-        {"HOME": str(home), "ENVIRONMENT": "test", "TRAIGENT_OFFLINE_MODE": "true"}
-    )
+    # The shared offline env strips CI markers: the SDK's CI-approval gate
+    # otherwise refuses even mock/offline runs on a CI runner.
+    env = _offline_mock_env()
+    env.pop("TRAIGENT_MOCK_LLM", None)
+    env["HOME"] = str(home)
     completed = subprocess.run(
         [sys.executable, str(script)],
         cwd=tmp_path,
@@ -93,8 +91,13 @@ def test_best_score_curve_tracks_the_objective_on_a_multi_objective_run(
         check=False,
     )
     output = completed.stdout + completed.stderr
-    assert "SCORE_DIFFERS=True" in output, output  # the fixture exercises the defect
     assert "CURVE_OK=True" in output, output
+    # The fixture only exercises the defect where score is relocated: on 0.21.3
+    # score still equals accuracy, so pin the precondition to the current
+    # released SDK and develop, the way test_audit_304_score_relocation does.
+    current = str(sync_map["current_released_sdk_version"])
+    if sdk_version_label in (current, "develop"):
+        assert "SCORE_DIFFERS=True" in output, output
 
 
 def test_custom_scorer_clause_is_scoped_to_its_own_objective_name(
