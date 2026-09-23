@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6b20862bc57c820c",
+  "doc_hash": "9073e3ef9cd6cdbb",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -334,6 +334,17 @@
       "doc_before_hash": "d204f795fc5c36be",
       "doc_after_hash": "6b20862bc57c820c",
       "note": "No-service economics case now presents the options and approval ask with no budget number of the agent's own, still states the spend cap and dry-run cost estimate, and says the service sizes the budget, instead of stopping.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-334",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "6b20862bc57c820c",
+      "doc_after_hash": "9073e3ef9cd6cdbb",
+      "note": "Mode C weak-examples snippet now uses plan_kind=prompt_rewrite with prompt_param so the SDK actually reads weak_examples, and states they are (input, expected, actual) tuples.",
       "source_type": "agent"
     }
   ]
