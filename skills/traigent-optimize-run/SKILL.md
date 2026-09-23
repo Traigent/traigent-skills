@@ -282,7 +282,26 @@ If cost or other KPIs are not picked up for custom services, self-hosted endpoin
 
 1. Use a model id LiteLLM can price, or map an alias with `litellm.model_alias_map`.
 2. Supply custom per-token pricing with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`. The JSON shape is `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; `input`/`output` aliases are accepted, provider prefixes like `openai/` are normalized, and values must be finite non-negative floats. Pricing resolves in this order: LiteLLM, custom pricing, built-in fallback table, then `UnknownModelError`.
-3. Report cost directly from the optimized function's per-trial metrics using `total_cost`, `cost`, or `input_cost` plus `output_cost`. This bypasses pricing tables and is the primary path for fully custom services.
+3. Report cost from the function itself with `traigent.with_usage(text, total_cost=usd)`: return its result in place of the plain string (it also works as the first element of an `(output, metrics)` tuple). The cost reaches the trial, `results.total_cost` and the run's cost cap, and outside optimization `with_usage` returns `text` unchanged. This bypasses pricing tables and is the primary path for fully custom services. A custom `scoring_function` / `metric_functions` then receives the wrapper dict, so score `output["text"]`. Do NOT return `cost`, `total_cost`, `input_cost` or `output_cost` in the tuple's metrics dict (they are evaluator-reserved and dropped with a "Skipping user metric ... reserved" WARNING), and do not register `metric_functions={"cost": ...}` (dropped without a warning).
+
+```python
+import traigent
+
+
+def call_my_endpoint(question: str, style: str) -> tuple[str, float]:
+    # Stand-in for your own model call; it returns the answer and the USD it cost.
+    return "4", 0.01
+
+
+@traigent.optimize(
+    eval_dataset="qa_test.jsonl",
+    objectives=["accuracy", "cost"],
+    configuration_space={"prompt_style": ["short", "detailed"]},
+)
+def answer(question: str) -> str:
+    text, usd = call_my_endpoint(question, traigent.get_config()["prompt_style"])
+    return traigent.with_usage(text, total_cost=usd)
+```
 
 Set `TRAIGENT_STRICT_COST_ACCOUNTING=true` when an unpriced model should fail loudly instead of reporting zero (see Strict Cost Accounting below). Full pricing details: `references/cost-management.md`.
 

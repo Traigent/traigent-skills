@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "918e30a220a12d20",
+  "doc_hash": "c8f9e81595e8e12a",
   "reference_hashes": {
     "references/algorithms.md": "1f1b85e715a30b9a",
     "references/cost-management.md": "cdf2603ef3016030",
@@ -245,6 +245,17 @@
       "doc_before_hash": "f62c81f58f91c9b4",
       "doc_after_hash": "918e30a220a12d20",
       "note": "Trial-details loop prints the named objective instead of metrics['score'], which is the weighted selection basis in multi-objective runs.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-339",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "918e30a220a12d20",
+      "doc_after_hash": "c8f9e81595e8e12a",
+      "note": "Function-side cost: teach traigent.with_usage(text, total_cost=...) with a runnable snippet instead of reserved total_cost/cost/input_cost/output_cost metrics keys, which the Python SDK drops.",
       "source_type": "agent"
     }
   ]
