@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ee271549cf8f69ad",
+  "doc_hash": "f85951d91036b969",
   "reference_hashes": {
-    "references/constraints.md": "3caf1202f0770edb",
+    "references/constraints.md": "8c9386c29dcc26d5",
     "references/parameter-types.md": "03c333a37aab008f",
     "references/structural-spine.md": "18a04d08be655245"
   },
@@ -122,6 +122,17 @@
       "doc_before_hash": "cd33f88b27ee09a6",
       "doc_after_hash": "ee271549cf8f69ad",
       "note": "Rebuild issue #195 on current main: document Range and IntRange to_config_value() tuple/dict shapes for step and log settings.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-340",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "ee271549cf8f69ad",
+      "doc_after_hash": "f85951d91036b969",
+      "note": "Metric-aware lambda constraints are post-trial checks on the current trial's metrics (not past trials, not a spend limit); examples use real keys and fail closed on a missing key.",
       "source_type": "agent"
     }
   ]

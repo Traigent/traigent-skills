@@ -36,12 +36,17 @@ constraints=[
 
 ### Config + metrics lambda
 
-Lambdas can optionally accept a second `metrics` argument containing results from previous trials:
+A lambda that takes a second `metrics` argument is a **post-trial** check. It runs after that
+trial has been evaluated (and paid for), receives the trial's own aggregate metrics, and
+marks the trial failed if it returns False. Use it to disqualify results, not to limit spend
+(use `cost_limit` / `ExecutionBudget` for that). Keys include `accuracy`, `cost` (trial USD),
+`response_time_ms` (mean per example), `total_tokens`; `latency` exists only when it is a
+declared objective. Default a missing key to fail, not pass:
 
 ```python
 constraints=[
-    lambda config, metrics: metrics.get("cost", 0) <= 0.10,
-    lambda config, metrics: metrics.get("latency_ms", 0) <= 5000,
+    lambda config, metrics: metrics.get("cost", float("inf")) <= 0.10,
+    lambda config, metrics: metrics.get("response_time_ms", float("inf")) <= 5000,
 ]
 ```
 
