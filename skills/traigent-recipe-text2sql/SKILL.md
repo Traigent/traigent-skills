@@ -212,7 +212,7 @@ from traigent.api.decorators import EvaluationOptions, ExecutionOptions
 decorated = traigent.optimize(
     configuration_space=CONFIG_SPACE, objectives=OBJECTIVES, default_config=BASELINE,
     evaluation=EvaluationOptions(eval_dataset=DS, custom_evaluator=exec_eval),
-    execution=ExecutionOptions(offline=False),   # False -> online/cloud; True -> local zero-egress
+    execution=ExecutionOptions(offline=False),   # False -> online/cloud; True -> local, no Traigent backend egress (provider calls still go out)
 )(run_agent)
 result = decorated.optimize_sync(max_trials=25, algorithm="auto")  # or: await decorated.optimize(...)
 ```
