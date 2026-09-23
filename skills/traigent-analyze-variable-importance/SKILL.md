@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.3"
+  version: "1.2.0"
 ---
 
 # Show Significant Tuned Variables
@@ -52,8 +52,19 @@ The script accepts:
   trials per value before concluding a knob is unimportant.
 - `--sampling-design`: `randomized`, `adaptive`, or `unknown` (default). Choose `randomized` only
   when knob assignments were independent of outcomes and time/order effects, so trial labels are
-  exchangeable under the no-effect null. Adaptive optimizer output and results whose assignment
-  process is not known remain directional even when their adjusted p-values are small.
+  exchangeable under the no-effect null, **and** each knob was assigned independently of every
+  other knob (no constraints or conditional knobs); otherwise use `unknown`. The test is per knob,
+  so a no-effect knob that a constrained space ties to a real one inherits that knob's effect.
+  Adaptive optimizer output and results whose assignment process is not known remain directional
+  even when their adjusted p-values are small.
+- `--alpha`: family-wise significance level for the Holm-adjusted permutation test (default
+  `0.05`, at most `0.10`). It is written into every `importance.json` row and `video_card.json`.
+- `--confidence`: bootstrap CI confidence for the whiskers (default `0.9`). Display only; it does
+  not change any label.
+- `--bootstrap-draws`: bootstrap and permutation draws per knob (default `2000`). A `significant`
+  label needs `draws + 1 >= 10 x eligible knobs / alpha`; the default covers up to 10 knobs at
+  alpha 0.05. When `insufficient_permutation_resolution` appears, `insights.md` names the draws to
+  rerun with.
 
 Present objectives must be finite numeric values; booleans, NaN and infinity are rejected with
 the input file and row number. Supplied costs must also be finite and nonnegative. Missing costs
@@ -73,6 +84,11 @@ python3 -c 'import json,sys; [print(json.dumps(t)) for t in json.load(open(sys.a
   traigent-runs/optimized-results.json > trials.jsonl
 ```
 
+Failed or pruned trials are skipped automatically (their `status` is not `completed`; a failed
+trial still carries a `0.0` score that is not a measurement); the script prints how many and
+records the count as `skipped_non_completed` in `video_card.json`. Rows without a `status` field
+are read as measured.
+
 Expected trial shape:
 
 ```json
@@ -84,14 +100,16 @@ Expected trial shape:
 The script writes these files into `--output-dir`:
 
 - `importance.json`: ranked tuned variables with effect fields plus raw `p_value`, Holm
-  `p_adjusted`, `family_size`, sampling design, sample counts, permutation resolution, and an
-  explicit `inference_status`.
+  `p_adjusted`, `family_size`, the `alpha` used, sampling design, sample counts, permutation
+  resolution, and an explicit `inference_status`.
 - `importance.csv`: flat CSV with the same fields.
 - `significant_variables.svg`: hand-written 1280x720 dark-theme SVG with horizontal bars, bootstrap CI whiskers, best-value annotations, and a directional/significance caption.
 - `insights.md`: short human-readable summary using honest claim language.
 - `video_card.json`: compact payload: `top_variables` (each with the knob's own effect,
-  raw/adjusted p-values, family size, and inference status), `n_trials`, `objective`, run-level
-  `heldout_accuracy_pp`/`heldout_cost_delta_pct`, and `caption`.
+  raw/adjusted p-values, family size, and inference status), `n_trials`, `skipped_non_completed`,
+  `alpha`, `objective`, run-level `heldout_accuracy_pp`/`heldout_cost_delta_pct`, and `caption`.
+- `sdk_cross_check.json`: the SDK variance-based cross-check (`computed`, `note`, `results`);
+  `results` is empty when the SDK analyzer was unavailable or returned nothing.
 
 <!-- PROTECTED -->
 ## Honesty Rule
@@ -100,8 +118,12 @@ Never overclaim significance:
 
 - A variable is called `significant` only for an explicitly randomized design, with at least 20
   observations for that knob and 5 observations per value, enough permutation draws for the full
-  family, and a Holm-adjusted p-value below the configured alpha. Every other result is
+  family, and a Holm-adjusted p-value below `--alpha` (default 0.05). Every other result is
   `directional`, with `inference_status` explaining why.
+- Under `randomized`, a knob whose observed values depend on another eligible knob's (pairwise
+  chi-square test of independence, p < 0.001) gets `knobs_not_independent` and stays
+  `directional`. The screen catches strongly coupled spaces but can miss a mild constraint in a
+  small run, so it backs up the `--sampling-design` choice rather than replacing it.
 - Holm correction covers every knob with at least two observed values before ranking and `top-k`
   display truncation. `p_value` is the raw permutation result; `p_adjusted` is the family-wise
   value used by the label. The displayed interval is for scale only and must never be used to
@@ -149,10 +171,11 @@ cat /tmp/significant-tuned-variables/video_card.json
 ```
 
 The generic command leaves `--sampling-design` at its conservative `unknown` default. Add
-`--sampling-design randomized` only when a run plan or sampler log verifies all three conditions:
+`--sampling-design randomized` only when a run plan or sampler log verifies all four conditions:
 knob assignments were randomized, assignment probabilities did not depend on earlier outcomes,
-and no time/order trend affected scores. A sampler name or a balanced result table alone is not
-enough evidence.
+no time/order trend affected scores, and each knob was assigned independently of the others (no
+constraints or conditional knobs). A sampler name or a balanced result table alone is not enough
+evidence.
 
 ## Method Notes
 
@@ -169,7 +192,7 @@ choices depend on earlier outcomes; time trends and sampler choices can then loo
 Use `adaptive` or the default `unknown` in those cases. Their effect sizes and p-values remain
 exploratory and never receive a statistically significant label.
 
-The script also attempts to adapt trials to `traigent.utils.importance.ParameterImportanceAnalyzer` for a variance-based SDK cross-check. If that adaptation is unavailable or returns no output, it skips gracefully and states that the skill's own variance/bootstrap method was used, inspired by the SDK analyzer. Do not fabricate SDK analyzer output.
+The script also attempts to adapt trials to `traigent.utils.importance.ParameterImportanceAnalyzer` for a variance-based SDK cross-check. When it returns output, the numbers are written to `sdk_cross_check.json` and to an "SDK cross-check" table in `insights.md`; they never change the ranking or labels. If that adaptation is unavailable or returns no output, it skips gracefully and states that the skill's own variance/bootstrap method was used, inspired by the SDK analyzer. Do not fabricate SDK analyzer output.
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

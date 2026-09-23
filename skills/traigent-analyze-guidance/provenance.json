@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c629cb6cf4f59abe",
+  "doc_hash": "9073e3ef9cd6cdbb",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
-    "references/optimization-principles.md": "633c064bbae26440",
-    "references/preflight.md": "56489d08e02da5ec",
+    "references/optimization-principles.md": "a1f71a77da92817c",
+    "references/preflight.md": "8931979336540085",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -301,6 +301,50 @@
       "doc_before_hash": "d88f628927e05d91",
       "doc_after_hash": "c629cb6cf4f59abe",
       "note": "add a greppable path docstamp for the optimization-comparisons endpoint, verified against executable SDK code rather than a docstring (contract harness, #175)",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-314",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c629cb6cf4f59abe",
+      "doc_after_hash": "e01c4ca89a8484c2",
+      "note": "Mode B names the traigent[mcp] extra and traigent-analytics-mcp registration and links the analyze-results prerequisites.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-315",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "e01c4ca89a8484c2",
+      "doc_after_hash": "d204f795fc5c36be",
+      "note": "Pass the required rewrite_llm in the Mode C weak-examples snippet and state that provider supplies the guidance plan while rewrite_llm does the generation.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-336",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "d204f795fc5c36be",
+      "doc_after_hash": "6b20862bc57c820c",
+      "note": "No-service economics case now presents the options and approval ask with no budget number of the agent's own, still states the spend cap and dry-run cost estimate, and says the service sizes the budget, instead of stopping.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-334",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "6b20862bc57c820c",
+      "doc_after_hash": "9073e3ef9cd6cdbb",
+      "note": "Mode C weak-examples snippet now uses plan_kind=prompt_rewrite with prompt_param so the SDK actually reads weak_examples, and states they are (input, expected, actual) tuples.",
       "source_type": "agent"
     }
   ]

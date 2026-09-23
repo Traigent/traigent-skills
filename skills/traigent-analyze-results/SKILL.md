@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.24"
+  version: "1.1.25"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -84,6 +84,30 @@ When the run lives in the Traigent cloud/portal, drive the analysis through the
 analytics and does not do any auth or tenant logic** — the MCP server resolves the caller's
 tenant from the authenticated session and returns backend-produced analytics payloads. Treat
 every tool response as authoritative and never invent fields, numbers, rankings, or charts.
+
+### Prerequisites (one time)
+
+The server ships with the SDK as the `traigent-analytics-mcp` command, but it needs the `mcp`
+extra: on an install without it, the command exits with an install hint. The `recommended` and
+`all` extras already include it, and pandas for the dataframe recipes below.
+
+```bash
+pip install "traigent[mcp,analytics]>=0.19"   # or "traigent[recommended]>=0.19", which includes both
+traigent auth login                           # or export TRAIGENT_API_KEY; the server reuses these credentials
+```
+
+Register the stdio server with your coding assistant under the name `traigent-analytics`, command
+`traigent-analytics-mcp` (an `mcpServers` entry in your assistant's MCP config, or its `mcp add`
+command). If the SDK is installed in a virtualenv, use that environment's absolute path to
+`traigent-analytics-mcp`:
+
+```json
+{"mcpServers": {"traigent-analytics": {"command": "traigent-analytics-mcp"}}}
+```
+
+Confirm the `analytics_*` tools are listed before calling the brief (the server's `health_check`
+and `auth_status` tools report readiness and masked credentials without a network call). If they
+are not listed, treat the server as unreachable (step 2): use the portal deep-link.
 
 ### 1. Collect explicit project + run context
 
@@ -477,8 +501,8 @@ without it.
 
 Use `get_optimization_insights(results)` for a first structured pass over top configurations,
 performance summary, parameter insights, and recommendations. Treat it as analysis input; deciding
-the next experiment belongs in `traigent-analyze-guidance` for portal-tracked runs or `traigent-analyze-guidance`
-for offline/local runs.
+the next experiment belongs in `traigent-analyze-guidance` (Mode B for portal-tracked runs, Mode C
+for offline/local runs).
 
 ```python
 from traigent.utils.insights import get_optimization_insights
@@ -538,7 +562,9 @@ tells the whole story — you want the **trade-off set** (the Pareto frontier): 
 where you cannot improve one objective without sacrificing another.
 
 Get one aggregated row per configuration with `to_aggregated_dataframe()` (groups repeated samples
-of the same config and averages each metric), then filter to the non-dominated set:
+of the same config and averages each metric), then filter to the non-dominated set.
+`to_aggregated_dataframe()` / `to_dataframe()` need pandas: `pip install "traigent[analytics]>=0.19"`
+(also included in `traigent[recommended]`).
 
 ```python
 df = results.to_aggregated_dataframe(primary_objective="accuracy")
@@ -575,18 +601,27 @@ if not (
 ):
     raise SystemExit("TIE_BAND must be a finite number >= 0: your measured rerun spread.")
 df = df[df["samples_count"] >= MIN_SAMPLES]
+# A config missing either metric (NaN) cannot be placed on the frontier: drop it and say so,
+# rather than letting NaN comparisons silently keep or discard it.
+n_configs = len(df)
+df = df.dropna(subset=["accuracy", "cost"])  # use your run's actual metric names
+if len(df) < n_configs:
+    print(f"Excluded {n_configs - len(df)} config(s) with no accuracy or cost value")
 
-# Non-dominated (Pareto) frontier: maximize accuracy, minimize cost, within the tie-band.
+# Non-dominated (Pareto) frontier with a tie band: maximize accuracy, minimize cost. Walk from
+# cheapest to most expensive and keep a config only if it beats every cheaper KEPT config by more
+# than TIE_BAND. Every dropped config is within TIE_BAND of a kept config that costs no more, so a
+# chain of small steps can never erase a config that is clearly better than every survivor.
+# With TIE_BAND = 0 it keeps exactly the strict Pareto frontier's (accuracy, cost) points;
+# configs that tie exactly on both are shown once, so look for exact duplicates in `df` if
+# another axis (latency, provider) should decide between them.
 def pareto_front(df, maximize="accuracy", minimize="cost", tol=TIE_BAND):
-    keep = []
-    for i, row in df.iterrows():
-        dominated = (
-            (df[maximize] >= row[maximize] - tol) & (df[minimize] <= row[minimize])
-            & ((df[maximize] > row[maximize] + tol) | (df[minimize] < row[minimize]))
-        ).any()
-        if not dominated:
+    keep, best_kept = [], float("-inf")
+    for i, row in df.sort_values([minimize, maximize], ascending=[True, False]).iterrows():
+        if row[maximize] > best_kept + tol:
             keep.append(i)
-    return df.loc[keep].sort_values(minimize)
+            best_kept = row[maximize]
+    return df.loc[keep]
 
 frontier = pareto_front(df)
 # For a latency objective, read the PER-CALL latency column (ms) — NOT "duration" (total wall-clock):
@@ -595,7 +630,8 @@ print(frontier[["accuracy", "cost", "avg_response_time_ms"]])  # use your run's 
 
 Each frontier row is a *candidate* operating point, not yet a proven one: pick the cheapest config
 that clears your accuracy bar, or the strongest quality/cost trade-off within your cost budget —
-note the tie-band folds configs within the noise band of a cheaper option into it, so the literal
+note the tie band folds a config into a cheaper kept config when it is within the band of it, so
+every dropped config is within your noise of a kept config that costs no more, and the literal
 highest-accuracy config may not appear. Confirm your choice with a bootstrap CI on the difference
 (see "Is the Delta Real?" above) before promoting.
 (`results.to_dataframe()` gives the raw per-trial rows if you want to plot the full cloud behind
@@ -807,19 +843,29 @@ for past_result in history:
     print(f"  Timestamp: {past_result.timestamp}")
 ```
 
-Compare across runs only when `objectives`, dataset, evaluator, and space are identical
-(`metadata["configuration_space"]`, `objectives`) — otherwise the two numbers were measured on
-different things, and even then the difference is directional, not a paired result (see "Pair,
-don't cross-compare" above):
+Compare across runs only when `objectives`, dataset, evaluator, and space are identical (compare
+the sampled space from `trials[].config` and `objectives`; the declared search space is not stored
+on the result, and no result field records the dataset or evaluator, so confirm those from your
+run-plan record) — otherwise the two numbers were measured on different things, and even then the
+difference is directional, not a paired result (see "Pair, don't cross-compare" above). Two
+random or adaptive runs that sampled different parts of the same space also read as different;
+that blocks the comparison rather than allowing a wrong one:
 
 ```python
+import json
+
+def observed_space(result):
+    """Knob -> set of values the run actually sampled (the declared space is not on the result)."""
+    space = {}
+    for t in result.trials:
+        for k, v in t.config.items():
+            space.setdefault(k, set()).add(json.dumps(v, sort_keys=True))
+    return space
+
 history = classify.get_optimization_history()
 if len(history) >= 2:
     latest, previous = history[-1], history[-2]
-    same_setup = (
-        latest.objectives == previous.objectives
-        and latest.metadata.get("configuration_space") == previous.metadata.get("configuration_space")
-    )
+    same_setup = latest.objectives == previous.objectives and observed_space(latest) == observed_space(previous)
     if same_setup and latest.best_score is not None and previous.best_score is not None:
         print(f"Directional change: {latest.best_score - previous.best_score:+.3f}")
 ```

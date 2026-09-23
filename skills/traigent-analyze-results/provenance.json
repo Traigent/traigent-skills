@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0f379cbfc1e67371",
+  "doc_hash": "c0175e1d49ce3513",
   "reference_hashes": {
-    "references/convergence-patterns.md": "57c2d4ef7f2c2b69",
+    "references/convergence-patterns.md": "1b074da6b72cce91",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/mcp-analytics-tools.md": "4c68385be07782a7",
+    "references/mcp-analytics-tools.md": "9d4cc7c87db109fd",
     "references/optimization-result-api.md": "0c7713bc50c16758"
   },
   "entries": [
@@ -264,6 +264,61 @@
       "doc_before_hash": "b5d2615b83e44bf3",
       "doc_after_hash": "0f379cbfc1e67371",
       "note": "Rebuild issue #195 on current main: document UNKNOWN result statuses, the resolved optimizer-class algorithm value, and all supported empty best_config outcomes using session-summary reason metadata.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-311",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "0f379cbfc1e67371",
+      "doc_after_hash": "48ce3f5fcc4a2ed7",
+      "note": "Replace the non-transitive pairwise tie-band Pareto test with a cheapest-first sweep so every dropped config is within the band of a kept, no-costlier config.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-313",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "48ce3f5fcc4a2ed7",
+      "doc_after_hash": "9458fec7568c7feb",
+      "note": "Compare runs on the sampled space from trials[].config instead of a metadata key the result never carries, and name Mode B / Mode C for the next-experiment route.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-314",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "9458fec7568c7feb",
+      "doc_after_hash": "1364e33bb5f4747c",
+      "note": "Add one-time MCP prerequisites (traigent[mcp] extra, credentials, traigent-analytics registration) and name the traigent[analytics] extra for the pandas recipes.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-311-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "1364e33bb5f4747c",
+      "doc_after_hash": "d20199c09765c0fc",
+      "note": "State that a zero tie band keeps the strict Pareto points and shows configs tied exactly on both metrics once.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-311-r2b",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "d20199c09765c0fc",
+      "doc_after_hash": "c0175e1d49ce3513",
+      "note": "Drop configs with a NaN accuracy or cost before the Pareto helper and print how many were excluded.",
       "source_type": "agent"
     }
   ]

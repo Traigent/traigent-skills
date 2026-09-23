@@ -25,6 +25,9 @@ ALLOWLIST = {
     "traigent-maturity",
     # Python package / MCP server, not a skill dir.
     "traigent-analytics",
+    # The SDK's analytics MCP server console command (`traigent-analytics-mcp`),
+    # named in the analyze skills' install/registration steps, not a skill dir.
+    "traigent-analytics-mcp",
     # Integration name referenced in traigent-setup-integrations references
     # (the LangChain integration path), not a skill dir.
     "traigent-langchain",

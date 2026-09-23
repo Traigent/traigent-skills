@@ -23,10 +23,19 @@ from types import SimpleNamespace
 from typing import Any
 
 BOOTSTRAP_SEED = 55
-DEFAULT_BOOTSTRAP_DRAWS = 1000
+# Permutation resolution needs draws + 1 >= 10 * family_size / alpha: at the default
+# alpha of 0.05, 2000 draws resolve families of up to 10 eligible knobs.
+DEFAULT_BOOTSTRAP_DRAWS = 2000
 MIN_TRIALS_PER_KNOB = 20
 MIN_TRIALS_PER_VALUE = 5
 PERMUTATION_RESOLUTION_MULTIPLIER = 10
+DEFAULT_ALPHA = 0.05
+MAX_ALPHA = 0.10
+# Pairwise knob-dependence screen for the randomized design. A per-pair level of
+# 0.05 flags 25-50% of genuinely independent 4-6 knob runs; 0.001 flags about 1%
+# while still catching constrained or conditional spaces that couple a knob to
+# another one strongly enough to fake its effect.
+KNOB_DEPENDENCE_P = 0.001
 
 
 @dataclass(frozen=True)
@@ -63,6 +72,7 @@ class KnobImportance:
     min_group_size: int
     permutation_draws: int
     permutation_p_floor: float
+    alpha: float = DEFAULT_ALPHA
 
     def required_dict(self) -> dict[str, Any]:
         return {
@@ -85,6 +95,7 @@ class KnobImportance:
             "min_group_size": self.min_group_size,
             "permutation_draws": self.permutation_draws,
             "permutation_p_floor": self.permutation_p_floor,
+            "alpha": self.alpha,
         }
 
 
@@ -147,7 +158,18 @@ def extract_cost(record: dict[str, Any]) -> float | None:
 
 
 def read_trials(path: Path, objective: str) -> list[Trial]:
+    return read_trial_file(path, objective)[0]
+
+
+def read_trial_file(path: Path, objective: str) -> tuple[list[Trial], int]:
+    """Return the completed trials and how many non-completed rows were skipped.
+
+    A failed, pruned or cancelled SDK trial still carries a metrics dict (a
+    failed trial scores 0.0), so it must not enter the ranking as a measured
+    score. Rows without a ``status`` field are read as measured.
+    """
     trials: list[Trial] = []
+    skipped_non_completed = 0
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, 1):
             stripped = line.strip()
@@ -164,6 +186,10 @@ def read_trials(path: Path, objective: str) -> list[Trial]:
             config = record.get("config")
             if not isinstance(config, dict):
                 raise ValueError(f"{path}:{line_number}: missing object field 'config'")
+            status = record.get("status")
+            if isinstance(status, str) and status.lower() != "completed":
+                skipped_non_completed += 1
+                continue
             try:
                 metric = extract_metric(record, objective)
                 cost = extract_cost(record) if metric is not None else None
@@ -181,9 +207,10 @@ def read_trials(path: Path, objective: str) -> list[Trial]:
             )
     if not trials:
         raise ValueError(
-            f"No trials with numeric objective '{objective}' found in {path}"
+            f"No completed trials with numeric objective '{objective}' found in {path}"
+            f" ({skipped_non_completed} non-completed trial(s) skipped)"
         )
-    return trials
+    return trials, skipped_non_completed
 
 
 def read_config_space(path: Path | None) -> dict[str, list[Any]] | None:
@@ -348,6 +375,83 @@ def permutation_spread_pvalue(
     return (at_or_above + 1) / (draws + 1)
 
 
+def chi2_survival(statistic: float, dof: int) -> float:
+    """Upper tail of the chi-square distribution: Q(dof/2, statistic/2).
+
+    Regularized upper incomplete gamma by series (x < a + 1) or Lentz continued
+    fraction, as in Numerical Recipes; stdlib only.
+    """
+    if statistic <= 0.0 or dof <= 0:
+        return 1.0
+    a = dof / 2.0
+    x = statistic / 2.0
+    log_prefactor = -x + a * math.log(x) - math.lgamma(a)
+    if x < a + 1.0:
+        term = total = 1.0 / a
+        denominator = a
+        for _ in range(10_000):
+            denominator += 1.0
+            term *= x / denominator
+            total += term
+            if abs(term) < abs(total) * 1e-15:
+                break
+        return min(1.0, max(0.0, 1.0 - total * math.exp(log_prefactor)))
+    tiny = 1e-300
+    b = x + 1.0 - a
+    c = 1.0 / tiny
+    d = 1.0 / b
+    h = d
+    for i in range(1, 10_000):
+        an = -i * (i - a)
+        b += 2.0
+        d = an * d + b
+        d = tiny if abs(d) < tiny else d
+        c = b + an / c
+        c = tiny if abs(c) < tiny else c
+        d = 1.0 / d
+        delta = d * c
+        h *= delta
+        if abs(delta - 1.0) < 1e-15:
+            break
+    return min(1.0, max(0.0, math.exp(log_prefactor) * h))
+
+
+def knob_dependence_pvalue(trials: list[Trial], first: str, second: str) -> float:
+    """Chi-square test of independence between two knobs' observed values."""
+    pairs = [
+        (canonical_value(trial.config[first]), canonical_value(trial.config[second]))
+        for trial in trials
+        if first in trial.config and second in trial.config
+    ]
+    n = len(pairs)
+    first_counts: dict[str, int] = defaultdict(int)
+    second_counts: dict[str, int] = defaultdict(int)
+    joint: dict[tuple[str, str], int] = defaultdict(int)
+    for left, right in pairs:
+        first_counts[left] += 1
+        second_counts[right] += 1
+        joint[(left, right)] += 1
+    if len(first_counts) < 2 or len(second_counts) < 2:
+        return 1.0
+    statistic = 0.0
+    for left, left_count in first_counts.items():
+        for right, right_count in second_counts.items():
+            expected = left_count * right_count / n
+            statistic += (joint.get((left, right), 0) - expected) ** 2 / expected
+    dof = (len(first_counts) - 1) * (len(second_counts) - 1)
+    return chi2_survival(statistic, dof)
+
+
+def dependent_knobs(trials: list[Trial], knobs: list[str]) -> set[str]:
+    """Knobs whose assignment depends on another eligible knob's assignment."""
+    flagged: set[str] = set()
+    for index, first in enumerate(knobs):
+        for second in knobs[index + 1 :]:
+            if knob_dependence_pvalue(trials, first, second) < KNOB_DEPENDENCE_P:
+                flagged.update((first, second))
+    return flagged
+
+
 def holm_adjust(p_values: list[float]) -> list[float]:
     """Return Holm step-down adjusted p-values in the input order."""
     family_size = len(p_values)
@@ -455,7 +559,10 @@ def analyze_importance(
     confidence: float,
     bootstrap_draws: int,
     sampling_design: str = "unknown",
+    alpha: float = DEFAULT_ALPHA,
 ) -> list[KnobImportance]:
+    if not 0.0 < alpha <= MAX_ALPHA:
+        raise ValueError(f"alpha must satisfy 0 < alpha <= {MAX_ALPHA}")
     if sampling_design not in {"randomized", "adaptive", "unknown"}:
         raise ValueError(
             "sampling_design must be 'randomized', 'adaptive', or 'unknown'"
@@ -479,7 +586,13 @@ def analyze_importance(
             rows.append(row)
     family_size = len(rows)
     adjusted = holm_adjust([row.p_value for row in rows])
-    alpha = 1.0 - confidence
+    # The significance level is its own setting: the bootstrap CI confidence only
+    # sets whisker width and must never loosen the test.
+    coupled = (
+        dependent_knobs(trials, [row.knob for row in rows])
+        if sampling_design == "randomized"
+        else set()
+    )
     required_draws_plus_one = (
         math.ceil(PERMUTATION_RESOLUTION_MULTIPLIER * family_size / alpha)
         if family_size
@@ -488,6 +601,7 @@ def analyze_importance(
     for row, p_adjusted in zip(rows, adjusted):
         row.p_adjusted = p_adjusted
         row.family_size = family_size
+        row.alpha = alpha
         if row.relevant_trials < MIN_TRIALS_PER_KNOB or row.min_group_size < MIN_TRIALS_PER_VALUE:
             row.inference_status = "insufficient_per_knob_samples"
         elif bootstrap_draws + 1 < required_draws_plus_one:
@@ -496,6 +610,8 @@ def analyze_importance(
             row.inference_status = "adaptive_sampling"
         elif sampling_design == "unknown":
             row.inference_status = "exchangeability_unknown"
+        elif row.knob in coupled:
+            row.inference_status = "knobs_not_independent"
         else:
             row.inference_status = "tested"
         row.label = (
@@ -523,6 +639,7 @@ def attempt_sdk_importance(
         )
 
     try:
+        # read_trial_file() already dropped non-completed rows.
         sdk_trials = [
             SimpleNamespace(
                 status="completed",
@@ -562,8 +679,8 @@ def attempt_sdk_importance(
     }
     return (
         "Traigent SDK ParameterImportanceAnalyzer variance-based output was computed "
-        "as a cross-check; ranking and labels in this report use the skill's "
-        "bootstrap spread method.",
+        "as a cross-check (see the SDK cross-check table below and sdk_cross_check.json); "
+        "ranking and labels in this report use the skill's bootstrap spread method.",
         payload,
     )
 
@@ -634,6 +751,16 @@ def write_importance_json(path: Path, rows: list[KnobImportance]) -> None:
     )
 
 
+def write_sdk_cross_check_json(
+    path: Path, note: str, payload: dict[str, Any]
+) -> None:
+    """Always written, so the cross-check claim in insights.md is inspectable."""
+    data = {"computed": bool(payload), "note": note, "results": payload}
+    path.write_text(
+        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+
 def write_importance_csv(path: Path, rows: list[KnobImportance]) -> None:
     fieldnames = [
         "knob",
@@ -655,6 +782,7 @@ def write_importance_csv(path: Path, rows: list[KnobImportance]) -> None:
         "min_group_size",
         "permutation_draws",
         "permutation_p_floor",
+        "alpha",
     ]
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
@@ -675,7 +803,7 @@ def write_svg(
     top_k: int,
     n_trials: int,
     objective: str,
-    confidence: float,
+    alpha: float = DEFAULT_ALPHA,
 ) -> None:
     width = 1280
     height = 720
@@ -692,7 +820,7 @@ def write_svg(
     caption = (
         f"directional (n={n_trials}): fewer than 20 trials to test against a null"
         if n_trials < 20
-        else f"n={n_trials}; significant requires Holm-adjusted permutation evidence from randomized sampling at {int(confidence * 100)}% (CI whiskers show scale only)"
+        else f"n={n_trials}; significant requires Holm-adjusted permutation evidence from randomized sampling at alpha={alpha:g} (CI whiskers show scale only)"
     )
 
     parts = [
@@ -769,6 +897,8 @@ def write_video_card_json(
     objective: str,
     heldout: dict[str, Any] | None,
     slice_label: str = "this evaluation slice",
+    skipped_non_completed: int = 0,
+    alpha: float = DEFAULT_ALPHA,
 ) -> dict[str, Any]:
     heldout_accuracy_pp, heldout_cost_delta_pct = heldout_card_metrics(
         heldout, objective
@@ -811,6 +941,8 @@ def write_video_card_json(
     payload = {
         "top_variables": top_variables,
         "n_trials": n_trials,
+        "skipped_non_completed": skipped_non_completed,
+        "alpha": alpha,
         "objective": objective,
         "heldout_accuracy_pp": round_float_or_none(heldout_accuracy_pp),
         "heldout_cost_delta_pct": round_float_or_none(heldout_cost_delta_pct),
@@ -836,6 +968,9 @@ def write_insights_md(
     heldout: dict[str, Any] | None,
     sdk_note: str,
     slice_label: str = "this evaluation slice",
+    skipped_non_completed: int = 0,
+    alpha: float = DEFAULT_ALPHA,
+    sdk_payload: dict[str, Any] | None = None,
 ) -> None:
     heldout_accuracy_pp, heldout_cost_delta_pct = heldout_card_metrics(
         heldout, objective
@@ -845,13 +980,31 @@ def write_insights_md(
         "",
         f"On {slice_label}, in this run, {len(rows)} tuned variables had at least two observed values across {n_trials} trials.",
         "",
-        "Honesty rule: `significant` requires randomized assignment, at least 20 observations for that knob and 5 per observed value, adequate permutation resolution, and a Holm-adjusted p-value below alpha. Adaptive or unknown sampling stays `directional` because label exchangeability is not established. The bootstrap CI is a scale annotation, not the significance test.",
+    ]
+    if skipped_non_completed:
+        lines.extend(
+            [
+                f"{skipped_non_completed} non-completed trial(s) (failed, pruned or cancelled) were skipped: they carry no measured {objective}.",
+                "",
+            ]
+        )
+    lines += [
+        f"Honesty rule: `significant` requires randomized assignment with each knob assigned independently of the others, at least 20 observations for that knob and 5 per observed value, adequate permutation resolution, and a Holm-adjusted p-value below alpha={alpha:g}. Adaptive or unknown sampling stays `directional` because label exchangeability is not established, and so does a knob whose values were assigned together with another knob's (`knobs_not_independent`). The bootstrap CI is a scale annotation, not the significance test.",
         "",
     ]
     if heldout_accuracy_pp is not None or heldout_cost_delta_pct is not None:
         lines.extend(
             [
                 f"Heldout optimized-vs-baseline context: {format_pp(heldout_accuracy_pp)} {objective}, {format_pct(heldout_cost_delta_pct)} cost.",
+                "",
+            ]
+        )
+    short = [row for row in rows if row.inference_status == "insufficient_permutation_resolution"]
+    if short:
+        needed = math.ceil(PERMUTATION_RESOLUTION_MULTIPLIER * short[0].family_size / alpha)
+        lines.extend(
+            [
+                f"Permutation resolution is too low for {short[0].family_size} eligible knobs at alpha={alpha:g}: rerun with `--bootstrap-draws {needed}` or more (draws + 1 must be at least 10 x knobs / alpha).",
                 "",
             ]
         )
@@ -885,6 +1038,23 @@ def write_insights_md(
             "",
         ]
     )
+    if sdk_payload:
+        lines.extend(
+            [
+                "## SDK cross-check",
+                "",
+                "Traigent SDK `ParameterImportanceAnalyzer` variance-based output (also in `sdk_cross_check.json`); it does not change the ranking or labels above.",
+                "",
+                "| knob | importance_score | confidence_interval | sample_size |",
+                "| --- | --- | --- | --- |",
+            ]
+        )
+        for name, result in sdk_payload.items():
+            low, high = result["confidence_interval"]
+            lines.append(
+                f"| `{name}` | {result['importance_score']:.6g} | [{low:.6g}, {high:.6g}] | {result['sample_size']} |"
+            )
+        lines.append("")
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -906,7 +1076,19 @@ def parse_args() -> argparse.Namespace:
         "--top-k", type=int, default=4, help="Number of variables on the SVG/card"
     )
     parser.add_argument(
-        "--confidence", type=float, default=0.9, help="Bootstrap CI confidence"
+        "--confidence",
+        type=float,
+        default=0.9,
+        help="Bootstrap CI confidence (display only; does not affect significance)",
+    )
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=DEFAULT_ALPHA,
+        help=(
+            "Family-wise significance level for the Holm-adjusted permutation test; "
+            f"default {DEFAULT_ALPHA}, must satisfy 0 < alpha <= {MAX_ALPHA}"
+        ),
     )
     parser.add_argument(
         "--output-dir", required=True, type=Path, help="Directory for artifacts"
@@ -920,7 +1102,10 @@ def parse_args() -> argparse.Namespace:
         "--bootstrap-draws",
         type=int,
         default=DEFAULT_BOOTSTRAP_DRAWS,
-        help="Bootstrap draws per knob; default 1000",
+        help=(
+            "Bootstrap and permutation draws per knob; default 2000. A significant "
+            "label needs draws + 1 >= 10 * eligible knobs / alpha"
+        ),
     )
     parser.add_argument(
         "--sampling-design",
@@ -937,6 +1122,8 @@ def parse_args() -> argparse.Namespace:
 def validate_args(args: argparse.Namespace) -> None:
     if not 0.0 < args.confidence < 1.0:
         raise ValueError("--confidence must be between 0 and 1")
+    if not 0.0 < args.alpha <= MAX_ALPHA:
+        raise ValueError(f"--alpha must satisfy 0 < alpha <= {MAX_ALPHA}")
     if args.top_k < 1:
         raise ValueError("--top-k must be at least 1")
     if args.bootstrap_draws < 1:
@@ -948,7 +1135,7 @@ def main() -> int:
     validate_args(args)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    trials = read_trials(args.trials, args.objective)
+    trials, skipped_non_completed = read_trial_file(args.trials, args.objective)
     config_space = read_config_space(args.config_space)
     heldout = read_heldout(args.heldout)
     rows = analyze_importance(
@@ -957,10 +1144,14 @@ def main() -> int:
         confidence=args.confidence,
         bootstrap_draws=args.bootstrap_draws,
         sampling_design=args.sampling_design,
+        alpha=args.alpha,
     )
-    sdk_note, _sdk_payload = attempt_sdk_importance(trials, args.objective)
+    sdk_note, sdk_payload = attempt_sdk_importance(trials, args.objective)
 
     write_importance_json(args.output_dir / "importance.json", rows)
+    write_sdk_cross_check_json(
+        args.output_dir / "sdk_cross_check.json", sdk_note, sdk_payload
+    )
     write_importance_csv(args.output_dir / "importance.csv", rows)
     write_svg(
         args.output_dir / "significant_variables.svg",
@@ -968,7 +1159,7 @@ def main() -> int:
         top_k=args.top_k,
         n_trials=len(trials),
         objective=args.objective,
-        confidence=args.confidence,
+        alpha=args.alpha,
     )
     write_insights_md(
         args.output_dir / "insights.md",
@@ -979,6 +1170,9 @@ def main() -> int:
         heldout=heldout,
         sdk_note=sdk_note,
         slice_label=args.slice_label,
+        skipped_non_completed=skipped_non_completed,
+        alpha=args.alpha,
+        sdk_payload=sdk_payload,
     )
     video_card = write_video_card_json(
         args.output_dir / "video_card.json",
@@ -988,8 +1182,12 @@ def main() -> int:
         objective=args.objective,
         heldout=heldout,
         slice_label=args.slice_label,
+        skipped_non_completed=skipped_non_completed,
+        alpha=args.alpha,
     )
 
+    if skipped_non_completed:
+        print(f"skipped {skipped_non_completed} non-completed trial(s)")
     print(f"Wrote {len(rows)} ranked tuned variables to {args.output_dir}")
     if rows:
         for index, row in enumerate(rows[: args.top_k], 1):
