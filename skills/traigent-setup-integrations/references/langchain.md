@@ -1,6 +1,9 @@
 # LangChain Integration Reference
 
 > **Dry-run first.** Before running any real LangChain optimization, activate `enable_mock_mode_for_quickstart()`, run, review the cost estimate, and get explicit approval. See the `traigent-boost-agent` skill for the dry-run-first / cost-approval mandate.
+> - LangChain clients require a key at construction, so set a non-secret
+>   placeholder in the dry-run process only — e.g. `OPENAI_API_KEY=mock-placeholder` (it cannot bill;
+>   the calls are intercepted).
 
 ## Overview
 

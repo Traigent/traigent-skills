@@ -1,6 +1,9 @@
 # DSPy Adapter Reference
 
 > **Dry-run first.** Before running any real DSPy optimization, activate `enable_mock_mode_for_quickstart()`, run, review the cost estimate, and get explicit approval. See the `traigent-boost-agent` skill for the dry-run-first / cost-approval mandate.
+> - Mock mode's canned text cannot satisfy DSPy's structured outputs (every trial
+>   fails). Dry-run with `dspy.utils.DummyLM([...])` as the LM instead of `dspy.LM(...)` — one dict per
+>   call, keyed by the signature's output fields, e.g. `DummyLM([{"answer": "4"}] * 50)`.
 
 ## Overview
 
@@ -155,11 +158,12 @@ def optimized_qa(question):
 
     # Traigent manages model selection
     lm = dspy.LM(config["model"], temperature=config["temperature"])
-    dspy.configure(lm=lm)
 
-    # DSPy handles the prompt structure
-    qa = dspy.Predict("question -> answer")
-    result = qa(question=question)
+    # DSPy handles the prompt structure. dspy.context, not dspy.configure: trials run on
+    # worker threads, and dspy.configure fails on every thread but the first.
+    with dspy.context(lm=lm):
+        qa = dspy.Predict("question -> answer")
+        result = qa(question=question)
     return result.answer
 
 # Traigent finds the best model + temperature

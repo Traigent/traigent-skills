@@ -47,7 +47,14 @@ pip install "traigent>=0.19" "dspy==3.3.1"
 > verified with `dspy==3.3.1` on `traigent==0.27.0`; pin that version, or re-verify the examples
 > against the exact `dspy` version you pin before relying on them.
 
-> **Dry-run first.** Before any paid optimization run, activate mock mode (`enable_mock_mode_for_quickstart()`), run with your chosen config, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers.
+> **Dry-run first.** Before any paid optimization run, dry-run in mock mode (`enable_mock_mode_for_quickstart()`) with **no real provider key**, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers:
+> - LiteLLM examples: `enable_mock_mode_for_quickstart()` is enough.
+> - LangChain examples: LangChain clients require a key at construction, so set a non-secret
+>   placeholder in the dry-run process only — e.g. `OPENAI_API_KEY=mock-placeholder` (it cannot bill;
+>   the calls are intercepted).
+> - DSPy examples: mock mode's canned text cannot satisfy DSPy's structured outputs (every trial
+>   fails). Dry-run with `dspy.utils.DummyLM([...])` as the LM instead of `dspy.LM(...)` — one dict per
+>   call, keyed by the signature's output fields, e.g. `DummyLM([{"answer": "4"}] * 50)`.
 
 ## LangChain Integration
 
@@ -259,12 +266,17 @@ import dspy
 def dspy_qa(question):
     config = traigent.get_config()
     lm = dspy.LM(config["model"], temperature=config["temperature"])
-    dspy.configure(lm=lm)
-
-    qa = dspy.Predict("question -> answer")
-    result = qa(question=question)
+    with dspy.context(lm=lm):  # not dspy.configure(): trials run on worker threads
+        qa = dspy.Predict("question -> answer")
+        result = qa(question=question)
     return result.answer
 ```
+
+> **Use `dspy.context`, not `dspy.configure`, inside the optimized function.** Traigent runs examples
+> on worker threads, and DSPy lets only the thread that first configured it call `dspy.configure`.
+> Every other thread raises, and those examples silently score as wrong — the trial does not fail, so
+> its accuracy is deflated with no error signal. Module-level `dspy.configure(...)` on the main thread
+> is fine.
 
 See [DSPy reference](references/dspy.md) for the full constructor and `optimize_prompt()` parameters and advanced configuration.
 

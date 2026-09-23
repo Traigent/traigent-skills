@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "114e7a628a8f8c7e",
+  "doc_hash": "99c6a7f4c3c533f2",
   "reference_hashes": {
-    "references/dspy.md": "99ec124514c4d2f7",
-    "references/langchain.md": "e6e54c6edbec0990",
+    "references/dspy.md": "c0694fc1e90cc48d",
+    "references/langchain.md": "ee494e73c1d93860",
     "references/litellm.md": "f86dd6d1ff187af8"
   },
   "entries": [
@@ -122,6 +122,17 @@
       "doc_before_hash": "99e6e2925432d6e1",
       "doc_after_hash": "114e7a628a8f8c7e",
       "note": "Lead the DSPy prompt-optimizer examples with method=bootstrap and caveat that method=mipro crashes on traigent<=0.27.0, document the real DSPyPromptOptimizer and optimize_prompt signatures, and pin dspy==3.3.1 where the examples were verified.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-353",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "114e7a628a8f8c7e",
+      "doc_after_hash": "99c6a7f4c3c533f2",
+      "note": "Make the mock dry-run passable per framework (LangChain needs a non-secret placeholder key at construction; DSPy dry-runs with DummyLM because mock text cannot satisfy structured outputs) and switch in-function DSPy examples from dspy.configure to thread-safe dspy.context.",
       "source_type": "agent"
     }
   ]
