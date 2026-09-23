@@ -147,7 +147,7 @@ def answer_question(question: str) -> str:
 |---|---|---|---|
 | `injection_mode` | `str \| InjectionMode` | `"context"` | How to deliver config: `"context"`, `"parameter"`, or `"seamless"`. |
 | `config_param` | `str \| None` | `None` | Parameter name for `injection_mode="parameter"`. Required when using parameter mode. |
-| `auto_override_frameworks` | `bool` | `False` | Auto-override framework constructor calls. Nothing extra to install: `traigent.integrations.enable_framework_overrides` is in the core package. |
+| `auto_override_frameworks` | `bool` | `False` | Auto-override framework constructor calls; a silent no-op on `traigent<=0.27.0` (see Framework Auto-Override below). Nothing extra to install: `traigent.integrations.enable_framework_overrides` is in the core package. |
 | `framework_targets` | `list[str] \| None` | `None` | Dotted `module.Class` paths to override (e.g., `["langchain_openai.ChatOpenAI"]`); the package must be importable. A bare framework name such as `"langchain"` is skipped silently (Traigent/Traigent#2299). |
 
 ## Removed Modes
@@ -155,6 +155,13 @@ def answer_question(question: str) -> str:
 The `"attribute"` and `"decorator"` injection modes were removed in Traigent v2.x due to thread-safety issues. If you pass either of these, Traigent raises a `ValueError` with migration guidance. Use `"context"` (recommended) or `"seamless"` instead.
 
 ## Framework Auto-Override
+
+> **Released SDK caveat:** on `traigent<=0.27.0` auto-override is a silent no-op — every trial
+> constructs the client with the literal values in your code, and the run still ranks the trials
+> and reports a `best_config`. Until a release that fixes it, use manual injection (the Basic
+> Pattern: build the client from `traigent.get_config()`). Before any paid run, verify in mock mode
+> that the constructed client's `model_name` differs across two trials (the preflight in
+> `traigent-setup-integrations` → `references/langchain.md`, "Verify the override before a paid run").
 
 When using `auto_override_frameworks=True`, Traigent intercepts the listed framework constructors and applies the trial configuration automatically. Targets are dotted `module.Class` paths whose package is importable; a bare framework name is skipped silently. Nothing extra to install (`traigent.integrations.enable_framework_overrides` is in core).
 

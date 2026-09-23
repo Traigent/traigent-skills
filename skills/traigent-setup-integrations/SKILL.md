@@ -90,6 +90,13 @@ results = answer_question.optimize_sync()  # real run — only after dry-run app
 
 ### Auto Override Frameworks
 
+> **Released SDK caveat:** on `traigent<=0.27.0` auto-override is a silent no-op — every trial
+> constructs the client with the literal values in your code, and the run still ranks the trials
+> and reports a `best_config`. Until a release that fixes it, use manual injection (the Basic
+> Pattern: build the client from `traigent.get_config()`). Before any paid run, verify in mock mode
+> that the constructed client's `model_name` differs across two trials (the preflight in
+> [LangChain reference → Verify the override before a paid run](references/langchain.md#verify-the-override-before-a-paid-run)).
+
 > **Auto-override requires `framework_targets`.** Setting `auto_override_frameworks=True` alone does nothing — the SDK gate requires **both** `auto_override_frameworks=True` and an explicit `framework_targets` list. Without `framework_targets`, the override is silently skipped.
 >
 > **Single-provider only.** Auto-override swaps the **model string** that gets passed to the constructor — it does not swap the **client class**. If your config space mixes OpenAI and Anthropic models but the function only constructs `ChatOpenAI(...)`, the Anthropic trial passes an Anthropic model name to an OpenAI client and gets an invalid-model error. Scope the config space to one provider per override target, or use manual config injection for cross-provider optimization.
@@ -344,7 +351,7 @@ def my_func(text):
     return llm.invoke(text).content  # Always uses the same model
 ```
 
-The exception is when using `auto_override_frameworks=True`, which intercepts client construction automatically.
+The exception is when using `auto_override_frameworks=True` with `framework_targets`, which intercepts client construction — but see the released-SDK caveat under Auto Override Frameworks: on `traigent<=0.27.0` it does not apply the trial values.
 
 ## Reference Files
 
