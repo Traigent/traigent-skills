@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.9"
+  version: "1.1.10"
 ---
 
 # Evaluator Audit
@@ -175,6 +175,7 @@ Use a strict output schema. Count parse failures as first-class failures. FAIL-C
 
 ```python
 import json
+import math
 from typing import Any
 
 REQUIRED_KEYS = {"score", "decision", "reason"}
@@ -182,13 +183,20 @@ REQUIRED_KEYS = {"score", "decision", "reason"}
 def parse_judge_output(raw: str) -> dict[str, Any]:
     try:
         payload = json.loads(raw)
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a JSON object")
         missing = REQUIRED_KEYS - set(payload)
         if missing:
             raise ValueError(f"missing keys: {sorted(missing)}")
         if payload["decision"] not in {"pass", "fail", "abstain"}:
             raise ValueError("decision must be pass, fail, or abstain")
-        payload["score"] = float(payload["score"])
-        return {**payload, "parse_failed": False}
+        if isinstance(payload["score"], bool):
+            raise ValueError("score must be a number, not a boolean")
+        score = float(payload["score"])
+        # NaN, Infinity and wrong-scale scores (e.g. 7 on a 1-10 scale) are parse failures, not passes.
+        if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+            raise ValueError("score must be a finite number in [0, 1]")
+        return {**payload, "score": score, "parse_failed": False}
     except (json.JSONDecodeError, TypeError, ValueError):
         return {
             "score": 0.0,

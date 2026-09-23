@@ -134,6 +134,8 @@ def build_judge_prompt(output: Any, expected: Any, input_data: dict[str, Any]) -
 def parse_judge_response(raw: str) -> tuple[float, str, bool]:
     try:
         data = json.loads(raw)
+        if isinstance(data["score"], bool):  # true/false is not a score
+            raise TypeError("boolean score")
         score = float(data["score"])
         reason = str(data.get("reason", ""))
     except (json.JSONDecodeError, KeyError, TypeError, ValueError):
@@ -332,6 +334,8 @@ def judge_json_quality(output: dict, expected: dict, input_data: dict) -> tuple[
     raw = judge_response.choices[0].message.content or ""
     try:
         parsed = json.loads(raw)
+        if isinstance(parsed["score"], bool):  # true/false is not a score
+            raise TypeError("boolean score")
         score = float(parsed["score"])
         reason = str(parsed.get("reason", ""))
     except (json.JSONDecodeError, KeyError, TypeError, ValueError):
