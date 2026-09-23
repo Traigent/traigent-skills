@@ -23,7 +23,7 @@ Use this skill when you need to go beyond the basic `@traigent.optimize()` decor
 - Multi-objective optimization with weighted objectives
 - Naming an optimization with `experiment_name` — an **agent identity key**, not a per-run
   label (there is no `tags`/`metadata` argument)
-- Portal-synced or zero-egress local execution
+- Portal-synced or local execution with zero Traigent backend egress
 
 ## Optimization Economics — Read This Before Sizing a Run
 
