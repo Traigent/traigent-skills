@@ -92,3 +92,77 @@ def test_recipe_cost_reaches_total_cost_without_reserved_key_warning(tmp_path: P
     )
     assert result["failed"] == 0, log[-3000:]
     assert result["total_cost"] == pytest.approx(PER_CALL_COST * EXAMPLES), result
+
+
+def test_recipe_warns_custom_scorers_about_the_with_usage_wrapper() -> None:
+    # A custom scorer receives the with_usage result as a dict during optimization.
+    text = " ".join(RECIPE.read_text(encoding="utf-8").split())
+    assert "with_usage" in text
+    assert 'output["text"]' in text
+
+
+def test_with_usage_scoring_contract_on_the_installed_sdk(tmp_path: Path) -> None:
+    """Built-in evaluator unwraps with_usage; a custom scorer gets the dict and must read ["text"]."""
+    pytest.importorskip("traigent")
+    (tmp_path / "home").mkdir()
+    script = tmp_path / "probe.py"
+    script.write_text(
+        textwrap.dedent(
+            """
+            import json
+            from pathlib import Path
+            import traigent
+            from traigent.testing import enable_mock_mode_for_quickstart
+
+            enable_mock_mode_for_quickstart()
+            Path("qa.jsonl").write_text(
+                '{"input": {"question": "a"}, "output": "4"}\\n'
+                '{"input": {"question": "b"}, "output": "Paris"}\\n'
+                '{"input": {"question": "c"}, "output": "blue"}\\n'
+            )
+
+            def accuracy(**deco):
+                @traigent.optimize(eval_dataset="qa.jsonl", objectives=["accuracy", "cost"],
+                                   offline=True, configuration_space={"model": ["m"]}, **deco)
+                def f(question: str):
+                    traigent.get_config()
+                    return traigent.with_usage("4", total_cost=0.01), {"latency_ms": 1.0}
+                r = f.optimize_sync(max_trials=1, algorithm="grid")
+                return r.trials[0].metrics["accuracy"], r.total_cost
+
+            naive = lambda o, e, **k: 1.0 if o == e else 0.0
+            text_aware = lambda o, e, **k: 1.0 if (o["text"] if isinstance(o, dict) else o) == e else 0.0
+            print("RESULT=" + json.dumps({
+                "builtin": accuracy(),
+                "naive": accuracy(scoring_function=naive),
+                "text_aware": accuracy(scoring_function=text_aware),
+            }))
+            """
+        ),
+        encoding="utf-8",
+    )
+    env = {
+        k: v
+        for k, v in os.environ.items()
+        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "CI", "GITHUB_ACTIONS"}
+    }
+    env.update(
+        {
+            "HOME": str(tmp_path / "home"),
+            "ENVIRONMENT": "test",
+            "LITELLM_LOCAL_MODEL_COST_MAP": "True",
+            "TRAIGENT_OFFLINE_MODE": "true",
+        }
+    )
+    completed = subprocess.run(
+        [sys.executable, str(script)], cwd=tmp_path, env=env, text=True,
+        capture_output=True, timeout=240, check=False,
+    )
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    result = json.loads(
+        next(ln for ln in completed.stdout.splitlines() if ln.startswith("RESULT=")).removeprefix("RESULT=")
+    )
+    # 1 of 3 rows expects "4": the correct accuracy is 1/3, and every form reports $0.03.
+    assert result["builtin"] == pytest.approx([1 / 3, 0.03])
+    assert result["text_aware"] == pytest.approx([1 / 3, 0.03])
+    assert result["naive"] == pytest.approx([0.0, 0.03]), "the SDK now unwraps with_usage for custom scorers; update the recipe note"

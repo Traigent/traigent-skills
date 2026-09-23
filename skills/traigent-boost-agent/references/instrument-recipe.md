@@ -118,8 +118,10 @@ def _call_answer_model(question: str, cfg: dict) -> str:
 @traigent.optimize(
     evaluation=EvaluationOptions(
         # Built-in evaluator: expected outputs live in the JSONL rows and are
-        # exact-matched against the function's unpacked `output`. A custom
-        # scoring_function / metric_functions also receives the unpacked output.
+        # exact-matched against the function's unpacked `output` (it unwraps
+        # the with_usage(...) result below). A custom scoring_function /
+        # metric_functions receives that with_usage result as a dict: score
+        # output["text"], or every example scores 0.0.
         eval_dataset="evals/qa.jsonl",
     ),
     objectives=["accuracy", "cost"],
@@ -163,7 +165,7 @@ def answer_question(question: str):
 Notes:
 
 - `execute_composite(..., config=cfg, ...)` passes the config mapping as the item to stage runners. Close over the original function input, as shown with `question`.
-- The two-item tuple is intentional: the evaluator sees `output`, and numeric `metrics` ride the measures channel. Keep reserved keys (e.g. `accuracy`, `cost`, `total_cost`, `input_cost`, `output_cost`, `latency`, `score`) out of `metrics`: they are dropped with a "Skipping user metric ... reserved" WARNING. Report the cost your code computes with `traigent.with_usage(text, total_cost=usd)` as the first tuple element; outside optimization it returns `text` unchanged.
+- The two-item tuple is intentional: the evaluator sees `output`, and numeric `metrics` ride the measures channel. Keep reserved keys (e.g. `accuracy`, `cost`, `total_cost`, `input_cost`, `output_cost`, `latency`, `score`) out of `metrics`: they are dropped with a "Skipping user metric ... reserved" WARNING. Report the cost your code computes with `traigent.with_usage(text, total_cost=usd)` as the first tuple element; outside optimization it returns `text` unchanged. The built-in evaluator scores the text inside it, but a custom `scoring_function` / `metric_functions` receives the wrapper dict during optimization and must read `output["text"]`.
 - Read per-trial results by objective name (`trial.metrics["accuracy"]`, `trial.metrics["cost"]`), not `score`: `score` mirrors a single built-in primary objective on SDKs after 0.21.3 only (see version-matrix: score-relocation). With `objectives=["accuracy", "cost"]` it is the weighted selection basis, not accuracy.
 - If production code must keep returning `str`, keep this optimized function as the eval surface and expose `def answer_question_plain(question: str) -> str: return answer_question(question)[0]` only where needed.
 - The helper functions `retrieve_context`, `format_context`, and `estimate_last_call_cost_usd` are application code, not Traigent APIs.
