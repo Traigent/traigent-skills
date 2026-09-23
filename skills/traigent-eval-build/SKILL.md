@@ -19,7 +19,7 @@ Use this skill after the metric is chosen and the user needs concrete evaluator 
 
 - For metric selection first, use `traigent-eval-choose-metric`.
 - Mock/offline check before paid runs with `TRAIGENT_OFFLINE_MODE`, `enable_mock_mode_for_quickstart()`, and a tiny local dataset.
-- Ask for explicit approval and set `TRAIGENT_RUN_COST_LIMIT` before any evaluator calls paid LLMs or backend services.
+- Ask for explicit approval and set `TRAIGENT_RUN_COST_LIMIT` before any evaluator calls paid LLMs or backend services. For custom evaluators that make several calls per row, see the cost-metering caveat in `references/evaluator-templates.md`: on traigent <= 0.27.0 only the first LLM call per row is metered.
 - A judge call placed inside `metric_functions` is **not** in the SDK's cost ledger: on 0.27.0 the local evaluator settles an example's cost from the agent's captured responses before it calls your metric functions, and `TRAIGENT_RUN_COST_LIMIT` admits trials on that recorded cost (Traigent/Traigent#2297). Budget judge calls as their own line (calls per scored row × price × rows × trials), cap them in your own code, and never rely on the SDK limit to stop judge spend.
 - Disjointness invariant: any slice used to tune a threshold, rubric, or metric must be disjoint from the holdout used to claim the result (see `traigent-eval-audit`). The example dataset paths below stand for your *tuning* slice.
 - For full templates by method, read `references/evaluator-templates.md`.

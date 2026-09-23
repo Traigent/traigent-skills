@@ -74,6 +74,7 @@ Use this only when deterministic labels are insufficient. The judge score is a m
 Two things the template does on purpose:
 
 - **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list orients names the SDK does not recognize (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher. Declare every custom objective's orientation with `ObjectiveSchema`.
+- **Only the agent call is metered.** The SDK's `cost` and `TRAIGENT_RUN_COST_LIMIT` see the first LLM call per row, not the judge call; see "Cost metering caveat for multi-call evaluators" below.
 - **The judge budget is one run-level cap.** `JUDGE_BUDGET` counts every judge call across all rows and trials and refuses the call once the next one would pass the cap; refused rows fail closed with `judge_budget_exhausted`. Spend limits are not tuned variables, so they stay out of `configuration_space`.
 
 ```python
@@ -199,6 +200,17 @@ def answer(question: str) -> str:
     return prompt_model(question, temperature=cfg["temperature"])
 ```
 
+## Cost metering caveat for multi-call evaluators
+
+> **Cost metering caveat (traigent <= 0.27.0):** inside a `custom_evaluator`, the SDK meters only the **first**
+> LLM call per row. A template that calls the agent N times, or calls the agent and then a judge, reports
+> about 1/N of its real cost in `cost`, and `TRAIGENT_RUN_COST_LIMIT` is enforced against that figure. Budget
+> `calls_per_row × rows × trials × price` yourself, keep the limit conservative, and do not read the
+> `cost` objective as comparing different repetition counts.
+<!-- contract: literal "response = captured_responses[0]" in traigent.core.evaluator_wrapper -->
+
+This applies to the statistical template below (`EVAL_REPS` agent calls per row) and to the LLM-judge and hybrid templates (one agent call plus one judge call per row).
+
 ## Statistical agreement over repeated calls
 
 Use this when the same configuration can produce different outputs and stability matters.
@@ -267,7 +279,7 @@ def answer(question: str) -> str:
 
 ## Hybrid deterministic gate then judge
 
-Use this when invalid outputs should fail before spending judge calls.
+Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge) and only the first is metered; see "Cost metering caveat for multi-call evaluators" above.
 
 ```python
 import json
