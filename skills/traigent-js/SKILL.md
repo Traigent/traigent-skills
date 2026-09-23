@@ -115,7 +115,7 @@ answerQuestion.applyBestConfig(result);
   (e.g. a callback fired from a native binding, or a bundler that re-implements Promises) — wrap those
   boundaries with `wrapCallback` or `bindContext` rather than assuming the context follows.
 - JS supports `context`, `parameter`, and `seamless` injection modes. Use `context` unless the host app naturally accepts a config parameter or intentionally opts into seamless framework/rewrite support.
-- `algorithm: 'auto'` that cannot reach the backend **falls back to a local `random` search** with only a `console.warn` (`[traigent] algorithm="auto" could not reach the Traigent backend; falling back to local random search.`). Read `result.metadata?.source` before reporting: `'local_fallback'` is not the managed run and must not be presented as one; `'cloud_brain'` is. A backend 401/402/403/429 throws instead of falling back. To make an unreachable backend throw instead of falling back, pass `requireCloud: true` on `.optimize({ ... })` (or set `TRAIGENT_REQUIRE_CLOUD=1`); combining it with `offline: true` or `grid`/`random` throws up front, because neither ever calls the backend.
+- `algorithm: 'auto'` that cannot reach the backend **falls back to a local `random` search** with only a `console.warn` (`[traigent] algorithm="auto" could not reach the Traigent backend; falling back to local random search.`). Read `result.metadata?.source` before reporting: `'local_fallback'` is not the managed run and must not be presented as one; `'cloud_brain'` is. A backend 401/402/403/429 throws instead of falling back. To make an unreachable backend throw instead of falling back, pass `requireCloud: true` on `.optimize({ ... })` (or set `TRAIGENT_REQUIRE_CLOUD=1`); combining it with `offline: true` or `grid`/`random` throws up front, because neither ever calls the backend. That includes the environment variable: with `TRAIGENT_REQUIRE_CLOUD=1` exported, every `grid`/`random`/offline run throws unless it passes `requireCloud: false`, which overrides the variable.
 - There is no guided JS first run: `traigent-first-run` optimizes a Python callable, so a JS agent that went through it was measured through a thin Python adapter or a generated substitute, not natively. Treat that result as a workflow demonstration for the JS agent, and start its own measurement here.
 
 ## Offline / Zero-Egress
@@ -124,9 +124,11 @@ Pass `offline: true` on `.optimize({ ... })` — it is an optimize option, not a
 field — when the run must avoid Traigent-backend egress; `TRAIGENT_OFFLINE_MODE` (alias
 `TRAIGENT_OFFLINE`) is also read. Do not write `mode`, `offlineMode`, `privacy` or
 `hybridApiOptions` on `.optimize({ ... })`, or `execution.mode` in the spec: they were removed
-and each throws a `ValidationError` naming its replacement (`algorithm` + `offline`), e.g.
-`optimize() offlineMode was removed. Use offline instead.` `externalServiceEvaluator` is not
-supported by the JS runtime; use the Python SDK for external-service evaluation.
+and each throws a `ValidationError` naming a replacement — `algorithm` + `offline` for `mode` and
+`execution.mode`, `offline` for `offlineMode` and `privacy` (e.g. `optimize() offlineMode was
+removed. Use offline instead.`). The `hybridApiOptions` error, and the hybrid half of the `mode`
+error, point at `externalServiceEvaluator`, which the JS runtime does not support; use the
+Python SDK for external-service evaluation.
 
 In offline mode, backend HTTP is refused by the SDK's offline guard and only
 local algorithms (`grid` and `random`) run. Do not expect portal tracking or
