@@ -147,7 +147,7 @@ def extract_invoice(text: str) -> str:
     )
 ```
 
-If you need weighted objective schemas, verify the exact `ObjectiveSchema` and `ObjectiveDefinition` import path against the installed SDK first. The public examples should prefer plain objective lists unless weights are essential.
+If you need weighted objective schemas, import them with `from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema`. The public examples should prefer plain objective lists unless weights are essential, with one exception: a plain list orients only built-in names such as `cost` and `latency` as `minimize` and defaults every other name to `maximize`. A custom objective that should be minimized (for example `judge_cost`) must be declared with `ObjectiveDefinition(name=..., orientation="minimize")`, or the optimizer ranks the costlier configuration higher.
 
 ## Multi-objective patterns
 

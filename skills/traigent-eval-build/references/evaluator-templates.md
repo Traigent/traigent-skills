@@ -71,8 +71,14 @@ def extract(text: str, required_fields: list[str]) -> str:
 
 Use this only when deterministic labels are insufficient. The judge score is a model opinion under the rubric. Parse failures fail closed to `0.0`, and judge cost is counted in metrics.
 
+Two things the template does on purpose:
+
+- **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list orients names the SDK does not recognize (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher. Declare every custom objective's orientation with `ObjectiveSchema`.
+- **The judge budget is one run-level cap.** `JUDGE_BUDGET` counts every judge call across all rows and trials and refuses the call once the next one would pass the cap; refused rows fail closed with `judge_budget_exhausted`. Spend limits are not tuned variables, so they stay out of `configuration_space`.
+
 ```python
 import json
+import threading
 import time
 from typing import Any
 
@@ -80,9 +86,26 @@ import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 JUDGE_MODEL = "judge-model-name"
 JUDGE_COST_PER_CALL_USD = 0.002
+
+class JudgeBudget:
+    """Run-level judge spend cap: refuses a call instead of overspending."""
+
+    def __init__(self, cap_usd: float, per_call_usd: float) -> None:
+        self.cap, self.per_call, self.spent = cap_usd, per_call_usd, 0.0
+        self._lock = threading.Lock()  # custom evaluators may run in worker threads
+
+    def try_spend(self) -> bool:
+        with self._lock:
+            if self.spent + self.per_call > self.cap + 1e-12:
+                return False
+            self.spent += self.per_call
+            return True
+
+JUDGE_BUDGET = JudgeBudget(cap_usd=1.00, per_call_usd=JUDGE_COST_PER_CALL_USD)
 
 def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
     response = litellm.completion(
@@ -120,11 +143,8 @@ def parse_judge_response(raw: str) -> tuple[float, str, bool]:
 
 def llm_judge_evaluator(func, config, example) -> ExampleResult:
     started = time.perf_counter()
-    max_judge_calls = int(config.get("max_judge_calls", 1))
-    max_judge_cost_usd = float(config.get("max_judge_cost_usd", 0.01))
-    estimated_cost = max_judge_calls * JUDGE_COST_PER_CALL_USD
 
-    if max_judge_calls < 1 or estimated_cost > max_judge_cost_usd:
+    if not JUDGE_BUDGET.try_spend():
         return ExampleResult(
             example_id=str(example.metadata.get("id", "unknown")),
             input_data=example.input_data,
@@ -133,7 +153,7 @@ def llm_judge_evaluator(func, config, example) -> ExampleResult:
             metrics={"quality": 0.0, "judge_cost": 0.0},
             execution_time=time.perf_counter() - started,
             success=False,
-            error_message="judge_cost_guardrail",
+            error_message="judge_budget_exhausted",
             metadata={"method": "llm_judge", "parse_policy": "fail_closed"},
         )
 
@@ -168,12 +188,11 @@ def llm_judge_evaluator(func, config, example) -> ExampleResult:
         eval_dataset="eval/qa.jsonl",
         custom_evaluator=llm_judge_evaluator,
     ),
-    objectives=["quality", "judge_cost"],
-    configuration_space={
-        "temperature": [0.0, 0.3],
-        "max_judge_calls": [1],
-        "max_judge_cost_usd": [0.01],
-    },
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="quality", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="judge_cost", orientation="minimize", weight=0.2),
+    ]),
+    configuration_space={"temperature": [0.0, 0.3]},
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
@@ -255,6 +274,7 @@ import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
+from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 JUDGE_MODEL = "judge-model-name"
 
@@ -347,7 +367,11 @@ def hybrid_evaluator(func, config, example) -> ExampleResult:
         eval_dataset="eval/extraction.jsonl",
         custom_evaluator=hybrid_evaluator,
     ),
-    objectives=["valid_json", "quality", "judge_cost"],
+    objectives=ObjectiveSchema.from_objectives([
+        ObjectiveDefinition(name="valid_json", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="quality", orientation="maximize", weight=1.0),
+        ObjectiveDefinition(name="judge_cost", orientation="minimize", weight=0.2),
+    ]),
     configuration_space={"temperature": [0.0, 0.2]},
 )
 def extract(text: str) -> str:
