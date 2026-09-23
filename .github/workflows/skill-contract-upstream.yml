@@ -39,8 +39,8 @@ jobs:
       # file sets, and for a `pull_request`-triggered caller that file is
       # read from the PR's own branch (non-privileged pull_request runs use
       # the PR's copy of the workflow YAML). That made `skills_ref`
-      # attacker-influenced: a PR could override it to point this
-      # then token-bearing checkout at an arbitrary ref, in the same job
+      # attacker-influenced: a PR could override it to point this (then
+      # token-bearing) checkout at an arbitrary ref, in the same job
       # that installs and executes the caller's own untrusted PR SDK
       # (previous step). CodeQL flagged exactly this. No caller currently
       # overrides skills_ref (grepped: no workspace repo passes it), so
