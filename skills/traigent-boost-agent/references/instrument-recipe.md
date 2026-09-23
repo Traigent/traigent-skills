@@ -150,19 +150,20 @@ def answer_question(question: str):
         # A composite with no answer is a FAILED example, not an empty answer:
         # returning "" would let a run where every model call failed pass as green.
         raise RuntimeError(f"composite produced no output: {run.result_kind.value}")
-    output = str(run.output)
     metrics: dict[str, float] = {
         "latency_ms": (perf_counter() - started) * 1000.0,
-        "cost": estimate_last_call_cost_usd(),
     }
     merge_composite_measures(metrics, run)
-    return output, metrics
+    # Report cost through with_usage, not a "cost" key: cost/total_cost are
+    # evaluator-reserved and dropped from metrics with a WARNING. with_usage
+    # feeds the cost objective, results.total_cost and cost caps.
+    return traigent.with_usage(str(run.output), total_cost=estimate_last_call_cost_usd()), metrics
 ```
 
 Notes:
 
 - `execute_composite(..., config=cfg, ...)` passes the config mapping as the item to stage runners. Close over the original function input, as shown with `question`.
-- The two-item tuple is intentional: the evaluator sees `output`, and numeric `metrics` ride the measures channel.
+- The two-item tuple is intentional: the evaluator sees `output`, and numeric `metrics` ride the measures channel. Keep reserved keys (e.g. `accuracy`, `cost`, `total_cost`, `input_cost`, `output_cost`, `latency`, `score`) out of `metrics`: they are dropped with a "Skipping user metric ... reserved" WARNING. Report the cost your code computes with `traigent.with_usage(text, total_cost=usd)` as the first tuple element; outside optimization it returns `text` unchanged.
 - If production code must keep returning `str`, keep this optimized function as the eval surface and expose `def answer_question_plain(question: str) -> str: return answer_question(question)[0]` only where needed.
 - The helper functions `retrieve_context`, `format_context`, and `estimate_last_call_cost_usd` are application code, not Traigent APIs.
 
