@@ -243,7 +243,8 @@ def test_the_recommendation_follows_tier_1s_ladder(
 
 
 def _card(stdout: str, check_id: str) -> str:
-    return stdout.split(f"APPROVAL CARD — {check_id}", 1)[1].split("APPROVAL CARD", 1)[0]
+    after = stdout.split(f"APPROVAL CARD — {check_id}", 1)[1]
+    return after.split("APPROVAL CARD", 1)[0]
 
 
 def test_an_unrepeatable_scorer_is_never_called_repeatable(weak_tier1: Path) -> None:
@@ -363,8 +364,7 @@ def test_a_project_with_no_dataset_is_never_told_one_exists(tmp_path: Path) -> N
     out = completed.stdout
     assert "a dataset and scorer exist" not in out
     assert "APPROVAL CARD — plan   (recommended)" not in out
-    bounded = out.split("APPROVAL CARD — bounded-run", 1)[1].split("APPROVAL CARD", 1)[0]
-    assert "no evaluation dataset" in bounded
+    assert "no evaluation dataset" in _card(out, "bounded-run")
 
 
 def test_stop_here_cannot_be_approved(

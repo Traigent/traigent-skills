@@ -1675,8 +1675,7 @@ def probe_environment() -> dict[str, str]:
     return {
         name: value
         for name, value in os.environ.items()
-        if name not in KEY_ENV_NAMES
-        and not name.upper().endswith(SECRET_ENV_SUFFIXES)
+        if name not in KEY_ENV_NAMES and not name.upper().endswith(SECRET_ENV_SUFFIXES)
     }
 
 
@@ -1921,7 +1920,9 @@ def read_sdk_version(interpreter: str) -> dict:
             found = md.distributions(name="traigent")
         else:
             venv = Path(interpreter).parent.parent
-            paths = sorted(str(path) for path in venv.glob("lib/python3*/site-packages"))
+            paths = sorted(
+                str(path) for path in venv.glob("lib/python3*/site-packages")
+            )
             found = md.distributions(name="traigent", path=paths)
         dist = next(iter(found), None)
         version = dist.version if dist is not None else None

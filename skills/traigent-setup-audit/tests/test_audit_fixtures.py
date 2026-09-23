@@ -452,7 +452,9 @@ def test_a_declared_pair_above_the_minimums_reads_ok(tmp_path: Path) -> None:
     by_file = {item["file"]: item for item in report["datasets"]}
     for item in by_file.values():
         assert item["findings"] == [], item
-    assert any("declared by sibling file" in n for n in by_file["eval/tuning.jsonl"]["notes"])
+    assert any(
+        "declared by sibling file" in n for n in by_file["eval/tuning.jsonl"]["notes"]
+    )
 
 
 def test_a_declared_pair_under_the_minimums_still_needs_attention(

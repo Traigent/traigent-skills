@@ -485,7 +485,11 @@ def _project_with_venv(tmp_path: Path, version: str | None) -> tuple[Path, Path]
     shim.chmod(0o755)
     if version is not None:
         dist_info = (
-            root / ".venv" / "lib" / "python3.12" / "site-packages"
+            root
+            / ".venv"
+            / "lib"
+            / "python3.12"
+            / "site-packages"
             / f"traigent-{version}.dist-info"
         )
         dist_info.mkdir(parents=True)
