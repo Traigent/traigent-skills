@@ -4,7 +4,9 @@ Use these principles before designing a Traigent optimization program or
 run-plan. The first six are the core must-dos; the rest keep results trustworthy
 and reproducible. They are field-tested from taking a text2SQL agent from 20/30
 to 27/30 on its 30-row tuning slice at lower cost — a tuning-slice count chosen
-by the search, so it is optimistic; the held-out number is the claim.
+by the search, so it is optimistic; the held-out number is the claim. These counts
+(here and in P4) predate the text2SQL recipe's `result_eq` comparator and were not
+re-scored with it.
 
 ## Core recommendations
 
