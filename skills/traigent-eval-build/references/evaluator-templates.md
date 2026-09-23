@@ -203,6 +203,8 @@ def answer(question: str) -> str:
 
 Use this when the same configuration can produce different outputs and stability matters.
 
+The repetition count is part of the measuring instrument, not a knob: agreement (the modal share of `n` samples) is biased upward at small `n`, so trials measured with different counts are not comparable and fewer repetitions look more stable. Keep `EVAL_REPS` fixed for the whole run and out of `configuration_space`. The `accuracy` objective is per-sample correctness, which is what one production call achieves; `agreement` and `majority_accuracy` are diagnostics: they are not objectives, so they do not appear in `trial.metrics`; read them per row from `trial.metadata["example_results"]`. If production really does N-sample majority voting, then majority accuracy is the right objective and `EVAL_REPS` must be that production N.
+
 ```python
 import time
 from collections import Counter
@@ -220,28 +222,32 @@ def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
     )
     return response.choices[0].message.content or ""
 
+EVAL_REPS = 5  # fixed for the whole run; never a tuned variable
+
 def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
     started = time.perf_counter()
-    reps = int(config.get("eval_reps", 5))
-    outputs = [func(**example.input_data) for _ in range(reps)]
+    outputs = [func(**example.input_data) for _ in range(EVAL_REPS)]
     # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
-    counts = Counter(str(output).strip().lower() for output in outputs)
-    most_common, count = counts.most_common(1)[0]
-    agreement = count / reps if reps else 0.0
+    normalized = [str(output).strip().lower() for output in outputs]
     expected = str(example.expected_output).strip().lower()
-    accuracy = 1.0 if most_common == expected else 0.0
+    counts = Counter(normalized)
+    most_common, count = counts.most_common(1)[0]
 
     return ExampleResult(
         example_id=str(example.metadata.get("id", "unknown")),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=most_common,
-        metrics={"accuracy": accuracy, "agreement": agreement},
+        metrics={
+            "accuracy": sum(o == expected for o in normalized) / EVAL_REPS,  # what one production call achieves
+            "agreement": count / EVAL_REPS,  # diagnostic, same n for every trial
+            "majority_accuracy": 1.0 if most_common == expected else 0.0,  # diagnostic
+        },
         execution_time=time.perf_counter() - started,
         success=True,
         metadata={
             "method": "statistical_agreement",
-            "reps": reps,
+            "reps": EVAL_REPS,
             "unique_outputs": len(counts),
         },
     )
@@ -251,11 +257,8 @@ def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
         eval_dataset="eval/qa.jsonl",
         custom_evaluator=statistical_agreement_evaluator,
     ),
-    objectives=["accuracy", "agreement", "cost"],
-    configuration_space={
-        "temperature": [0.2, 0.7],
-        "eval_reps": [3, 5],
-    },
+    objectives=["accuracy", "cost"],
+    configuration_space={"temperature": [0.2, 0.7]},
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
