@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e01c4ca89a8484c2",
+  "doc_hash": "d204f795fc5c36be",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -312,6 +312,17 @@
       "doc_before_hash": "c629cb6cf4f59abe",
       "doc_after_hash": "e01c4ca89a8484c2",
       "note": "Mode B names the traigent[mcp] extra and traigent-analytics-mcp registration and links the analyze-results prerequisites.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-315",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "e01c4ca89a8484c2",
+      "doc_after_hash": "d204f795fc5c36be",
+      "note": "Pass the required rewrite_llm in the Mode C weak-examples snippet and state that provider supplies the guidance plan while rewrite_llm does the generation.",
       "source_type": "agent"
     }
   ]

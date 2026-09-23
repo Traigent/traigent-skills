@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.4"
+  version: "1.2.5"
 ---
 
 # Traigent Analyze Guidance
@@ -462,14 +462,19 @@ weak_examples = [
     ("question text", "expected answer", "candidate answer"),
 ]
 
+def my_rewrite_llm(prompt: str) -> str:
+    """Your own model call, on your own provider key. Example content stays on your machine."""
+    ...
+
 results = answer.optimize_with_guidance(
-    provider=provider,
+    provider=provider,            # a GuidancePlanProvider
+    rewrite_llm=my_rewrite_llm,   # required: Traigent never builds one from environment credentials
     weak_examples=weak_examples,
     max_trials=8,
 )
 ```
 
-`optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). Keep the provider and rewrite settings project-specific, and confirm the new candidate still improves on a heldout slice.
+`optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). `rewrite_llm` is required (a callable `fn(prompt) -> str` or a constructed client); `provider` supplies the guidance plan. Keep both project-specific, and confirm the new candidate still improves on a heldout slice.
 
 This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent` lifecycle skill).
 
