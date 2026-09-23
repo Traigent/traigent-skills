@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.8"
+  version: "1.1.9"
 ---
 
 # Traigent Curate Dataset
@@ -216,7 +216,14 @@ for example in synthetic_examples:
     example.metadata["review_status"] = "needs_human_label_check"
 ```
 
-For guided optimization flows, grow examples from the optimized function instead of separately managing the synthesizer:
+For exploratory guided optimization flows, grow examples from the optimized function instead of separately managing the synthesizer:
+
+> `optimize_with_guidance(grow_dataset=...)` adds the synthesized rows, with gold answers written by
+> `rewrite_llm`, to the evaluated dataset **in the same call**, before any human review, and returns
+> the best-scoring round across datasets of different sizes. Use it only for exploration. For
+> tuning-slice changes, use the standalone `ExampleSynthesizer` above, review the labels, then start
+> a new run. `weak_examples` takes `(input, expected, actual)` tuples and is read only with
+> `plan_kind="prompt_rewrite"` and `prompt_param=...`; it does not steer dataset growth.
 
 ```python
 import litellm
@@ -249,15 +256,12 @@ growth_options = DatasetGrowthOptions(
     max_total_examples_added=12,
 )
 
-# `guidance_provider` and `weak_examples` are NOT defined here — they come
-# from your prior run: the service next-step payload (see `traigent-analyze-guidance`)
-# supplies the provider, and the flagged/weak example ids come from that
-# payload or your own analysis (see "Reflect on Hard Examples" below).
+# `guidance_provider` is NOT defined here — it comes from your prior run:
+# the service next-step payload (see `traigent-analyze-guidance`) supplies it.
 results = answer.optimize_with_guidance(
     provider=guidance_provider,      # from the traigent-analyze-guidance payload
     rewrite_llm=prompt_model,
     grow_dataset=growth_options,
-    weak_examples=weak_examples,     # flagged example ids from the prior run
     max_trials=8,
 )
 ```
@@ -315,11 +319,14 @@ does not decide which examples are hard.
    `traigent-eval-audit` — do not manually re-rank or re-score
    evaluators.
 5. Pick exactly one server-suggested action and ask the user to approve it:
-   `ExampleSynthesizer` with `GuidanceAction.GENERATE_HARDER` or
-   `GENERATE_SIMILAR`, or `optimize_with_guidance(grow_dataset=...,
-   weak_examples=...)` — see "Synthesize examples client-side with no backend
-   egress" above for the exact call patterns — a prompt rewrite, a trained
-   skill, or a fix to the agent code.
+   dataset growth with the standalone `ExampleSynthesizer`
+   (`GuidanceAction.GENERATE_HARDER` or `GENERATE_SIMILAR`) followed by label
+   review — see "Synthesize examples client-side with no backend egress" above
+   for the exact call pattern; a prompt rewrite with
+   `optimize_with_guidance(plan_kind="prompt_rewrite", prompt_param=...,
+   weak_examples=[(input, expected, actual), ...])`, built from the joined
+   local content of the flagged rows (not their ids); a trained skill; or a
+   fix to the agent code.
 6. Execute the approved action locally. For generated or changed examples,
    mark them for human label review before they can enter the tuning slice; they
    never enter the holdout (see the holdout rules above).
