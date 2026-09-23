@@ -23,16 +23,17 @@ present any number here to a user as measured, benchmarked, or proven.
 ## 1. Posture (canonical — quote by reference, never copy)
 
 > Optimization is a bounded investment, not a cost to avoid by default: when conservative
-> expected value is positive, propose a small daily budget and run the cheapest test capable
-> of producing a decision. Before spending, record the value channel, cap, frozen evaluator
-> and baseline, required machine-verifiable receipt, and stop rule; narrative justification
-> cannot raise the cap. Continue only when verified receipts support positive lower-bound
-> value or positive value of further information; otherwise stop and show the no-spend case.
+> expected value is positive, propose a small, capped test (the Traigent service sizes its
+> daily budget) and run the cheapest test capable of producing a decision. Before spending,
+> record the value channel, cap, frozen evaluator and baseline, required machine-verifiable
+> receipt, and stop rule; narrative justification cannot raise the cap. Continue only when
+> verified receipts support positive lower-bound value or positive value of further
+> information; otherwise stop and show the no-spend case.
 
 ### What this changes, and what it does not
 
 **Changed — cost avoidance is no longer the default.** The prior posture treated spending as
-something to minimize first and justify second. A single Track R2 pilot observed that this
+something to minimize first and justify second. A single early pilot observed that this
 cost-caution-first wording led autonomous coding agents to propose `$0` and never start, so
 the user never saw a result and never learned what a run is worth. Treat that as **candidate,
 unvalidated evidence from one pilot — a motivating observation, not a general law.** A bounded,
@@ -218,9 +219,9 @@ generic marketing arithmetic:
 > **Recommended: customer escalation/rework costing `$50–5,000`.** Why: your
 > `classify_ticket` runs ~3.1k times/day, and a misrouted ticket goes to a human queue rather
 > than being retried automatically. At even `$50` per escalation, a 1-point accuracy gain is
-> worth ~`$1.5k`/month — which is why a `$5`/day test is worth running rather than skipping.
-> If wrong tickets are actually just retried for free, pick the first option instead and the
-> budget drops accordingly.
+> worth ~`$1.5k`/month — which is why a small, capped test is worth running rather than
+> skipping. The service sizes the daily budget. If wrong tickets are actually just retried
+> for free, pick the first option instead and the budget drops accordingly.
 
 Note the shape: options, one recommendation, the why in their numbers, **and** what would
 change the answer.
@@ -334,9 +335,10 @@ recipe you can follow to author a number yourself.
 
 **Until the backend economics calculator ships, there is no budget to compute.** Do not invent
 a daily figure, a floor, a cap, or a payback from these bands locally. Collect and record the
-characterization (§6); when no service result is available, present the spend-`$0` case and say
-plainly that no budget is available yet rather than deriving one. A plausible-looking number
-you produced here is a fabricated one.
+characterization (§6); when no service result is available, present the options and the
+approval ask **without a dollar figure**, say plainly that the Traigent service will size the
+budget and has not returned one yet, and do not present `$0` as the recommendation unless the
+service returns `$0`. A plausible-looking number you produced here is a fabricated one.
 
 **What a service-authored proposal contains (present these, do not compute them):**
 
