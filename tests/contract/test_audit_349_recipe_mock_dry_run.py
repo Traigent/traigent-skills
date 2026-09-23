@@ -120,6 +120,7 @@ WORKING_STUBS = """
 builtins.retrieve_context = lambda question, **kw: ["context"]
 builtins.format_context = lambda chunks, **kw: "context"
 builtins.estimate_last_call_cost_usd = lambda: 0.001
+builtins.estimate_call_cost_usd = lambda response: 0.001
 """
 
 
@@ -138,6 +139,7 @@ def _unreachable(question, **kw):
 builtins.retrieve_context = _unreachable
 builtins.format_context = lambda chunks, **kw: "context"
 builtins.estimate_last_call_cost_usd = lambda: 0.001
+builtins.estimate_call_cost_usd = lambda response: 0.001
 """
     # A fake key and a dead endpoint only let an older raw-client recipe import;
     # the failing stub raises before any client call.

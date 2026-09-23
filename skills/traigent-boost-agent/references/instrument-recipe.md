@@ -100,7 +100,7 @@ def _render_context(question: str, cfg: dict) -> str:
     )
 
 
-def _call_answer_model(question: str, cfg: dict) -> str:
+def _call_answer_model(question: str, cfg: dict) -> tuple[str, float]:
     context = _render_context(question, cfg)
     # litellm.completion, not a raw provider client: mock mode intercepts only
     # LiteLLM/LangChain calls, so the dry-run below stays keyless and free.
@@ -112,7 +112,8 @@ def _call_answer_model(question: str, cfg: dict) -> str:
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
         ],
     )
-    return response.choices[0].message.content
+    # Price THIS call; the example's cost is the sum over all its calls.
+    return response.choices[0].message.content, estimate_call_cost_usd(response)
 
 
 @traigent.optimize(
@@ -131,9 +132,15 @@ def answer_question(question: str):
     cfg = dict(traigent.get_config())
     candidate_count = int(cfg["candidate_count"])
     started = perf_counter()
+    call_costs: list[float] = []
 
     def run_answer(_item: dict) -> list[str]:
-        return [_call_answer_model(question, cfg) for _ in range(candidate_count)]
+        answers = []
+        for _ in range(candidate_count):
+            answer, cost = _call_answer_model(question, cfg)
+            answers.append(answer)
+            call_costs.append(cost)
+        return answers
 
     run = execute_composite(
         CONSISTENCY.structure,
@@ -158,8 +165,10 @@ def answer_question(question: str):
     merge_composite_measures(metrics, run)
     # Report cost through with_usage, not a "cost" key: cost/total_cost are
     # evaluator-reserved and dropped from metrics with a WARNING. with_usage
-    # feeds the cost objective, results.total_cost and cost caps.
-    return traigent.with_usage(str(run.output), total_cost=estimate_last_call_cost_usd()), metrics
+    # feeds the cost objective, results.total_cost and cost caps. Sum every
+    # call: candidate_count calls cost candidate_count times one call, and that
+    # multiplier is exactly what the cost objective must trade against.
+    return traigent.with_usage(str(run.output), total_cost=sum(call_costs)), metrics
 ```
 
 Notes:
@@ -168,7 +177,7 @@ Notes:
 - The two-item tuple is intentional: the evaluator sees `output`, and numeric `metrics` ride the measures channel. Keep reserved keys (e.g. `accuracy`, `cost`, `total_cost`, `input_cost`, `output_cost`, `latency`, `score`) out of `metrics`: they are dropped with a "Skipping user metric ... reserved" WARNING. Report the cost your code computes with `traigent.with_usage(text, total_cost=usd)` as the first tuple element; outside optimization it returns `text` unchanged. The built-in evaluator scores the text inside it, but a custom `scoring_function` / `metric_functions` receives the wrapper dict during optimization and must read `output["text"]`.
 - Read per-trial results by objective name (`trial.metrics["accuracy"]`, `trial.metrics["cost"]`), not `score`: `score` mirrors a single built-in primary objective on SDKs after 0.21.3 only (see version-matrix: score-relocation). With `objectives=["accuracy", "cost"]` it is the weighted selection basis, not accuracy.
 - If production code must keep returning `str`, keep this optimized function as the eval surface and expose `def answer_question_plain(question: str) -> str: return answer_question(question)[0]` only where needed.
-- The helper functions `retrieve_context`, `format_context`, and `estimate_last_call_cost_usd` are application code, not Traigent APIs.
+- The helper functions `retrieve_context`, `format_context`, and `estimate_call_cost_usd` are application code, not Traigent APIs. `estimate_call_cost_usd(response)` prices one call (for LiteLLM, `litellm.completion_cost(completion_response=response)`); make it raise, not return `0.0`, when a call cannot be priced, or the cost objective counts that call as free.
 
 ## Environment
 

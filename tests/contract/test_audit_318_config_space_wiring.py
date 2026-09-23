@@ -153,6 +153,7 @@ def test_recipe_space_holds_only_knobs_the_function_reads(tmp_path: Path) -> Non
             builtins.retrieve_context = lambda question, **kw: ["ctx"]
             builtins.format_context = lambda chunks, **kw: "ctx"
             builtins.estimate_last_call_cost_usd = lambda: 0.0
+            builtins.estimate_call_cost_usd = lambda response: 0.0
             ns = runpy.run_path({str(agent)!r}, run_name="recipe_under_test")
             print("SPACE=" + json.dumps(sorted(ns["CONFIGURATION_SPACE"])))
             """

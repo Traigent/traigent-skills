@@ -47,17 +47,22 @@ def test_recipe_cost_reaches_total_cost_without_reserved_key_warning(tmp_path: P
     runner.write_text(
         textwrap.dedent(
             f"""
-            import builtins, json, runpy
+            import builtins, json, math, runpy
             from traigent.testing import enable_mock_mode_for_quickstart
             enable_mock_mode_for_quickstart()
             builtins.retrieve_context = lambda question, **kw: ["context"]
             builtins.format_context = lambda chunks, **kw: "context"
+            # Recipes before the per-call fix used the one-call helper name.
             builtins.estimate_last_call_cost_usd = lambda: {PER_CALL_COST!r}
+            builtins.estimate_call_cost_usd = lambda response: {PER_CALL_COST!r}
             ns = runpy.run_path({str(agent)!r}, run_name="recipe_under_test")
-            result = ns["answer_question"].optimize_sync(max_trials=1, algorithm="grid")
+            # The full grid, so trials cover every candidate_count.
+            result = ns["answer_question"].optimize_sync(max_trials=math.prod(len(v) for v in ns["CONFIGURATION_SPACE"].values()), algorithm="grid")
             print("RESULT=" + json.dumps({{
                 "total_cost": result.total_cost,
-                "trial_cost": result.trials[0].metrics.get("cost"),
+                "trials": [
+                    [int(t.config["candidate_count"]), t.metrics.get("cost")] for t in result.trials
+                ],
                 "failed": len(getattr(result, "failed_trials", []) or []),
             }}))
             """
@@ -91,7 +96,12 @@ def test_recipe_cost_reaches_total_cost_without_reserved_key_warning(tmp_path: P
         next(ln for ln in completed.stdout.splitlines() if ln.startswith("RESULT=")).removeprefix("RESULT=")
     )
     assert result["failed"] == 0, log[-3000:]
-    assert result["total_cost"] == pytest.approx(PER_CALL_COST * EXAMPLES), result
+    trials = result["trials"]
+    # Every candidate call is priced: a trial's cost scales with candidate_count.
+    assert len({count for count, _ in trials}) >= 2, trials
+    for count, cost in trials:
+        assert cost == pytest.approx(PER_CALL_COST * EXAMPLES * count), trials
+    assert result["total_cost"] == pytest.approx(sum(cost for _, cost in trials)), result
 
 
 def test_recipe_warns_custom_scorers_about_the_with_usage_wrapper() -> None:
