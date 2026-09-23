@@ -5,8 +5,9 @@ copied Tier 2 or Tier 4 comparator that only strips whitespace scores a correct
 ``Paris`` against gold ``paris`` as 0.0, so moving up the ladder silently
 tightens the metric. Two gates:
 
-* a lint over every file under ``skills/``: a ``strip() ==`` comparison must
-  also lower-case (or say on the same line that it is case-sensitive on purpose);
+* a lint over every file under ``skills/``: an ``==`` comparison with
+  ``strip()`` on both sides must lower-case BOTH sides of the ``==`` (or say on the same line that it is
+  case-sensitive on purpose);
 * the Tier 2 and Tier 4 blocks of ``traigent-eval-build/SKILL.md`` are executed
   end to end in offline mode with a canned ``Paris`` reply and must report
   ``accuracy == 1.0``.
@@ -116,11 +117,11 @@ def test_no_case_sensitive_strip_comparator_under_skills() -> None:
         for number, line in enumerate(
             path.read_text(encoding="utf-8").splitlines(), start=1
         ):
-            if (
-                "strip() ==" in line
-                and "lower()" not in line
-                and "case-sensitive" not in line
-            ):
+            left, _, right = line.partition("==")
+            is_strip_comparator = "strip()" in left and "strip()" in right
+            if not is_strip_comparator or "case-sensitive" in line:
+                continue
+            if "lower()" not in left or "lower()" not in right:
                 offenders.append(
                     f"{path.relative_to(REPO_ROOT)}:{number}: {line.strip()}"
                 )
@@ -132,8 +133,10 @@ def test_no_case_sensitive_strip_comparator_under_skills() -> None:
 
 
 RUN_TIER = """
-install_replies(lambda model, messages: "Paris")
-write_rows("qa.jsonl", [{"input": {"question": f"Capital of France? ({i})"}, "output": "paris"} for i in range(3)])
+# Reply and golds differ in case on both sides, so a comparator that lower-cases
+# only one side of the == still scores some rows 0.0.
+install_replies(lambda model, messages: " PARIS ")
+write_rows("qa.jsonl", [{"input": {"question": f"Capital of France? ({i})"}, "output": ["paris", "Paris"][i % 2]} for i in range(4)])
 ns = load_block(sys.argv[1])
 result = ns["answer"].optimize_sync(algorithm="grid", max_trials=2)
 emit({"accuracy": [t.metrics.get("accuracy") for t in result.trials], "status": [str(t.status) for t in result.trials]})
