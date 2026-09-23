@@ -33,6 +33,46 @@ def _bundle_members(extra: str) -> set[str]:
     return members
 
 
+def _norm(name: str) -> str:
+    return re.sub(r"[-_.]+", "-", name).lower()
+
+
+def _extra_requirements(extra: str) -> set[str]:
+    """Normalized package names an extra installs, plus its nested sub-extras."""
+    names = set(_bundle_members(extra))
+    for req in importlib.metadata.metadata("traigent").get_all("Requires-Dist") or []:
+        if not re.search(rf"extra\s*==\s*[\"']{re.escape(extra)}[\"']", req):
+            continue
+        package = re.match(r"\s*([A-Za-z0-9_.-]+)", req)
+        if package and _norm(package.group(1)) != "traigent":
+            names.add(package.group(1))
+    return {_norm(name) for name in names}
+
+
+def _row_packages(cell: str) -> list[str]:
+    """Package names in a Key Packages cell; descriptive phrases are skipped."""
+    cell = re.sub(
+        r"\([^)]*\)", "", cell
+    )  # "LangChain (+ community/...)" -> "LangChain"
+    tokens = (part.strip() for part in re.split(r"[,+]", cell))
+    return [token for token in tokens if token and not re.search(r"[\s(]", token)]
+
+
+def _scan_row_packages(text: str, wheel: dict[str, set[str]]) -> list[str]:
+    violations = []
+    for extra, cell in re.findall(r"^\|\s*`([\w-]+)`\s*\|[^|]*\|([^|]*)\|", text, re.M):
+        if extra not in wheel:
+            continue  # unknown extras are reported by the Provides-Extra test
+        extra_names = wheel[extra]
+        for package in _row_packages(cell):
+            if _norm(package) not in extra_names:
+                violations.append(
+                    f"`{extra}` row names `{package}`, which `traigent[{extra}]` does not "
+                    f"install (wheel: {sorted(extra_names)})"
+                )
+    return violations
+
+
 def _scan_unknown_extras(rel: str, text: str, declared: set[str]) -> list[str]:
     violations = []
     for match in EXTRA_USE_RE.finditer(text):
@@ -76,6 +116,24 @@ def test_bundle_rows_match_wheel_requires_dist(repo_root: Path) -> None:
                 f"`{bundle}` row lists {sorted(taught)}; the wheel installs {sorted(wheel)}"
             )
     assert not mismatches, "\n".join(mismatches)
+
+
+def test_every_row_names_only_packages_its_extra_installs(repo_root: Path) -> None:
+    text = (repo_root / TABLE).read_text(encoding="utf-8")
+    wheel = {extra: _extra_requirements(extra) for extra in _declared_extras()}
+    violations = _scan_row_packages(text, wheel)
+    assert not violations, "\n".join(violations)
+
+
+def test_row_package_lint_has_teeth() -> None:
+    wheel = {"test": {"pytest", "rapidfuzz"}, "ml": {"bayesian", "numpy"}}
+    row = (
+        "| `test` | d | pytest, ragas, pytest suite |\n"
+        "| `ml` | d | bayesian + numpy (+ extras) |\n"
+    )
+    found = _scan_row_packages(row, wheel)
+    assert len(found) == 1 and "`ragas`" in found[0], found
+    assert _norm("Python_Multipart") == "python-multipart"
 
 
 def test_extras_lints_have_teeth() -> None:

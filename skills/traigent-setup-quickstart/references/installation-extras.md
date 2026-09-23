@@ -8,13 +8,13 @@ Full reference of optional dependency groups available via `pip install 'traigen
 | --------------- | -------------------------------------------------- | ---------------------------------------------------------------------------- |
 | `analytics`     | Analytics and intelligence features                | numpy, pandas, matplotlib                                                    |
 | `bayesian`      | Bayesian optimization algorithms                   | scikit-learn, scipy                                                          |
-| `integrations`  | Framework integrations                             | LangChain (+ community/anthropic/openai/google), OpenAI, Anthropic, Groq, Google GenAI, MLflow, W&B, python-dotenv, boto3, faiss-cpu |
-| `pydanticai`    | PydanticAI agent framework                         | pydantic-ai                                                                  |
-| `security`      | Enterprise security features                       | PyJWT, passlib, FastAPI, Starlette, uvicorn, redis, defusedxml, pyotp        |
+| `integrations`  | Framework integrations                             | LangChain (+ community/anthropic/openai/google), OpenAI, Anthropic, Groq, Google GenAI, mlflow-skinny, wandb, python-dotenv, boto3, faiss-cpu |
+| `pydanticai`    | PydanticAI agent framework                         | pydantic-ai-slim                                                             |
+| `security`      | Enterprise security features                       | passlib, FastAPI, Starlette, uvicorn, redis, defusedxml, pyotp, python-multipart |
 | `visualization` | Visualization and plotting                         | matplotlib, plotly                                                           |
 | `hybrid`        | External HTTP/MCP service integration helpers      | httpx with HTTP/2, claude-code-sdk, mcp                                      |
 | `tracing`       | OpenTelemetry tracing                              | opentelemetry-api, opentelemetry-sdk, opentelemetry-exporter-otlp            |
-| `test`          | Testing dependencies                               | pytest, pytest-asyncio, pytest-cov, pytest-mock, pytest-timeout, pytest-xdist, coverage, ragas, rapidfuzz, hypothesis |
+| `test`          | Testing dependencies                               | pytest, pytest-asyncio, pytest-cov, pytest-mock, pytest-timeout, pytest-xdist, coverage, rapidfuzz, hypothesis |
 | `dev`           | Development tools (linting + testing)              | pytest suite, black, isort, flake8, mypy, pre-commit, ruff, bandit           |
 | `docs`          | Documentation generation                           | mkdocs, mkdocs-material, mkdocstrings                                        |
 | `ml`            | Machine learning bundle                            | bayesian + analytics + numpy + scipy                                         |
