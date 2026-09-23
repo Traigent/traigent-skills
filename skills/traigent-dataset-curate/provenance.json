@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0d3f4a0fcea336b2",
+  "doc_hash": "dfef2fdaee05a418",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
@@ -219,6 +219,17 @@
       "doc_before_hash": "133ab35e34c1b902",
       "doc_after_hash": "0d3f4a0fcea336b2",
       "note": "Scope the mock-first bullet's egress claim to the Traigent backend: offline=True does not stop LiteLLM's pricing-map download at import (set LITELLM_LOCAL_MODEL_COST_MAP=True first) or provider calls that mock mode does not intercept.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-314",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "0d3f4a0fcea336b2",
+      "doc_after_hash": "dfef2fdaee05a418",
+      "note": "Add a one-line pointer at the first mention of the example-insights MCP tool: it needs the analytics MCP server installed and registered (analyze-results skill, Prerequisites (one time)); the REST route works without it.",
       "source_type": "agent"
     }
   ]

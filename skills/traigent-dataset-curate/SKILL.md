@@ -403,6 +403,8 @@ Prefer client-side synthesis when data-handling review is incomplete, no account
 Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) is likewise non-signal: it conveys review urgency, enum flags, and a suggested action — never raw scores, formulas, or composite values.
 <!-- /PROTECTED -->
 
+The `analytics_get_example_insights` MCP tool needs the analytics MCP server installed and registered with your coding assistant first; see the analyze-results skill, "Prerequisites (one time)". The REST route works without it.
+
 > **Import note (verified against SDK 0.18.x):** `ExampleInsightsClient` ships in the core SDK at `traigent.analytics` — no separate install required. The `traigent.analytics` module docstring recommends the separate `traigent-analytics` plugin (`pip install traigent-analytics`), but that plugin's public API (meta-learning, predictive analytics, anomaly detection, cost optimization, scheduling — see its own `__all__`) does not include `ExampleInsightsClient`; `from traigent_analytics import ExampleInsightsClient` raises `ImportError`. Ignore the module's `DeprecationWarning` for this class specifically.
 >
 > | Is the `traigent-analytics` plugin installed? | Import to use |

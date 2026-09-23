@@ -49,3 +49,33 @@ def test_stub_smoke_test_runs_with_zero_provider_calls(tmp_path: Path) -> None:
     emit({"provider_calls": 0})
     """
     assert _run_driver(tmp_path, RUNNABLE_BLOCKS[0], body) == {"provider_calls": 0}
+
+
+MCP_TOOL = "analytics_get_example_insights"
+
+
+def test_mcp_tool_mentions_come_with_a_setup_pointer() -> None:
+    """Refs #314: the example-insights MCP tool needs the analytics MCP server
+    installed and registered first. Wherever this skill names the tool, a
+    one-line prerequisite pointer must come at (or right after) the first
+    mention, and must say the REST route works without it."""
+    paragraphs = CURATE.read_text(encoding="utf-8").split("\n\n")
+    mentions = [i for i, para in enumerate(paragraphs) if MCP_TOOL in para]
+    if not mentions:
+        return
+    pointers = [
+        i
+        for i, para in enumerate(paragraphs)
+        if "analytics MCP server" in para
+        and "Prerequisites (one time)" in para
+        and "REST" in para
+    ]
+    assert pointers, f"{MCP_TOOL} is named but no prerequisite pointer exists"
+    assert pointers[0] <= mentions[0] + 1, (
+        "the prerequisite pointer must sit at the first mention of the MCP tool",
+        pointers[0],
+        mentions[0],
+    )
+    assert "traigent-" not in paragraphs[pointers[0]].split(MCP_TOOL)[-1], (
+        "name the skill in prose, not by its directory name"
+    )
