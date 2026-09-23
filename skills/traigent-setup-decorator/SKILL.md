@@ -388,9 +388,11 @@ After mock/dry-run validation passes and before any full run, run one tiny **rea
 
 ```python
 @traigent.optimize(
-    algorithm="auto",   # default: Traigent cloud smart optimizer
-    offline=False,      # set True for a fully-local, zero-egress run
-    execution=ExecutionOptions(local_storage_path="./results"),
+    execution=ExecutionOptions(
+        algorithm="auto",        # default: Traigent cloud smart optimizer
+        offline=False,           # set True for a local run with no Traigent backend egress
+        local_storage_path="./results",
+    ),
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
@@ -465,7 +467,7 @@ def answer_question(question: str) -> str:
     )
 
 # Run optimization
-results = await answer_question.optimize(max_trials=10, algorithm="random")
+results = answer_question.optimize_sync(max_trials=10, algorithm="random")
 
 # Apply best configuration for production
 answer_question.apply_best_config(results)

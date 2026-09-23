@@ -78,7 +78,10 @@ def my_remote_agent(query: str) -> str: ...
 
 ## `ExecutionOptions` advanced fields
 
-`ExecutionOptions` carries `algorithm` and `offline` plus the advanced execution settings:
+`ExecutionOptions` carries `algorithm` and `offline` plus the advanced execution settings.
+When you pass an `ExecutionOptions(...)` bundle, set `algorithm` / `offline` inside it — passing them
+as direct decorator arguments as well raises `TypeError: Conflicting values ...` whenever they differ
+from the bundle's defaults.
 
 | Field | Type | Default | Description |
 |---|---|---|---|
