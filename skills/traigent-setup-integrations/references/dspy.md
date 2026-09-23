@@ -9,12 +9,17 @@ Traigent provides the `DSPyPromptOptimizer` adapter for integrating DSPy's autom
 ## Installation
 
 ```bash
-pip install "traigent>=0.19" dspy
+pip install "traigent>=0.19" "dspy==3.3.1"  # the version these examples were verified on
 ```
 
 ## DSPyPromptOptimizer
 
 The adapter wraps DSPy's MIPROv2 and BootstrapFewShot optimizers.
+
+> **Use `method="bootstrap"` on released SDKs.** `method="mipro"` (the constructor default) raises
+> `TypeError: MIPROv2.__init__() got an unexpected keyword argument 'requires_permission_to_run'`
+> on `traigent<=0.27.0` with DSPy 2.6/3.x. Pass `method="bootstrap"` explicitly until a fixed SDK
+> release.
 
 ### Import
 
@@ -25,27 +30,43 @@ from traigent.integrations.dspy_adapter import DSPyPromptOptimizer
 ### Constructor
 
 ```python
-DSPyPromptOptimizer(
-    method="mipro",           # "mipro" or "bootstrap"
-    teacher_model=None,       # Optional teacher model for MIPRO
-    # Additional keyword arguments passed to the underlying DSPy optimizer
+optimizer = DSPyPromptOptimizer(
+    method="bootstrap",       # "mipro" (the default; see the note above) or "bootstrap"
+    teacher_model=None,       # keyword-only: optional teacher model id
+    auto_setting="medium",    # keyword-only: MIPRO budget, "light" | "medium" | "heavy"
 )
 ```
+
+The constructor takes no other arguments; anything else raises `TypeError`.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `method` | `"mipro" \| "bootstrap"` | `"mipro"` | Which DSPy optimizer to use. `"mipro"` uses MIPROv2 (instruction + demo optimization). `"bootstrap"` uses BootstrapFewShot (demo-only optimization). |
-| `teacher_model` | `str \| None` | `None` | Model name for the teacher in MIPRO (e.g., `"gpt-4o"`). If `None`, uses the same model as the student. |
+| `teacher_model` | `str \| None` | `None` | Keyword-only. Model name for the teacher (e.g., `"gpt-4o"`). If `None`, uses the same model as the student. |
+| `auto_setting` | `"light" \| "medium" \| "heavy"` | `"medium"` | Keyword-only. MIPROv2's `auto` budget; ignored by `"bootstrap"`. |
 
 ### optimize_prompt()
 
 ```python
 result = optimizer.optimize_prompt(
-    module=my_dspy_module,    # DSPy module to optimize
-    trainset=train_examples,  # List of dspy.Example objects
-    metric=accuracy_fn,       # Metric function: (example, prediction) -> float
+    module=my_dspy_module,       # DSPy module to optimize
+    trainset=train_examples,     # List of dspy.Example objects
+    metric=accuracy_fn,          # Metric function: (example, prediction, trace=None) -> float | bool
+    max_bootstrapped_demos=4,    # keyword-only tuning knobs, shown with their defaults
+    max_labeled_demos=16,
+    num_candidates=10,
 )
 ```
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `module` | `Any` | (required) | The DSPy module to optimize. |
+| `trainset` | `list[Any]` | (required) | Training examples (`dspy.Example` objects). |
+| `metric` | `Callable[[Any, Any], float]` | (required) | Scores a prediction against an example. |
+| `max_bootstrapped_demos` | `int` | `4` | Keyword-only. Most bootstrapped demonstrations to keep. |
+| `max_labeled_demos` | `int` | `16` | Keyword-only. Most labeled demonstrations to keep. |
+| `num_candidates` | `int` | `10` | Keyword-only. MIPROv2 instruction candidates; ignored by `"bootstrap"`. |
+| `requires_permission_to_run` | `bool` | `False` | Keyword-only. MIPROv2 confirmation prompt; ignored by `"bootstrap"`. |
 
 Returns a `PromptOptimizationResult`:
 
@@ -58,9 +79,9 @@ Returns a `PromptOptimizationResult`:
 | `best_score` | `float \| None` | Best metric score achieved during optimization. |
 | `metadata` | `dict[str, Any]` | Additional metadata from the optimization process. |
 
-## MIPRO Method
+## BootstrapFewShot Method
 
-MIPROv2 optimizes both the instruction text and the few-shot demonstrations:
+BootstrapFewShot selects the best few-shot demonstrations from the training set:
 
 ```python
 import dspy
@@ -90,11 +111,7 @@ trainset = [
     # ... more examples
 ]
 
-# Optimize with MIPRO
-optimizer = DSPyPromptOptimizer(
-    method="mipro",
-    teacher_model="gpt-4o",  # Use a stronger model as teacher
-)
+optimizer = DSPyPromptOptimizer(method="bootstrap")
 result = optimizer.optimize_prompt(
     module=QAModule(),
     trainset=trainset,
@@ -102,30 +119,19 @@ result = optimizer.optimize_prompt(
 )
 
 print(f"Best score: {result.best_score}")
-print(f"Demos: {result.num_demos}")
+print(f"Selected {result.num_demos} demonstrations")
 
 # Use the optimized module
 optimized_qa = result.optimized_module
-answer = optimized_qa("What is the speed of light?")
+answer = optimized_qa(question="What is the speed of light?")
 ```
 
-## BootstrapFewShot Method
+## MIPRO Method
 
-BootstrapFewShot selects the best few-shot demonstrations from the training set:
-
-```python
-optimizer = DSPyPromptOptimizer(method="bootstrap")
-
-result = optimizer.optimize_prompt(
-    module=QAModule(),
-    trainset=trainset,
-    metric=exact_match,
-)
-
-# The optimized module has curated demonstrations
-optimized_module = result.optimized_module
-print(f"Selected {result.num_demos} demonstrations")
-```
+MIPROv2 optimizes both the instruction text and the few-shot demonstrations. It is selected with
+`method="mipro"` (plus `teacher_model=` and `auto_setting=` if needed), but on `traigent<=0.27.0`
+it fails with the `TypeError` in the note above, whatever the DSPy version. Until a fixed SDK
+release, use `method="bootstrap"`.
 
 ## Combining DSPy with Traigent Model Optimization
 
@@ -172,7 +178,7 @@ best_temp = model_results.best_config["temperature"]
 lm = dspy.LM(best_model, temperature=best_temp)
 dspy.configure(lm=lm)
 
-optimizer = DSPyPromptOptimizer(method="mipro")
+optimizer = DSPyPromptOptimizer(method="bootstrap")  # "mipro" fails on traigent<=0.27.0
 prompt_result = optimizer.optimize_prompt(
     module=QAModule(),
     trainset=trainset,
@@ -185,8 +191,8 @@ final_module = prompt_result.optimized_module
 
 ## Tips
 
-- MIPRO is more powerful but slower; BootstrapFewShot is faster for demo-only optimization
-- Use a stronger teacher model (e.g., `gpt-4o`) for MIPRO when the student model is smaller
+- MIPRO is more powerful but slower; BootstrapFewShot is faster for demo-only optimization (and is the method that runs on `traigent<=0.27.0`)
+- Use a stronger teacher model (e.g., `gpt-4o`) when the student model is smaller
 - DSPy requires structured inputs/outputs; define your module's signature clearly
 - Training set quality matters more than quantity for few-shot optimization
 - The `optimized_module` retains all DSPy functionality and can be saved/loaded with `dspy.save`/`dspy.load`

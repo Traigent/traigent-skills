@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "99e6e2925432d6e1",
+  "doc_hash": "114e7a628a8f8c7e",
   "reference_hashes": {
-    "references/dspy.md": "59680e5b6e0e1570",
+    "references/dspy.md": "99ec124514c4d2f7",
     "references/langchain.md": "e6e54c6edbec0990",
     "references/litellm.md": "f86dd6d1ff187af8"
   },
@@ -111,6 +111,17 @@
       "doc_before_hash": "0a75be179e999c84",
       "doc_after_hash": "99e6e2925432d6e1",
       "note": "Gate framework auto-override on the released SDK: on traigent<=0.27.0 it is a silent no-op, so point readers to manual injection and a keyless mock preflight; pair framework_targets with auto_override_frameworks=True and drop the unmapped Google target from the supported list.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-352",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "99e6e2925432d6e1",
+      "doc_after_hash": "114e7a628a8f8c7e",
+      "note": "Lead the DSPy prompt-optimizer examples with method=bootstrap and caveat that method=mipro crashes on traigent<=0.27.0, document the real DSPyPromptOptimizer and optimize_prompt signatures, and pin dspy==3.3.1 where the examples were verified.",
       "source_type": "agent"
     }
   ]

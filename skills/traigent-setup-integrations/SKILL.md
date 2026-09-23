@@ -34,7 +34,7 @@ pip install "traigent[integrations]>=0.19"
 # Or install individual frameworks alongside Traigent
 pip install "traigent>=0.19" langchain-openai langchain-anthropic
 pip install "traigent>=0.19" litellm
-pip install "traigent>=0.19" dspy
+pip install "traigent>=0.19" "dspy==3.3.1"
 ```
 
 > **Pin, don't float, the framework version.** `langchain-openai`/`langchain-anthropic` and `dspy` both
@@ -43,9 +43,9 @@ pip install "traigent>=0.19" dspy
 > unpinned install can silently pick up a version whose import paths or call signatures differ from
 > the examples below. Traigent's own `integrations` extra already floors
 > `langchain-openai>=1.1.14`/`langchain-anthropic>=0.2.0` (security floors — see `pip show traigent`);
-> stay at or above those, e.g. `langchain-openai>=1.1.14,<2`. `dspy` is not part of that extra and has
-> no SDK-verified floor here — pin to the exact `dspy` version you test the examples below against, or
-> treat them as unverified against your installed version until you do.
+> stay at or above those, e.g. `langchain-openai>=1.1.14,<2`. `dspy` is not part of that extra. The DSPy examples below were
+> verified with `dspy==3.3.1` on `traigent==0.27.0`; pin that version, or re-verify the examples
+> against the exact `dspy` version you pin before relying on them.
 
 > **Dry-run first.** Before any paid optimization run, activate mock mode (`enable_mock_mode_for_quickstart()`), run with your chosen config, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers.
 
@@ -220,10 +220,14 @@ See [LiteLLM reference](references/litellm.md) for the full provider list and co
 
 Traigent provides a `DSPyPromptOptimizer` adapter that wraps DSPy's MIPROv2 and BootstrapFewShot optimizers for automatic prompt engineering:
 
+> `method="mipro"` (the constructor default) raises `TypeError: MIPROv2.__init__() got an unexpected
+> keyword argument 'requires_permission_to_run'` on `traigent<=0.27.0` with DSPy 2.6/3.x. Pass
+> `method="bootstrap"` explicitly until a fixed SDK release.
+
 ```python
 from traigent.integrations.dspy_adapter import DSPyPromptOptimizer
 
-optimizer = DSPyPromptOptimizer(method="mipro")
+optimizer = DSPyPromptOptimizer(method="bootstrap")
 
 result = optimizer.optimize_prompt(
     module=my_dspy_module,
@@ -262,7 +266,7 @@ def dspy_qa(question):
     return result.answer
 ```
 
-See [DSPy reference](references/dspy.md) for BootstrapFewShot patterns and advanced configuration.
+See [DSPy reference](references/dspy.md) for the full constructor and `optimize_prompt()` parameters and advanced configuration.
 
 ## Observability Integrations
 
