@@ -52,7 +52,9 @@ Lower values vary slowest (outer loop), higher values vary fastest (inner loop).
 
 - Stops with `stop_reason="optimizer"` when all combinations are exhausted
 - If `max_trials` is smaller than the config space, only a prefix is tested
-- Iteration order is lexicographic by default (or controlled by `parameter_order`)
+- Default order: parameters sorted alphabetically, except `model`, which is placed last and varies
+  fastest. A `max_trials` below the grid size therefore covers every model at the first values of
+  the other knobs. Use `parameter_order` to change this (lower number = varies slower).
 
 ## Random Search
 
@@ -71,8 +73,9 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 ### Behavior
 
-- May sample the same configuration twice (with replacement)
-- Stops when `max_trials` is reached
+- On discrete spaces, samples without repeating a configuration
+- Stops at `max_trials`, or earlier with `stop_reason="optimizer"` once every configuration has run
+  (continuous ranges are sampled freely)
 - Provides good coverage of high-dimensional spaces with fewer trials than grid
 
 ## Bayesian Optimization — Connected Only (SDK 0.20.1+)
