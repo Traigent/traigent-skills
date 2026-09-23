@@ -606,7 +606,9 @@ df = df[df["samples_count"] >= MIN_SAMPLES]
 # cheapest to most expensive and keep a config only if it beats every cheaper KEPT config by more
 # than TIE_BAND. Every dropped config is within TIE_BAND of a kept config that costs no more, so a
 # chain of small steps can never erase a config that is clearly better than every survivor.
-# With TIE_BAND = 0 this is the strict Pareto frontier.
+# With TIE_BAND = 0 it keeps exactly the strict Pareto frontier's (accuracy, cost) points;
+# configs that tie exactly on both are shown once, so look for exact duplicates in `df` if
+# another axis (latency, provider) should decide between them.
 def pareto_front(df, maximize="accuracy", minimize="cost", tol=TIE_BAND):
     keep, best_kept = [], float("-inf")
     for i, row in df.sort_values([minimize, maximize], ascending=[True, False]).iterrows():

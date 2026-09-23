@@ -223,3 +223,25 @@ def test_caveat_states_the_new_guarantee(repo_root: Path) -> None:
         "every dropped config is within your noise of a kept config that costs no more"
         in text
     )
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_exact_ties_are_shown_once_and_the_recipe_says_so(
+    repo_root: Path, pareto_front, backend: str
+) -> None:
+    rows = [
+        {"model": "a", "accuracy": 0.8, "cost": 1.0},
+        {"model": "b", "accuracy": 0.8, "cost": 1.0},
+        {"model": "c", "accuracy": 0.9, "cost": 2.0},
+    ]
+    kept = [
+        rows[i]["model"]
+        for i in _kept_labels(pareto_front(_make_frame(backend, rows), tol=0.0))
+    ]
+    assert kept == ["a", "c"]
+    text = " ".join(
+        line.lstrip("# ")
+        for line in (repo_root / SKILL).read_text(encoding="utf-8").splitlines()
+    )
+    assert "configs that tie exactly on both are shown once" in " ".join(text.split())
+    assert "With TIE_BAND = 0 this is the strict Pareto frontier." not in text
