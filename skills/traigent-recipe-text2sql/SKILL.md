@@ -106,7 +106,9 @@ returns zero rows: an empty gold scores 1.0 for every wrong query that also retu
 and a gold that fails to run scores 0.0 for every candidate, so neither separates
 configurations. Report accuracy on the scoreable subset with that count. Run candidate SQL
 only on a read-only handle with a watchdog and a size cap — never on the writable DB the agent
-could mutate (the runnable reference below does both). Keep the read-only allowlist broad
+could mutate (the runnable reference below does both). Bound the watchdog by wall-clock time,
+not by a VM-step count: a step cap also aborts correct SQL on a real-size table and scores it 0
+like wrong SQL; report a timed-out query separately from an SQL error. Keep the read-only allowlist broad
 enough for correct answers (window functions, JSON `->`/`->>`, math built-ins): a denied
 feature scores a correct prediction 0 with no error. A real call LiteLLM cannot price has
 an unknown cost, not a zero one: the reference refuses a `--real` run whose models have no
@@ -228,7 +230,8 @@ runs end-to-end in minutes and is the ice-breaker for the QuickStart:
 python quickstart_text2sql.py --mock     # no LLM spend; validates wiring (all-zero accuracy expected)
 python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 ```
-Swap the embedded DB + questions for the real SPIDER dev set to scale up — the wiring is identical.
+Swap the embedded DB + questions for the real SPIDER dev set to scale up — the wiring is identical;
+raise the reference's per-query time budget (`_QUERY_BUDGET_S`) if its timeout warning fires on correct SQL.
 
 ## The winner on this slice (tuning score — not a held-out result)
 `gpt-4o-mini · temp 0.2 · fewshot_k 2 · fewshot_selector=similar · generation_path=plan_then_sql · repair off`

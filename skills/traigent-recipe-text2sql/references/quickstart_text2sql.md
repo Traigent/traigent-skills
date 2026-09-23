@@ -154,15 +154,24 @@ def _read_only_authorizer(action, arg1, arg2, database_name, trigger_name):
     return sqlite3.SQLITE_DENY
 
 
+# Wall-clock budget per statement. Raise it for a large database; a query that
+# exceeds it is stopped, reported, and scored 0.
+_QUERY_BUDGET_S = 5.0
+
+
 def _run(sql: str):
     # Candidate SQL is model output: run it on a READ-ONLY handle (a DELETE or DROP
     # fails instead of mutating the DB the next trial reads) with a watchdog that
     # aborts a runaway statement (a recursive CTE would otherwise hang the trial).
+    # The watchdog bounds TIME, not VM steps: a step cap also aborts correct SQL
+    # on a real-size table (a GROUP BY over 10k rows), scoring it like wrong SQL.
     con = None
     try:
         con = sqlite3.connect(f"file:{DB_PATH}?mode=ro", uri=True)
         con.set_authorizer(_read_only_authorizer)
-        con.set_progress_handler(lambda: 1, 100_000)  # non-zero return aborts after ~100k VM steps
+        deadline = time.monotonic() + _QUERY_BUDGET_S
+        # Checked every 10k VM steps; a non-zero return interrupts the statement.
+        con.set_progress_handler(lambda: 1 if time.monotonic() > deadline else 0, 10_000)
         # The step watchdog does not bound memory: one randomblob(1e9) would
         # allocate ~1 GB. Cap each value and row (1 MB) and the column count, and
         # stop collecting once the whole result passes 50 MB.
@@ -175,6 +184,14 @@ def _run(sql: str):
                 raise MemoryError("query result exceeds 50 MB")
             rows.append(row)
         return True, rows
+    except sqlite3.OperationalError as e:
+        if str(e) == "interrupted":
+            # A timeout is not wrong SQL: say so, and count it, so a run whose
+            # correct-but-slow queries were cut off is visible in the output.
+            _RUN["timeouts"] += 1
+            print(f"[text2sql] query exceeded {_QUERY_BUDGET_S}s and was stopped; "
+                  f"scored 0: {sql[:80]!r}")
+        return False, None
     except Exception:
         return False, None
     finally:
@@ -233,7 +250,7 @@ def exec_match(pred_sql: str, gold_sql: str) -> float:
 _SYSTEM = ("You are an expert SQLite analyst. Given a schema and a question, write "
            "ONE valid SQLite query that answers it. Output only the SQL.")
 _COST = {"cost": 0.0, "latency": 0.0, "unpriced": False}
-_RUN = {"real": False, "unpriced_calls": 0}  # "real" is set by main() for --real
+_RUN = {"real": False, "unpriced_calls": 0, "timeouts": 0}  # "real" is set by main() for --real
 
 
 def unpriced_models(models: list[str]) -> list[str]:
@@ -423,6 +440,9 @@ def main() -> int:
     print("best_config:", getattr(result, "best_config", None) or getattr(result, "best_configuration", None))
     print("successful_trials:", getattr(result, "successful_trials", None),
           "/", getattr(result, "trials", None))
+    if _RUN["timeouts"]:
+        print(f"[text2sql] WARNING: {_RUN['timeouts']} quer(ies) hit the {_QUERY_BUDGET_S}s "
+              "budget and scored 0; raise _QUERY_BUDGET_S if they were correct but slow.")
     if args.real and _RUN["unpriced_calls"]:
         print(f"[traigent] ERROR: {_RUN['unpriced_calls']} call(s) could not be priced, so "
               "the cost objective is not trustworthy for this run. Do not promote its winner.")
