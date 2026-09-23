@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7dd1d63238843dd5",
+  "doc_hash": "290513e3fb2be53d",
   "reference_hashes": {
-    "references/gate-workflow.md": "7bcd24af3e94a5ff"
+    "references/gate-workflow.md": "1c682ea2f7f932aa"
   },
   "entries": [
     {
@@ -42,7 +42,7 @@
       "timestamp": "2026-07-05T00:00:00Z",
       "doc_before_hash": "029724692aa90219",
       "doc_after_hash": "d3580521a5750678",
-      "note": "sharpen key-hygiene intro: leaks observed across multiple coding-agent CLI families (Codex, Claude, Gemini), not one tool's quirk (round 2 of sim-testbed findings, 20-cell wave)",
+      "note": "sharpen key-hygiene intro: leaks observed across multiple coding-agent CLI families (Codex, Claude, Gemini), not one tool's quirk (round 2 of internal simulation findings)",
       "source_type": "human"
     },
     {
@@ -90,7 +90,7 @@
       "source_type": "human"
     },
     {
-      "edit_id": "astra-fable-review-2026-09-20",
+      "edit_id": "gate-measurement-validation-2026-09-20",
       "op": "manual_edit",
       "status": "accepted",
       "run_id": null,
@@ -109,6 +109,17 @@
       "doc_before_hash": "1d8461b4cd5f1b06",
       "doc_after_hash": "7dd1d63238843dd5",
       "note": "TVL example spec is named *.tvl.yml, the skill explains that the validator only discovers *.tvl.yml/*.tvl.yaml and exits 0 when it finds none, and every workflow TVL step asserts at least one spec exists before validating.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-324",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "7dd1d63238843dd5",
+      "doc_after_hash": "290513e3fb2be53d",
+      "note": "Apply-flow pointer names traigent-boost-agent Fast Path Step 5 instead of a removed skill section; the safety_constraints note quotes the NotImplementedError without a private tracker URL; the minimal workflow declares permissions: contents: read.",
       "source_type": "agent"
     }
   ]

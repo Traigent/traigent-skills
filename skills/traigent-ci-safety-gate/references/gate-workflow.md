@@ -29,6 +29,9 @@ on:
     - cron: "17 3 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   pr-offline-wiring:
     if: github.event_name == 'pull_request'
@@ -59,16 +62,18 @@ jobs:
       - name: Check safety and efficiency wiring
         run: python scripts/traigent_gate.py --incumbent .gate/incumbent.json --candidate .gate/candidate.json --max-cost 0.01 --max-latency-ms 1200
 
-  # Set TRAIGENT_API_KEY in your repository's CI secrets.
-  # See: https://github.com/your-org/your-repo/settings/secrets/actions
-  # For how to obtain the key, see the traigent-setup-quickstart skill:
+  # Store the provider key your agent calls (OPENAI_API_KEY below) in the
+  # repository's CI secrets and pass it only to the steps that call the agent,
+  # never at job level, where every step (including package installs) sees it.
+  # Add TRAIGENT_API_KEY to those steps' env only if your run_my_agent uses a
+  # Traigent-backed path; the gate script itself runs locally. For how to
+  # obtain a Traigent key, see the traigent-setup-quickstart skill:
   #   skills/traigent-setup-quickstart/SKILL.md#get-your-traigent-api-key
   nightly-real-holdout:
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     env:
       TRAIGENT_RUN_COST_LIMIT: "5.00"
-      TRAIGENT_API_KEY: ${{ secrets.TRAIGENT_API_KEY }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -83,8 +88,12 @@ jobs:
           [ "${#specs[@]}" -gt 0 ] || { echo "no *.tvl.yml specs under tvl/" >&2; exit 1; }
           python -m traigent.tvl "${specs[@]}" --strict --verbose
       - name: Run incumbent holdout
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}   # the provider your agent calls
         run: python scripts/run_holdout_eval.py --config configs/baseline.json --output .gate/incumbent.json
       - name: Run candidate holdout
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python scripts/run_holdout_eval.py --config configs/candidate.json --output .gate/candidate.json
       - name: Enforce promotion, safety, and efficiency
         run: python scripts/traigent_gate.py --incumbent .gate/incumbent.json --candidate .gate/candidate.json --max-cost 5.00 --max-latency-ms 1200 --require-promote

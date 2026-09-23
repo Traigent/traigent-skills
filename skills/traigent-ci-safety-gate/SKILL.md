@@ -33,7 +33,7 @@ not measurements. The holdout adapter validates each call's cost before accumula
 
 ## In-Run Safety Constraints (Not Yet Available)
 
-`safety_constraints=[...]` on `@traigent.optimize` is planned to filter unsafe trial results during optimization, but the installed SDK does not implement it yet. Passing any non-empty value raises `NotImplementedError` **at decoration time** (verified against SDK 0.18.x): *"safety_constraints are not yet implemented. Statistical chance-constraints are on the roadmap — track progress at https://github.com/Traigent/traigent-smartopt/issues/26"*. The `SafetyConstraint`, `CompoundSafetyConstraint`, `MetricKeyMetric`, `CallableMetric`, and `SafetyThreshold` classes exist and import cleanly, but do not pass any of them via `safety_constraints=` today.
+`safety_constraints=[...]` on `@traigent.optimize` is planned to filter unsafe trial results during optimization, but the installed SDK does not implement it yet. Passing any non-empty value raises `NotImplementedError: safety_constraints are not yet implemented` **at decoration time** (verified against SDK 0.18.x); statistical chance-constraints are on the roadmap. The `SafetyConstraint`, `CompoundSafetyConstraint`, `MetricKeyMetric`, `CallableMetric`, and `SafetyThreshold` classes exist and import cleanly, but do not pass any of them via `safety_constraints=` today.
 
 Do not teach a `safety_constraints=[...]` code sample as runnable. For gating today, use the two mechanisms this skill already covers that ARE implemented:
 
@@ -92,8 +92,8 @@ path. So a CI step must assert that at least one spec exists, as the workflows b
 ## Applying the Winning Config
 
 This skill covers the gate in the export -> gate -> apply flow. For the full
-end-to-end flow, see `traigent` section "4. Export a candidate, gate, then
-apply". Keep promotion staged: export the winning config as a candidate, run the
+end-to-end flow, see `traigent-boost-agent` → Fast Path, Step 5 ("Do not promote
+the winner straight into production …"). Keep promotion staged: export the winning config as a candidate, run the
 holdout/promotion gate, then apply only after the gate passes and the user
 approves.
 
@@ -142,6 +142,9 @@ name: Traigent safety gate
 
 on:
   pull_request:
+
+permissions:
+  contents: read
 
 jobs:
   # PR job: offline wiring check only — static env, zero spend. The paid
