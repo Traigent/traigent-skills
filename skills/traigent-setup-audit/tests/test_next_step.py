@@ -353,6 +353,46 @@ def test_a_project_with_no_dataset_is_routed_to_curate(tmp_path: Path) -> None:
     assert "all check out" not in card
 
 
+def test_a_dataset_the_sdk_cannot_load_is_routed_to_curate() -> None:
+    """`eval_dataset` reads only `input`/`input_data`: a large, split dataset
+    keyed any other way still stops the first run, so it is never all-clear."""
+    entry = _entry([_knob("model", "read")])
+    dataset = _dataset(80, 40)
+    dataset.input_key_counts = {"question": 80}
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [dataset], GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert step["skills"] == ["traigent-dataset-curate"]
+    assert "80 row(s) keyed by `question`" in step["line"]
+    assert "all check out" not in step["line"]
+
+
+def test_the_question_keys_fixture_is_flagged_and_routed(tmp_path: Path) -> None:
+    report, card = _run(FIXTURES / "question-keys", tmp_path)
+    by_file = {item["file"]: item for item in report["datasets"]}
+    for name in ("eval/tuning.jsonl", "eval/holdout.jsonl"):
+        assert any(
+            "`question`" in finding and "`eval_dataset`" in finding
+            for finding in by_file[name]["findings"]
+        ), by_file[name]["findings"]
+    assert report["next_step"]["branch"] == "f"
+    assert "all check out" not in card
+
+
+def test_an_input_keyed_dataset_gets_no_input_key_finding(tmp_path: Path) -> None:
+    path = tmp_path / "data.jsonl"
+    path.write_text(
+        "".join(
+            json.dumps({"input": f"question {i}", "output": f"a{i}"}) + "\n"
+            for i in range(40)
+        ),
+        encoding="utf-8",
+    )
+    reports, _, _, _ = audit.scan_datasets([path], tmp_path)
+    assert not any("eval_dataset" in finding for finding in reports[0].findings)
+
+
 def test_branch_f_judges_a_named_holdout_file_by_the_holdout_minimum_only() -> None:
     """A holdout file declared by its name beside a tuning file has no tuning
     rows to judge: 10 holdout rows under the holdout minimum is reported as a

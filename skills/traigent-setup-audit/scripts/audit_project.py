@@ -102,8 +102,13 @@ SKIP_DIRS = frozenset(
 )
 
 # Dataset row keys, in the order the SDK resolves them
-# (traigent/evaluators/base.py `_EXPECTED_OUTPUT_FIELDS` for the gold keys).
-INPUT_KEYS = ("input", "input_data", "question", "prompt", "query", "messages")
+# (traigent/evaluators/base.py: `input` then `input_data` for the input,
+# `_EXPECTED_OUTPUT_FIELDS` for the gold keys). The SDK loads only
+# SDK_INPUT_KEYS; the wider INPUT_KEYS list decides which files are candidate
+# datasets, and a row keyed by anything outside SDK_INPUT_KEYS is a finding,
+# because `eval_dataset` refuses that file.
+SDK_INPUT_KEYS = ("input", "input_data")
+INPUT_KEYS = (*SDK_INPUT_KEYS, "question", "prompt", "query", "messages")
 EXPECTED_KEYS = ("output", "expected", "expected_output", "answer", "target", "label")
 HOLDOUT_VALUES = frozenset({"holdout", "test", "validation", "val", "eval"})
 # A dataset file whose name carries one of these tokens, beside another dataset
@@ -1298,6 +1303,18 @@ def analyse_dataset(
         findings.append(
             f"{count} rows is under the {MIN_TUNING}-row first-tuning-slice minimum"
         )
+    unloadable = {
+        key: value
+        for key, value in sorted(input_key_counts.items())
+        if key not in SDK_INPUT_KEYS
+    }
+    if unloadable:
+        findings.append(
+            f"{sum(unloadable.values())} row(s) use "
+            f"{'/'.join(f'`{key}`' for key in unloadable)} as the input key; "
+            "`eval_dataset` reads only `input` or `input_data`, so the SDK will "
+            "refuse this file — rename the key"
+        )
     if missing_expected:
         findings.append(
             f"{len(missing_expected)} row(s) carry no gold key "
@@ -2443,6 +2460,28 @@ def next_step(
                 "No evaluation dataset was found, so there is nothing to score a "
                 "configuration against — build a first tuning slice and a holdout "
                 "slice with `traigent-dataset-curate`."
+            ),
+        }
+
+    # A dataset the SDK cannot load stops the first run outright, so it outranks
+    # a row shortfall.
+    unloadable = [
+        report
+        for report in reports
+        if any(key not in SDK_INPUT_KEYS for key in report.input_key_counts)
+    ]
+    if unloadable:
+        worst = unloadable[0]
+        keys = [key for key in worst.input_key_counts if key not in SDK_INPUT_KEYS]
+        rows = sum(worst.input_key_counts[key] for key in keys)
+        return {
+            "branch": "f",
+            "skills": ["traigent-dataset-curate"],
+            "line": (
+                f"{worst.file} has {rows} row(s) keyed by "
+                f"{'/'.join(f'`{key}`' for key in keys)} instead of `input` or "
+                "`input_data`, so `eval_dataset` will refuse to load it — rename "
+                "the key with `traigent-dataset-curate`."
             ),
         }
 

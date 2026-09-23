@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0ecc910f72e14788",
+  "doc_hash": "c5aa3f5ec751cab3",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -143,6 +143,17 @@
       "doc_before_hash": "dfe7bb3ca7af1631",
       "doc_after_hash": "0ecc910f72e14788",
       "note": "Add the missing no-dataset rung to the next-step ladder: a project with no evaluation dataset is routed to traigent-dataset-curate instead of the all-clear step.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-306",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "0ecc910f72e14788",
+      "doc_after_hash": "c5aa3f5ec751cab3",
+      "note": "Name the only input keys eval_dataset loads (input/input_data): rows keyed question/prompt/query/messages are now a dataset finding and route the next step to traigent-dataset-curate.",
       "source_type": "agent"
     }
   ]
