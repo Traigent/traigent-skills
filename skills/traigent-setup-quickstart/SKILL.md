@@ -299,7 +299,7 @@ export TRAIGENT_API_KEY="sk_..."
 
 **Which key to use?** A Full-access portal key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
-For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero egress is required.
+For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero Traigent backend egress is required.
 
 For a run the user approved *as* managed optimization, set `TRAIGENT_REQUIRE_CLOUD=1`: without it, a run that finds no key in its process, or hits a connectivity failure, 5xx or HTTP 400 at session creation, does not fail — the SDK prints one warning and runs a **local random search** whose result reads like the managed one (a key the backend rejects raises instead). After the run, check `results.cloud_url` before telling the user to open the portal; `None` (with `results.metadata.get("source") == "local_fallback"`) means the run was never tracked and is a failure to investigate, not a result to report.
 

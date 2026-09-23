@@ -408,7 +408,9 @@ def my_func(query: str) -> str:
 | `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
 
 The synced path sends configuration IDs and numeric metrics for portal result history, not
-example inputs/outputs/prompts. Use `offline=True` only when zero outbound traffic is required.
+example inputs/outputs/prompts. Use `offline=True` only when zero backend traffic is required; a
+fully no-network run also needs `LITELLM_LOCAL_MODEL_COST_MAP=True` set before `litellm` is imported
+(see `references/execution-modes.md`).
 To optimize an external HTTP/MCP service, put the service call in your decorated function or
 custom evaluator; keep optimization strategy on the same `algorithm`/`offline` knobs.
 
