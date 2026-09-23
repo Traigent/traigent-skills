@@ -149,9 +149,9 @@ export TRAIGENT_COST_APPROVED=true                      # only in this run's she
 ```
 
 ```python
-# A real run: no mock, no offline, a budget cap on .optimize().
+# A real run: no mock, no offline, a budget cap on the optimize call.
 # `cost_limit` caps the paid sweep; a pre-run estimate over it stops before spending.
-results = await classify_query.optimize(max_trials=6, cost_limit=1.00)
+results = classify_query.optimize_sync(max_trials=6, cost_limit=1.00)
 ```
 
 Ask the service for *what* to tune before this run — the `traigent-analyze-guidance` skill fetches

@@ -135,7 +135,7 @@ print(f"traigent {v} OK")
 PY
 ```
 
-> **Warning:** pip printing `traigent 0.0.1 does not provide the extra ...` is **FATAL** — you installed the placeholder package; reinstall with `python -m pip install --upgrade "traigent>=0.19"`.
+> **Warning:** pip printing `traigent 0.0.1 does not provide the extra ...` is **FATAL** — you installed the placeholder package; reinstall with `python -m pip install --upgrade "traigent>=0.19"`. The same message with a real version (e.g. `traigent 0.27.0 does not provide the extra 'dspy'`) means that extra does not exist — reinstalling Traigent will not help; check `references/installation-extras.md`.
 
 ### Literal First Run (execution-only agents)
 
@@ -299,7 +299,7 @@ export TRAIGENT_API_KEY="sk_..."
 
 **Which key to use?** A Full-access portal key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
-For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero egress is required.
+For the standard path, set `TRAIGENT_API_KEY` once, omit `algorithm` and `offline`, and let Traigent use the default cloud smart optimizer with portal result sync. Use `algorithm="grid"` or `"random"` only when you explicitly want local search; use `offline=True` only when zero Traigent backend egress is required.
 
 For a run the user approved *as* managed optimization, set `TRAIGENT_REQUIRE_CLOUD=1`: without it, a run that finds no key in its process, or hits a connectivity failure, 5xx or HTTP 400 at session creation, does not fail — the SDK prints one warning and runs a **local random search** whose result reads like the managed one (a key the backend rejects raises instead). After the run, check `results.cloud_url` before telling the user to open the portal; `None` (with `results.metadata.get("source") == "local_fallback"`) means the run was never tracked and is a failure to investigate, not a result to report.
 
@@ -360,6 +360,9 @@ enable_mock_mode_for_quickstart()
 
 <!-- PROTECTED -->
 The previous quickstart docs taught `export TRAIGENT_MOCK_LLM=true`. That env var still works in non-production environments for backward compatibility with existing fixtures, but it is hard-blocked when `ENVIRONMENT=production` (an `OSError` is raised at the first decoration, `optimize()` or CLI use — a bare `import traigent` still succeeds). Prefer the in-code API for new code.
+`TRAIGENT_MOCK_LLM=true` is deprecated on traigent 0.27.0 (DeprecationWarning, hidden by default;
+"will be removed in a future release"). Use `traigent.testing.enable_mock_mode_for_quickstart()` in code,
+e.g. from a pytest fixture/conftest, for new setups.
 <!-- /PROTECTED -->
 
 ### Using a .env File

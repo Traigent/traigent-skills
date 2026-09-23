@@ -23,7 +23,7 @@ Use this skill when you need to go beyond the basic `@traigent.optimize()` decor
 - Multi-objective optimization with weighted objectives
 - Naming an optimization with `experiment_name` — an **agent identity key**, not a per-run
   label (there is no `tags`/`metadata` argument)
-- Portal-synced or zero-egress local execution
+- Portal-synced or local execution with zero Traigent backend egress
 
 ## Optimization Economics — Read This Before Sizing a Run
 
@@ -388,9 +388,11 @@ After mock/dry-run validation passes and before any full run, run one tiny **rea
 
 ```python
 @traigent.optimize(
-    algorithm="auto",   # default: Traigent cloud smart optimizer
-    offline=False,      # set True for a fully-local, zero-egress run
-    execution=ExecutionOptions(local_storage_path="./results"),
+    execution=ExecutionOptions(
+        algorithm="auto",        # default: Traigent cloud smart optimizer
+        offline=False,           # set True for a local run with no Traigent backend egress
+        local_storage_path="./results",
+    ),
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
@@ -408,7 +410,9 @@ def my_func(query: str) -> str:
 | `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
 
 The synced path sends configuration IDs and numeric metrics for portal result history, not
-example inputs/outputs/prompts. Use `offline=True` only when zero outbound traffic is required.
+example inputs/outputs/prompts. Use `offline=True` only when zero backend traffic is required; a
+fully no-network run also needs `LITELLM_LOCAL_MODEL_COST_MAP=True` set before `litellm` is imported
+(see `references/execution-modes.md`).
 To optimize an external HTTP/MCP service, put the service call in your decorated function or
 custom evaluator; keep optimization strategy on the same `algorithm`/`offline` knobs.
 
@@ -463,7 +467,7 @@ def answer_question(question: str) -> str:
     )
 
 # Run optimization
-results = await answer_question.optimize(max_trials=10, algorithm="random")
+results = answer_question.optimize_sync(max_trials=10, algorithm="random")
 
 # Apply best configuration for production
 answer_question.apply_best_config(results)

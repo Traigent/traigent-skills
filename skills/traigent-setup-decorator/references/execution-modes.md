@@ -39,9 +39,11 @@ def my_func(query: str) -> str:
 - **`algorithm="auto"` (default).** The Traigent cloud smart optimizer proposes each configuration and learns across runs; **your agent and your LLM calls run in your environment**. Results sync to the portal.
 - **`algorithm="grid"` / `"random"` — local search.** The search runs in the SDK. Results still sync to the portal unless `offline=True`.
 - **Named smart selectors — connected-only, executable since 0.20.1** (see version-matrix: `smart-selector-exec`). On authenticated connected runs, `"bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, and `"optuna_random"` bind to the typed backend Optuna strategy at session creation; unsupported smart names such as `"nsga2"`/`"cmaes"` fail fast with a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no named smart selector executed end-to-end). They never run locally: `offline=True` raises `ConfigurationError` at decoration time, and the local registry raises `OptimizationError`. Use `"auto"` when you want the SDK to pick the connected smart path, and `"grid"`/`"random"` only for explicit local/offline search.
-- **`offline=True` — zero egress.** Nothing leaves your machine and results do not sync to the portal. Use this for air-gapped or strict-no-network runs.
+- **`offline=True` — zero Traigent backend egress.** No session, no portal sync. For a run with no network
+  traffic at all (air-gapped / strict-no-network), also set `LITELLM_LOCAL_MODEL_COST_MAP=True` before
+  importing `litellm`, and use mock mode or a local model.
 
-> **Data flow.** Portal-synced runs send configuration IDs and numeric metrics, not dataset example inputs, prompts, or outputs. For zero outbound traffic, use `offline=True`.
+> **Data flow.** Portal-synced runs send configuration IDs and numeric metrics, not dataset example inputs, prompts, or outputs. For zero Traigent backend traffic, use `offline=True`; for zero outbound traffic at all, see the `offline=True` bullet above.
 
 ## Result sync
 
@@ -76,7 +78,10 @@ def my_remote_agent(query: str) -> str: ...
 
 ## `ExecutionOptions` advanced fields
 
-`ExecutionOptions` carries `algorithm` and `offline` plus the advanced execution settings:
+`ExecutionOptions` carries `algorithm` and `offline` plus the advanced execution settings.
+When you pass an `ExecutionOptions(...)` bundle, set `algorithm` / `offline` inside it — passing them
+as direct decorator arguments as well raises `TypeError: Conflicting values ...` whenever they differ
+from the bundle's defaults.
 
 | Field | Type | Default | Description |
 |---|---|---|---|

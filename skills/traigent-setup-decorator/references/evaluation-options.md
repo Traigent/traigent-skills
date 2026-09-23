@@ -67,7 +67,7 @@ def my_evaluator(func, config, example):
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=prediction,
-        metrics={"score": score, "latency": latency * 1000},  # bare `latency` key; ms on SDKs after 0.22.0 (see version-matrix: latency-unit)
+        metrics={"accuracy": score, "latency": latency * 1000},  # emit the objective's key; bare `latency` in ms on SDKs after 0.22.0 (see version-matrix: latency-unit)
         execution_time=latency,
         success=True,
     )
@@ -81,6 +81,12 @@ def answer(question: str) -> str:
     cfg = traigent.get_config()
     return prompt_model(question, model=cfg["model"])
 ```
+
+On the `custom_evaluator` path only keys named in `objectives=` reach `trial.metrics`: this example
+lists only `accuracy`, so its `latency` value is dropped unless you add `"latency"` to `objectives`.
+`accuracy`, `score`, `latency`, `cost` and the other reserved keys carry Traigent's own meaning (with
+several objectives Traigent computes `score` itself); give any other signal its own key and list it
+in `objectives=`.
 
 Objectives bind to metric keys by exact name: an `objectives=["latency"]` entry
 reads the bare `latency` key (in milliseconds on SDKs after 0.22.0 —
@@ -142,6 +148,10 @@ def metric_fn(output: Any, expected: Any, input_data: dict) -> float:
     ...
 ```
 
+Arguments are bound by parameter name. `input_data` is the row's `input` object (the function's
+arguments); any other top-level field of the row arrives in `metadata` — declare a `metadata`
+parameter to read it.
+
 ### Example
 
 ```python
@@ -152,8 +162,9 @@ def accuracy(output, expected, input_data) -> float:
 def conciseness(output, expected, input_data) -> float:
     return max(0.0, 1.0 - len(output) / 2000)
 
-def relevance(output, expected, input_data) -> float:
-    keywords = input_data.get("keywords", [])
+def relevance(output, expected, metadata) -> float:
+    # top-level dataset field, e.g. {"input": {...}, "keywords": [...], "output": ...}
+    keywords = metadata.get("keywords", [])
     if not keywords:
         return 1.0
     found = sum(1 for kw in keywords if kw.lower() in output.lower())
@@ -188,11 +199,11 @@ def summarize(text: str) -> str:
 
 ## Dataset Format
 
-The `eval_dataset` JSONL file should have one JSON object per line. At minimum, include input fields that match your function parameters and an `expected` field:
+The `eval_dataset` JSONL file should have one JSON object per line. Each row has an `input` object (its keys become your function's arguments) and a gold field (`output`, or an alias such as `expected`); see `traigent-dataset-curate` for the full contract.
 
 ```json
-{"question": "What is Python?", "expected": "A programming language"}
-{"question": "What is 2+2?", "expected": "4"}
+{"input": {"question": "What is Python?"}, "output": "A programming language"}
+{"input": {"question": "What is 2+2?"}, "output": "4"}
 ```
 
 Multiple datasets can be provided as a list:
