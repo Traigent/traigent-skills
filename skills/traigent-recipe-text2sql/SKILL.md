@@ -1,6 +1,6 @@
 ---
 name: traigent-recipe-text2sql
-description: "End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 20/30 -> 27/30 on its tuning slice on the cheap model."
+description: "End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 20/30 -> 27/30 on its tuning slice on the cheap model (counts that predate the recipe's result_eq comparator and were not re-scored with it)."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -24,7 +24,9 @@ A field-tested, end-to-end recipe that took a plain `gpt-4o-mini` NL->SQL agent
 from **20 of 30 -> 27 of 30** execution-match on the 30-question SPIDER slice it was
 tuned on, **while staying on the cheapest model** (~$0.00009/query). The gains came from
 **prompt-structure knobs on a cheap model**, not from a premium model. Those are counts on
-the tuning slice, not a held-out result — see "The winner on this slice" below.
+the tuning slice, not a held-out result — see "The winner on this slice" below. They also
+predate the `result_eq` comparator taught below and were not re-scored with it, so they are
+not directly comparable to a score you get from this recipe as written.
 
 ## The two-run lesson arc (the demo that lands)
 > **Scope: this minimal-first teaching arc is for the text2SQL EXAMPLE only.** It starts
@@ -234,7 +236,8 @@ scored **27 of 30** on the rows it was selected on, from a 20-of-30 baseline, at
 ~$0.00009/query; the cheap model + similarity-selected few-shot + plan-then-SQL beat
 both the mid model and (separately) a premium Sonnet config (26 of 30 at 20-50x the
 cost). That is a selection score on public Spider data: the winner was picked on these
-rows, so the number is optimistic and carries no held-out check. Expect the direction on
+rows, so the number is optimistic and carries no held-out check. These counts also predate
+the `result_eq` comparator above and were not re-scored with it. Expect the direction on
 your own agent, and score one recommended config on rows the search never saw before
 quoting a lift.
 
