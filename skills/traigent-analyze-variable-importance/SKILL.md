@@ -171,10 +171,11 @@ cat /tmp/significant-tuned-variables/video_card.json
 ```
 
 The generic command leaves `--sampling-design` at its conservative `unknown` default. Add
-`--sampling-design randomized` only when a run plan or sampler log verifies all three conditions:
+`--sampling-design randomized` only when a run plan or sampler log verifies all four conditions:
 knob assignments were randomized, assignment probabilities did not depend on earlier outcomes,
-and no time/order trend affected scores. A sampler name or a balanced result table alone is not
-enough evidence.
+no time/order trend affected scores, and each knob was assigned independently of the others (no
+constraints or conditional knobs). A sampler name or a balanced result table alone is not enough
+evidence.
 
 ## Method Notes
 

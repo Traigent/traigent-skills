@@ -762,3 +762,12 @@ def test_resolution_shortfall_names_the_draws_flag(tmp_path: Path) -> None:
     }
     insights = (output_dir / "insights.md").read_text(encoding="utf-8")
     assert "--bootstrap-draws 1200" in insights
+
+
+def test_worked_example_lists_every_randomized_condition() -> None:
+    text = " ".join(
+        (SCRIPTS_DIR.parent / "SKILL.md").read_text(encoding="utf-8").split()
+    )
+    assert "all three conditions" not in text
+    assert "verifies all four conditions" in text
+    assert "each knob was assigned independently of the others" in text
