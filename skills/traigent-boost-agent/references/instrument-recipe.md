@@ -118,19 +118,8 @@ def _call_answer_model(question: str, cfg: dict) -> str:
 @traigent.optimize(
     evaluation=EvaluationOptions(
         # Built-in evaluator: expected outputs live in the JSONL rows and are
-        # exact-matched against the function's output. With the composite
-        # (output, metrics) tuple return, USE THE BUILT-IN EVALUATOR — a custom
-        # `scoring_function` (and 3-arg `metric_functions`) is currently NOT
-        # invoked with the unpacked prediction on this path and every trial
-        # silently scores accuracy=0.0 (known SDK issue). Diagnostic tell, by
-        # SDK version: on <= 0.21.3 the built-in exact-match value appears as
-        # metrics["score"] (uniform zero accuracy next to a sane "score" =
-        # this wiring, not your agent); score mirrors the primary objective on
-        # SDKs after 0.21.3 (see version-matrix: score-relocation), so "score"
-        # is ALSO 0.0 here and the sane built-in value is
-        # relocated to metrics["exact_match_default"] — check that key, and
-        # look for the run-level "custom scoring_function defines the
-        # 'accuracy' objective" log line.
+        # exact-matched against the function's unpacked `output`. A custom
+        # scoring_function / metric_functions also receives the unpacked output.
         eval_dataset="evals/qa.jsonl",
     ),
     objectives=["accuracy", "cost"],
