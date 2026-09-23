@@ -2,11 +2,11 @@
 
 ## Overview
 
-Traigent uses Python's standard `logging` module with two primary environment variables for controlling verbosity:
+Traigent uses Python's standard `logging` module. Verbosity is set in code with `traigent.configure(logging_level=...)`, and two environment variables adjust it:
 
 | Variable | Purpose | Values |
 |---|---|---|
-| `TRAIGENT_LOG_LEVEL` | Set the logging level for all Traigent loggers | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `TRAIGENT_LOG_LEVEL` | Level for Traigent loggers, applied only when `traigent.configure(logging_level=...)`, `traigent.initialize()` or the `traigent` CLI sets up logging (it overrides the level they are given) | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
 | `TRAIGENT_DEBUG` | Enable full tracebacks for ConfigurationError | `1` (enabled), unset (disabled) |
 
 ## TRAIGENT_LOG_LEVEL
@@ -15,27 +15,33 @@ Controls the verbosity of Traigent's internal logging.
 
 ### Setting
 
-```bash
-# Command line
-export TRAIGENT_LOG_LEVEL=DEBUG  # read on all current SDK versions
+```python
+import traigent
 
-# Or inline
+traigent.configure(logging_level="DEBUG")  # before defining/running the optimization
+```
+
+`@traigent.optimize` and `optimize_sync()` do not set up logging themselves. The level
+(from `TRAIGENT_LOG_LEVEL` when set, otherwise the one passed in) is applied only by
+`traigent.configure(logging_level=...)`, `traigent.initialize()` and the `traigent` CLI.
+In a script that only uses the decorator, `export TRAIGENT_LOG_LEVEL=DEBUG` changes
+LiteLLM's verbosity but leaves the `traigent` loggers at Python's default (WARNING).
+
+```bash
+# Takes effect in a script that calls traigent.configure(logging_level=...);
+# the environment value then overrides the level passed in code.
 TRAIGENT_LOG_LEVEL=DEBUG python my_script.py
 ```
 
-```python
-# In Python (set before importing traigent)
-import os
-os.environ["TRAIGENT_LOG_LEVEL"] = "DEBUG"
-import traigent
-```
+`configure()` replaces the ROOT logger's handlers. A host application with its own
+logging setup should use the scoped snippet under "Programmatic Logging Configuration".
 
 ### Log Levels
 
 | Level | What It Shows |
 |---|---|
 | `DEBUG` | Everything: config sampling, trial start/stop, metric extraction, cost tracking, backend communication, internal state changes. Very verbose. |
-| `INFO` | Optimization lifecycle events: run start, trial completion, best config updates, run completion. The default level. |
+| `INFO` | Optimization lifecycle events: run start, trial completion, best config updates, run completion. The level `traigent.initialize()` uses when none is configured. A decorated run that never calls `configure()` stays at Python's default, WARNING, so INFO lines do not appear. |
 | `WARNING` | Non-fatal issues: deprecated API usage, non-numeric metric values, retry attempts, fallback behavior. |
 | `ERROR` | Trial failures, evaluation errors, provider errors, unrecoverable issues within a trial. |
 | `CRITICAL` | Fatal errors that prevent the optimization from continuing at all. Rare. |
@@ -132,7 +138,7 @@ This only affects `ConfigurationError` and its subclasses. All other exceptions 
 For maximum diagnostic information:
 
 ```bash
-export TRAIGENT_LOG_LEVEL=DEBUG  # read on all current SDK versions
+# my_script.py calls traigent.configure(logging_level="DEBUG") before the run
 export TRAIGENT_DEBUG=1
 python my_script.py
 ```
@@ -147,7 +153,8 @@ python my_script.py
 
 ## Programmatic Logging Configuration
 
-You can also configure Traigent's logger directly:
+You can also configure Traigent's logger directly. This works on a decorated run and leaves
+the host application's root logging untouched:
 
 ```python
 import logging

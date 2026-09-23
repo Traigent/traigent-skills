@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "565bcafed564c205",
+  "doc_hash": "967286c0dba116f3",
   "reference_hashes": {
     "references/error-reference.md": "a4972fd8548f1357",
-    "references/logging-config.md": "a9ba72306ba70183",
+    "references/logging-config.md": "51cf4cd4cdaf5362",
     "references/mock-mode.md": "7945ee3565727d98"
   },
   "entries": [
@@ -55,7 +55,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "038d939558305b84",
       "doc_after_hash": "30ade6360c4c7cd1",
-      "note": "CostLimitExceeded is the pre-run approval decline only (0.27.0: mid-run budget hit returns a partial result with stop_reason=cost_limit; attributes estimated/limit/accumulated) — entry, handler and Graceful Fallback reworded; new 'Connected run ended local-only' section (results.metadata source=local_fallback + fallback_reason(_code), TRAIGENT_REQUIRE_CLOUD=1, the 401/403 category text naming the backend URL that judged the key, shell-exported key shadowing .env, read-only portal key, traigent sync <session_id>) cross-linking traigent-analyze-results for persistence_status; quota claim corrected (offline mock touches no quota, a connected mock run does) and the 0.16.0 bullet retired; 'Uniform 0.0/1.0 on a REAL run' triage item; references/error-reference.md hierarchy moves CostLimitExceeded under OptimizationError and adds InsufficientFundsError (402) and VendorPauseError; references/mock-mode.md CI example sets TRAIGENT_RUN_APPROVED=1 (GITHUB_ACTIONS refuses every optimize(), mock included, without it). Lessons from traigent-first-run run-safety.md Recovery and the SDK source.",
+      "note": "CostLimitExceeded is the pre-run approval decline only (0.27.0: mid-run budget hit returns a partial result with stop_reason=cost_limit; attributes estimated/limit/accumulated) \u2014 entry, handler and Graceful Fallback reworded; new 'Connected run ended local-only' section (results.metadata source=local_fallback + fallback_reason(_code), TRAIGENT_REQUIRE_CLOUD=1, the 401/403 category text naming the backend URL that judged the key, shell-exported key shadowing .env, read-only portal key, traigent sync <session_id>) cross-linking traigent-analyze-results for persistence_status; quota claim corrected (offline mock touches no quota, a connected mock run does) and the 0.16.0 bullet retired; 'Uniform 0.0/1.0 on a REAL run' triage item; references/error-reference.md hierarchy moves CostLimitExceeded under OptimizationError and adds InsufficientFundsError (402) and VendorPauseError; references/mock-mode.md CI example sets TRAIGENT_RUN_APPROVED=1 (GITHUB_ACTIONS refuses every optimize(), mock included, without it). Lessons from traigent-first-run run-safety.md Recovery and the SDK source.",
       "source_type": "agent"
     },
     {
@@ -100,6 +100,17 @@
       "doc_before_hash": "bfbb9c9327a321f5",
       "doc_after_hash": "565bcafed564c205",
       "note": "Rebuild issue #195 on current main: correct the TRAIGENT_MOCK_LLM production guard to fail on first SDK use rather than bare import.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-321",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "565bcafed564c205",
+      "doc_after_hash": "967286c0dba116f3",
+      "note": "Quick Diagnostic enables SDK debug output with traigent.configure(logging_level=\"DEBUG\"); TRAIGENT_LOG_LEVEL alone is applied only by configure()/initialize()/the CLI, so on a decorated run it changed LiteLLM's verbosity, not Traigent's. No-trials step 4 and the environment check follow; logging-config.md's default-level row matches a decorated run.",
       "source_type": "agent"
     }
   ]
