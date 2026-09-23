@@ -147,7 +147,18 @@ def extract_cost(record: dict[str, Any]) -> float | None:
 
 
 def read_trials(path: Path, objective: str) -> list[Trial]:
+    return read_trial_file(path, objective)[0]
+
+
+def read_trial_file(path: Path, objective: str) -> tuple[list[Trial], int]:
+    """Return the completed trials and how many non-completed rows were skipped.
+
+    A failed, pruned or cancelled SDK trial still carries a metrics dict (a
+    failed trial scores 0.0), so it must not enter the ranking as a measured
+    score. Rows without a ``status`` field are read as measured.
+    """
     trials: list[Trial] = []
+    skipped_non_completed = 0
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, 1):
             stripped = line.strip()
@@ -164,6 +175,10 @@ def read_trials(path: Path, objective: str) -> list[Trial]:
             config = record.get("config")
             if not isinstance(config, dict):
                 raise ValueError(f"{path}:{line_number}: missing object field 'config'")
+            status = record.get("status")
+            if isinstance(status, str) and status.lower() != "completed":
+                skipped_non_completed += 1
+                continue
             try:
                 metric = extract_metric(record, objective)
                 cost = extract_cost(record) if metric is not None else None
@@ -181,9 +196,10 @@ def read_trials(path: Path, objective: str) -> list[Trial]:
             )
     if not trials:
         raise ValueError(
-            f"No trials with numeric objective '{objective}' found in {path}"
+            f"No completed trials with numeric objective '{objective}' found in {path}"
+            f" ({skipped_non_completed} non-completed trial(s) skipped)"
         )
-    return trials
+    return trials, skipped_non_completed
 
 
 def read_config_space(path: Path | None) -> dict[str, list[Any]] | None:
@@ -523,6 +539,7 @@ def attempt_sdk_importance(
         )
 
     try:
+        # read_trial_file() already dropped non-completed rows.
         sdk_trials = [
             SimpleNamespace(
                 status="completed",
@@ -769,6 +786,7 @@ def write_video_card_json(
     objective: str,
     heldout: dict[str, Any] | None,
     slice_label: str = "this evaluation slice",
+    skipped_non_completed: int = 0,
 ) -> dict[str, Any]:
     heldout_accuracy_pp, heldout_cost_delta_pct = heldout_card_metrics(
         heldout, objective
@@ -811,6 +829,7 @@ def write_video_card_json(
     payload = {
         "top_variables": top_variables,
         "n_trials": n_trials,
+        "skipped_non_completed": skipped_non_completed,
         "objective": objective,
         "heldout_accuracy_pp": round_float_or_none(heldout_accuracy_pp),
         "heldout_cost_delta_pct": round_float_or_none(heldout_cost_delta_pct),
@@ -836,6 +855,7 @@ def write_insights_md(
     heldout: dict[str, Any] | None,
     sdk_note: str,
     slice_label: str = "this evaluation slice",
+    skipped_non_completed: int = 0,
 ) -> None:
     heldout_accuracy_pp, heldout_cost_delta_pct = heldout_card_metrics(
         heldout, objective
@@ -845,6 +865,15 @@ def write_insights_md(
         "",
         f"On {slice_label}, in this run, {len(rows)} tuned variables had at least two observed values across {n_trials} trials.",
         "",
+    ]
+    if skipped_non_completed:
+        lines.extend(
+            [
+                f"{skipped_non_completed} non-completed trial(s) (failed, pruned or cancelled) were skipped: they carry no measured {objective}.",
+                "",
+            ]
+        )
+    lines += [
         "Honesty rule: `significant` requires randomized assignment, at least 20 observations for that knob and 5 per observed value, adequate permutation resolution, and a Holm-adjusted p-value below alpha. Adaptive or unknown sampling stays `directional` because label exchangeability is not established. The bootstrap CI is a scale annotation, not the significance test.",
         "",
     ]
@@ -948,7 +977,7 @@ def main() -> int:
     validate_args(args)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    trials = read_trials(args.trials, args.objective)
+    trials, skipped_non_completed = read_trial_file(args.trials, args.objective)
     config_space = read_config_space(args.config_space)
     heldout = read_heldout(args.heldout)
     rows = analyze_importance(
@@ -979,6 +1008,7 @@ def main() -> int:
         heldout=heldout,
         sdk_note=sdk_note,
         slice_label=args.slice_label,
+        skipped_non_completed=skipped_non_completed,
     )
     video_card = write_video_card_json(
         args.output_dir / "video_card.json",
@@ -988,8 +1018,11 @@ def main() -> int:
         objective=args.objective,
         heldout=heldout,
         slice_label=args.slice_label,
+        skipped_non_completed=skipped_non_completed,
     )
 
+    if skipped_non_completed:
+        print(f"skipped {skipped_non_completed} non-completed trial(s)")
     print(f"Wrote {len(rows)} ranked tuned variables to {args.output_dir}")
     if rows:
         for index, row in enumerate(rows[: args.top_k], 1):

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "626c69a4bc72c448",
+  "doc_hash": "1b1d5f712d7fe368",
   "entries": [
     {
       "edit_id": "genesis",
@@ -117,6 +117,17 @@
       "doc_before_hash": "1016f70cb93d68f4",
       "doc_after_hash": "626c69a4bc72c448",
       "note": "Scale the permutation tie tolerance by the group means so large-offset objectives keep true ties, and apply the finite-number rule to heldout report values.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-312",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "626c69a4bc72c448",
+      "doc_after_hash": "1b1d5f712d7fe368",
+      "note": "Skip failed, pruned and cancelled trials (status not completed) instead of ranking their placeholder scores, and report the skipped count.",
       "source_type": "agent"
     }
   ]

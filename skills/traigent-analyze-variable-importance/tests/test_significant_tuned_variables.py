@@ -509,3 +509,55 @@ def test_invalid_heldout_cost_cannot_reach_the_video_card():
                "optimized": {"accuracy": 0.6, "cost": 0.8}}
     with pytest.raises(ValueError, match=r"heldout\.baseline\.cost"):
         module.heldout_card_metrics(heldout, "accuracy")
+
+
+def test_non_completed_trials_are_skipped_not_scored_as_zero(tmp_path: Path) -> None:
+    """Issue #312: a failed SDK trial carries accuracy 0.0 but no measurement."""
+    trials_path = tmp_path / "trials.jsonl"
+    output_dir = tmp_path / "out"
+    write_jsonl(
+        trials_path,
+        [
+            {"status": "completed", "config": {"model": "small"}, "metrics": {"accuracy": 0.5}},
+            {"status": "completed", "config": {"model": "large"}, "metrics": {"accuracy": 1.0}},
+            {"status": "failed", "config": {"model": "broken"}, "metrics": {"accuracy": 0.0}},
+            {"status": "PRUNED", "config": {"model": "large"}, "metrics": {"accuracy": 0.1}},
+        ],
+    )
+
+    completed = run_cli(trials_path, output_dir)
+
+    ranking = json.loads((output_dir / "importance.json").read_text(encoding="utf-8"))
+    assert ranking[0]["knob"] == "model"
+    assert ranking[0]["spread"] == 0.5
+    assert ranking[0]["best_value"] == "large"
+    assert "skipped 2 non-completed trial(s)" in completed.stdout
+    video_card = json.loads((output_dir / "video_card.json").read_text(encoding="utf-8"))
+    assert video_card["skipped_non_completed"] == 2
+    assert video_card["n_trials"] == 2
+    insights = (output_dir / "insights.md").read_text(encoding="utf-8")
+    assert "2 non-completed trial(s)" in insights
+
+
+def test_rows_without_status_are_read_as_before(tmp_path: Path) -> None:
+    module = _load_module()
+    path = tmp_path / "trials.jsonl"
+    write_jsonl(
+        path,
+        [
+            {"config": {"k": "a"}, "accuracy": 0.0},
+            {"config": {"k": "b"}, "metrics": {"accuracy": 1.0}},
+        ],
+    )
+    trials, skipped = module.read_trial_file(path, "accuracy")
+    assert [trial.objective for trial in trials] == [0.0, 1.0]
+    assert skipped == 0
+    assert module.read_trials(path, "accuracy") == trials
+
+
+def test_only_non_completed_trials_is_an_explicit_error(tmp_path: Path) -> None:
+    module = _load_module()
+    path = tmp_path / "trials.jsonl"
+    write_jsonl(path, [{"status": "failed", "config": {"k": "a"}, "accuracy": 0.0}])
+    with pytest.raises(ValueError, match=r"1 non-completed trial\(s\) skipped"):
+        module.read_trials(path, "accuracy")

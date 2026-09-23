@@ -73,6 +73,11 @@ python3 -c 'import json,sys; [print(json.dumps(t)) for t in json.load(open(sys.a
   traigent-runs/optimized-results.json > trials.jsonl
 ```
 
+Failed or pruned trials are skipped automatically (their `status` is not `completed`; a failed
+trial still carries a `0.0` score that is not a measurement); the script prints how many and
+records the count as `skipped_non_completed` in `video_card.json`. Rows without a `status` field
+are read as measured.
+
 Expected trial shape:
 
 ```json
