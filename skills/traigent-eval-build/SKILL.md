@@ -34,7 +34,7 @@ Prefer the smallest evaluator surface that measures the chosen objective.
 | 2 | `scoring_function` | `scoring_function(output, expected) -> float` | One numeric score per example is enough. |
 | 3 | `metric_functions` | `{name: (output, expected, input_data) -> float}` | Multiple named metrics or input-aware checks are needed. |
 | 4 | `custom_evaluator` | `custom_evaluator(func, config, example) -> ExampleResult` | The evaluator must call the function itself, collect timing/cost, run a judge, repeat samples, or fail closed. |
-| 5 | `BaseEvaluator` subclass | not wireable through `@traigent.optimize` on the released SDK | The `custom_evaluator=` evaluation option accepts only a `(func, config, example)` callable and the decorator's `evaluator=` accepts only an external-service evaluator. Tier 4 is the highest tier you can wire today. |
+| 5 | `BaseEvaluator` subclass | not wireable through `@traigent.optimize` on traigent <= 0.27.0 | The `custom_evaluator=` evaluation option accepts only a `(func, config, example)` callable and the decorator's `evaluator=` accepts only an external-service evaluator. Tier 4 is the highest tier you can wire today. |
 
 The built-in `latency` metric uses the bare key `latency`, reported in milliseconds on SDKs after 0.22.0 (see version-matrix: `latency-unit`).
 
@@ -208,7 +208,7 @@ def answer(question: str) -> str:
 
 ### Tier 5: BaseEvaluator subclass (not wireable today)
 
-Do not write a `BaseEvaluator` subclass to plug into `@traigent.optimize`: no public option accepts one on the released SDK. Passing an instance as the `custom_evaluator=` evaluation option fails validation with `Input should be callable`, and passing the class fails with `custom_evaluator must accept (func, config, example)`. The decorator's `evaluator=` takes only an external-service evaluator. Use a Tier 4 `custom_evaluator` for per-row control (calling the function, timing, judges, repeats, fail-closed handling).
+Do not write a `BaseEvaluator` subclass to plug into `@traigent.optimize`: no public option accepts one on traigent <= 0.27.0. Passing an instance as the `custom_evaluator=` evaluation option fails validation with `Input should be callable`, and passing the class fails with `custom_evaluator must accept (func, config, example)`. The top-level `custom_evaluator=` argument of `@traigent.optimize` and of `optimize_sync()` accepts an instance at first, then fails when the run starts with `custom_evaluator must be callable`. The decorator's `evaluator=` takes only an external-service evaluator. Use a Tier 4 `custom_evaluator` for per-row control (calling the function, timing, judges, repeats, fail-closed handling).
 
 ## The EvaluationExample input contract
 

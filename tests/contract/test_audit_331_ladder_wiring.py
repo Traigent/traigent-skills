@@ -61,7 +61,16 @@ def test_tier_example_wires_or_is_marked_not_wireable(
     )
 
 
+def test_tier5_wording_is_version_scoped() -> None:
+    tier5 = LADDER_ROWS["5"] + TIER_SECTIONS["5"]
+    assert "released SDK" not in tier5, "scope the claim to a version, not 'released'"
+    assert "traigent <= 0.27.0" in LADDER_ROWS["5"]
+    assert "traigent <= 0.27.0" in TIER_SECTIONS["5"]
+    assert "custom_evaluator must be callable" in TIER_SECTIONS["5"]
+
+
 def test_sdk_still_rejects_a_base_evaluator(tmp_path: Path) -> None:
+    """Every public path must end in an error: at decoration, or when the run starts."""
     body = """
     import traigent
     from traigent.api.decorators import EvaluationOptions
@@ -72,22 +81,53 @@ def test_sdk_still_rejects_a_base_evaluator(tmp_path: Path) -> None:
             raise NotImplementedError
 
     write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+    path = str(Path("eval/qa.jsonl").resolve())
     outcome = {}
-    for label, value in (("instance", Probe()), ("class", Probe)):
+
+    def attempt(label, fn):
         try:
-            options = EvaluationOptions(eval_dataset=str(Path("eval/qa.jsonl").resolve()), custom_evaluator=value)
-
-            @traigent.optimize(evaluation=options, objectives=["accuracy"], configuration_space={"t": [0]})
-            def probe(question: str) -> str:
-                return "a"
-
+            fn()
             outcome[label] = "accepted"
         except Exception as exc:
-            outcome[label] = type(exc).__name__
+            outcome[label] = f"{type(exc).__name__}: {exc}"
+
+    def via_options(value):
+        options = EvaluationOptions(eval_dataset=path, custom_evaluator=value)
+
+        @traigent.optimize(evaluation=options, objectives=["accuracy"], configuration_space={"t": [0]})
+        def probe(question: str) -> str:
+            return "a"
+
+    def via_top_level_kwarg():
+        @traigent.optimize(eval_dataset=path, custom_evaluator=Probe(), objectives=["accuracy"], configuration_space={"t": [0]})
+        def probe(question: str) -> str:
+            return "a"
+
+        probe.optimize_sync(algorithm="grid", max_trials=1)
+
+    def via_optimize_sync_kwarg():
+        @traigent.optimize(eval_dataset=path, objectives=["accuracy"], configuration_space={"t": [0]})
+        def probe(question: str) -> str:
+            return "a"
+
+        probe.optimize_sync(algorithm="grid", max_trials=1, custom_evaluator=Probe())
+
+    attempt("options_instance", lambda: via_options(Probe()))
+    attempt("options_class", lambda: via_options(Probe))
+    attempt("top_level_kwarg", via_top_level_kwarg)
+    attempt("optimize_sync_kwarg", via_optimize_sync_kwarg)
     emit(outcome)
     """
     outcome = _run_driver(tmp_path, "", body)
+    assert set(outcome) == {
+        "options_instance",
+        "options_class",
+        "top_level_kwarg",
+        "optimize_sync_kwarg",
+    }, outcome
     assert "accepted" not in outcome.values(), (
-        "EvaluationOptions now accepts a BaseEvaluator: revisit the Tier 5 "
+        "a public path now accepts a BaseEvaluator: revisit the Tier 5 "
         f"'not wireable' note in traigent-eval-build/SKILL.md. outcome={outcome}"
     )
+    for label in ("top_level_kwarg", "optimize_sync_kwarg"):
+        assert "custom_evaluator must be callable" in outcome[label], outcome
