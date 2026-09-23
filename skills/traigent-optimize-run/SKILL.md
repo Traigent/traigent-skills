@@ -491,10 +491,11 @@ print(results.stop_reason)     # "max_trials_reached"
 print(results.total_cost)      # 0.34 (USD, if tracked)
 print(results.optimization_id) # "opt_abc123"
 
-# Trial details (per-trial scores/costs live in trial.metrics; score mirrors the
-# primary objective on SDKs after 0.21.3 — see version-matrix: score-relocation)
+# Per-trial objective values live in trial.metrics under the objective's own name.
+# `score` is the weighted selection basis in multi-objective runs, not an objective
+# (see version-matrix: score-relocation, SDKs after 0.21.3).
 for trial in results.trials:
-    print(f"Config: {trial.config}, Score: {trial.metrics.get('score')}")
+    print(f"Config: {trial.config}, accuracy: {trial.metrics.get('accuracy')}")
 
 # Derived properties
 print(results.success_rate)       # 0.9 (fraction of successful trials)
