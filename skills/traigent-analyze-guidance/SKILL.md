@@ -202,6 +202,12 @@ This mode is a thin client. Fetch the post-run brief through the
 action verbatim, then send that direction into Mode A as context for a fresh
 service plan.
 
+The server needs a one-time setup: `pip install "traigent[mcp]>=0.19"` (already included
+in `traigent[recommended]`), then register the stdio command `traigent-analytics-mcp`
+with your coding assistant under the name `traigent-analytics`. The full steps are in
+`traigent-analyze-results` → "Prerequisites (one time)". If the `analytics_*` tools
+are not listed, the brief cannot be fetched.
+
 This mode is inert without the backend payload. If the tool cannot fetch a
 service response, report that directly and stop unless the user asks you to
 retry. Retry **at most once**; if the second attempt also fails, fall through to

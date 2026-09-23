@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c629cb6cf4f59abe",
+  "doc_hash": "e01c4ca89a8484c2",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -301,6 +301,17 @@
       "doc_before_hash": "d88f628927e05d91",
       "doc_after_hash": "c629cb6cf4f59abe",
       "note": "add a greppable path docstamp for the optimization-comparisons endpoint, verified against executable SDK code rather than a docstring (contract harness, #175)",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-314",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c629cb6cf4f59abe",
+      "doc_after_hash": "e01c4ca89a8484c2",
+      "note": "Mode B names the traigent[mcp] extra and traigent-analytics-mcp registration and links the analyze-results prerequisites.",
       "source_type": "agent"
     }
   ]

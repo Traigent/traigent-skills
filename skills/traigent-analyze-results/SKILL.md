@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.24"
+  version: "1.1.25"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -84,6 +84,30 @@ When the run lives in the Traigent cloud/portal, drive the analysis through the
 analytics and does not do any auth or tenant logic** — the MCP server resolves the caller's
 tenant from the authenticated session and returns backend-produced analytics payloads. Treat
 every tool response as authoritative and never invent fields, numbers, rankings, or charts.
+
+### Prerequisites (one time)
+
+The server ships with the SDK as the `traigent-analytics-mcp` command, but it needs the `mcp`
+extra: on an install without it, the command exits with an install hint. The `recommended` and
+`all` extras already include it, and pandas for the dataframe recipes below.
+
+```bash
+pip install "traigent[mcp,analytics]>=0.19"   # or "traigent[recommended]>=0.19", which includes both
+traigent auth login                           # or export TRAIGENT_API_KEY; the server reuses these credentials
+```
+
+Register the stdio server with your coding assistant under the name `traigent-analytics`, command
+`traigent-analytics-mcp` (an `mcpServers` entry in your assistant's MCP config, or its `mcp add`
+command). If the SDK is installed in a virtualenv, use that environment's absolute path to
+`traigent-analytics-mcp`:
+
+```json
+{"mcpServers": {"traigent-analytics": {"command": "traigent-analytics-mcp"}}}
+```
+
+Confirm the `analytics_*` tools are listed before calling the brief (the server's `health_check`
+and `auth_status` tools report readiness and masked credentials without a network call). If they
+are not listed, treat the server as unreachable (step 2): use the portal deep-link.
 
 ### 1. Collect explicit project + run context
 
@@ -538,7 +562,9 @@ tells the whole story — you want the **trade-off set** (the Pareto frontier): 
 where you cannot improve one objective without sacrificing another.
 
 Get one aggregated row per configuration with `to_aggregated_dataframe()` (groups repeated samples
-of the same config and averages each metric), then filter to the non-dominated set:
+of the same config and averages each metric), then filter to the non-dominated set.
+`to_aggregated_dataframe()` / `to_dataframe()` need pandas: `pip install "traigent[analytics]>=0.19"`
+(also included in `traigent[recommended]`).
 
 ```python
 df = results.to_aggregated_dataframe(primary_objective="accuracy")
