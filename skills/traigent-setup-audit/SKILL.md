@@ -164,6 +164,7 @@ would be measured with is still unreliable:
 | no scorer found | `traigent-eval-build` |
 | the probed scorer is not repeatable, or ranks a known-bad answer above a known-good one | `traigent-eval-build`, then `traigent-eval-audit` |
 | a scorer exists but none could be measured here | `traigent-eval-audit` |
+| no evaluation dataset found | `traigent-dataset-curate` |
 | a dataset under the tuning or holdout minimum | `traigent-dataset-curate` |
 | nothing above fires | `traigent-optimize-run`, mock dry-run first |
 

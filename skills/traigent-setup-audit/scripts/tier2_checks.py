@@ -579,6 +579,24 @@ def motivation(check_id: str, tier1: Tier1, run_id: str | None) -> str:
                 "Rework the configuration space with "
                 "`traigent-optimize-config-space` before spending anything."
             )
+        missing = []
+        if not tier1.datasets:
+            missing.append(
+                f"no evaluation dataset among {tier1.dataset_candidates} "
+                "JSONL/JSON/CSV file(s) (`traigent-dataset-curate` builds one)"
+            )
+        if not tier1.scorers:
+            missing.append(
+                f"no scorer in {tier1.python_files} Python file(s) "
+                "(`traigent-eval-build` wires one)"
+            )
+        if missing:
+            return (
+                f"{tier1.read_knob_count} of {tier1.knob_count} declared knob(s) "
+                f"are read by the decorated body, but Tier 1 found "
+                f"{' and '.join(missing)}, so a run would have nothing to score "
+                "a configuration against."
+            )
         return (
             f"{tier1.read_knob_count} of {tier1.knob_count} declared knob(s) are "
             "read by the decorated body, and a dataset and scorer exist. Whether "

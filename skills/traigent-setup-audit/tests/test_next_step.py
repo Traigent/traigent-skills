@@ -317,6 +317,42 @@ def test_branch_f_fires_on_a_dataset_under_the_minimums() -> None:
     assert "12 row(s) and a 0-row holdout slice" in step["line"]
 
 
+def test_branch_f_fires_when_no_dataset_was_found() -> None:
+    """No dataset at all is the largest dataset shortfall there is: it must not
+    fall through to the all-clear branch."""
+    entry = _entry([_knob("model", "read")])
+    step = audit.next_step(_inventory([entry], [_scorer()]), [], GOOD_PROBE, _scorer())
+    assert step["branch"] == "f"
+    assert step["skills"] == ["traigent-dataset-curate"]
+    assert step["line"].startswith("No evaluation dataset was found")
+    assert "all check out" not in step["line"]
+
+
+def test_a_project_with_no_dataset_is_routed_to_curate(tmp_path: Path) -> None:
+    project = tmp_path / "nodata"
+    project.mkdir()
+    (project / "agent.py").write_text(
+        "import traigent\n\n"
+        "@traigent.optimize(configuration_space={'model': ['gpt-4o-mini', 'gpt-4o'],"
+        " 'temperature': [0.0, 0.7]})\n"
+        "def answer(question, model='gpt-4o-mini', temperature=0.0):\n"
+        "    return f'{model}:{temperature}:{question}'\n",
+        encoding="utf-8",
+    )
+    (project / "scorer.py").write_text(
+        "def score(output, expected):\n"
+        "    return 1.0 if output.strip() == expected.strip() else 0.0\n",
+        encoding="utf-8",
+    )
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    report, card = _run(project, out_dir)
+    assert report["datasets"] == []
+    assert report["next_step"]["branch"] == "f"
+    assert report["next_step"]["skills"] == ["traigent-dataset-curate"]
+    assert "all check out" not in card
+
+
 def test_branch_f_judges_a_named_holdout_file_by_the_holdout_minimum_only() -> None:
     """A holdout file declared by its name beside a tuning file has no tuning
     rows to judge: 10 holdout rows under the holdout minimum is reported as a

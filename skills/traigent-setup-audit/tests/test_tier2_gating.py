@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from conftest import recorded_argv, run_tier2
+from conftest import _tier1_report, recorded_argv, run_tier2
 from tier2_fake_backend import LOCAL_SESSION_ID, RUN_ID, FakeBackend
 
 
@@ -314,6 +314,34 @@ def test_stop_here_is_not_always_the_recommendation(healthy_tier1: Path) -> None
     """Teeth: a project with nothing left to fix locally is offered the plan."""
     completed = run_tier2("--from-audit", str(healthy_tier1))
     assert "APPROVAL CARD — plan   (recommended)" in completed.stdout
+
+
+def test_a_project_with_no_dataset_is_never_told_one_exists(tmp_path: Path) -> None:
+    """The bounded-run card quotes what Tier 1 found, and with no dataset the
+    plan is not recommended: there is nothing to size a first run from."""
+    project = tmp_path / "nodata"
+    project.mkdir()
+    (project / "agent.py").write_text(
+        "import traigent\n\n"
+        "@traigent.optimize(configuration_space={'model': ['gpt-4o-mini', 'gpt-4o'],"
+        " 'temperature': [0.0, 0.7]})\n"
+        "def answer(question, model='gpt-4o-mini', temperature=0.0):\n"
+        "    return f'{model}:{temperature}:{question}'\n",
+        encoding="utf-8",
+    )
+    (project / "scorer.py").write_text(
+        "def score(output, expected):\n"
+        "    return 1.0 if output.strip() == expected.strip() else 0.0\n",
+        encoding="utf-8",
+    )
+    report = _tier1_report(project, tmp_path / "tier1")
+    completed = run_tier2("--from-audit", str(report))
+    assert completed.returncode == 0, completed.stderr
+    out = completed.stdout
+    assert "a dataset and scorer exist" not in out
+    assert "APPROVAL CARD — plan   (recommended)" not in out
+    bounded = out.split("APPROVAL CARD — bounded-run", 1)[1].split("APPROVAL CARD", 1)[0]
+    assert "no evaluation dataset" in bounded
 
 
 def test_stop_here_cannot_be_approved(

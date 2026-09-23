@@ -2435,6 +2435,17 @@ def next_step(
             ),
         }
 
+    if not reports:
+        return {
+            "branch": "f",
+            "skills": ["traigent-dataset-curate"],
+            "line": (
+                "No evaluation dataset was found, so there is nothing to score a "
+                "configuration against — build a first tuning slice and a holdout "
+                "slice with `traigent-dataset-curate`."
+            ),
+        }
+
     # A file that is itself the holdout slice (declared by name) has no tuning
     # rows to judge: only the holdout minimum applies to it.
     short = [
