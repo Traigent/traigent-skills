@@ -251,10 +251,32 @@ KEY_ENV_NAMES = (
 # allowlist, not a credential denylist: credentials follow no naming rule
 # (PGPASSWORD, DATABASE_URL, SSH_AUTH_SOCK, a proxy URL with a password in it),
 # and neither the probe nor the sandbox prefix reads any other variable.
-CHILD_ENV_NAMES = frozenset(
-    {"PATH", "HOME", "LANG", "LANGUAGE", "TZ", "TMPDIR", "TMP", "TEMP"}
+CHILD_ENV_NAMES = (
+    "PATH",
+    "HOME",
+    "LANG",
+    "LANGUAGE",
+    "TZ",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    # The POSIX and glibc locale categories, named one by one so the child's
+    # environment is built by looking up each name, never by walking the
+    # whole environment.
+    "LC_ALL",
+    "LC_ADDRESS",
+    "LC_COLLATE",
+    "LC_CTYPE",
+    "LC_IDENTIFICATION",
+    "LC_MEASUREMENT",
+    "LC_MESSAGES",
+    "LC_MONETARY",
+    "LC_NAME",
+    "LC_NUMERIC",
+    "LC_PAPER",
+    "LC_TELEPHONE",
+    "LC_TIME",
 )
-CHILD_ENV_PREFIXES = ("LC_",)
 MODEL_KNOB_NAMES = frozenset({"model", "model_name", "llm", "engine", "model_id"})
 
 # Names a knob can be read through without the parser being able to follow it.
@@ -1687,11 +1709,8 @@ def probe_environment() -> dict[str, str]:
     variable, credentials included, is withheld. A scorer that needs another
     variable fails the probe and is reported by exception type and location.
     """
-    return {
-        name: value
-        for name, value in os.environ.items()
-        if name in CHILD_ENV_NAMES or name.startswith(CHILD_ENV_PREFIXES)
-    }
+    values = {name: os.getenv(name) for name in CHILD_ENV_NAMES}
+    return {name: value for name, value in values.items() if value is not None}
 
 
 def run_scorer_probe(
