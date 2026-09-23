@@ -135,7 +135,7 @@ print(f"traigent {v} OK")
 PY
 ```
 
-> **Warning:** pip printing `traigent 0.0.1 does not provide the extra ...` is **FATAL** — you installed the placeholder package; reinstall with `python -m pip install --upgrade "traigent>=0.19"`.
+> **Warning:** pip printing `traigent 0.0.1 does not provide the extra ...` is **FATAL** — you installed the placeholder package; reinstall with `python -m pip install --upgrade "traigent>=0.19"`. The same message with a real version (e.g. `traigent 0.27.0 does not provide the extra 'dspy'`) means that extra does not exist — reinstalling Traigent will not help; check `references/installation-extras.md`.
 
 ### Literal First Run (execution-only agents)
 
