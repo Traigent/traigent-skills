@@ -68,6 +68,7 @@ With that approval: `job = await client.compute_scores(experiment_run_id=run_id)
 Use these outputs to target curation or audit work, not to claim hidden causal explanations.
 
 The `analytics_get_example_insights` MCP tool (or `GET /api/v1/analytics/runs/{run_id}/example-insights`) provides a ranked and flagged complement: up to 100 rows ordered by `review_priority` (critical | high | medium | low), each with `suspicious_flags` and a `recommended_action`. This surface is non-signal — it ranks by review urgency and provides enum flags, not raw scores or formulas. Use the flag-to-action guide below when acting on these rows.
+The MCP tool needs the analytics MCP server installed and registered once; see the analyze-results skill → "Prerequisites (one time)". The REST route works without it.
 
 ## Symptom-to-Next-Step Table
 
