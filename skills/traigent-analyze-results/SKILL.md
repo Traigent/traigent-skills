@@ -576,17 +576,18 @@ if not (
     raise SystemExit("TIE_BAND must be a finite number >= 0: your measured rerun spread.")
 df = df[df["samples_count"] >= MIN_SAMPLES]
 
-# Non-dominated (Pareto) frontier: maximize accuracy, minimize cost, within the tie-band.
+# Non-dominated (Pareto) frontier with a tie band: maximize accuracy, minimize cost. Walk from
+# cheapest to most expensive and keep a config only if it beats every cheaper KEPT config by more
+# than TIE_BAND. Every dropped config is within TIE_BAND of a kept config that costs no more, so a
+# chain of small steps can never erase a config that is clearly better than every survivor.
+# With TIE_BAND = 0 this is the strict Pareto frontier.
 def pareto_front(df, maximize="accuracy", minimize="cost", tol=TIE_BAND):
-    keep = []
-    for i, row in df.iterrows():
-        dominated = (
-            (df[maximize] >= row[maximize] - tol) & (df[minimize] <= row[minimize])
-            & ((df[maximize] > row[maximize] + tol) | (df[minimize] < row[minimize]))
-        ).any()
-        if not dominated:
+    keep, best_kept = [], float("-inf")
+    for i, row in df.sort_values([minimize, maximize], ascending=[True, False]).iterrows():
+        if row[maximize] > best_kept + tol:
             keep.append(i)
-    return df.loc[keep].sort_values(minimize)
+            best_kept = row[maximize]
+    return df.loc[keep]
 
 frontier = pareto_front(df)
 # For a latency objective, read the PER-CALL latency column (ms) — NOT "duration" (total wall-clock):
@@ -595,7 +596,8 @@ print(frontier[["accuracy", "cost", "avg_response_time_ms"]])  # use your run's 
 
 Each frontier row is a *candidate* operating point, not yet a proven one: pick the cheapest config
 that clears your accuracy bar, or the strongest quality/cost trade-off within your cost budget —
-note the tie-band folds configs within the noise band of a cheaper option into it, so the literal
+note the tie band folds a config into a cheaper kept config when it is within the band of it, so
+every dropped config is within your noise of a kept config that costs no more, and the literal
 highest-accuracy config may not appear. Confirm your choice with a bootstrap CI on the difference
 (see "Is the Delta Real?" above) before promoting.
 (`results.to_dataframe()` gives the raw per-trial rows if you want to plot the full cloud behind

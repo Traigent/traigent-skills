@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0f379cbfc1e67371",
+  "doc_hash": "48ce3f5fcc4a2ed7",
   "reference_hashes": {
     "references/convergence-patterns.md": "57c2d4ef7f2c2b69",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
@@ -264,6 +264,17 @@
       "doc_before_hash": "b5d2615b83e44bf3",
       "doc_after_hash": "0f379cbfc1e67371",
       "note": "Rebuild issue #195 on current main: document UNKNOWN result statuses, the resolved optimizer-class algorithm value, and all supported empty best_config outcomes using session-summary reason metadata.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-311",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "0f379cbfc1e67371",
+      "doc_after_hash": "48ce3f5fcc4a2ed7",
+      "note": "Replace the non-transitive pairwise tie-band Pareto test with a cheapest-first sweep so every dropped config is within the band of a kept, no-costlier config.",
       "source_type": "agent"
     }
   ]
