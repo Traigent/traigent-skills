@@ -281,10 +281,11 @@ def answer(question: str) -> str:
 
 ## Hybrid deterministic gate then judge
 
-Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge) and only the first is metered; see "Cost metering caveat for multi-call evaluators" above.
+Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge) and only the first is metered; see "Cost metering caveat for multi-call evaluators" above. Judge spend is capped the same way as in the LLM-judge template: one run-level `JUDGE_BUDGET` refuses the judge call once the next one would pass the cap, and refused rows fail closed with `judge_budget_exhausted`.
 
 ```python
 import json
+import threading
 import time
 
 import litellm
@@ -294,6 +295,23 @@ from traigent.api.types import ExampleResult
 from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 JUDGE_MODEL = "judge-model-name"
+JUDGE_COST_PER_CALL_USD = 0.002
+
+class JudgeBudget:
+    """Run-level judge spend cap: refuses a call instead of overspending."""
+
+    def __init__(self, cap_usd: float, per_call_usd: float) -> None:
+        self.cap, self.per_call, self.spent = cap_usd, per_call_usd, 0.0
+        self._lock = threading.Lock()  # custom evaluators may run in worker threads
+
+    def try_spend(self) -> bool:
+        with self._lock:
+            if self.spent + self.per_call > self.cap + 1e-12:
+                return False
+            self.spent += self.per_call
+            return True
+
+JUDGE_BUDGET = JudgeBudget(cap_usd=1.00, per_call_usd=JUDGE_COST_PER_CALL_USD)
 
 def extract_json(text: str, *, temperature: float = 0.0) -> str:
     response = litellm.completion(
@@ -362,14 +380,26 @@ def hybrid_evaluator(func, config, example) -> ExampleResult:
             metadata={"method": "hybrid_gate_then_judge", "judge_called": False},
         )
 
+    if not JUDGE_BUDGET.try_spend():
+        return ExampleResult(
+            example_id=str(example.metadata.get("id", "unknown")),
+            input_data=example.input_data,
+            expected_output=example.expected_output,
+            actual_output=data,
+            metrics={"valid_json": 1.0, "quality": 0.0, "judge_cost": 0.0},
+            execution_time=time.perf_counter() - started,
+            success=False,
+            error_message="judge_budget_exhausted",
+            metadata={"method": "hybrid_gate_then_judge", "judge_called": False},
+        )
+
     score, reason, parsed = judge_json_quality(data, example.expected_output, example.input_data)
-    judge_cost = 0.002
     return ExampleResult(
         example_id=str(example.metadata.get("id", "unknown")),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=data,
-        metrics={"valid_json": 1.0, "quality": score, "judge_cost": judge_cost},
+        metrics={"valid_json": 1.0, "quality": score, "judge_cost": JUDGE_COST_PER_CALL_USD},
         execution_time=time.perf_counter() - started,
         success=parsed,
         error_message=None if parsed else reason,

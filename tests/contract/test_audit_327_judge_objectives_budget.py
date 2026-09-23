@@ -13,6 +13,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from .test_audit_326_comparator_case import _python_block, _run_driver
 
 TEMPLATES = (
@@ -60,8 +62,9 @@ def test_hybrid_template_minimizes_judge_cost(tmp_path: Path) -> None:
     assert result["unrecognized"] == [], result
 
 
-def test_spend_limits_are_not_tuned_variables() -> None:
-    block = _python_block(TEMPLATES, JUDGE_MARKER)
+@pytest.mark.parametrize("marker", [JUDGE_MARKER, HYBRID_MARKER])
+def test_spend_limits_are_not_tuned_variables(marker: str) -> None:
+    block = _python_block(TEMPLATES, marker)
     assert "max_judge_calls" not in block
     assert "max_judge_cost_usd" not in block
 
@@ -108,3 +111,46 @@ def test_judge_budget_refusals_and_parse_failures_fail_closed(tmp_path: Path) ->
     result = _run_driver(tmp_path, _python_block(TEMPLATES, JUDGE_MARKER), body)
     assert result["parse_fail"] == [False, 0.0, "judge_parse_failure"], result
     assert result["refused"] == [False, 0.0, "judge_budget_exhausted"], result
+
+
+def test_hybrid_judge_budget_caps_calls_across_the_whole_run(tmp_path: Path) -> None:
+    """Same cap for the gate-then-judge template: 5 of 8 judge calls at $0.01 / $0.002."""
+    body = """
+    judge_calls = []
+    def reply(model, messages):
+        if model == ns["JUDGE_MODEL"]:
+            judge_calls.append(1)
+            return '{"score": 1.0, "reason": "ok"}'
+        return '{"label": "billing"}'
+    install_replies(reply)
+    write_rows("extraction.jsonl", [{"input": {"text": f"Invoice {i}"}, "output": {"label": "billing"}} for i in range(4)])
+    ns = load_block(sys.argv[1])
+    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.01, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
+    result = ns["extract"].optimize_sync(algorithm="grid", max_trials=2)
+    emit({"judge_calls": len(judge_calls), "spent": ns["JUDGE_BUDGET"].spent})
+    """
+    result = _run_driver(tmp_path, _python_block(TEMPLATES, HYBRID_MARKER), body)
+    assert result["judge_calls"] == 5, result
+    assert abs(result["spent"] - 0.01) < 1e-9, result
+
+
+def test_hybrid_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
+    body = """
+    from types import SimpleNamespace
+    install_replies(lambda model, messages: "not json at all")
+    write_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
+    ns = load_block(sys.argv[1])
+    example = SimpleNamespace(input_data={"text": "t"}, expected_output={"label": "a"}, metadata={"id": "row-1"})
+    agent = lambda text: '{"label": "a"}'
+    parse_fail = ns["hybrid_evaluator"](agent, {}, example)
+    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
+    refused = ns["hybrid_evaluator"](agent, {}, example)
+    emit({
+        "parse_fail": [parse_fail.success, parse_fail.metrics["quality"], parse_fail.error_message],
+        "refused": [refused.success, refused.metrics["quality"], refused.error_message,
+                    refused.metadata.get("judge_called")],
+    })
+    """
+    result = _run_driver(tmp_path, _python_block(TEMPLATES, HYBRID_MARKER), body)
+    assert result["parse_fail"] == [False, 0.0, "judge_parse_failure"], result
+    assert result["refused"] == [False, 0.0, "judge_budget_exhausted", False], result
