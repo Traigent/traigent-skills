@@ -113,7 +113,7 @@ Highest priority. Overrides both global and decorator settings:
 ```python
 # This is passed via ExecutionOptions at decoration time,
 # but you can also set configuration_space and other params at runtime
-results = await my_func.optimize(max_trials=10, algorithm="grid")
+results = my_func.optimize_sync(max_trials=10, algorithm="grid")
 ```
 
 ## Merge Behavior

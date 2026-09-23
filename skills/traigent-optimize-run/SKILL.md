@@ -69,12 +69,12 @@ from traigent.api.types import OptimizationResult  # equivalently: traigent.Opti
 
 See `traigent-analyze-results` for the full field reference.
 
-> **Dry-run first.** Before a real (paid) run, always validate in mock mode and present a cost estimate to the user. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+> **Dry-run first.** Before a real (paid) run, always validate in mock mode and present a cost estimate to the user. See `traigent-boost-agent` (Your Role; Step 4: Report and Estimate Costs) for the mandatory dry-run-first / cost-approval workflow.
 >
 > ```python
 > from traigent.testing import enable_mock_mode_for_quickstart
 > enable_mock_mode_for_quickstart()
-> results = await answer.optimize(max_trials=10, algorithm="grid")  # mock, no cost
+> results = answer.optimize_sync(max_trials=10, algorithm="grid")  # mock, no cost
 > print(f"Mock pipeline OK: {len(results.trials)} trials, {len(results.failed_trials)} failed")
 > # Estimate the REAL run's cost before approving. There is no `results.estimated_cost_usd`
 > # accessor — the upper bound is (max_trials x dataset_size) LLM calls; price that against
@@ -111,6 +111,8 @@ See `traigent-analyze-results` for the full field reference.
 <!-- /PROTECTED -->
 
 ```python
+import asyncio
+
 import traigent
 import litellm  # pip install "traigent>=0.19" — the canonical runnable LLM call
 
@@ -132,8 +134,13 @@ def answer(question: str) -> str:
     )
     return resp.choices[0].message.content
 
-# Run optimization (real — only after dry-run approval)
-results = await answer.optimize(max_trials=10)  # default algorithm="auto"
+# Run optimization (real — only after dry-run approval). `optimize()` is a coroutine:
+# await it inside async code; from a plain script, drive it with asyncio.run().
+async def main():
+    return await answer.optimize(max_trials=10)  # default algorithm="auto"
+
+
+results = asyncio.run(main())
 ```
 
 ### optimize() Parameters
@@ -194,10 +201,10 @@ answers must not be written to the SDK's per-example logs (they are by default).
 Exhaustive search over all configurations in the config space. Deterministic and complete.
 
 ```python
-results = await func.optimize(max_trials=24, algorithm="grid")
+results = func.optimize_sync(max_trials=24, algorithm="grid")
 
 # Control iteration order with parameter_order
-results = await func.optimize(
+results = func.optimize_sync(
     algorithm="grid",
     parameter_order={"model": 0, "temperature": 1},  # model varies slowest
 )
@@ -210,7 +217,7 @@ results = await func.optimize(
 Samples configurations randomly from the config space. Good for large spaces where exhaustive search is impractical.
 
 ```python
-results = await func.optimize(max_trials=20, algorithm="random")
+results = func.optimize_sync(max_trials=20, algorithm="random")
 ```
 
 **Best for**: Large config spaces, quick exploration, when you have a limited trial budget.
@@ -224,10 +231,10 @@ results = await func.optimize(max_trials=20, algorithm="random")
 ```python
 # Connected-only — requires TRAIGENT_API_KEY and offline=False; on SDK 0.20.1+
 # binds the named strategy server-side (fails on 0.20.0 and always with offline=True):
-# results = await func.optimize(max_trials=30, algorithm="bayesian")
+# results = func.optimize_sync(max_trials=30, algorithm="bayesian")
 
 # Default connected smart path:
-results = await func.optimize(max_trials=30, algorithm="auto")
+results = func.optimize_sync(max_trials=30, algorithm="auto")
 ```
 
 ### Quick Comparison
@@ -263,7 +270,7 @@ results = await func.optimize(max_trials=30, algorithm="auto")
 > baseline trial today. (Field-observed on local SDK 0.21.0: a 2-point grid + `default_config` +
 > `max_trials=2` evaluated only `[default, point-1]`.)
 
-Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero-egress path and does not sync results.
+Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero Traigent backend egress path and does not sync results. It does not stop provider calls, and LiteLLM fetches its public pricing map at import unless `LITELLM_LOCAL_MODEL_COST_MAP=True` is set before importing it.
 
 <!-- PROTECTED -->
 ## Cost Controls
@@ -282,7 +289,26 @@ If cost or other KPIs are not picked up for custom services, self-hosted endpoin
 
 1. Use a model id LiteLLM can price, or map an alias with `litellm.model_alias_map`.
 2. Supply custom per-token pricing with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON` or `TRAIGENT_CUSTOM_MODEL_PRICING_FILE`. The JSON shape is `{"my-model": {"input_cost_per_token": 1e-6, "output_cost_per_token": 2e-6}}`; `input`/`output` aliases are accepted, provider prefixes like `openai/` are normalized, and values must be finite non-negative floats. Pricing resolves in this order: LiteLLM, custom pricing, built-in fallback table, then `UnknownModelError`.
-3. Report cost directly from the optimized function's per-trial metrics using `total_cost`, `cost`, or `input_cost` plus `output_cost`. This bypasses pricing tables and is the primary path for fully custom services.
+3. Report cost from the function itself with `traigent.with_usage(text, total_cost=usd)`: return its result in place of the plain string (it also works as the first element of an `(output, metrics)` tuple). The cost reaches the trial, `results.total_cost` and the run's cost cap, and outside optimization `with_usage` returns `text` unchanged. This bypasses pricing tables and is the primary path for fully custom services. A custom `scoring_function` / `metric_functions` then receives the wrapper dict, so score `output["text"]`. Do NOT return `cost`, `total_cost`, `input_cost` or `output_cost` in the tuple's metrics dict (they are evaluator-reserved and dropped with a "Skipping user metric ... reserved" WARNING), and do not register `metric_functions={"cost": ...}` (dropped without a warning).
+
+```python
+import traigent
+
+
+def call_my_endpoint(question: str, style: str) -> tuple[str, float]:
+    # Stand-in for your own model call; it returns the answer and the USD it cost.
+    return "4", 0.01
+
+
+@traigent.optimize(
+    eval_dataset="qa_test.jsonl",
+    objectives=["accuracy", "cost"],
+    configuration_space={"prompt_style": ["short", "detailed"]},
+)
+def answer(question: str):  # with_usage returns a dict during optimization, text otherwise
+    text, usd = call_my_endpoint(question, traigent.get_config()["prompt_style"])
+    return traigent.with_usage(text, total_cost=usd)
+```
 
 Set `TRAIGENT_STRICT_COST_ACCOUNTING=true` when an unpriced model should fail loudly instead of reporting zero (see Strict Cost Accounting below). Full pricing details: `references/cost-management.md`.
 
@@ -316,7 +342,7 @@ applies inside each call; the shared cap is the binding one, and a run it stops 
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    results = await func.optimize(max_trials=100, algorithm="random")
+    results = func.optimize_sync(max_trials=100, algorithm="random")
 except CostLimitExceeded as e:
     if e.estimated is None:
         print(f"Cost limit exceeded before the run; estimate unavailable; limit ${e.limit:.2f}")
@@ -336,7 +362,7 @@ Notes:
 
 ### Pre-Approving Costs
 
-The `traigent` lifecycle skill mandates: **dry-run in mock mode first, present the cost estimate, then get explicit user approval before the real run.** Only pre-approve costs in automated pipelines where a human has already reviewed and approved the dry-run estimate. Never bypass this gate on a user's first run or when the config space has changed.
+The `traigent-boost-agent` lifecycle skill mandates: **dry-run in mock mode first, present the cost estimate, then get explicit user approval before the real run.** Only pre-approve costs in automated pipelines where a human has already reviewed and approved the dry-run estimate. Never bypass this gate on a user's first run or when the config space has changed.
 
 To skip the interactive cost approval handshake in an already-approved pipeline:
 
@@ -406,7 +432,7 @@ Optimization can stop for several reasons. Check `results.stop_reason`:
 | `"network_error"` | Connectivity failure; inspect the failure before retrying. |
 
 ```python
-results = await func.optimize(max_trials=20, algorithm="grid")
+results = func.optimize_sync(max_trials=20, algorithm="grid")
 
 print(f"Stop reason: {results.stop_reason}")
 print(f"Trials completed: {len(results.trials)}")
@@ -439,7 +465,7 @@ def my_func(query: str) -> str:
     resp = litellm.completion(model=cfg["model"], messages=[{"role": "user", "content": query}])
     return resp.choices[0].message.content
 
-results = await my_func.optimize(max_trials=10, algorithm="random")
+results = my_func.optimize_sync(max_trials=10, algorithm="random")
 ```
 
 ### ParallelConfig Fields
@@ -458,7 +484,7 @@ the ranked trial table. Call `print_results_table()` only when you need to re-pr
 later, or when you need custom `objectives` / `config_space` display arguments.
 
 ```python
-results = await func.optimize(max_trials=10, algorithm="grid")  # auto-prints the ranked table
+results = func.optimize_sync(max_trials=10, algorithm="grid")  # auto-prints the ranked table
 
 # Optional: re-print later, or override the display metadata.
 from traigent.utils.results_table import print_results_table
@@ -478,7 +504,7 @@ The table highlights the best trial with ★ and colors the best metric value pe
 `OptimizationResult` contains everything from the optimization run:
 
 ```python
-results = await func.optimize(max_trials=10, algorithm="grid")
+results = func.optimize_sync(max_trials=10, algorithm="grid")
 
 # Best configuration and score
 print(results.best_config)     # {"model": "gpt-4o", "temperature": 0.5}
@@ -491,10 +517,11 @@ print(results.stop_reason)     # "max_trials_reached"
 print(results.total_cost)      # 0.34 (USD, if tracked)
 print(results.optimization_id) # "opt_abc123"
 
-# Trial details (per-trial scores/costs live in trial.metrics; score mirrors the
-# primary objective on SDKs after 0.21.3 — see version-matrix: score-relocation)
+# Per-trial objective values live in trial.metrics under the objective's own name.
+# `score` is the weighted selection basis in multi-objective runs, not an objective
+# (see version-matrix: score-relocation, SDKs after 0.21.3).
 for trial in results.trials:
-    print(f"Config: {trial.config}, Score: {trial.metrics.get('score')}")
+    print(f"Config: {trial.config}, accuracy: {trial.metrics.get('accuracy')}")
 
 # Derived properties
 print(results.success_rate)       # 0.9 (fraction of successful trials)
@@ -625,7 +652,7 @@ asyncio.run(main())
 - `references/algorithms.md` - Detailed algorithm comparison
 - `references/parallel-config.md` - Full ParallelConfig reference
 - `references/cost-management.md` - Cost enforcement details
-- `traigent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
+- `traigent-boost-agent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
 - `traigent-setup-quickstart` - Installation and first optimization with mock mode
 - `traigent-setup-decorator` - Full `@traigent.optimize()` parameter reference
 - `traigent-analyze-results` - **Next step:** read `best_config`/`best_score`, compare trials, extract the quality/cost/latency trade-off, and apply the best config after `optimize()` returns

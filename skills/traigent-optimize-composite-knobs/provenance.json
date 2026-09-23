@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0214b1f44414a9e4",
+  "doc_hash": "9ec28313539e9246",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1",
@@ -100,6 +100,28 @@
       "doc_before_hash": "4d01eca74ecfd91a",
       "doc_after_hash": "0214b1f44414a9e4",
       "note": "Rebuild issue #195 on current main: keep reserved accuracy with the built-in evaluator, use non-reserved custom metric names, and isolate real agent outputs from evaluator gold labels.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-337",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "0214b1f44414a9e4",
+      "doc_after_hash": "80afdbac5d72964e",
+      "note": "Quick Start: give the cascade base arm a 2-1 three-sample vote so the margin threshold is a real lever, drop the unread variant knob, and state that a margin-gated base arm needs more than one sample.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-338",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "80afdbac5d72964e",
+      "doc_after_hash": "9ec28313539e9246",
+      "note": "Replace the retired 'scoring_function is not invoked on the tuple path / score is also 0.0' warning: custom scorers receive the unpacked output; keep the reserved-key drop-with-WARNING rule.",
       "source_type": "agent"
     }
   ]

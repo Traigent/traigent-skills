@@ -215,13 +215,11 @@ Transform the decorator from a frozen evaluator into a real optimizer.
 +    configuration_space=STRUCTURAL_SPACE,
 +    default_config=BASELINE,
 +    objectives=["accuracy", "cost"],
-+    metric_functions={
-+        "accuracy": accuracy_metric,
-+        "cost": cost_metric,
-+    },
++    metric_functions={"accuracy": accuracy_metric},
  )
  async def fn(example):
      cfg = traigent.get_config()
++    # run_agent returns traigent.with_usage(answer, total_cost=call_cost_usd)
      return await run_agent(example, cfg)
  
 -result = await fn.optimize(algorithm="grid", max_trials=1)
@@ -236,8 +234,13 @@ The before state is useful only as a baseline:
 `configuration_space={k:[baseline_v]}` and `objectives=["accuracy"]`. The after
 state gives random search a full structural search space, keeps the baseline
 explicit through `default_config=BASELINE`, optimizes both accuracy and cost,
-records metrics through named `metric_functions`, and reads completed trials
-from `result.to_dataframe()`.
+records accuracy through a named `metric_functions` entry, and reads completed
+trials from `result.to_dataframe()`. Cost comes from the function: `run_agent`
+returns `traigent.with_usage(answer, total_cost=call_cost_usd)`, which reaches
+the trial's `cost`, `results.total_cost` and the cost cap. `accuracy_metric` then
+receives the wrapper dict, so it scores `output["text"]`. Do not register `cost`
+in `metric_functions` or return it in a metrics dict: it is an evaluator-reserved
+key and the value is dropped.
 
 ## Operational checklist
 

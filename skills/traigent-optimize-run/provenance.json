@@ -1,12 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f62c81f58f91c9b4",
+  "doc_hash": "9d05b7f639c7e4a6",
   "reference_hashes": {
-    "references/algorithms.md": "1f1b85e715a30b9a",
-    "references/cost-management.md": "397526da87fd5c3d",
+    "references/algorithms.md": "f4038e6bd980731b",
+    "references/cost-management.md": "e54294104cc6df2f",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/execution-budget.md": "5237d5546f884d06",
-    "references/parallel-config.md": "f0979cbb952b3cf3"
+    "references/execution-budget.md": "23d17308f849017b",
+    "references/parallel-config.md": "11c81d1d28d3e97f"
   },
   "entries": [
     {
@@ -234,6 +234,72 @@
       "doc_before_hash": "0a79ab1bfc5058d7",
       "doc_after_hash": "f62c81f58f91c9b4",
       "note": "Clarify mock backend activity and demo-only winner application and align stop-reason documentation with the result reference.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-304",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "f62c81f58f91c9b4",
+      "doc_after_hash": "918e30a220a12d20",
+      "note": "Trial-details loop prints the named objective instead of metrics['score'], which is the weighted selection basis in multi-objective runs.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-339",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "918e30a220a12d20",
+      "doc_after_hash": "c8f9e81595e8e12a",
+      "note": "Function-side cost: teach traigent.with_usage(text, total_cost=...) with a runnable snippet instead of reserved total_cost/cost/input_cost/output_cost metrics keys, which the Python SDK drops.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-324",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c8f9e81595e8e12a",
+      "doc_after_hash": "46685c20386e0605",
+      "note": "Point the dry-run-first / cost-approval pointers at traigent-boost-agent; the old traigent lifecycle skill was merged into it.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-339-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "46685c20386e0605",
+      "doc_after_hash": "0e24cee57c4154a1",
+      "note": "Drop the '-> str' annotation on the with_usage cost snippet: with_usage returns a dict during optimization.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-356",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "0e24cee57c4154a1",
+      "doc_after_hash": "c693928f7cbc3992",
+      "note": "Replace module-level await in Python examples with optimize_sync(), and wrap the Async Execution example in async def main() + asyncio.run(), so every example runs when pasted into a .py file.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-355",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c693928f7cbc3992",
+      "doc_after_hash": "9d05b7f639c7e4a6",
+      "note": "Scope the offline=True wording to zero Traigent backend egress: provider calls still go out and LiteLLM fetches its pricing map unless LITELLM_LOCAL_MODEL_COST_MAP=True.",
       "source_type": "agent"
     }
   ]
