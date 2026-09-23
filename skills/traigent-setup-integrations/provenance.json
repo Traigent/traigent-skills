@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "99c6a7f4c3c533f2",
+  "doc_hash": "cb9f03056a01f9fa",
   "reference_hashes": {
     "references/dspy.md": "c0694fc1e90cc48d",
     "references/langchain.md": "cbcc76cfc81426bf",
@@ -133,6 +133,17 @@
       "doc_before_hash": "114e7a628a8f8c7e",
       "doc_after_hash": "99c6a7f4c3c533f2",
       "note": "Make the mock dry-run passable per framework (LangChain needs a non-secret placeholder key at construction; DSPy dry-runs with DummyLM because mock text cannot satisfy structured outputs) and switch in-function DSPy examples from dspy.configure to thread-safe dspy.context.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-353",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "99c6a7f4c3c533f2",
+      "doc_after_hash": "cb9f03056a01f9fa",
+      "note": "Correct the dspy.configure note: a trial fails only when all of its examples land on a non-configuring thread; otherwise its accuracy is silently deflated.",
       "source_type": "agent"
     }
   ]

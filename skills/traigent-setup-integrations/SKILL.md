@@ -274,9 +274,9 @@ def dspy_qa(question):
 
 > **Use `dspy.context`, not `dspy.configure`, inside the optimized function.** Traigent runs examples
 > on worker threads, and DSPy lets only the thread that first configured it call `dspy.configure`.
-> Every other thread raises, and those examples silently score as wrong — the trial does not fail, so
-> its accuracy is deflated with no error signal. Module-level `dspy.configure(...)` on the main thread
-> is fine.
+> Every other thread raises, and those examples score as wrong. A trial fails only if all of its
+> examples do, so accuracy is usually just deflated, with no error signal. Module-level
+> `dspy.configure(...)` on the main thread is fine.
 
 See [DSPy reference](references/dspy.md) for the full constructor and `optimize_prompt()` parameters and advanced configuration.
 

@@ -2,7 +2,8 @@
 
 Traigent runs examples on worker threads. DSPy only lets the thread that first
 configured it call ``dspy.configure``; every other thread raises, and those
-examples score as wrong without failing the trial. Inside a
+examples score as wrong. A trial fails only if all its examples do, so accuracy
+is usually deflated with no error signal. Inside a
 ``@traigent.optimize``-decorated function, examples must use
 ``with dspy.context(lm=...)``. Module-level ``dspy.configure`` stays allowed.
 """
