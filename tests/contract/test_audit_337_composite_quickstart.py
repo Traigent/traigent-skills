@@ -57,7 +57,6 @@ def _quickstart_block() -> str:
 def trials(tmp_path: Path, sdk_version_label: str) -> list[dict]:
     if sdk_version_label != "develop" and Version(sdk_version_label) < Version("0.27.0"):
         pytest.skip("Quick Start behaviour verified on SDK 0.27.0+")
-    pytest.importorskip("traigent.knobs.patterns")
     (tmp_path / "quickstart.py").write_text(_quickstart_block(), encoding="utf-8")
     (tmp_path / "driver.py").write_text(DRIVER, encoding="utf-8")
     env = _offline_mock_env()

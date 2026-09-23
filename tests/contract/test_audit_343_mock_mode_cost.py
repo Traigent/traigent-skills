@@ -8,6 +8,7 @@ a `TRAIGENT_MOCK_LLM=true` recipe always sits next to its deprecation note.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -26,6 +27,14 @@ LINTED = [
     ROOT / "skills" / "traigent-optimize-run" / "references" / "cost-management.md",
 ]
 NEAR_LINES = 3
+# Any way of SETTING the env var: `X=1`, `X="true"`, `os.environ["X"] = ...`,
+# `setenv("X", ...)`, `environ.setdefault("X", ...)`. A bare mention (the
+# "check it is unset" guardrail) is not an assignment.
+ASSIGN_RE = re.compile(
+    r"""TRAIGENT_MOCK_LLM\s*=(?!=)"""
+    r"""|TRAIGENT_MOCK_LLM['"]\s*\]\s*=(?!=)"""
+    r"""|(?:setenv|setdefault|putenv)\(\s*['"]TRAIGENT_MOCK_LLM['"]"""
+)
 
 PROBE = r'''
 import json
@@ -95,10 +104,10 @@ def test_mock_env_var_recipes_carry_a_deprecation_note() -> None:
     for path in LINTED:
         lines = path.read_text(encoding="utf-8").splitlines()
         for index, line in enumerate(lines):
-            if "TRAIGENT_MOCK_LLM=true" not in line:
+            if not ASSIGN_RE.search(line):
                 continue
             window = lines[max(0, index - NEAR_LINES): index + NEAR_LINES + 1]
             assert any("deprecated" in item.lower() for item in window), (
-                f"{path.relative_to(ROOT)}:{index + 1}: TRAIGENT_MOCK_LLM=true "
+                f"{path.relative_to(ROOT)}:{index + 1}: TRAIGENT_MOCK_LLM is set "
                 "without a nearby deprecation note"
             )

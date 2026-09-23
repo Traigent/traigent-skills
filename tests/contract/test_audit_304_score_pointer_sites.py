@@ -7,6 +7,7 @@ optimize/composite skills from presenting `score` as the primary objective.
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -18,6 +19,7 @@ from .test_runnable_snippets import _offline_mock_env
 
 
 ROOT = Path(__file__).resolve().parents[2]
+SCORE_READ_RE = re.compile(r"""\.get\(\s*['"]score['"]""")
 SITES = [
     ROOT / "skills" / "traigent-optimize-run" / "SKILL.md",
     ROOT / "skills" / "traigent-optimize-run" / "references" / "cost-management.md",
@@ -59,7 +61,7 @@ def test_no_site_says_score_mirrors_the_primary_objective() -> None:
         text = path.read_text(encoding="utf-8")
         assert "score mirrors the primary objective" not in text, path
         assert "score\n# mirrors the primary objective" not in text, path
-        assert "metrics.get('score')" not in text, path
+        assert not SCORE_READ_RE.search(text), path
 
 
 def test_multi_objective_score_is_not_the_primary_objective(
