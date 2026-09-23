@@ -231,6 +231,9 @@ def test_hybrid_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
 
 THREAD_SAFETY_BODY = """
 import threading
+# load_block runs the template's @traigent.optimize, which validates its dataset path.
+write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+write_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
 ns = load_block(sys.argv[1])
 Budget = ns["JudgeBudget"]
 
