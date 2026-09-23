@@ -16,6 +16,7 @@ here.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 
@@ -108,5 +109,13 @@ def test_readme_documents_plugin_install() -> None:
     ):
         assert command in readme, f"README.md is missing plugin install command: {command}"
     # Note: "codex plugin marketplace add" is intentionally absent from the main install
-    # section because Codex does not auto-load skills from the marketplace. Users are
-    # directed to the "Using with Codex CLI" section instead (issue #205).
+    # section: the Codex plugin installs, but a Codex session loading its skills has not
+    # been verified. Users are directed to the "Using with Codex CLI" section instead
+    # (issue #205). While that holds, the README must not advertise a Codex marketplace
+    # either, or the install section contradicts itself (issue #348).
+    if "codex plugin marketplace add" not in readme:
+        advertised = re.search(r"plugin marketplace for[^.]*Codex", readme)
+        assert advertised is None, (
+            "README.md calls the repo a Codex plugin marketplace but gives no Codex "
+            f"plugin command: {advertised.group(0)!r}"
+        )
