@@ -226,3 +226,63 @@ def test_hybrid_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     result = _run_driver(tmp_path, _python_block(TEMPLATES, HYBRID_MARKER), body)
     assert result["parse_fail"] == [False, 0.0, "judge_parse_failure"], result
     assert result["refused"] == [False, 0.0, "judge_budget_exhausted", False], result
+
+
+THREAD_SAFETY_BODY = """
+import threading
+ns = load_block(sys.argv[1])
+Budget = ns["JudgeBudget"]
+
+class HeldLock:
+    # Wraps the real lock and records whether it is held, so writes can be checked.
+    def __init__(self):
+        self.inner, self.held, self.entries = threading.Lock(), False, 0
+    def __enter__(self):
+        self.inner.acquire()
+        self.held, self.entries = True, self.entries + 1
+    def __exit__(self, *exc):
+        self.held = False
+        self.inner.release()
+
+unlocked_writes = []
+class CheckedBudget(Budget):
+    def __setattr__(self, name, value):
+        lock = self.__dict__.get("_lock")
+        if name in ("spent", "refused") and isinstance(lock, HeldLock) and not lock.held:
+            unlocked_writes.append(name)
+        super().__setattr__(name, value)
+
+# Deterministic: every read-modify-write of the counters happens under the lock.
+budget = CheckedBudget(cap_usd=0.01, per_call_usd=0.002)
+budget._lock = HeldLock()
+granted = [budget.try_spend() for _ in range(8)]
+
+# Stress: 64 threads released together still get exactly floor(cap / price) calls.
+stress = []
+for _ in range(10):
+    shared = Budget(cap_usd=0.01, per_call_usd=0.002)
+    barrier = threading.Barrier(64)
+    results = []
+    def worker():
+        barrier.wait()
+        results.append(shared.try_spend())
+    threads = [threading.Thread(target=worker) for _ in range(64)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    stress.append([sum(results), shared.refused])
+emit({"granted": sum(granted), "refused": budget.refused, "lock_entries": budget._lock.entries,
+      "unlocked_writes": unlocked_writes, "stress": stress})
+"""
+
+
+@pytest.mark.parametrize("marker", [JUDGE_MARKER, HYBRID_MARKER])
+def test_judge_budget_updates_counters_under_its_lock(
+    marker: str, tmp_path: Path
+) -> None:
+    result = _run_driver(tmp_path, _python_block(TEMPLATES, marker), THREAD_SAFETY_BODY)
+    assert result["unlocked_writes"] == [], result
+    assert result["lock_entries"] == 8, result  # every try_spend call takes the lock
+    assert (result["granted"], result["refused"]) == (5, 3), result
+    assert result["stress"] == [[5, 59]] * 10, result
