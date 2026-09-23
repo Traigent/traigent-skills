@@ -21,7 +21,7 @@ Use this skill when you need to build, grow, or audit the examples that Traigent
 
 - Start from existing fixtures, golden sets, support tickets, logs, traces, or manually labeled examples.
 - Keep tuning and holdout slices separate. Never tune and claim on the same slice.
-- Mock or zero-egress check first with `enable_mock_mode_for_quickstart()`, `offline=True`, and a small local sample. Mock mode does not reach a standalone `ExampleSynthesizer`: smoke-test synthesis with a stub `llm` instead (see "Synthesize examples client-side with no backend egress").
+- Mock check first, with zero Traigent backend egress: `enable_mock_mode_for_quickstart()`, `offline=True`, and a small local sample. `offline=True` stops only Traigent backend traffic: LiteLLM still downloads its pricing map when it is imported unless `LITELLM_LOCAL_MODEL_COST_MAP=True` is set before the import, and any provider call that mock mode does not intercept still goes out. Mock mode does not reach a standalone `ExampleSynthesizer`: smoke-test synthesis with a stub `llm` instead (see "Synthesize examples client-side with no backend egress").
 - Before paid provider or backend runs, estimate cost, ask for user approval, and set `TRAIGENT_RUN_COST_LIMIT`.
 - For task-shape recipes, read `references/dataset-recipes.md`.
 - Only when none of the above sources exist at all — no fixtures, golden sets, tickets, logs, traces, or labeled examples anywhere — consider the cold-start path. It exists in the SDK from 0.27.0 but is gated by a backend flag that is off by default; read `references/cold-start.md` before offering it.
