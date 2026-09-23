@@ -133,8 +133,8 @@ answer = optimized_qa(question="What is the speed of light?")
 
 MIPROv2 optimizes both the instruction text and the few-shot demonstrations. It is selected with
 `method="mipro"` (plus `teacher_model=` and `auto_setting=` if needed), but on `traigent<=0.27.0`
-it fails with the `TypeError` in the note above, whatever the DSPy version. Until a fixed SDK
-release, use `method="bootstrap"`.
+it fails with the `TypeError` in the note above with DSPy 2.6/3.x (checked on 2.6.27 and 3.3.1).
+Until a fixed SDK release, use `method="bootstrap"`.
 
 ## Combining DSPy with Traigent Model Optimization
 
