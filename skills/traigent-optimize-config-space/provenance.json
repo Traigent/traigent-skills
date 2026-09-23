@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "2b1320b384a6842f",
+  "doc_hash": "6c1b039fba1d79e6",
   "reference_hashes": {
-    "references/constraints.md": "5e71abfb2b4485be",
+    "references/constraints.md": "70e69654931b938a",
     "references/parameter-types.md": "03c333a37aab008f",
     "references/structural-spine.md": "18a04d08be655245"
   },
@@ -155,6 +155,17 @@
       "doc_before_hash": "e0c766ff58819bea",
       "doc_after_hash": "2b1320b384a6842f",
       "note": "Point the See Also lifecycle-driver entry at traigent-boost-agent; the old traigent skill was merged into it.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-341-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "2b1320b384a6842f",
+      "doc_after_hash": "6c1b039fba1d79e6",
+      "note": "Satisfiability: IntRange is finite without step= (step defaults to 1); UNKNOWN comes from a step-less Range or a space over 10,000 combinations; the UNKNOWN branch now gives a remedy verified to return SAT on this example.",
       "source_type": "agent"
     }
   ]

@@ -326,8 +326,10 @@ print(result.violations)      # [] (empty if valid)
 
 # Check if the space has any valid configurations
 sat = space.check_satisfiability()
-# sat.status is SatStatus.UNKNOWN ("not checked") for any Range/IntRange without `step=` or
-# above 10,000 combinations; on UNSAT, sat.unsat_core lists every constraint index, not a minimal core.
+# sat.status is SatStatus.UNKNOWN ("not checked") for any Range without `step=` (Choices and
+# IntRange are finite; an IntRange step defaults to 1) or any space above 10,000 combinations.
+# To get a real answer here, add `step=` to the Range and a coarse step to max_tokens.
+# On UNSAT, sat.unsat_core lists every constraint index, not a minimal core.
 ```
 
 ---

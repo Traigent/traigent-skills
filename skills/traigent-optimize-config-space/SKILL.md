@@ -388,9 +388,9 @@ sat = space.check_satisfiability()
 print(sat)
 # `check_satisfiability()` returns a `SatResult` (frozen dataclass, no truthiness override —
 # `bool(sat)` is always True, so never `if sat:`). Check the field instead. The built-in
-# validator only enumerates FINITE spaces (Choices, or Range/IntRange with `step=`, up to
-# 10,000 combinations), so any continuous Range (like `temperature` above) returns
-# SatStatus.UNKNOWN = "not checked".
+# validator only enumerates FINITE spaces of up to 10,000 combinations. Choices and IntRange are
+# finite (an IntRange step defaults to 1); a Range without `step=` (like `temperature` above) is
+# not, and neither is any space above the cap. Either returns SatStatus.UNKNOWN = "not checked".
 from traigent_validation import SatStatus
 
 if sat.status is SatStatus.UNSAT:
@@ -401,8 +401,11 @@ if sat.status is SatStatus.UNSAT:
     # unsatisfiable space.
     ...
 elif sat.status is SatStatus.UNKNOWN:
-    # Not proven either way. To actually check, discretize the space (add `step=`) or
-    # spot-check with space.validate({...}) on representative configs.
+    # Not proven either way. To actually check, make the space finite AND under the cap. Here that
+    # means `Range(0.0, 1.0, step=0.1, ...)` for temperature plus a coarse
+    # `IntRange(100, 4096, step=512, ...)` for max_tokens (3,997 values alone keeps it over the
+    # cap), which checks 176 combinations and returns SAT. Or spot-check with
+    # space.validate({...}) on representative configs.
     ...
 
 # Use with decorator
