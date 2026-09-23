@@ -105,7 +105,7 @@ def answer(text: str) -> tuple[str, dict[str, float]]:
     )
     # Leave `accuracy` to the built-in evaluator (it scores run.output against
     # the dataset's expected output): a returned key named `accuracy` is
-    # reserved and silently dropped. The composite_* keys become per-trial
+    # reserved and dropped with a WARNING. The composite_* keys become per-trial
     # measures on the wire.
     metrics: dict[str, float] = {}
     merge_composite_measures(metrics, run)
@@ -116,30 +116,13 @@ The base arm must return more than one sample. With `samples=1` the vote margin 
 so the gate never escalates and every threshold scores the same. In this block the 2-1 split
 accepts the cheap answer at the lower thresholds and escalates to the strong arm at 0.7.
 
-The evaluator recognizes exactly a two-item tuple `(output, metrics)` where `metrics` is numeric and identifier-keyed. Other return shapes are not unpacked.
-
-With the tuple return, use the BUILT-IN evaluator (expected outputs in
-`eval_dataset`, no custom `scoring_function`): a custom `scoring_function` or
-3-arg `metric_functions` is currently NOT invoked with the unpacked prediction
-on this path, and every trial silently scores `accuracy=0.0` (known SDK
-issue). Diagnostic tell, by SDK version: on <= 0.21.3, uniform zero accuracy
-next to a sane built-in `score` means scoring wiring, not a bad agent; `score`
-mirrors the primary objective on SDKs after 0.21.3
-(see version-matrix: `score-relocation`), so it is also 0.0 here and the sane built-in value is
-relocated to `exact_match_default` — check that key instead, and look for the
-run-level "custom scoring_function defines the 'accuracy' objective" log line.
-**Escape hatch:** if you need custom scoring on this path, compute the metric
-inside the function and return it in the tuple's metrics dict under a
-**non-reserved key** with a matching `objectives=` entry (e.g.
-`objectives=["custom_match"]`, `metrics = {"custom_match": ...}`) — do not
-wire a `scoring_function` and wonder why it never fires, and do not name the
-key `accuracy` (or any other name in `RESERVED_METRIC_KEYS`, e.g. `cost`,
-`latency`, `score`, `success`). A returned value under a reserved key is
-silently dropped in favor of the built-in evaluator's own value for that key
-(logged as "Skipping user metric '<key>' ... is a reserved evaluator-computed
-key and cannot be overwritten") — it will not raise, and your custom score is
-never used. If neither works for your case, stop and surface the SDK
-limitation to the user rather than iterating.
+The evaluator unpacks exactly a two-item tuple `(output, metrics)` where `metrics` is numeric
+and identifier-keyed; other return shapes are not unpacked. `output` is scored by the built-in
+evaluator, or by your `scoring_function` / `metric_functions` (they receive the unpacked
+`output`), and the numeric `metrics` ride the measures channel. Do not return a score under a
+reserved key (`RESERVED_METRIC_KEYS`, e.g. `accuracy`, `cost`, `latency`, `score`, `success`):
+such keys are dropped with a "Skipping user metric '<key>' ... reserved" WARNING. Use a
+`scoring_function`, or a non-reserved key with a matching `objectives=` entry.
 
 Before any paid run, assert the gate CVAR is actually resolvable — an
 undeclared threshold is a per-trial `KeyError` after money is spent:
