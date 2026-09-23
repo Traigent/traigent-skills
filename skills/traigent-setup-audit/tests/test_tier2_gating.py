@@ -9,6 +9,7 @@ that same log fills up the moment a request IS made.
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from conftest import _tier1_report, recorded_argv, run_tier2
@@ -239,6 +240,28 @@ def test_the_recommendation_follows_tier_1s_ladder(
     completed = run_tier2("--from-audit", str(weak_tier1), "--run-id", RUN_ID)
     assert completed.returncode == 0, completed.stderr
     assert "APPROVAL CARD — evaluator-quality   (recommended)" in completed.stdout
+
+
+def _card(stdout: str, check_id: str) -> str:
+    return stdout.split(f"APPROVAL CARD — {check_id}", 1)[1].split("APPROVAL CARD", 1)[0]
+
+
+def test_an_unrepeatable_scorer_is_never_called_repeatable(weak_tier1: Path) -> None:
+    """The card quotes Tier 1's result: the weak scorer failed the probe."""
+    completed = run_tier2("--from-audit", str(weak_tier1), "--run-id", RUN_ID)
+    assert completed.returncode == 0, completed.stderr
+    card = _card(completed.stdout, "evaluator-quality")
+    assert "found it repeatable" not in card
+    assert "NOT reliable" in card
+    assert re.search(r"returned \d+ different scores for the same pair", card), card
+
+
+def test_a_repeatable_scorer_is_still_called_repeatable(healthy_tier1: Path) -> None:
+    completed = run_tier2("--from-audit", str(healthy_tier1), "--run-id", RUN_ID)
+    assert completed.returncode == 0, completed.stderr
+    card = _card(completed.stdout, "evaluator-quality")
+    assert "found it repeatable" in card
+    assert "NOT reliable" not in card
 
 
 def test_list_runs_is_only_offered_when_asked_for(healthy_tier1: Path) -> None:

@@ -1880,6 +1880,23 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
     return status, evidence
 
 
+def probe_symptom(metrics: dict) -> str:
+    """Why a probe that ran is not reliable, in the probe's own numbers.
+
+    Only meaningful for a ``probe_metrics`` result with verdict ``ran`` that is
+    not both stable and ordered; shared by the next step and the Tier 2 cards.
+    """
+    if not metrics["stable"]:
+        return (
+            f"returned {metrics['distinct']} different scores for the same "
+            f"pair across {metrics['repeats']} repeats"
+        )
+    return (
+        "did not rank a known-good answer above a known-bad one "
+        f"({_show(metrics['good'])} vs {_show(metrics['bad'])})"
+    )
+
+
 # --------------------------------------------------------------------------
 # setup checks
 # --------------------------------------------------------------------------
@@ -2418,16 +2435,7 @@ def next_step(
         }
 
     if metrics["verdict"] == "ran" and not (metrics["stable"] and metrics["ordered"]):
-        if not metrics["stable"]:
-            symptom = (
-                f"returned {metrics['distinct']} different scores for the same "
-                f"pair across {metrics['repeats']} repeats"
-            )
-        else:
-            symptom = (
-                "did not rank a known-good answer above a known-bad one "
-                f"({_show(metrics['good'])} vs {_show(metrics['bad'])})"
-            )
+        symptom = probe_symptom(metrics)
         return {
             "branch": "d",
             "skills": ["traigent-eval-build", "traigent-eval-audit"],

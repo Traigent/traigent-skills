@@ -54,6 +54,8 @@ if str(SCRIPT_DIR) not in sys.path:
 from audit_project import (  # noqa: E402
     install_network_guard,
     printable_text,
+    probe_metrics,
+    probe_symptom,
     verify_network_guard,
 )
 
@@ -415,7 +417,10 @@ class Tier1:
     read_knob_count: int
     datasets: list[dict]
     scorers: list[dict]
+    # "repeatable", "unreliable", "not-run" or "none": the probe's OUTCOME,
+    # read with the same rule Tier 1 used, never just whether it ran.
     probe_verdict: str
+    probe_symptom: str
     model_ids: list[str]
     dataset_candidates: int
     python_files: int
@@ -461,6 +466,17 @@ def load_tier1(path: Path) -> Tier1:
     setup = report.get("setup") or {}
     keys = setup.get("keys") or {}
     next_step = report.get("next_step") or {}
+    metrics = probe_metrics(probe) if probe else {"verdict": "none"}
+    symptom = ""
+    if metrics["verdict"] == "none":
+        verdict = "none"
+    elif metrics["verdict"] != "ran":
+        verdict = "not-run"
+    elif metrics["stable"] and metrics["ordered"]:
+        verdict = "repeatable"
+    else:
+        verdict = "unreliable"
+        symptom = probe_symptom(metrics)
 
     return Tier1(
         path=path,
@@ -474,7 +490,8 @@ def load_tier1(path: Path) -> Tier1:
                   if isinstance(item, dict)],
         scorers=[item for item in (report.get("scorers") or [])
                  if isinstance(item, dict)],
-        probe_verdict=("ran" if probe.get("ran") else "not-run") if probe else "none",
+        probe_verdict=verdict,
+        probe_symptom=symptom,
         model_ids=[str(item) for item in (setup.get("model_ids_declared") or [])],
         dataset_candidates=int(files.get("dataset_candidates") or 0),
         python_files=int(files.get("python_parsed") or 0),
@@ -510,7 +527,14 @@ def motivation(check_id: str, tier1: Tier1, run_id: str | None) -> str:
             f"{tier1.next_step_line or 'not recorded'}"
         )
     if check_id == "evaluator-quality":
-        if tier1.probe_verdict == "ran":
+        if tier1.probe_verdict == "unreliable":
+            basis = (
+                "Tier 1 repeat-scored your scorer and it is NOT reliable: it "
+                f"{tier1.probe_symptom}, so a configuration comparison would be "
+                "measuring the scorer. Make it repeatable first with "
+                "`traigent-eval-build`"
+            )
+        elif tier1.probe_verdict == "repeatable":
             basis = (
                 "Tier 1 repeat-scored your scorer and found it repeatable. "
                 "Repeatability is not correctness: a scorer that returns the "
