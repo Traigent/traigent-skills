@@ -477,8 +477,8 @@ without it.
 
 Use `get_optimization_insights(results)` for a first structured pass over top configurations,
 performance summary, parameter insights, and recommendations. Treat it as analysis input; deciding
-the next experiment belongs in `traigent-analyze-guidance` for portal-tracked runs or `traigent-analyze-guidance`
-for offline/local runs.
+the next experiment belongs in `traigent-analyze-guidance` (Mode B for portal-tracked runs, Mode C
+for offline/local runs).
 
 ```python
 from traigent.utils.insights import get_optimization_insights
@@ -809,19 +809,29 @@ for past_result in history:
     print(f"  Timestamp: {past_result.timestamp}")
 ```
 
-Compare across runs only when `objectives`, dataset, evaluator, and space are identical
-(`metadata["configuration_space"]`, `objectives`) — otherwise the two numbers were measured on
-different things, and even then the difference is directional, not a paired result (see "Pair,
-don't cross-compare" above):
+Compare across runs only when `objectives`, dataset, evaluator, and space are identical (compare
+the sampled space from `trials[].config` and `objectives`; the declared search space is not stored
+on the result, and no result field records the dataset or evaluator, so confirm those from your
+run-plan record) — otherwise the two numbers were measured on different things, and even then the
+difference is directional, not a paired result (see "Pair, don't cross-compare" above). Two
+random or adaptive runs that sampled different parts of the same space also read as different;
+that blocks the comparison rather than allowing a wrong one:
 
 ```python
+import json
+
+def observed_space(result):
+    """Knob -> set of values the run actually sampled (the declared space is not on the result)."""
+    space = {}
+    for t in result.trials:
+        for k, v in t.config.items():
+            space.setdefault(k, set()).add(json.dumps(v, sort_keys=True))
+    return space
+
 history = classify.get_optimization_history()
 if len(history) >= 2:
     latest, previous = history[-1], history[-2]
-    same_setup = (
-        latest.objectives == previous.objectives
-        and latest.metadata.get("configuration_space") == previous.metadata.get("configuration_space")
-    )
+    same_setup = latest.objectives == previous.objectives and observed_space(latest) == observed_space(previous)
     if same_setup and latest.best_score is not None and previous.best_score is not None:
         print(f"Directional change: {latest.best_score - previous.best_score:+.3f}")
 ```
