@@ -27,6 +27,7 @@ import json
 import traigent
 import traigent.testing
 from pathlib import Path
+from traigent.core.objectives import create_default_objectives
 from traigent.evaluators.metrics_tracker import RESERVED_METRIC_KEYS
 
 traigent.testing.enable_mock_mode_for_quickstart()
@@ -45,6 +46,11 @@ def custom(output, expected, input_data=None):
     received.append(type(output).__name__)
     return 0.66
 
+def custom_objective(name):
+    # Custom objective names need an explicit orientation on newer SDKs; this is
+    # setup only and the same schema is accepted on 0.27.0.
+    return create_default_objectives([name], orientations={name: "maximize"})
+
 def run(objectives, fn_return, **deco):
     @traigent.optimize(eval_dataset="qa.jsonl", objectives=objectives, offline=True,
                        configuration_space={"model": ["m"]}, **deco)
@@ -56,9 +62,9 @@ out = {}
 m = run(["accuracy"], ("4", {"side_metric": 1.0}), scoring_function=scorer)
 out["scorer"] = {"accuracy": m["accuracy"], "side": m.get("side_metric"), "received": sorted(set(received))}
 received.clear()
-m = run(["custom"], ("4", {"side_metric": 1.0}), metric_functions={"custom": custom})
+m = run(custom_objective("custom"), ("4", {"side_metric": 1.0}), metric_functions={"custom": custom})
 out["metric_fn"] = {"custom": m["custom"], "received": sorted(set(received))}
-m = run(["custom_match"], ("4", {"custom_match": 0.42}))
+m = run(custom_objective("custom_match"), ("4", {"custom_match": 0.42}))
 out["tuple_key"] = {"custom_match": m.get("custom_match")}
 m = run(["accuracy"], ("wrong", {"accuracy": 0.99}))
 out["reserved"] = {"accuracy": m["accuracy"]}
