@@ -149,7 +149,7 @@ export TRAIGENT_COST_APPROVED=true                      # only in this run's she
 ```
 
 ```python
-# A real run: no mock, no offline, a budget cap on .optimize().
+# A real run: no mock, no offline, a budget cap on the optimize call.
 # `cost_limit` caps the paid sweep; a pre-run estimate over it stops before spending.
 results = classify_query.optimize_sync(max_trials=6, cost_limit=1.00)
 ```
