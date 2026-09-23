@@ -44,9 +44,9 @@ names (`"nsga2"`/`"cmaes"`) fail fast with a capability message
 `algorithm` arg. Legacy selector names are gone. Default connected real runs to
 **`offline=False`** (online) with `algorithm="auto"` (or omit `algorithm`): trials
 run with portal tracking while the agent and data stay local (only configs +
-numeric scores leave the machine). Named smart algorithms (`bayesian`/`tpe`/`optuna`)
-do **not** currently run as selector names -- do not select them expecting cloud
-execution. Use **`offline=True`** for a local, zero-egress run (grid/random only)
+numeric scores leave the machine). Named smart selectors (`bayesian`/`tpe`/`optuna`)
+run only on authenticated connected runs (see "Algorithm prerequisites" above) and
+never with `offline=True`. Use **`offline=True`** for a local, zero-egress run (grid/random only)
 ONLY when explicitly chosen; never switch silently. After a run, **confirm the experiment
 appears in the portal with its trials**. If it doesn't show up, it's likely a
 temporary connectivity issue -- **retry the run** and confirm the printed `View`
