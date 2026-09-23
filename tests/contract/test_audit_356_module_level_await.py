@@ -16,12 +16,8 @@ import ast
 import re
 from pathlib import Path
 
-SCOPED_SKILLS = (
-    "traigent-setup-decorator",
-    "traigent-setup-integrations",
-    "traigent-setup-quickstart",
-)
-PYTHON_BLOCK_RE = re.compile(r"^```(?:python|py)\n(.*?)^```", re.S | re.M)
+from .test_audit_349_fenced_blocks import python_blocks, scoped_markdown
+
 ASYNC_CONTEXT_MARK_RE = re.compile(
     r"#.*\b(?:notebook|async context|inside an? async)\b", re.I
 )
@@ -51,22 +47,23 @@ def _module_level_awaits(tree: ast.AST) -> list[int]:
 
 
 def _scan(rel: str, text: str) -> list[str]:
-    synced = [m.span() for m in SYNCED_POLICY_RE.finditer(text)]
+    synced = [
+        (text.count("\n", 0, m.start()) + 1, text.count("\n", 0, m.end()) + 1)
+        for m in SYNCED_POLICY_RE.finditer(text)
+    ]
     violations = []
-    for match in PYTHON_BLOCK_RE.finditer(text):
-        if any(start <= match.start() < end for start, end in synced):
+    for first_line, block in python_blocks(text):
+        if any(start <= first_line <= end for start, end in synced):
             continue
-        block = match.group(1)
         if ASYNC_CONTEXT_MARK_RE.search(block):
             continue
         try:
             tree = ast.parse(block)
         except SyntaxError:
             continue
-        first = text.count("\n", 0, match.start(1))
         for lineno in _module_level_awaits(tree):
             violations.append(
-                f"{rel}:{first + lineno}: module-level `await` in a script example "
+                f"{rel}:{first_line + lineno - 1}: module-level `await` in a script example "
                 "(SyntaxError in a .py file); use the sync call, asyncio.run(...), or "
                 "mark the block as notebook / async-context code"
             )
@@ -75,14 +72,9 @@ def _scan(rel: str, text: str) -> list[str]:
 
 def test_setup_skill_examples_have_no_module_level_await(repo_root: Path) -> None:
     violations: list[str] = []
-    for skill in SCOPED_SKILLS:
-        skill_dir = repo_root / "skills" / skill
-        for path in [
-            skill_dir / "SKILL.md",
-            *sorted(skill_dir.glob("references/*.md")),
-        ]:
-            rel = path.relative_to(repo_root).as_posix()
-            violations.extend(_scan(rel, path.read_text(encoding="utf-8")))
+    for path in scoped_markdown(repo_root):
+        rel = path.relative_to(repo_root).as_posix()
+        violations.extend(_scan(rel, path.read_text(encoding="utf-8")))
     assert not violations, "\n".join(violations)
 
 

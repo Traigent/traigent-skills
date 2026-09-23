@@ -11,15 +11,9 @@ is usually deflated with no error signal. Inside a
 from __future__ import annotations
 
 import ast
-import re
 from pathlib import Path
 
-SCOPED_SKILLS = (
-    "traigent-setup-decorator",
-    "traigent-setup-integrations",
-    "traigent-setup-quickstart",
-)
-PYTHON_BLOCK_RE = re.compile(r"^```(?:python|py)\n(.*?)^```", re.S | re.M)
+from .test_audit_349_fenced_blocks import python_blocks, scoped_markdown
 
 
 def _is_traigent_optimize(dec: ast.expr) -> bool:
@@ -44,9 +38,9 @@ def _is_dspy_configure(node: ast.AST) -> bool:
 
 def _scan(rel: str, text: str) -> list[str]:
     violations = []
-    for match in PYTHON_BLOCK_RE.finditer(text):
+    for first_line, block in python_blocks(text):
         try:
-            tree = ast.parse(match.group(1))
+            tree = ast.parse(block)
         except SyntaxError:
             continue
         for fn in ast.walk(tree):
@@ -56,7 +50,7 @@ def _scan(rel: str, text: str) -> list[str]:
                 continue
             for node in ast.walk(fn):
                 if _is_dspy_configure(node):
-                    line = text.count("\n", 0, match.start(1)) + node.lineno
+                    line = first_line + node.lineno - 1
                     violations.append(
                         f"{rel}:{line}: dspy.configure() inside @traigent.optimize "
                         f"function `{fn.name}`; use `with dspy.context(lm=...)`"
@@ -66,14 +60,9 @@ def _scan(rel: str, text: str) -> list[str]:
 
 def test_no_dspy_configure_inside_optimized_functions(repo_root: Path) -> None:
     violations: list[str] = []
-    for skill in SCOPED_SKILLS:
-        skill_dir = repo_root / "skills" / skill
-        for path in [
-            skill_dir / "SKILL.md",
-            *sorted(skill_dir.glob("references/*.md")),
-        ]:
-            rel = path.relative_to(repo_root).as_posix()
-            violations.extend(_scan(rel, path.read_text(encoding="utf-8")))
+    for path in scoped_markdown(repo_root):
+        rel = path.relative_to(repo_root).as_posix()
+        violations.extend(_scan(rel, path.read_text(encoding="utf-8")))
     assert not violations, "\n".join(violations)
 
 

@@ -19,9 +19,10 @@ from pathlib import Path
 import pytest
 from traigent.integrations.dspy_adapter import DSPyPromptOptimizer
 
+from .test_audit_349_fenced_blocks import python_blocks
+
 SKILL = "skills/traigent-setup-integrations"
 PAGES = (f"{SKILL}/SKILL.md", f"{SKILL}/references/dspy.md")
-PYTHON_BLOCK_RE = re.compile(r"^```python\n(.*?)^```", re.S | re.M)
 REQUIRED = "(required)"
 
 
@@ -70,9 +71,9 @@ def _call_kwarg_violations(rel: str, text: str) -> list[str]:
         "optimize_prompt": set(_signature_table(DSPyPromptOptimizer.optimize_prompt)),
     }
     violations = []
-    for match in PYTHON_BLOCK_RE.finditer(text):
+    for first_line, block in python_blocks(text):
         try:
-            tree = ast.parse(match.group(1))
+            tree = ast.parse(block)
         except SyntaxError:
             continue
         for node in ast.walk(tree):
@@ -86,7 +87,7 @@ def _call_kwarg_violations(rel: str, text: str) -> list[str]:
                 continue
             for kw in node.keywords:
                 if kw.arg is None or kw.arg not in accepted[name]:
-                    line = text.count("\n", 0, match.start(1)) + node.lineno
+                    line = first_line + node.lineno - 1
                     violations.append(
                         f"{rel}:{line}: {name}(...) passes `{kw.arg or '**'}`, "
                         f"which the installed signature rejects"
@@ -164,8 +165,7 @@ def test_dspy_optimizer_examples_run_with_dummy_lm(repo_root: Path) -> None:
             "best_model": "model-under-test",
             "best_temp": 0.0,
         }
-        for match in PYTHON_BLOCK_RE.finditer(text):
-            block = match.group(1)
+        for first_line, block in python_blocks(text):
             if "@traigent.optimize" in block or not (
                 "DSPyPromptOptimizer(" in block or "optimize_prompt(" in block
             ):
@@ -174,6 +174,6 @@ def test_dspy_optimizer_examples_run_with_dummy_lm(repo_root: Path) -> None:
                 block = block.split("# Stage 2", 1)[1].split("\n", 1)[1]
             block = block.replace("dspy.LM(", "fake_lm(")
             ns["fake_lm"] = fake_lm
-            exec(compile(block, f"{rel}:{match.start(1)}", "exec"), ns)
+            exec(compile(block, f"{rel}:{first_line}", "exec"), ns)
             ran += 1
     assert ran >= 4, f"expected the documented optimizer examples, ran {ran}"

@@ -16,12 +16,8 @@ import ast
 import re
 from pathlib import Path
 
-SCOPED_SKILLS = (
-    "traigent-setup-decorator",
-    "traigent-setup-integrations",
-    "traigent-setup-quickstart",
-)
-PYTHON_BLOCK_RE = re.compile(r"^```(?:python|py)\n(.*?)^```", re.S | re.M)
+from .test_audit_349_fenced_blocks import python_blocks, scoped_markdown
+
 VERSION_GATE_RE = re.compile(
     r"Released SDK caveat:\*\* on `traigent<=0\.27\.0` auto-override is a silent no-op"
     r"|Requires `traigent>=\d+\.\d+\.\d+`"
@@ -31,23 +27,9 @@ TARGETS_SECTION_RE = re.compile(
 )
 
 
-def _scoped_markdown(repo_root: Path) -> list[Path]:
-    paths: list[Path] = []
-    for skill in SCOPED_SKILLS:
-        skill_dir = repo_root / "skills" / skill
-        paths.append(skill_dir / "SKILL.md")
-        paths.extend(sorted((skill_dir / "references").glob("*.md")))
-    return paths
-
-
-def _block_offsets(text: str):
-    for match in PYTHON_BLOCK_RE.finditer(text):
-        yield text.count("\n", 0, match.start(1)) + 1, match.group(1)
-
-
 def _scan_targets_without_flag(rel: str, text: str) -> list[str]:
     violations: list[str] = []
-    for first_line, block in _block_offsets(text):
+    for first_line, block in python_blocks(text):
         try:
             tree = ast.parse(block)
         except SyntaxError:
@@ -70,7 +52,7 @@ def _scan_targets_without_flag(rel: str, text: str) -> list[str]:
 
 def _scan_missing_version_gate(rel: str, text: str) -> list[str]:
     shows_example = any(
-        "auto_override_frameworks=True" in block for _, block in _block_offsets(text)
+        "auto_override_frameworks=True" in block for _, block in python_blocks(text)
     )
     if shows_example and not VERSION_GATE_RE.search(text):
         return [
@@ -88,7 +70,7 @@ def _listed_targets(text: str) -> list[str]:
 
 def test_framework_targets_always_paired_with_auto_override(repo_root: Path) -> None:
     violations: list[str] = []
-    for path in _scoped_markdown(repo_root):
+    for path in scoped_markdown(repo_root):
         rel = path.relative_to(repo_root).as_posix()
         violations.extend(
             _scan_targets_without_flag(rel, path.read_text(encoding="utf-8"))
@@ -98,7 +80,7 @@ def test_framework_targets_always_paired_with_auto_override(repo_root: Path) -> 
 
 def test_auto_override_examples_carry_the_released_sdk_gate(repo_root: Path) -> None:
     violations: list[str] = []
-    for path in _scoped_markdown(repo_root):
+    for path in scoped_markdown(repo_root):
         rel = path.relative_to(repo_root).as_posix()
         violations.extend(
             _scan_missing_version_gate(rel, path.read_text(encoding="utf-8"))

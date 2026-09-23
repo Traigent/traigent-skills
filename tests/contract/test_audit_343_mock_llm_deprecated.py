@@ -6,7 +6,8 @@ without saying so builds fixtures on a removal path. Each line that names it mus
 have the word "deprecated" within ``WINDOW`` lines.
 
 Scope: the setup skills. The other skills that name the env var are fixed
-separately; add them to ``SCOPED_SKILLS`` as they land.
+separately; add them to ``SCOPED_SKILLS`` in
+``test_audit_349_fenced_blocks.py`` as they land.
 """
 
 from __future__ import annotations
@@ -14,11 +15,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-SCOPED_SKILLS = (
-    "traigent-setup-decorator",
-    "traigent-setup-integrations",
-    "traigent-setup-quickstart",
-)
+from .test_audit_349_fenced_blocks import scoped_markdown
+
 WINDOW = 3
 DEPRECATED_RE = re.compile(r"\bdeprecated\b", re.I)
 
@@ -40,14 +38,9 @@ def _scan(rel: str, text: str) -> list[str]:
 
 def test_mock_llm_env_var_mentions_carry_the_deprecation(repo_root: Path) -> None:
     violations: list[str] = []
-    for skill in SCOPED_SKILLS:
-        skill_dir = repo_root / "skills" / skill
-        for path in [
-            skill_dir / "SKILL.md",
-            *sorted(skill_dir.glob("references/*.md")),
-        ]:
-            rel = path.relative_to(repo_root).as_posix()
-            violations.extend(_scan(rel, path.read_text(encoding="utf-8")))
+    for path in scoped_markdown(repo_root):
+        rel = path.relative_to(repo_root).as_posix()
+        violations.extend(_scan(rel, path.read_text(encoding="utf-8")))
     assert not violations, "\n".join(violations)
 
 
