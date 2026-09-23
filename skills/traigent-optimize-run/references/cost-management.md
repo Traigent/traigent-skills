@@ -2,7 +2,7 @@
 
 Traigent provides real-time cost tracking and enforcement to prevent runaway LLM API spending during optimization runs.
 
-> **Migration note:** Mock mode is now activated in code via `traigent.testing.enable_mock_mode_for_quickstart()` and is hard-blocked when `ENVIRONMENT=production`. The legacy `TRAIGENT_MOCK_LLM=true` env var still bypasses cost tracking in non-production environments for backward compatibility.
+> **Migration note:** Mock mode is now activated in code via `traigent.testing.enable_mock_mode_for_quickstart()` and is hard-blocked when `ENVIRONMENT=production`. The legacy `TRAIGENT_MOCK_LLM=true` env var is deprecated (see Mock Mode below) and does not bypass cost tracking.
 
 ## Environment Variables
 
@@ -14,7 +14,7 @@ Traigent provides real-time cost tracking and enforcement to prevent runaway LLM
 | `TRAIGENT_REQUIRE_COST_TRACKING` | `false` | Raise exception if cost tracking cannot extract costs. |
 | `TRAIGENT_COST_WARNING_THRESHOLD` | `0.5` | Warn when this fraction of the limit is consumed (0.0-1.0). |
 | `TRAIGENT_COST_DIVERGENCE_THRESHOLD` | `2.0` | Log warning if actual/estimated cost ratio exceeds this. |
-| `TRAIGENT_MOCK_LLM` | `false` | **Legacy** — bypass cost tracking in mock mode (dev only; hard-blocked in production). Prefer `traigent.testing.enable_mock_mode_for_quickstart()`. |
+| `TRAIGENT_MOCK_LLM` | `false` | **Deprecated** legacy mock-mode switch (dev only; hard-blocked in production; scheduled for removal, see Mock Mode below). Use `traigent.testing.enable_mock_mode_for_quickstart()`. |
 
 ## Setting a Cost Limit
 
@@ -160,12 +160,25 @@ Trial 2: acquire_permit() -> execute -> track_cost(permit, $0.05)
 
 ## Mock Mode
 
-When `TRAIGENT_MOCK_LLM=true`, all cost tracking is bypassed. No permits are issued, no costs are recorded, and `CostLimitExceeded` is never raised. Use this for local development and testing.
+Mock mode skips only the pre-run pricing estimate (so a pre-run `CostLimitExceeded` does not fire).
+The runtime CostEnforcer is always active: permits, `TRAIGENT_RUN_COST_LIMIT`, and
+`stop_reason="cost_limit"` apply in mock runs too, so a very low limit stops a mock run at 0 trials.
+
+Turn mock mode on in code (in tests, from a pytest fixture or `conftest.py`) and keep the run local:
+
+```python
+import traigent.testing
+
+traigent.testing.enable_mock_mode_for_quickstart()
+```
 
 ```bash
-export TRAIGENT_MOCK_LLM=true
 export TRAIGENT_OFFLINE_MODE=true
 ```
+
+`TRAIGENT_MOCK_LLM=true` is deprecated on traigent 0.27.0 (DeprecationWarning, hidden by default;
+"will be removed in a future release"). Use `traigent.testing.enable_mock_mode_for_quickstart()` in
+code, e.g. from a pytest fixture/conftest, for new setups.
 
 ## Practical Examples
 
@@ -181,8 +194,10 @@ python run_optimization.py
 
 ### Development / Testing
 
+Enable mock mode from `conftest.py` with `traigent.testing.enable_mock_mode_for_quickstart()`
+(not the deprecated `TRAIGENT_MOCK_LLM` env var), then:
+
 ```bash
-export TRAIGENT_MOCK_LLM=true
 export TRAIGENT_OFFLINE_MODE=true
 
 pytest tests/
