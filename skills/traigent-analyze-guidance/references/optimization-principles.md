@@ -35,10 +35,17 @@ are reproducible and so a later run can promote it to a tuned knob.
 
 ### P4 -- Replace knobs that show no impact
 
-After a run, rank each knob's impact on the objective. **Drop knobs with ~zero
-impact** (especially if they add cost -- e.g. self-consistency that doesn't raise
-accuracy) and **swap in better structural knobs**. This run-over-run swap is
-where the ceiling moves (it took us 25/30 -> 27/30 on the tuning slice). See `traigent-analyze-guidance`.
+After a run with enough evidence, rank each knob's impact on the objective. **Drop a
+knob only if it was sampled enough and still shows ~zero impact**: the run had at
+least about 20 completed trials (Mode C in `SKILL.md` reads any ranking below that as
+directional, and the importance analyzer returns nothing below 10), each of the
+knob's values was observed several times, and it still does not move the objective
+(especially if it adds cost -- e.g. self-consistency that doesn't raise accuracy).
+Below that floor a flat or empty ranking means "not yet measured": keep the knob and
+treat the ranking as directional (see Mode C in `SKILL.md` and
+`traigent-analyze-variable-importance`). Then **swap in better structural knobs**.
+This run-over-run swap is where the ceiling moves (it took us 25/30 -> 27/30 on the
+tuning slice). See `traigent-analyze-guidance`.
 
 ### P5 -- Vary the objective weights across runs
 
@@ -55,11 +62,13 @@ Every run gets a recorded **run-plan** capturing ALL its parameters -- dataset,
 models, knobs+values, objectives+weights, algorithm, trial budget, cost cap,
 execution selector (`algorithm` + `ExecutionOptions(offline=...)`), and the
 **config-space permutation count** (product of value-counts across all tuned
-knobs). Give it a **self-describing, unique name** encoding
-who/weights/problem-space/**permutations**/date
-(e.g. `Amir_ACL_80_15_05_txt2sql_216perms_20260620`). Record the permutation
-count both in the name and as its own field, keep the filled plan with the run,
-and add a **carry-forward** note of what won/lost to seed the next run. Seed the
+knobs). Give the **run-plan record** (its file name or title) a self-describing,
+unique label encoding who/weights/problem-space/**permutations**/date, and record
+the permutation count as its own field. Do not put that label in `experiment_name`:
+`experiment_name` stays the stable agent slug reused across runs (see
+`references/preflight.md` -> "Run naming"). The SDK records each run's timestamp
+and its own run label automatically. Keep the filled plan with the run, and add a
+**carry-forward** note of what won/lost to seed the next run. Seed the
 carry-forward from data, not memory: before planning the next run, read the cohort
 table for this agent+dataset (`analytics_list_experiment_group_configuration_runs`;
 if your SDK build doesn't expose the experiment-group tools yet, use the prior
