@@ -1059,6 +1059,9 @@ class DatasetReport:
     # True when this file IS the holdout slice (declared by its name beside a
     # tuning file): it is judged against the holdout minimum only.
     holdout_by_name: bool = False
+    # Informational lines (how the holdout slice was declared). Printed as
+    # evidence, never counted as a problem: a finding is something to fix.
+    notes: list[str] = field(default_factory=list)
 
 
 NO_HOLDOUT_FINDING = "no split marker on any row, so no holdout slice is declared"
@@ -1395,7 +1398,7 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                         "split marker(s) naming a non-holdout slice; per-row markers win"
                     )
                 if untagged_rows:
-                    report.findings.append(
+                    report.notes.append(
                         f"{untagged_rows} untagged row(s) inherit the holdout role "
                         "from the file name"
                     )
@@ -1422,7 +1425,7 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                 holdout_inputs.update(report.input_index)
                 report.holdout_rows = report.rows
                 report.holdout_by_name = True
-                report.findings.append(
+                report.notes.append(
                     f"holdout slice declared by file name: {report.rows} row(s), "
                     "no per-row split marker"
                 )
@@ -1453,7 +1456,7 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                         "split markers present but none name a holdout slice"
                     )
                 ]
-                report.findings.append(
+                report.notes.append(
                     f"holdout slice declared by sibling file {names} ({total} row(s))"
                 )
             overlap = sorted(
@@ -2119,6 +2122,8 @@ def dataset_area(
             f"gold key(s) {', '.join(report.expected_key_counts) or 'none'}, "
             f"split marker(s) {', '.join(f'{k}={v}' for k, v in report.split_counts.items()) or 'none'}"
         )
+        for note in report.notes:
+            evidence.append(f"{report.file}: {note}")
         for finding in report.findings:
             evidence.append(f"{report.file}: {finding}")
         if report.missing_expected:
@@ -2771,6 +2776,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
                 "holdout_overlap_rows": report.holdout_overlap,
                 "label_counts": report.label_counts,
                 "findings": report.findings,
+                "notes": report.notes,
             }
             for report in reports
         ],
