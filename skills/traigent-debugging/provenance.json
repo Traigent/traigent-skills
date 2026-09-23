@@ -2,9 +2,9 @@
   "schema": "skill-provenance/v1",
   "doc_hash": "967286c0dba116f3",
   "reference_hashes": {
-    "references/error-reference.md": "a4972fd8548f1357",
-    "references/logging-config.md": "51cf4cd4cdaf5362",
-    "references/mock-mode.md": "7945ee3565727d98"
+    "references/error-reference.md": "dde075e0be420e47",
+    "references/logging-config.md": "158e07e3237bfb61",
+    "references/mock-mode.md": "c147d9d768b4dbb0"
   },
   "entries": [
     {

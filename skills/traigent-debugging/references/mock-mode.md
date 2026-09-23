@@ -164,14 +164,14 @@ Mock mode has important limitations to be aware of:
 name: Test Optimization Setup
 on: [push]
 jobs:
-	  test:
-	    runs-on: ubuntu-latest
-	    env:
-	      TRAIGENT_MOCK_LLM: "true"
-	      TRAIGENT_RUN_APPROVED: "1"   # under GITHUB_ACTIONS every optimize() — mock included — refuses to run without this
-	    steps:
-	      - uses: actions/checkout@v4
-	      - uses: actions/setup-python@v5
+  test:
+    runs-on: ubuntu-latest
+    env:
+      TRAIGENT_MOCK_LLM: "true"
+      TRAIGENT_RUN_APPROVED: "1"   # under GITHUB_ACTIONS every optimize() — mock included — refuses to run without this
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: pip install "traigent[dev]>=0.19"

@@ -105,8 +105,10 @@ This variable controls traceback display for `ConfigurationError` specifically.
 ConfigurationError shows a clean, single-line message:
 
 ```
-traigent.utils.exceptions.ConfigurationError: Invalid configuration_space: 'model' values must be a list
+traigent.utils.exceptions.ConfigurationError: algorithm='bayesian' requires managed optimization and cannot be used with offline=True or TRAIGENT_OFFLINE=1.
 ```
+
+(Raised at decoration by `@traigent.optimize(..., offline=True, algorithm="bayesian")`.)
 
 ### With TRAIGENT_DEBUG=1
 
@@ -114,14 +116,19 @@ Full Python traceback is shown:
 
 ```
 Traceback (most recent call last):
-  File "my_script.py", line 15, in <module>
-    results = func.optimize_sync()
-  File "/path/to/traigent/core/optimized_function.py", line 234, in optimize
-    self._validate_config_space(config_space)
-  File "/path/to/traigent/core/optimized_function.py", line 178, in _validate_config_space
-    raise ConfigurationError(f"Invalid configuration_space: '{key}' values must be a list")
-traigent.utils.exceptions.ConfigurationError: Invalid configuration_space: 'model' values must be a list
+  File "my_script.py", line 2, in <module>
+    @traigent.optimize(eval_dataset="eval_data.jsonl", configuration_space={"model": ["a", "b"]}, offline=True, algorithm="bayesian")
+  File "/path/to/traigent/api/decorators.py", line 3088, in optimize
+    execution_policy = _resolve_execution_policy_from_options(
+  File "/path/to/traigent/api/decorators.py", line 1687, in _resolve_execution_policy_from_options
+    return resolve_execution_policy(
+  File "/path/to/traigent/config/types.py", line 550, in resolve_execution_policy
+    raise ConfigurationError(
+traigent.utils.exceptions.ConfigurationError: algorithm='bayesian' requires managed optimization and cannot be used with offline=True or TRAIGENT_OFFLINE=1.
 ```
+
+Line numbers vary by SDK version. A non-list or empty `configuration_space` is not a
+`ConfigurationError` (see [Error Reference](error-reference.md)).
 
 ```bash
 # Enable
