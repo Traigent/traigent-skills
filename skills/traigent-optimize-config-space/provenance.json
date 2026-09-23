@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f85951d91036b969",
+  "doc_hash": "e0c766ff58819bea",
   "reference_hashes": {
-    "references/constraints.md": "8c9386c29dcc26d5",
+    "references/constraints.md": "5e71abfb2b4485be",
     "references/parameter-types.md": "03c333a37aab008f",
     "references/structural-spine.md": "18a04d08be655245"
   },
@@ -133,6 +133,17 @@
       "doc_before_hash": "ee271549cf8f69ad",
       "doc_after_hash": "f85951d91036b969",
       "note": "Metric-aware lambda constraints are post-trial checks on the current trial's metrics (not past trials, not a spend limit); examples use real keys and fail closed on a missing key.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-341",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "f85951d91036b969",
+      "doc_after_hash": "e0c766ff58819bea",
+      "note": "Satisfiability: continuous spaces return SatStatus.UNKNOWN (only finite spaces are enumerated), handle that branch, and unsat_core lists every constraint index rather than a minimal core.",
       "source_type": "agent"
     }
   ]

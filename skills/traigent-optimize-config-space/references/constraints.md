@@ -326,6 +326,8 @@ print(result.violations)      # [] (empty if valid)
 
 # Check if the space has any valid configurations
 sat = space.check_satisfiability()
+# sat.status is SatStatus.UNKNOWN ("not checked") for any Range/IntRange without `step=` or
+# above 10,000 combinations; on UNSAT, sat.unsat_core lists every constraint index, not a minimal core.
 ```
 
 ---

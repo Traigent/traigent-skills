@@ -387,14 +387,22 @@ print(result.is_valid)  # True
 sat = space.check_satisfiability()
 print(sat)
 # `check_satisfiability()` returns a `SatResult` (frozen dataclass, no truthiness override —
-# `bool(sat)` is always True, so never `if sat:`). Check the field instead:
+# `bool(sat)` is always True, so never `if sat:`). Check the field instead. The built-in
+# validator only enumerates FINITE spaces (Choices, or Range/IntRange with `step=`, up to
+# 10,000 combinations), so any continuous Range (like `temperature` above) returns
+# SatStatus.UNKNOWN = "not checked".
 from traigent_validation import SatStatus
 
 if sat.status is SatStatus.UNSAT:
-    # `sat.unsat_core` names the offending constraint indices. The constraints rule out every
-    # combination in the space — no trial can ever run. Loosen or drop a constraint (widen a
-    # `Range`, remove an `implies`/mutual-exclusion rule) and re-check before wiring the
-    # decorator; do not proceed to `@traigent.optimize` with an unsatisfiable space.
+    # Every finite combination is ruled out, so no trial can ever run. `sat.unsat_core` lists
+    # ALL constraint indices (not a minimal core); bisect the constraints to find the conflict.
+    # Loosen or drop a constraint (widen a `Range`, remove an `implies`/mutual-exclusion rule)
+    # and re-check before wiring the decorator; do not proceed to `@traigent.optimize` with an
+    # unsatisfiable space.
+    ...
+elif sat.status is SatStatus.UNKNOWN:
+    # Not proven either way. To actually check, discretize the space (add `step=`) or
+    # spot-check with space.validate({...}) on representative configs.
     ...
 
 # Use with decorator
