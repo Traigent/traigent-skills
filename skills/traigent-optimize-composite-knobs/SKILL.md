@@ -83,20 +83,23 @@ def _stage(outputs: list[str]) -> StageRunner:
     eval_dataset="eval/composite_demo.jsonl",
     objectives=["accuracy"],
     configuration_space={
-        "variant": ["cheap", "strong"],
         # Declare the threshold as a tuned variable so params[GATE] resolves.
         # The optimizer searches discrete margin values; the winning value
         # doubles as the live calibrated_value passed to execute_composite.
         GATE: [0.3, 0.5, 0.7],
     },
-    default_config={"variant": "cheap", GATE: 0.5},
+    default_config={GATE: 0.5},
 )
 def answer(text: str) -> tuple[str, dict[str, float]]:
     cfg = traigent.get_config()
     params = dict(cfg)
     run = execute_composite(
         COMPOSITE.structure,
-        {"cheap": _stage(["weak-guess"]), "strong": _stage([_DEMO_STRONG_OUTPUT])},
+        # Three cheap samples with a 2-1 split: a margin gate needs more than one vote.
+        {
+            "cheap": _stage(["weak-guess", "weak-guess", "other-guess"]),
+            "strong": _stage([_DEMO_STRONG_OUTPUT]),
+        },
         config=params,
         calibrated_values={GATE: params[GATE]},
     )
@@ -108,6 +111,10 @@ def answer(text: str) -> tuple[str, dict[str, float]]:
     merge_composite_measures(metrics, run)
     return str(run.output), metrics
 ```
+
+The base arm must return more than one sample. With `samples=1` the vote margin is always 1.0,
+so the gate never escalates and every threshold scores the same. In this block the 2-1 split
+accepts the cheap answer at the lower thresholds and escalates to the strong arm at 0.7.
 
 The evaluator recognizes exactly a two-item tuple `(output, metrics)` where `metrics` is numeric and identifier-keyed. Other return shapes are not unpacked.
 
