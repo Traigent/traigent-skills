@@ -109,10 +109,18 @@ def _run_driver(tmp_path: Path, block: str, body: str) -> dict:
     return json.loads(results[-1])
 
 
-def test_no_case_sensitive_strip_comparator_under_skills() -> None:
+def _case_sensitive_comparators(skills_root: Path) -> list[str]:
+    """Guidance lines that compare with strip() on both sides but miss lower().
+
+    Scans customer guidance only. A skill's own ``tests/`` tree is test data
+    (fixtures may be case-sensitive on purpose) and is skipped.
+    """
     offenders = []
-    for path in sorted((REPO_ROOT / "skills").rglob("*")):
+    for path in sorted(skills_root.rglob("*")):
         if not path.is_file() or path.suffix not in {".md", ".py"}:
+            continue
+        relative = path.relative_to(skills_root)
+        if len(relative.parts) > 1 and relative.parts[1] == "tests":
             continue
         for number, line in enumerate(
             path.read_text(encoding="utf-8").splitlines(), start=1
@@ -122,14 +130,33 @@ def test_no_case_sensitive_strip_comparator_under_skills() -> None:
             if not is_strip_comparator or "case-sensitive" in line:
                 continue
             if "lower()" not in left or "lower()" not in right:
-                offenders.append(
-                    f"{path.relative_to(REPO_ROOT)}:{number}: {line.strip()}"
-                )
+                offenders.append(f"{relative}:{number}: {line.strip()}")
+    return offenders
+
+
+def test_no_case_sensitive_strip_comparator_under_skills() -> None:
+    offenders = _case_sensitive_comparators(REPO_ROOT / "skills")
     assert not offenders, (
         "comparators must match the SDK's case-insensitive accuracy "
         "(`.strip().lower()` on both sides), or say `case-sensitive` on the same line:\n"
         + "\n".join(offenders)
     )
+
+
+def test_comparator_lint_scans_guidance_not_skill_tests(tmp_path: Path) -> None:
+    offending = "    return 1.0 if output.strip() == expected.strip() else 0.0\n"
+    skill = tmp_path / "skills" / "demo-skill"
+    (skill / "references").mkdir(parents=True)
+    (skill / "tests" / "fixtures").mkdir(parents=True)
+    (skill / "SKILL.md").write_text(f"```python\n{offending}```\n", encoding="utf-8")
+    (skill / "references" / "guide.md").write_text(offending, encoding="utf-8")
+    (skill / "tests" / "test_demo.py").write_text(offending, encoding="utf-8")
+    (skill / "tests" / "fixtures" / "scorer.py").write_text(offending, encoding="utf-8")
+    offenders = _case_sensitive_comparators(tmp_path / "skills")
+    assert [line.split(":", 1)[0] for line in offenders] == [
+        "demo-skill/SKILL.md",
+        "demo-skill/references/guide.md",
+    ], offenders
 
 
 RUN_TIER = """
