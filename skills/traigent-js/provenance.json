@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "24f18c1bfed79ec9",
+  "doc_hash": "b54e62aad87dc656",
   "entries": [
     {
       "edit_id": "genesis",
@@ -62,6 +62,17 @@
       "doc_before_hash": "fa9a1399055b04b9",
       "doc_after_hash": "24f18c1bfed79ec9",
       "note": "Rebuild issue #150 on current main: recommend file/link path dependencies over npm link under pnpm/yarn and document the AsyncLocalStorage ESM caveat.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-303",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "24f18c1bfed79ec9",
+      "doc_after_hash": "b54e62aad87dc656",
+      "note": "Match the current JS SDK default branch: requireCloud / TRAIGENT_REQUIRE_CLOUD=1 makes algorithm='auto' fail closed; mode/offlineMode/privacy/hybridApiOptions and spec execution.mode throw; hyperband and frontier_scout are not JS algorithm values and TVL pareto_optimal/frontier_scout strategies are rejected natively; isInTrial is TrialContext.isInTrial(), not an export.",
       "source_type": "agent"
     }
   ]

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: javascript
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.7"
+  version: "1.0.8"
 ---
 
 # Traigent JS/TS SDK
@@ -100,36 +100,33 @@ answerQuestion.applyBestConfig(result);
 ## Runtime Rules
 
 - Native/local algorithms are `grid` and `random`.
-- Smart strategy names accepted by the JS SDK's algorithm contract are the `bayesian`/`optuna`/`tpe` family plus `cmaes`/`nsga2` variants (`SMART_OPTIMIZATION_ALGORITHMS` in `src/optimization/algorithm-contract.ts`). They are backend-routed surfaces, not native local search implementations — this skill does not claim they currently execute. **`hyperband` is not an accepted JS algorithm name, and `frontier_scout` is not an algorithm at all** — it is TVL selection-policy vocabulary (see below).
+- Smart strategy names accepted by the JS SDK's algorithm contract are the `bayesian`/`optuna`/`tpe` family plus `cmaes`/`nsga2` variants (`SMART_OPTIMIZATION_ALGORITHMS` in `src/optimization/algorithm-contract.ts`). They are backend-routed surfaces, not native local search implementations — this skill does not claim they currently execute. **`hyperband` and `frontier_scout` are not accepted JS `algorithm` values** (the JS SDK throws `ValidationError`). In a TVL spec, `exploration.strategy: pareto_optimal` is rejected by the native JS runtime (hybrid/server only), and `frontier_scout` is rejected outright.
 - **Backend availability (verified server-side 2026-07-02):** the backend's **classic session-create path** — the one the Python decorator uses — executes only `grid`/`random` and rejects other algorithm names. A **separate typed/interactive backend session API** does support `optimization_strategy.algorithm="optuna"` with TPE/random/CMA-ES samplers. Whether the JS SDK's smart strategies route to that typed path has **not been verified** — confirm live behavior against your backend before promising a smart strategy runs; do not present them as verified-working values.
-- In TVL promotion/selection policy, `pareto_optimal` is accepted as a compatibility alias for `frontier_scout` — selection-policy vocabulary, not an `algorithm` value.
 - `evaluation.data` or `evaluation.loadData` is required for high-level native optimization.
 <!-- PROTECTED -->
 - `budget.maxCostUsd` is enforced from numeric `metrics.total_cost` or `metrics.cost`; provider billing remains the user's responsibility.
 - The JS SDK has no pricing tables or pricing env vars. Cost exists only when the trial returns numeric `metrics.total_cost`, `metrics.cost`, or `metrics.input_cost` plus `metrics.output_cost`.
 - Before any full run, verify with a tiny real optimization that cost and your other KPIs are actually tracked: trial metrics must include numeric cost and populated objective metrics, with an `accuracy` metric by default unless accuracy does not apply. If not, return the cost metrics directly before scaling up. The probe is itself a paid run — the same dry-run-first / explicit-user-approval gate applies to it.
 <!-- /PROTECTED -->
-- Trial context is available during wrapped execution. Use `getTrialParam`, `getTrialConfig`, `TrialContext.run`, `isInTrial`, and `wrapCallback` rather than module-level globals.
+- Trial context is available during wrapped execution. Use `getTrialParam`, `getTrialConfig`, `TrialContext.run`, `TrialContext.isInTrial()`, and `wrapCallback` rather than module-level globals.
 - **Trial context propagation is Node's `AsyncLocalStorage`** (`node:async_hooks`), so it survives `await`
   and native Promise chains automatically but is *not* guaranteed across callback-style APIs, worker
   threads, or some third-party libraries/older transpiled ESM output that break the async call chain
   (e.g. a callback fired from a native binding, or a bundler that re-implements Promises) — wrap those
   boundaries with `wrapCallback` or `bindContext` rather than assuming the context follows.
 - JS supports `context`, `parameter`, and `seamless` injection modes. Use `context` unless the host app naturally accepts a config parameter or intentionally opts into seamless framework/rewrite support.
-- `algorithm: 'auto'` that cannot reach the backend **falls back to a local `random` search** with only a `console.warn` (`[traigent] algorithm="auto" could not reach the Traigent backend; falling back to local random search.`). Read `result.metadata?.source` before reporting: `'local_fallback'` is not the managed run and must not be presented as one; `'cloud_brain'` is. A backend 401/402/403/429 throws instead of falling back. There is no JS equivalent of Python's `TRAIGENT_REQUIRE_CLOUD` yet (Traigent/traigent-js#355).
+- `algorithm: 'auto'` that cannot reach the backend **falls back to a local `random` search** with only a `console.warn` (`[traigent] algorithm="auto" could not reach the Traigent backend; falling back to local random search.`). Read `result.metadata?.source` before reporting: `'local_fallback'` is not the managed run and must not be presented as one; `'cloud_brain'` is. A backend 401/402/403/429 throws instead of falling back. To make an unreachable backend throw instead of falling back, pass `requireCloud: true` on `.optimize({ ... })` (or set `TRAIGENT_REQUIRE_CLOUD=1`); combining it with `offline: true` or `grid`/`random` throws up front, because neither ever calls the backend.
 - There is no guided JS first run: `traigent-first-run` optimizes a Python callable, so a JS agent that went through it was measured through a thin Python adapter or a generated substitute, not natively. Treat that result as a workflow demonstration for the JS agent, and start its own measurement here.
 
 ## Offline / Zero-Egress
 
 Pass `offline: true` on `.optimize({ ... })` — it is an optimize option, not a spec
 field — when the run must avoid Traigent-backend egress; `TRAIGENT_OFFLINE_MODE` (alias
-`TRAIGENT_OFFLINE`) is also read. Do not write `mode`: on the repository's default branch
-(`main` @ `9580f57`, what a source build gives you) `mode`, `offlineMode`, `privacy` and
-`execution.mode` are still accepted as **deprecated aliases** that map onto `algorithm`
-(`"grid"`/`"random"` = local, `"auto"` or a smart algorithm = cloud) plus `offline`, or
-`externalServiceEvaluator` for an external-service evaluator; the next release (`develop` @
-`7b7cd07`, `src/optimization/spec.ts`) removes them and each throws a `ValidationError` naming
-the replacement, e.g. `optimize() offlineMode was removed. Use offline instead.`
+`TRAIGENT_OFFLINE`) is also read. Do not write `mode`, `offlineMode`, `privacy` or
+`hybridApiOptions` on `.optimize({ ... })`, or `execution.mode` in the spec: they were removed
+and each throws a `ValidationError` naming its replacement (`algorithm` + `offline`), e.g.
+`optimize() offlineMode was removed. Use offline instead.` `externalServiceEvaluator` is not
+supported by the JS runtime; use the Python SDK for external-service evaluation.
 
 In offline mode, backend HTTP is refused by the SDK's offline guard and only
 local algorithms (`grid` and `random`) run. Do not expect portal tracking or
