@@ -69,7 +69,7 @@ from traigent.api.types import OptimizationResult  # equivalently: traigent.Opti
 
 See `traigent-analyze-results` for the full field reference.
 
-> **Dry-run first.** Before a real (paid) run, always validate in mock mode and present a cost estimate to the user. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+> **Dry-run first.** Before a real (paid) run, always validate in mock mode and present a cost estimate to the user. See `traigent-boost-agent` (Your Role; Step 4: Report and Estimate Costs) for the mandatory dry-run-first / cost-approval workflow.
 >
 > ```python
 > from traigent.testing import enable_mock_mode_for_quickstart
@@ -355,7 +355,7 @@ Notes:
 
 ### Pre-Approving Costs
 
-The `traigent` lifecycle skill mandates: **dry-run in mock mode first, present the cost estimate, then get explicit user approval before the real run.** Only pre-approve costs in automated pipelines where a human has already reviewed and approved the dry-run estimate. Never bypass this gate on a user's first run or when the config space has changed.
+The `traigent-boost-agent` lifecycle skill mandates: **dry-run in mock mode first, present the cost estimate, then get explicit user approval before the real run.** Only pre-approve costs in automated pipelines where a human has already reviewed and approved the dry-run estimate. Never bypass this gate on a user's first run or when the config space has changed.
 
 To skip the interactive cost approval handshake in an already-approved pipeline:
 
@@ -645,7 +645,7 @@ asyncio.run(main())
 - `references/algorithms.md` - Detailed algorithm comparison
 - `references/parallel-config.md` - Full ParallelConfig reference
 - `references/cost-management.md` - Cost enforcement details
-- `traigent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
+- `traigent-boost-agent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
 - `traigent-setup-quickstart` - Installation and first optimization with mock mode
 - `traigent-setup-decorator` - Full `@traigent.optimize()` parameter reference
 - `traigent-analyze-results` - **Next step:** read `best_config`/`best_score`, compare trials, extract the quality/cost/latency trade-off, and apply the best config after `optimize()` returns

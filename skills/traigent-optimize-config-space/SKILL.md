@@ -553,7 +553,7 @@ You have defined the search space. Now run it:
 
 ## See Also
 
-- `traigent` — lifecycle driver (dry-run-first / cost-approval mandate)
+- `traigent-boost-agent` — lifecycle driver (dry-run-first / cost-approval mandate)
 - `traigent-optimize-run` — run the space you just defined
 - `traigent-analyze-results` — read `best_config`/`best_score` and the trade-off after the run
 

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c8f9e81595e8e12a",
+  "doc_hash": "46685c20386e0605",
   "reference_hashes": {
     "references/algorithms.md": "db69c2000f420d7c",
     "references/cost-management.md": "ca7cd1767e771e45",
@@ -256,6 +256,17 @@
       "doc_before_hash": "918e30a220a12d20",
       "doc_after_hash": "c8f9e81595e8e12a",
       "note": "Function-side cost: teach traigent.with_usage(text, total_cost=...) with a runnable snippet instead of reserved total_cost/cost/input_cost/output_cost metrics keys, which the Python SDK drops.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-324",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c8f9e81595e8e12a",
+      "doc_after_hash": "46685c20386e0605",
+      "note": "Point the dry-run-first / cost-approval pointers at traigent-boost-agent; the old traigent lifecycle skill was merged into it.",
       "source_type": "agent"
     }
   ]

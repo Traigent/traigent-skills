@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e0c766ff58819bea",
+  "doc_hash": "2b1320b384a6842f",
   "reference_hashes": {
     "references/constraints.md": "5e71abfb2b4485be",
     "references/parameter-types.md": "03c333a37aab008f",
@@ -144,6 +144,17 @@
       "doc_before_hash": "f85951d91036b969",
       "doc_after_hash": "e0c766ff58819bea",
       "note": "Satisfiability: continuous spaces return SatStatus.UNKNOWN (only finite spaces are enumerated), handle that branch, and unsat_core lists every constraint index rather than a minimal core.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-324",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "e0c766ff58819bea",
+      "doc_after_hash": "2b1320b384a6842f",
+      "note": "Point the See Also lifecycle-driver entry at traigent-boost-agent; the old traigent skill was merged into it.",
       "source_type": "agent"
     }
   ]
