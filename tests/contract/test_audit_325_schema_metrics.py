@@ -39,6 +39,8 @@ def test_template_metrics_score_json_objects(tmp_path: Path) -> None:
     for reply in ['{{"label": "billing", "days_overdue": 12}}', '{{ "days_overdue" : 12,  "label":"billing" }}']:
         out["exact"][reply] = exact(reply, gold, fields)
         out["schema"][reply] = schema(reply, gold, fields)
+    out["exact_dict_output"] = exact({{"days_overdue": 12, "label": "billing"}}, gold, fields)
+    out["schema_dict_output"] = schema({{"days_overdue": 12, "label": "billing"}}, gold, fields)
     out["exact_wrong"] = exact('{{"label": "refund", "days_overdue": 12}}', gold, fields)
     out["exact_text_gold"] = exact("  Billing  ", "billing", {{}})
     for reply in {NON_OBJECT_REPLIES!r}:
@@ -60,6 +62,9 @@ def test_template_metrics_score_json_objects(tmp_path: Path) -> None:
         assert result["exact"][reply] == 1.0, (reply, result)
         assert result["schema"][reply] == 1.0, (reply, result)
     assert result["exact_wrong"] == 0.0
+    # An agent that already returns a parsed dict is scored like its JSON text.
+    assert result["exact_dict_output"] == 1.0, result
+    assert result["schema_dict_output"] == 1.0, result
     assert result["exact_text_gold"] == 1.0
     for reply in NON_OBJECT_REPLIES:
         assert result["schema"][reply] == 0.0, (reply, result)
@@ -73,6 +78,7 @@ def test_choose_metric_valid_schema_rejects_non_objects(tmp_path: Path) -> None:
     schema = ns["valid_schema_metric"]
     out = {{"scores": {{}}, "errors": []}}
     good = '{{"invoice_id": "INV-1", "amount_due": 3, "due_date": "2026-01-01"}}'
+    out["dict_output"] = schema(json.loads(good), None, {{}})
     for reply in [good] + {NON_OBJECT_REPLIES!r}:
         try:
             out["scores"][reply] = schema(reply, None, {{}})
@@ -92,6 +98,7 @@ def test_choose_metric_valid_schema_rejects_non_objects(tmp_path: Path) -> None:
     )
     for reply in NON_OBJECT_REPLIES:
         assert result["scores"][reply] == 0.0, (reply, result)
+    assert result["dict_output"] == 1.0, result
 
 
 def test_template_runs_every_trial_on_mixed_replies(tmp_path: Path) -> None:

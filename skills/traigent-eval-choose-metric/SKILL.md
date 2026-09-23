@@ -119,7 +119,7 @@ from traigent.api.decorators import EvaluationOptions
 
 def valid_schema_metric(output, expected, input_data) -> float:
     try:
-        data = json.loads(output)
+        data = output if isinstance(output, dict) else json.loads(output)  # agent may return a dict
     except (json.JSONDecodeError, TypeError):
         return 0.0
     # Valid JSON that is not an object (42, null, a list of field names) is a wrong answer.

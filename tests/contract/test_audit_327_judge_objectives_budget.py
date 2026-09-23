@@ -17,6 +17,7 @@ refused; an unset budget raises instead of scoring 0.0.
 
 from __future__ import annotations
 
+import re
 import textwrap
 from pathlib import Path
 
@@ -286,3 +287,13 @@ def test_judge_budget_updates_counters_under_its_lock(
     assert result["lock_entries"] == 8, result  # every try_spend call takes the lock
     assert (result["granted"], result["refused"]) == (5, 3), result
     assert result["stress"] == [[5, 59]] * 10, result
+
+
+def test_judge_prose_bullet_count_matches_its_lead_in() -> None:
+    text = TEMPLATES.read_text(encoding="utf-8")
+    section = text.split("## LLM judge with rubric", 1)[1].split("```python", 1)[0]
+    lead = re.search(r"^(\w+) things the template does on purpose:$", section, re.M)
+    assert lead, "missing lead-in sentence"
+    bullets = re.findall(r"^- \*\*", section, re.M)
+    words = {"two": 2, "three": 3, "four": 4, "five": 5}
+    assert words[lead.group(1).lower()] == len(bullets), (lead.group(0), len(bullets))

@@ -35,14 +35,15 @@ def exact_normalized_metric(output, expected, input_data) -> float:
     # Python's single-quoted repr and never equal the model's JSON text.
     if isinstance(expected, (dict, list)):
         try:
-            return 1.0 if json.loads(output) == expected else 0.0
+            parsed = output if isinstance(output, (dict, list)) else json.loads(output)
         except (json.JSONDecodeError, TypeError):
             return 0.0
+        return 1.0 if parsed == expected else 0.0
     return 1.0 if normalize_text(output) == normalize_text(expected) else 0.0
 
 def valid_schema_metric(output, expected, input_data) -> float:
     try:
-        data = json.loads(output)
+        data = output if isinstance(output, dict) else json.loads(output)  # agent may return a dict
     except (json.JSONDecodeError, TypeError):
         return 0.0
     # Valid JSON that is not an object (42, null, a list of field names) is a wrong answer.
@@ -71,7 +72,7 @@ def extract(text: str, required_fields: list[str]) -> str:
 
 Use this only when deterministic labels are insufficient. The judge score is a model opinion under the rubric. Parse failures fail closed to `0.0`, and judge cost is counted in metrics.
 
-Two things the template does on purpose:
+Three things the template does on purpose:
 
 - **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list orients names the SDK does not recognize (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher. Declare every custom objective's orientation with `ObjectiveSchema`.
 - **Only the agent call is metered.** The SDK's `cost` and `TRAIGENT_RUN_COST_LIMIT` see the first LLM call per row, not the judge call; see "Cost metering caveat for multi-call evaluators" below.
