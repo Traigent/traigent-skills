@@ -173,3 +173,45 @@ def test_the_scorer_probe_gets_no_key_or_token_variables(
     assert visible == {"PATH", "HOME"}
     assert int(probe["scores"]["good"][0]) & 32 == 0
     assert SENTINEL not in card
+
+
+# Credential shapes a suffix denylist let through (and the ones it caught): the
+# probe gets an allowlist, so every one of them, and any unknown name, is
+# withheld. Values are placeholders; only whether the NAME is visible matters.
+_WITHHELD = tuple(
+    """
+    API_TOKENS AWS_ACCESS_KEY_ID AWS_WEB_IDENTITY_TOKEN_FILE
+    AZURE_STORAGE_CONNECTION_STRING CLIENT_SECRETS DATABASE_URL GITHUB_PAT
+    GPG_PASSPHRASE HTTPS_PROXY KUBECONFIG MYSQL_PWD NETRC PASSWORD PGPASSWORD
+    PIP_INDEX_URL REDIS_URL SECRET SENTRY_DSN SLACK_WEBHOOK_URL SMTP_PASS
+    SSH_AUTH_SOCK TOKEN AWS_SECRET_ACCESS_KEY AWS_SESSION_TOKEN DB_PASSWORD
+    GOOGLE_APPLICATION_CREDENTIALS HF_TOKEN OPENAI_API_KEY FOO
+    """.split()
+)
+_PASSED = ("PATH", "HOME", "LC_CTYPE")
+
+
+def test_the_scorer_probe_gets_only_an_allowlisted_environment(
+    sentinel_key, monkeypatch, tmp_path: Path
+) -> None:
+    names = (*_WITHHELD, *_PASSED)
+    for name in _WITHHELD:
+        monkeypatch.setenv(name, SENTINEL)
+    monkeypatch.setenv("HOME", str(tmp_path))
+    monkeypatch.setenv("LC_CTYPE", "C.UTF-8")
+    root = tmp_path / "project"
+    root.mkdir()
+    (root / "scorer.py").write_text(
+        "import os\n\n"
+        f"NAMES = {names!r}\n\n"
+        "def score(output, expected):\n"
+        "    return float(sum(1 << i for i, n in enumerate(NAMES) if n in os.environ))\n",
+        encoding="utf-8",
+    )
+    report, card = _run(root, tmp_path)
+    probe = report["scorer_probe"]
+    assert probe["ran"] is True, probe
+    bits = int(probe["scores"]["good"][0])
+    visible = {name for i, name in enumerate(names) if bits & (1 << i)}
+    assert visible == set(_PASSED)
+    assert SENTINEL not in card

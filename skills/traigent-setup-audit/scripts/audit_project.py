@@ -247,9 +247,14 @@ KEY_ENV_NAMES = (
     "GROQ_API_KEY",
     "COHERE_API_KEY",
 )
-# Name endings that mark a credential. The scorer probe is the one process that
-# runs project code, and a deterministic scorer has no use for any of them.
-SECRET_ENV_SUFFIXES = ("_KEY", "_TOKEN", "_SECRET", "_PASSWORD", "_CREDENTIALS")
+# The only environment variables a child that runs project code receives. An
+# allowlist, not a credential denylist: credentials follow no naming rule
+# (PGPASSWORD, DATABASE_URL, SSH_AUTH_SOCK, a proxy URL with a password in it),
+# and neither the probe nor the sandbox prefix reads any other variable.
+CHILD_ENV_NAMES = frozenset(
+    {"PATH", "HOME", "LANG", "LANGUAGE", "TZ", "TMPDIR", "TMP", "TEMP"}
+)
+CHILD_ENV_PREFIXES = ("LC_",)
 MODEL_KNOB_NAMES = frozenset({"model", "model_name", "llm", "engine", "model_id"})
 
 # Names a knob can be read through without the parser being able to follow it.
@@ -1667,15 +1672,16 @@ def _framed_lines(stdout: str) -> list[str]:
 
 
 def probe_environment() -> dict[str, str]:
-    """The probe's environment: this process's own, minus every credential name.
+    """The allowlisted environment for a child that may run project code.
 
-    PATH, HOME and locale variables still reach the probe, so an ordinary
-    scorer behaves as it would anywhere else.
+    Only PATH, HOME, locale, timezone and temp-dir variables pass; every other
+    variable, credentials included, is withheld. A scorer that needs another
+    variable fails the probe and is reported by exception type and location.
     """
     return {
         name: value
         for name, value in os.environ.items()
-        if name not in KEY_ENV_NAMES and not name.upper().endswith(SECRET_ENV_SUFFIXES)
+        if name in CHILD_ENV_NAMES or name.startswith(CHILD_ENV_PREFIXES)
     }
 
 

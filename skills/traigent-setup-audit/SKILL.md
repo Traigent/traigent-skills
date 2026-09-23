@@ -525,9 +525,12 @@ that its zero-network property stays provable rather than inherited.
   both have been observed carrying an API key.
 - A key value is never read, shown or stored — only whether a known key **name**
   is set, and in which file it is declared.
-- The scorer probe runs with key, token, secret, password and credential
-  variables (names ending `_KEY`, `_TOKEN`, `_SECRET`, `_PASSWORD` or
-  `_CREDENTIALS`) removed from its environment.
+- The scorer probe runs with only an allowlisted environment: `PATH`, `HOME`,
+  locale (`LANG`, `LANGUAGE`, `LC_*`), `TZ` and temp-dir variables. Every other
+  variable, credentials included, is withheld, so a scorer that needs one fails
+  the probe and is reported by type and location. This is not a filesystem
+  boundary: files under your home directory and the project, a `.env` included,
+  stay readable to the scorer.
 - Anything in the second tier — every paid call and every byte that leaves the
   machine — waits for an explicit approval. Silence is not approval. Offer mode
   runs under the same network guard as Tier 1 and reports the level it had, so
