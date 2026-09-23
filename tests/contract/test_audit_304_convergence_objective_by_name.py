@@ -95,3 +95,14 @@ def test_best_score_curve_tracks_the_objective_on_a_multi_objective_run(
     output = completed.stdout + completed.stderr
     assert "SCORE_DIFFERS=True" in output, output  # the fixture exercises the defect
     assert "CURVE_OK=True" in output, output
+
+
+def test_custom_scorer_clause_is_scoped_to_its_own_objective_name(
+    repo_root: Path,
+) -> None:
+    text = " ".join((repo_root / REFERENCE).read_text(encoding="utf-8").split())
+    assert (
+        "a run with a custom `scoring_function` records the built-in exact-match value"
+        not in text
+    )
+    assert "a custom scorer registered under its own objective name" in text

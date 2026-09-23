@@ -29,8 +29,8 @@ in info`) silently no-ops. Build the curve yourself.
 Read each trial's objective by its own name (for example `trial.metrics["accuracy"]`), not
 `trial.metrics["score"]` (see version-matrix: `score-relocation`). On SDKs after 0.21.3 `score`
 equals the objective only for a single built-in objective: a weighted multi-objective run
-records its normalised selection basis there, and a run with a custom `scoring_function`
-records the built-in exact-match value.
+records its normalised selection basis there, and a custom scorer registered under its own
+objective name (for example `quality`) leaves `score` at the built-in exact-match value.
 
 ```python
 def best_score_curve(results, objective=None, maximize=True) -> list[float]:

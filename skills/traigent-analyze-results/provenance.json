@@ -2,7 +2,7 @@
   "schema": "skill-provenance/v1",
   "doc_hash": "c0175e1d49ce3513",
   "reference_hashes": {
-    "references/convergence-patterns.md": "7f77c824d3199e61",
+    "references/convergence-patterns.md": "1b074da6b72cce91",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/mcp-analytics-tools.md": "9d4cc7c87db109fd",
     "references/optimization-result-api.md": "0c7713bc50c16758"
