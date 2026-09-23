@@ -19,7 +19,10 @@ from pathlib import Path
 import pytest
 from traigent.integrations.dspy_adapter import DSPyPromptOptimizer
 
-from .test_audit_349_fenced_blocks import python_blocks
+from .test_audit_349_fenced_blocks import (
+    python_blocks,
+    skip_unless_current_released_sdk,
+)
 
 SKILL = "skills/traigent-setup-integrations"
 PAGES = (f"{SKILL}/SKILL.md", f"{SKILL}/references/dspy.md")
@@ -95,7 +98,12 @@ def _call_kwarg_violations(rel: str, text: str) -> list[str]:
     return violations
 
 
-def test_dspy_parameter_tables_match_installed_signatures(repo_root: Path) -> None:
+def test_dspy_parameter_tables_match_installed_signatures(
+    repo_root: Path, sync_map: dict, sdk_version_label: str
+) -> None:
+    skip_unless_current_released_sdk(
+        sync_map, sdk_version_label, "the DSPy adapter reference"
+    )
     text = (repo_root / PAGES[1]).read_text(encoding="utf-8")
     mismatches = _compare(text, "Constructor", DSPyPromptOptimizer)
     mismatches += _compare(
@@ -104,7 +112,12 @@ def test_dspy_parameter_tables_match_installed_signatures(repo_root: Path) -> No
     assert not mismatches, "\n".join(mismatches)
 
 
-def test_dspy_examples_pass_only_accepted_arguments(repo_root: Path) -> None:
+def test_dspy_examples_pass_only_accepted_arguments(
+    repo_root: Path, sync_map: dict, sdk_version_label: str
+) -> None:
+    skip_unless_current_released_sdk(
+        sync_map, sdk_version_label, "the DSPy adapter reference"
+    )
     violations: list[str] = []
     for rel in PAGES:
         text = (repo_root / rel).read_text(encoding="utf-8")
@@ -125,7 +138,12 @@ def test_dspy_lints_have_teeth() -> None:
     assert not _call_kwarg_violations("good.md", good.replace('method="mipro", ', ""))
 
 
-def test_dspy_optimizer_examples_run_with_dummy_lm(repo_root: Path) -> None:
+def test_dspy_optimizer_examples_run_with_dummy_lm(
+    repo_root: Path, sync_map: dict, sdk_version_label: str
+) -> None:
+    skip_unless_current_released_sdk(
+        sync_map, sdk_version_label, "the DSPy adapter reference"
+    )
     dspy = pytest.importorskip("dspy")
     from dspy.utils import DummyLM
 

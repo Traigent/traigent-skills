@@ -16,7 +16,11 @@ import ast
 import re
 from pathlib import Path
 
-from .test_audit_349_fenced_blocks import python_blocks, scoped_markdown
+from .test_audit_349_fenced_blocks import (
+    python_blocks,
+    scoped_markdown,
+    skip_unless_current_released_sdk,
+)
 
 VERSION_GATE_RE = re.compile(
     r"Released SDK caveat:\*\* on `traigent<=0\.27\.0` auto-override is a silent no-op"
@@ -88,7 +92,12 @@ def test_auto_override_examples_carry_the_released_sdk_gate(repo_root: Path) -> 
     assert not violations, "\n".join(violations)
 
 
-def test_supported_targets_have_sdk_parameter_mappings(repo_root: Path) -> None:
+def test_supported_targets_have_sdk_parameter_mappings(
+    repo_root: Path, sync_map: dict, sdk_version_label: str
+) -> None:
+    skip_unless_current_released_sdk(
+        sync_map, sdk_version_label, "the supported-targets list"
+    )
     from traigent.integrations import framework_override
 
     mapped = set(framework_override._framework_override_manager._parameter_mappings)

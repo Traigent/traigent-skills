@@ -19,6 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .test_audit_349_fenced_blocks import skip_unless_current_released_sdk
+
 ENV_DOC = "skills/traigent-setup-quickstart/references/environment-variables.md"
 VAR = "LITELLM_LOCAL_MODEL_COST_MAP"
 SPY = """
@@ -69,8 +71,11 @@ def _lookups(extra_env: dict[str, str]) -> list[str]:
 
 
 def test_documented_environment_imports_litellm_without_a_lookup(
-    repo_root: Path,
+    repo_root: Path, sync_map: dict, sdk_version_label: str
 ) -> None:
+    skip_unless_current_released_sdk(
+        sync_map, sdk_version_label, "the LiteLLM cost-map guidance"
+    )
     row = _table_row((repo_root / ENV_DOC).read_text(encoding="utf-8"))
     lookups = _lookups(_documented_env(row))
     assert not lookups, (
@@ -79,7 +84,12 @@ def test_documented_environment_imports_litellm_without_a_lookup(
     )
 
 
-def test_cost_map_egress_check_has_teeth() -> None:
+def test_cost_map_egress_check_has_teeth(
+    sync_map: dict, sdk_version_label: str
+) -> None:
+    skip_unless_current_released_sdk(
+        sync_map, sdk_version_label, "the LiteLLM cost-map guidance"
+    )
     assert _documented_env("| `X` | `True` (set by the SDK) | ... |") == {}
     assert _documented_env(f"| x | Set `{VAR}=True` in the environment |") == {
         VAR: "True"

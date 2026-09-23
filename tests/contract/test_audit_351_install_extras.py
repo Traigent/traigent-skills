@@ -12,6 +12,8 @@ import importlib.metadata
 import re
 from pathlib import Path
 
+from .test_audit_349_fenced_blocks import skip_unless_current_released_sdk
+
 EXTRA_USE_RE = re.compile(r"\btraigent\[([A-Za-z0-9_,\s-]+)\]")
 PLACEHOLDER_EXTRAS = {"extra_name"}  # the generic `traigent[extra_name]` syntax line
 BUNDLES = ("recommended", "all", "enterprise")
@@ -92,7 +94,10 @@ def _table_row(text: str, extra: str) -> set[str]:
     return {part.strip() for part in row.group(1).split(",") if part.strip()}
 
 
-def test_taught_extras_are_declared_by_the_wheel(repo_root: Path) -> None:
+def test_taught_extras_are_declared_by_the_wheel(
+    repo_root: Path, sync_map: dict, sdk_version_label: str
+) -> None:
+    skip_unless_current_released_sdk(sync_map, sdk_version_label, "the extras table")
     declared = _declared_extras()
     assert declared, "installed traigent declares no extras; wrong distribution?"
     violations: list[str] = []
@@ -104,7 +109,10 @@ def test_taught_extras_are_declared_by_the_wheel(repo_root: Path) -> None:
     assert not violations, "\n".join(violations)
 
 
-def test_bundle_rows_match_wheel_requires_dist(repo_root: Path) -> None:
+def test_bundle_rows_match_wheel_requires_dist(
+    repo_root: Path, sync_map: dict, sdk_version_label: str
+) -> None:
+    skip_unless_current_released_sdk(sync_map, sdk_version_label, "the extras table")
     text = (repo_root / TABLE).read_text(encoding="utf-8")
     mismatches = []
     for bundle in BUNDLES:
@@ -118,7 +126,10 @@ def test_bundle_rows_match_wheel_requires_dist(repo_root: Path) -> None:
     assert not mismatches, "\n".join(mismatches)
 
 
-def test_every_row_names_only_packages_its_extra_installs(repo_root: Path) -> None:
+def test_every_row_names_only_packages_its_extra_installs(
+    repo_root: Path, sync_map: dict, sdk_version_label: str
+) -> None:
+    skip_unless_current_released_sdk(sync_map, sdk_version_label, "the extras table")
     text = (repo_root / TABLE).read_text(encoding="utf-8")
     wheel = {extra: _extra_requirements(extra) for extra in _declared_extras()}
     violations = _scan_row_packages(text, wheel)

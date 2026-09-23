@@ -8,6 +8,11 @@ returns every Python block with its blockquote markers and indentation removed.
 
 The probe test below plants one violation per lint in each of those forms and
 requires every lint to report it.
+
+``skip_unless_current_released_sdk`` is the shared gate for audit tests that compare
+the docs with the *installed* SDK. The docs describe the current released SDK
+(``sync_map.yml`` ``current_released_sdk_version``); the contract job also runs
+older and develop buckets, where the installed wheel legitimately differs.
 """
 
 from __future__ import annotations
@@ -15,6 +20,8 @@ from __future__ import annotations
 import re
 import textwrap
 from pathlib import Path
+
+import pytest
 
 SCOPED_SKILLS = (
     "traigent-setup-decorator",
@@ -57,6 +64,17 @@ def python_blocks(text: str) -> list[tuple[int, str]]:
         if language in PYTHON_LANGUAGES:
             blocks.append((start, textwrap.dedent("\n".join(body)) + "\n"))
     return blocks
+
+
+def skip_unless_current_released_sdk(
+    sync_map: dict, sdk_version_label: str, what: str
+) -> None:
+    """Skip unless the bucket under test is the SDK release the docs describe."""
+    current = str(sync_map["current_released_sdk_version"])
+    if sdk_version_label != current:
+        pytest.skip(
+            f"{what} documents traigent {current}; this bucket installs {sdk_version_label}"
+        )
 
 
 def scoped_markdown(repo_root: Path) -> list[Path]:

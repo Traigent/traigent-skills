@@ -15,6 +15,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from .test_audit_349_fenced_blocks import skip_unless_current_released_sdk
+
 SKILL = "skills/traigent-setup-decorator"
 JSON_BLOCK_RE = re.compile(r"^```(?:json|jsonl)\n(.*?)^```", re.S | re.M)
 
@@ -52,8 +54,11 @@ def _validate(rows: str, workdir: Path) -> subprocess.CompletedProcess[str]:
 
 
 def test_decorator_dataset_rows_pass_traigent_validate(
-    repo_root: Path, tmp_path: Path
+    repo_root: Path, tmp_path: Path, sync_map: dict, sdk_version_label: str
 ) -> None:
+    skip_unless_current_released_sdk(
+        sync_map, sdk_version_label, "the dataset-row examples"
+    )
     failures = []
     checked = 0
     for path in [
