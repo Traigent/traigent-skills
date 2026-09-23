@@ -516,3 +516,52 @@ def test_a_venv_without_the_sdk_reads_as_not_installed(tmp_path: Path) -> None:
     assert not marker.exists()
     assert report["setup"]["sdk"]["traigent_version"] is None
     assert "traigent is not installed for" in card
+
+
+needs_git = pytest.mark.skipif(shutil.which("git") is None, reason="git is not installed")
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", "-C", str(root), *args], capture_output=True, check=True, timeout=60
+    )
+
+
+@needs_git
+@pytest.mark.parametrize("ignored", [True, False])
+def test_the_env_file_check_runs_no_project_configured_git_hook(
+    ignored: bool, sentinel_key, tmp_path: Path
+) -> None:
+    """`git check-ignore` honours a project's `core.fsmonitor`, which is a
+    command the project chooses. The audit must not run it, and the answer
+    about `.env` must still be right."""
+    root = tmp_path / "project"
+    root.mkdir()
+    _git(root, "init", "-q")
+    marker = tmp_path / "fsmonitor-ran.txt"
+    hook = tmp_path / "fsmonitor.sh"
+    hook.write_text(
+        f"#!/bin/sh\necho \"key=${{TRAIGENT_API_KEY:-unset}}\" >> '{marker}'\n",
+        encoding="utf-8",
+    )
+    hook.chmod(0o755)
+    _git(root, "config", "core.fsmonitor", str(hook))
+    (root / ".env").write_text("TRAIGENT_API_KEY=placeholder\n", encoding="utf-8")
+    if ignored:
+        (root / ".gitignore").write_text(".env\n", encoding="utf-8")
+    # Teeth: plain git in this repo really does run the hook.
+    subprocess.run(
+        ["git", "-C", str(root), "check-ignore", "-q", ".env"],
+        capture_output=True,
+        timeout=60,
+        check=False,
+    )
+    assert marker.exists(), "git did not run the fsmonitor hook, so this proves nothing"
+    marker.unlink()
+
+    assert audit.env_file_ignored(root) == ("ignored" if ignored else "not ignored")
+    report, _ = _run(root, tmp_path)
+    assert not marker.exists(), marker.read_text(encoding="utf-8")
+    assert report["setup"]["env_file_git_status"] == (
+        "ignored" if ignored else "not ignored"
+    )

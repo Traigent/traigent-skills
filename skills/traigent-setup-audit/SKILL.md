@@ -513,7 +513,10 @@ that its zero-network property stays provable rather than inherited.
 - User code runs only in the probe subprocess, only for a scorer classified
   deterministic, under a 30-second timeout — inside a network namespace where one
   is available. The project's interpreter is started for nothing else: the SDK
-  version is read from installed package metadata. A judge, a code-executing
+  version is read from installed package metadata. The one git call
+  (`git check-ignore` on `.env`) runs with the project's `core.fsmonitor` and
+  hooks switched off and the probe's allowlisted environment, so no command the
+  project configures runs there. A judge, a code-executing
   scorer, or a scorer **whose own file** imports ctypes, `subprocess`,
   `multiprocessing` or `_socket` is disclosed and routed, never run. Modules it
   imports from your project are not read, so at the `python-level` guard review

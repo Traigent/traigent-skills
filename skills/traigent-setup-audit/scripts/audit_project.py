@@ -1971,10 +1971,28 @@ def key_presence(root: Path, files: list[Path]) -> dict:
 def env_file_ignored(root: Path) -> str:
     if not (root / ".env").exists():
         return "no .env file"
-    command = ["git", "-C", str(root), "check-ignore", "-q", ".env"]
+    # A project's git config can name commands git runs on its behalf
+    # (`core.fsmonitor`, hooks): switch those off, and give git the same
+    # allowlisted environment as the probe, so no project-chosen code runs here.
+    command = [
+        "git",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        f"core.hooksPath={os.devnull}",
+        "-C",
+        str(root),
+        "check-ignore",
+        "-q",
+        ".env",
+    ]
     try:
         completed = subprocess.run(
-            command, capture_output=True, timeout=15, check=False
+            command,
+            capture_output=True,
+            timeout=15,
+            check=False,
+            env=probe_environment(),
         )
     except (subprocess.TimeoutExpired, OSError):
         return "unknown"
