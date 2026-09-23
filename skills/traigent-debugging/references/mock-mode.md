@@ -18,9 +18,11 @@ Traigent supports two ways to activate mock mode:
 | `traigent.testing.enable_mock_mode_for_quickstart()` (in code) | Recommended. Production-blocked. |
 | `TRAIGENT_MOCK_LLM=true` (env var) | Deprecated legacy fallback, scheduled for removal. Honored only outside production. |
 
-For zero-egress testing, pass `offline=True` on the decorator or optimization call. Mock
+For zero Traigent backend egress, pass `offline=True` on the decorator or optimization call. Mock
 mode controls provider-call interception; `offline=True` controls Traigent backend egress and
-portal result sync.
+portal result sync. Neither stops other traffic: provider calls that mock mode does not intercept
+still go out, and `import litellm` fetches LiteLLM's public pricing map over the network unless
+`LITELLM_LOCAL_MODEL_COST_MAP=True` is set before that import.
 
 ## Enabling Mock Mode
 
@@ -66,7 +68,7 @@ When mock mode is active (`enable_mock_mode_for_quickstart()`, or the deprecated
 
 - LLM API calls return synthetic/mock responses instead of calling real providers
 - No API keys are required (OpenAI, Anthropic, etc.)
-- No network calls are made to LLM providers
+- No network calls are made to LLM providers for the calls it intercepts (see "What Is NOT Mocked" below)
 - Cost tracking reports zero or minimal cost, but cost limits still apply: a very low
   `TRAIGENT_RUN_COST_LIMIT` stops a mock run at 0 trials with `stop_reason="cost_limit"`
 - Response times are near-instant
@@ -112,7 +114,7 @@ Use this when:
 
 ## Using Mock Mode with `offline=True`
 
-The most common zero-egress validation pattern is to enable mock mode and pass `offline=True`:
+The most common validation pattern with zero Traigent backend egress is to enable mock mode and pass `offline=True`:
 
 ```python
 import traigent
@@ -133,10 +135,13 @@ def my_func(text):
 results = my_func.optimize_sync(max_trials=3)
 ```
 
-This gives you a fully self-contained environment:
+This gives you a self-contained environment:
 - No API keys needed
-- No backend connection needed
-- No network calls at all
+- No backend connection needed (zero Traigent backend egress)
+- No provider calls for LiteLLM/LangChain calls, which mock mode intercepts; a raw `openai` /
+  `anthropic` client in the function still calls the provider
+- If your code imports `litellm` itself, set `LITELLM_LOCAL_MODEL_COST_MAP=True` before that
+  import, or LiteLLM fetches its public pricing map over the network
 - Fast execution (no real LLM latency)
 
 ## Limitations of Mock Mode
