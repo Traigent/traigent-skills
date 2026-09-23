@@ -109,6 +109,9 @@ def _bucket_prelude() -> str:
     ("fake_python", "succeeds"),
     [
         ("echo 'list_buckets crashed' >&2; exit 1", False),
+        # A partial list followed by a crash must still fail: the empty-list
+        # guard alone would let `|| true` through here.
+        ("echo 0.21.3; exit 1", False),
         ("exit 0", False),
         ("echo 0.27.0", True),
     ],
