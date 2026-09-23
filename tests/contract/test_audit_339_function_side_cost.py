@@ -56,9 +56,13 @@ out["tuple"] = {"total_cost": r.total_cost, "latency_ms": r.trials[0].metrics.ge
                 "accuracy": r.trials[0].metrics.get("accuracy")}
 
 
+spine_received = []
+
+
 def accuracy_metric(output, expected, **kwargs):
+    spine_received.append(type(output).__name__)
     text = output["text"] if isinstance(output, dict) else output
-    return 1.0 if text == expected else 0.0
+    return 0.9 if text == expected else 0.0   # 0.9, not 1.0: tells it apart from built-in
 
 
 @traigent.optimize(eval_dataset="qa_test.jsonl", objectives=["accuracy", "cost"], offline=True,
@@ -70,7 +74,8 @@ def spine_form(question: str):
 
 
 r = spine_form.optimize_sync(max_trials=1, algorithm="grid")
-out["spine"] = {"total_cost": r.total_cost, "accuracy": r.trials[0].metrics.get("accuracy")}
+out["spine"] = {"total_cost": r.total_cost, "accuracy": r.trials[0].metrics.get("accuracy"),
+                "received": sorted(set(spine_received))}
 out["outside"] = snippet.call_my_endpoint("q", "short")[0] == traigent.with_usage("4", total_cost=0.01)
 print("PROBE_JSON=" + json.dumps(out))
 '''
@@ -137,7 +142,10 @@ def test_documented_cost_forms_reach_results_total_cost(tmp_path: Path, sdk_027)
     assert data["tuple"]["latency_ms"] == pytest.approx(5.0)
     assert data["tuple"]["accuracy"] == pytest.approx(1 / 3)
     assert data["spine"]["total_cost"] == pytest.approx(expected_total)
-    assert data["spine"]["accuracy"] == pytest.approx(1 / 3)
+    # The custom metric ran (0.9 per match, not the built-in 1.0) on the wrapper dict,
+    # which is why the docs say to score output["text"].
+    assert data["spine"]["received"] == ["dict"]
+    assert data["spine"]["accuracy"] == pytest.approx(0.9 / 3)
     # Outside an optimization run `with_usage` hands back the plain text.
     assert data["outside"] is True
 

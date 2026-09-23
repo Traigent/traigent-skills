@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "46685c20386e0605",
+  "doc_hash": "0e24cee57c4154a1",
   "reference_hashes": {
     "references/algorithms.md": "db69c2000f420d7c",
     "references/cost-management.md": "ca7cd1767e771e45",
@@ -267,6 +267,17 @@
       "doc_before_hash": "c8f9e81595e8e12a",
       "doc_after_hash": "46685c20386e0605",
       "note": "Point the dry-run-first / cost-approval pointers at traigent-boost-agent; the old traigent lifecycle skill was merged into it.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-339-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "46685c20386e0605",
+      "doc_after_hash": "0e24cee57c4154a1",
+      "note": "Drop the '-> str' annotation on the with_usage cost snippet: with_usage returns a dict during optimization.",
       "source_type": "agent"
     }
   ]

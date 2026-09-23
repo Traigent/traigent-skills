@@ -298,7 +298,7 @@ def call_my_endpoint(question: str, style: str) -> tuple[str, float]:
     objectives=["accuracy", "cost"],
     configuration_space={"prompt_style": ["short", "detailed"]},
 )
-def answer(question: str) -> str:
+def answer(question: str):  # with_usage returns a dict during optimization, text otherwise
     text, usd = call_my_endpoint(question, traigent.get_config()["prompt_style"])
     return traigent.with_usage(text, total_cost=usd)
 ```
