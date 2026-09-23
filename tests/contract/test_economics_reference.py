@@ -293,9 +293,10 @@ def test_reference_carries_no_followable_budget_arithmetic() -> None:
 # Contract-first: TraigentSchema owns the economics characterization vocabulary. The skills
 # must document the SAME closed enums and field names — a drift (band_1k_99k vs 1k_to_99k,
 # mistake_prevention vs prevent_costly_mistakes, …) is a broken contract. In the multi-repo
-# workspace the schema repo is a sibling of traigent-skills; a skills-only CI checkout will
-# not have it, so this check SKIPS with a reason when it cannot find the sibling — it never
-# passes falsely on a missing schema.
+# workspace the schema repo is a sibling of traigent-skills. TraigentSchema is public, so CI
+# checks it out and points $TRAIGENT_SCHEMA_REPO at it: under CI a missing schema FAILS. A
+# local run without the sibling SKIPS with a reason — it never passes falsely on a missing
+# schema.
 
 # Each documented closed band field maps to one TraigentSchema enum definition.
 SCHEMA_FIELD_TO_DEFINITION = {
@@ -331,11 +332,16 @@ def _schema_vocabulary_path() -> Path | None:
 def _load_schema_vocabulary() -> dict:
     path = _schema_vocabulary_path()
     if path is None:
-        pytest.skip(
+        message = (
             "sibling TraigentSchema economics vocabulary not found (looked for "
             f"{SCHEMA_VOCAB_RELPATH} under a TraigentSchema* sibling or $TRAIGENT_SCHEMA_REPO)"
-            " — cross-repo vocabulary check skipped, not passed"
         )
+        if os.environ.get("CI"):
+            pytest.fail(
+                f"{message} — CI must check out the public TraigentSchema repository and "
+                "set $TRAIGENT_SCHEMA_REPO; the cross-repo vocabulary check cannot be skipped"
+            )
+        pytest.skip(f"{message} — cross-repo vocabulary check skipped, not passed")
     return json.loads(path.read_text(encoding="utf-8"))
 
 

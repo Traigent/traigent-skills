@@ -44,12 +44,8 @@ def _orphan_provenance_skills(root: Path) -> list[Path]:
     ]
 
 
-def _unprovenanced_skills(root: Path) -> list[Path]:
-    return [
-        d
-        for d in _skill_dirs(root)
-        if (d / "SKILL.md").is_file() and not (d / "provenance.json").is_file()
-    ]
+def _skills(root: Path) -> list[Path]:
+    return [d for d in _skill_dirs(root) if (d / "SKILL.md").is_file()]
 
 
 def _skills_with_references(root: Path) -> list[Path]:
@@ -61,7 +57,7 @@ def _skills_with_references(root: Path) -> list[Path]:
 
 
 PROVENANCED_SKILLS = _provenanced_skills(repo_root())
-UNPROVENANCED_SKILLS = _unprovenanced_skills(repo_root())
+SKILLS = _skills(repo_root())
 SKILLS_WITH_REFERENCES = _skills_with_references(repo_root())
 
 
@@ -109,13 +105,12 @@ def test_provenance_reference_hashes_match_references(skill_dir: Path) -> None:
     )
 
 
-@pytest.mark.parametrize(
-    "skill_dir", UNPROVENANCED_SKILLS, ids=[d.name for d in UNPROVENANCED_SKILLS]
-)
-def test_skill_without_provenance_is_skipped(skill_dir: Path) -> None:
-    pytest.skip(
-        f"{skill_dir.name}: no provenance.json yet — genesis entries are owned by "
-        "the private evaluation harness (eval-artifacts/README.md, Provenance v1)"
+@pytest.mark.parametrize("skill_dir", SKILLS, ids=[d.name for d in SKILLS])
+def test_every_skill_has_provenance(skill_dir: Path) -> None:
+    """Every shipped skill carries the provenance.json the README promises."""
+    assert (skill_dir / "provenance.json").is_file(), (
+        f"{skill_dir.name}: missing provenance.json — add one with a genesis entry "
+        "and the current doc_hash (eval-artifacts/README.md, Provenance v1)"
     )
 
 

@@ -54,6 +54,16 @@ jobs:
         with:
           persist-credentials: false
 
+      # TraigentSchema is public and owns the economics vocabulary the skills
+      # document. Without it test_economics_reference.py fails under CI rather
+      # than skipping, so the cross-repo check always runs here.
+      - name: Checkout TraigentSchema (public, read-only)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: Traigent/TraigentSchema
+          path: _schema
+          persist-credentials: false
+
       - name: Set up Python
         uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
@@ -86,8 +96,18 @@ jobs:
             || echo "bubblewrap unavailable; sandbox tests will skip"
 
       - name: Run released SDK buckets
+        env:
+          TRAIGENT_SCHEMA_REPO: ${{ github.workspace }}/_schema
         run: |
           set -euo pipefail
+          # Resolve the bucket list first: a failing list_buckets.py stops the
+          # step here (a `< <(...)` process substitution would hide its exit
+          # status), and an empty list is refused rather than testing nothing.
+          buckets="$(python tools/contract/list_buckets.py)"
+          if [ -z "$buckets" ]; then
+            echo "::error::list_buckets.py produced no SDK buckets - refusing to report released contracts as green."
+            exit 1
+          fi
           # Locked harness tooling (harness-requirements.txt, derived from uv.lock) +
           # the matrix SDK version, which is intentionally NOT locked so every
           # released SDK is exercised against the same pinned harness.
@@ -108,7 +128,7 @@ jobs:
             # third-party package must either vendor a stub or get its own lane;
             # do not add the package here.
             ".bucket-$version/bin/python" -m pytest skills/*/tests -q
-          done < <(python tools/contract/list_buckets.py)
+          done <<< "$buckets"
 
   develop-contracts:
     name: develop-contracts
@@ -124,6 +144,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
+          persist-credentials: false
+
+      # TraigentSchema is public and owns the economics vocabulary the skills
+      # document. Without it test_economics_reference.py fails under CI rather
+      # than skipping, so the cross-repo check always runs here.
+      - name: Checkout TraigentSchema (public, read-only)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: Traigent/TraigentSchema
+          path: _schema
           persist-credentials: false
 
       - name: Set up Python
@@ -144,6 +174,8 @@ jobs:
 
       - name: Run develop contract drift check
         id: contracts
+        env:
+          TRAIGENT_SCHEMA_REPO: ${{ github.workspace }}/_schema
         run: |
           set +e
           python -m pytest tests/contract --sdk-version=develop -q > contract-failures.txt 2>&1

@@ -119,9 +119,11 @@ Runnable examples are opt-in. Mark only complete, keyless Python examples with
 ````
 The contract suite executes those snippets in a temporary directory with
 `TRAIGENT_OFFLINE_MODE=true`, no provider API keys, and unexpected deprecation
-warnings treated as failures. The subprocess also clears CI marker env vars so
-the snippet is tested as a new-user local dry run, not as an approved CI
-optimization. The runner currently allows known SDK-internal `TraigentConfig`
+warnings treated as failures. The subprocess environment is an allowlist
+(`PATH`, locale, temp-dir and interpreter variables) plus a private `HOME`, so
+no `TRAIGENT_*` setting, provider key or CI marker from the caller's shell
+reaches it: the snippet is tested as a new-user local dry run, not as an
+approved CI optimization, and the verdict does not depend on who runs it. The runner currently allows known SDK-internal `TraigentConfig`
 transition warnings so the gate still catches skill-taught deprecated APIs such
 as `traigent.analytics`.
 
