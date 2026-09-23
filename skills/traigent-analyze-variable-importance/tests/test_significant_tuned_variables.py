@@ -674,7 +674,11 @@ def test_chi2_survival_matches_reference_quantiles(statistic, dof, expected) -> 
 
 
 def test_sdk_cross_check_claim_is_backed_by_an_output_file(tmp_path: Path) -> None:
-    """Issue #317 C: the cross-check numbers must be inspectable."""
+    """Issue #317 C: the cross-check numbers must be inspectable.
+
+    Skips (never passes vacuously) where the SDK analyzer cannot be imported.
+    """
+    pytest.importorskip("traigent.utils.importance")
     trials_path = tmp_path / "trials.jsonl"
     output_dir = tmp_path / "out"
     write_jsonl(trials_path, synthetic_trials(80))
@@ -683,6 +687,7 @@ def test_sdk_cross_check_claim_is_backed_by_an_output_file(tmp_path: Path) -> No
     insights = (output_dir / "insights.md").read_text(encoding="utf-8")
     cross_check = json.loads((output_dir / "sdk_cross_check.json").read_text(encoding="utf-8"))
     claims_computed = "variance-based output was computed" in insights
+    assert claims_computed, "with the SDK installed, 80 trials must yield a cross-check"
     assert cross_check["computed"] is claims_computed
     assert bool(cross_check["results"]) is claims_computed
     assert ("## SDK cross-check" in insights) is claims_computed
