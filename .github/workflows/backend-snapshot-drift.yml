@@ -7,10 +7,15 @@ name: Backend Route Snapshot Drift
 # removed/renamed. Compares ROUTES ONLY (the generated_from.commit_sha header
 # changes every run and is not drift).
 #
-# Requires a repo secret BACKEND_REPO_TOKEN with read access to Traigent/TraigentBackend.
-# A missing/expired secret fails the run loudly (matching snapshot-refresh.yml):
+# Reads Traigent/TraigentBackend (private) with a short-lived GitHub App installation token
+# minted per run and scoped to that one repository with contents:read. The
+# repository owner provisions, once:
+#   - repo variable SKILLS_CI_READ_APP_CLIENT_ID: the App's client ID
+#   - repo secret   SKILLS_CI_READ_APP_PRIVATE_KEY: a private key for that App
+# and installs the App on Traigent/TraigentBackend with Contents: read.
+# Missing App credentials fail the run loudly (matching snapshot-refresh.yml):
 # a silent skip here means zero drift detection with no signal, and taught
-# endpoints could false-green against stale routes indefinitely.
+# endpoints could false-green against a stale snapshot indefinitely.
 
 on:
   schedule:
@@ -36,13 +41,23 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Guard - require backend token
+      - name: Guard - require read App credentials
         id: guard
         env:
-          BACKEND_REPO_TOKEN: ${{ secrets.BACKEND_REPO_TOKEN }}
+          APP_CLIENT_ID: ${{ vars.SKILLS_CI_READ_APP_CLIENT_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.SKILLS_CI_READ_APP_PRIVATE_KEY }}
         run: |
-          if [ -z "${BACKEND_REPO_TOKEN:-}" ]; then
-            echo "::error::BACKEND_REPO_TOKEN not set - snapshot drift check cannot run. Without it, removed backend routes can false-green against the stale snapshot with no signal."
+          missing=0
+          if [ -z "${APP_CLIENT_ID:-}" ]; then
+            echo "::error::repo variable SKILLS_CI_READ_APP_CLIENT_ID not set - cannot mint a read token for Traigent/TraigentBackend."
+            missing=1
+          fi
+          if [ -z "${APP_PRIVATE_KEY:-}" ]; then
+            echo "::error::repo secret SKILLS_CI_READ_APP_PRIVATE_KEY not set - cannot mint a read token for Traigent/TraigentBackend."
+            missing=1
+          fi
+          if [ "$missing" -ne 0 ]; then
+            echo "::error::Snapshot drift check cannot run. Without it, removed backend routes can false-green against the stale snapshot with no signal."
             exit 1
           fi
           echo "armed=true" >> "$GITHUB_OUTPUT"
@@ -53,17 +68,28 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Mint read token (TraigentBackend only)
+        id: read-token
+        if: steps.guard.outputs.armed == 'true'
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.SKILLS_CI_READ_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SKILLS_CI_READ_APP_PRIVATE_KEY }}
+          owner: Traigent
+          repositories: TraigentBackend
+          permission-contents: read
+
       # Matches the #204 posture: the token reaches git only via a one-shot
       # http.extraheader, never embedded in the remote URL and never written to
       # the clone's .git/config (a top-level `git -c` config is not persisted into
-      # the new repo), so later steps cannot recover a PAT from disk.
+      # the new repo), so later steps cannot recover a token from disk.
       - name: Clone TraigentBackend (develop)
         if: steps.guard.outputs.armed == 'true'
         env:
-          BACKEND_REPO_TOKEN: ${{ secrets.BACKEND_REPO_TOKEN }}
+          READ_TOKEN: ${{ steps.read-token.outputs.token }}
         run: |
           set -euo pipefail
-          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${BACKEND_REPO_TOKEN}" | base64 -w0)"
+          auth_header="AUTHORIZATION: basic $(printf 'x-access-token:%s' "${READ_TOKEN}" | base64 -w0)"
           git -c http.extraheader="${auth_header}" clone --depth 1 --branch develop \
             https://github.com/Traigent/TraigentBackend.git /tmp/be
           git -C /tmp/be -c http.extraheader="${auth_header}" fetch --depth 1 origin develop
