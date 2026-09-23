@@ -344,7 +344,8 @@ does not decide which examples are hard.
    (`GuidanceAction.GENERATE_HARDER` or `GENERATE_SIMILAR`) followed by label
    review — see "Synthesize examples client-side with no backend egress" above
    for the exact call pattern; a prompt rewrite with
-   `optimize_with_guidance(plan_kind="prompt_rewrite", prompt_param=...,
+   `optimize_with_guidance(guidance_provider, rewrite_llm=prompt_model,
+   plan_kind="prompt_rewrite", prompt_param=...,
    weak_examples=[(input, expected, actual), ...])`, built from the joined
    local content of the flagged rows (not their ids); a trained skill; or a
    fix to the agent code.

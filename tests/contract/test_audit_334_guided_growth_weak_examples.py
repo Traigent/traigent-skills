@@ -62,3 +62,24 @@ def test_guided_growth_snippet_warns_about_review_bypass() -> None:
     assert "in the same call" in section and "before any human review" in section
     assert "across datasets of different sizes" in section
     assert 'plan_kind="prompt_rewrite"' in section
+
+
+def test_prompt_rewrite_calls_pass_provider_and_rewrite_llm() -> None:
+    """On 0.27.0 ``provider`` is required and a missing ``rewrite_llm`` raises
+    GenerationProviderError, so a prompt-rewrite call must show both."""
+    offenders = []
+    checked = 0
+    for path in sorted((REPO_ROOT / "skills").rglob("*.md")):
+        for line, call in _calls(path.read_text(encoding="utf-8")):
+            if 'plan_kind="prompt_rewrite"' not in call:
+                continue
+            checked += 1
+            args = call[len(CALL) :].lstrip()
+            has_provider = args.startswith("provider=") or not re.match(r"\w+=", args)
+            where = f"{path.relative_to(REPO_ROOT)}:{line}"
+            if not has_provider:
+                offenders.append(f"{where}: no provider (first argument)")
+            if "rewrite_llm=" not in call:
+                offenders.append(f"{where}: no rewrite_llm=")
+    assert checked, "expected at least one prompt_rewrite call (dataset-curate step 5)"
+    assert not offenders, "\n".join(offenders)
