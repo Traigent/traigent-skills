@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "28b41506b1843b04",
+  "doc_hash": "28ebcd5ceadef7cb",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/environment-variables.md": "7e86c91934dd7d4a",
+    "references/environment-variables.md": "f995c69aaedf8f1e",
     "references/first-value-fallback.md": "ddb354ffc8de94f2",
     "references/installation-extras.md": "63950e04ee756027"
   },
@@ -265,6 +265,17 @@
       "doc_before_hash": "c1cf70f19ff2238f",
       "doc_after_hash": "28b41506b1843b04",
       "note": "Correct the LITELLM_LOCAL_MODEL_COST_MAP guidance: import traigent does not set it, so a script that imports litellm must set it to avoid a pricing-map download even with offline=True; scope offline=True to backend egress.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-343",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "28b41506b1843b04",
+      "doc_after_hash": "28ebcd5ceadef7cb",
+      "note": "Say that the TRAIGENT_MOCK_LLM env var is deprecated on traigent 0.27.0 (hidden DeprecationWarning, scheduled for removal) and point new setups to enable_mock_mode_for_quickstart().",
       "source_type": "agent"
     }
   ]

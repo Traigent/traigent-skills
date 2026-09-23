@@ -360,6 +360,9 @@ enable_mock_mode_for_quickstart()
 
 <!-- PROTECTED -->
 The previous quickstart docs taught `export TRAIGENT_MOCK_LLM=true`. That env var still works in non-production environments for backward compatibility with existing fixtures, but it is hard-blocked when `ENVIRONMENT=production` (an `OSError` is raised at the first decoration, `optimize()` or CLI use — a bare `import traigent` still succeeds). Prefer the in-code API for new code.
+`TRAIGENT_MOCK_LLM=true` is deprecated on traigent 0.27.0 (DeprecationWarning, hidden by default;
+"will be removed in a future release"). Use `traigent.testing.enable_mock_mode_for_quickstart()` in code,
+e.g. from a pytest fixture/conftest, for new setups.
 <!-- /PROTECTED -->
 
 ### Using a .env File
