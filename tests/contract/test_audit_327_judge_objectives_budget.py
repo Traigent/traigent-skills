@@ -6,11 +6,18 @@ one per-example constant with the cap and never stopped a judge call. The judge
 and hybrid templates are executed here offline (agent and judge replies come from
 litellm's own ``mock_response``) and must: orient ``judge_cost`` as minimize with
 no unrecognized-objective warning, make at most floor(cap / price) judge calls
-across the whole run, and still fail parse failures closed.
+per run, and still fail parse failures closed.
+
+Review round 2: a refused row scores 0.0 and is averaged into its trial, so
+budget exhaustion silently biased the ranking, and the budget was process-global.
+The budget is now built fresh per run by ``run_with_judge_budget``, which refuses
+to start when the cap cannot cover rows x trials and raises when any call was
+refused; an unset budget raises instead of scoring 0.0.
 """
 
 from __future__ import annotations
 
+import textwrap
 from pathlib import Path
 
 import pytest
@@ -69,29 +76,111 @@ def test_spend_limits_are_not_tuned_variables(marker: str) -> None:
     assert "max_judge_cost_usd" not in block
 
 
-def test_judge_budget_caps_calls_across_the_whole_run(tmp_path: Path) -> None:
-    """$0.01 cap at $0.002 per call: 5 of the 8 attempted judge calls (4 rows x 2 trials)."""
+# Each template: (marker, decorated function, dataset file, row input, agent reply).
+TEMPLATE_CASES = {
+    "judge": (JUDGE_MARKER, "answer", "qa.jsonl", {"question": "Q{i}?"}, "Paris"),
+    "hybrid": (
+        HYBRID_MARKER,
+        "extract",
+        "extraction.jsonl",
+        {"text": "Invoice {i}"},
+        '{"label": "billing"}',
+    ),
+}
+
+RUN_PRELUDE = """
+judge_calls = []
+def reply(model, messages):
+    if model == ns["JUDGE_MODEL"]:
+        judge_calls.append(1)
+        return '{{"score": 1.0, "reason": "ok"}}'
+    return {agent_reply!r}
+install_replies(reply)
+write_rows({dataset!r}, [{{"input": {{k: v.format(i=i) for k, v in {row_input!r}.items()}}, "output": "Paris"}} for i in range(4)])
+ns = load_block(sys.argv[1])
+fn = ns[{fn_name!r}]
+price = ns["JUDGE_COST_PER_CALL_USD"]
+def run(**kwargs):
+    before = len(judge_calls)
+    try:
+        result = ns["run_with_judge_budget"](fn, algorithm="grid", **kwargs)
+        return {{"raised": None, "judge_calls": len(judge_calls) - before,
+                "quality": [t.metrics.get("quality") for t in result.trials]}}
+    except Exception as exc:
+        return {{"raised": f"{{type(exc).__name__}}: {{exc}}", "judge_calls": len(judge_calls) - before}}
+"""
+
+
+def _run_template(tmp_path: Path, case: str, body: str) -> dict:
+    marker, fn_name, dataset, row_input, agent_reply = TEMPLATE_CASES[case]
+    prelude = RUN_PRELUDE.format(
+        agent_reply=agent_reply, dataset=dataset, row_input=row_input, fn_name=fn_name
+    )
+    return _run_driver(
+        tmp_path, _python_block(TEMPLATES, marker), prelude + textwrap.dedent(body)
+    )
+
+
+@pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))
+def test_budget_too_small_for_the_run_is_refused_before_spending(
+    case: str, tmp_path: Path
+) -> None:
+    """$0.01 cannot cover 4 rows x 2 trials at $0.002: refuse up front, no judge call."""
+    result = _run_template(
+        tmp_path, case, "emit(run(rows=4, max_trials=2, cap_usd=0.01))\n"
+    )
+    assert result["raised"] and result["raised"].startswith("ValueError"), result
+    assert result["judge_calls"] == 0, result
+
+
+@pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))
+def test_exhaustion_mid_run_raises_instead_of_ranking(
+    case: str, tmp_path: Path
+) -> None:
+    """Row count under-declared (2 instead of 4): the cap binds mid-run and the run raises."""
+    result = _run_template(
+        tmp_path, case, "emit(run(rows=2, max_trials=2, cap_usd=2 * 2 * price))\n"
+    )
+    assert result["judge_calls"] == 4, result  # the cap still holds: 4 of 8 calls
+    assert result["raised"] and result["raised"].startswith("RuntimeError"), result
+    assert "4 judge call(s) refused" in result["raised"], result
+
+
+@pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))
+def test_budget_is_fresh_for_every_run(case: str, tmp_path: Path) -> None:
+    """A second run in the same process starts with a full budget, and identical trials tie."""
     body = """
-    judge_calls = []
-    def reply(model, messages):
-        if model == ns["JUDGE_MODEL"]:
-            judge_calls.append(1)
-            return '{"score": 1.0, "reason": "ok"}'
-        return "Paris"
-    install_replies(reply)
-    write_rows("qa.jsonl", [{"input": {"question": f"Q{i}?"}, "output": "Paris"} for i in range(4)])
-    ns = load_block(sys.argv[1])
-    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.01, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
-    result = ns["answer"].optimize_sync(algorithm="grid", max_trials=2)
-    emit({"judge_calls": len(judge_calls), "spent": ns["JUDGE_BUDGET"].spent,
-          "quality": [t.metrics.get("quality") for t in result.trials]})
+    first = run(rows=4, max_trials=2, cap_usd=4 * 2 * price)
+    second = run(rows=4, max_trials=2, cap_usd=4 * 2 * price)
+    emit({"first": first, "second": second})
     """
-    result = _run_driver(tmp_path, _python_block(TEMPLATES, JUDGE_MARKER), body)
-    assert result["judge_calls"] == 5, result
-    assert abs(result["spent"] - 0.01) < 1e-9, result
+    result = _run_template(tmp_path, case, body)
+    for key in ("first", "second"):
+        run_result = result[key]
+        assert run_result["raised"] is None, result
+        assert run_result["judge_calls"] == 8, result
+        assert run_result["quality"] == [1.0, 1.0], result
 
 
-def test_judge_budget_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
+@pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))
+def test_unset_budget_raises_instead_of_scoring_zero(case: str, tmp_path: Path) -> None:
+    marker, *_ = TEMPLATE_CASES[case]
+    evaluator = marker.removeprefix("def ")
+    body = f"""
+    from types import SimpleNamespace
+    example = SimpleNamespace(input_data={{"question": "q", "text": "t"}}, expected_output="Paris", metadata={{}})
+    agent = lambda **kwargs: {TEMPLATE_CASES[case][4]!r}
+    try:
+        outcome = ns[{evaluator!r}](agent, {{}}, example)
+        emit({{"raised": None, "success": outcome.success, "quality": outcome.metrics.get("quality")}})
+    except RuntimeError as exc:
+        emit({{"raised": str(exc)}})
+    """
+    result = _run_template(tmp_path, case, body)
+    assert result["raised"] and "run_with_judge_budget" in result["raised"], result
+
+
+def test_judge_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     body = """
     from types import SimpleNamespace
     install_replies(lambda model, messages: "Paris")
@@ -100,38 +189,20 @@ def test_judge_budget_refusals_and_parse_failures_fail_closed(tmp_path: Path) ->
     example = SimpleNamespace(input_data={"question": "q"}, expected_output="Paris", metadata={"id": "row-1"})
     agent = lambda question: "Paris"
     install_replies(lambda model, messages: "not json at all")
+    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=1.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
     parse_fail = ns["llm_judge_evaluator"](agent, {}, example)
     ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
     refused = ns["llm_judge_evaluator"](agent, {}, example)
     emit({
         "parse_fail": [parse_fail.success, parse_fail.metrics["quality"], parse_fail.error_message],
         "refused": [refused.success, refused.metrics["quality"], refused.error_message],
+        "refused_count": ns["JUDGE_BUDGET"].refused,
     })
     """
     result = _run_driver(tmp_path, _python_block(TEMPLATES, JUDGE_MARKER), body)
     assert result["parse_fail"] == [False, 0.0, "judge_parse_failure"], result
     assert result["refused"] == [False, 0.0, "judge_budget_exhausted"], result
-
-
-def test_hybrid_judge_budget_caps_calls_across_the_whole_run(tmp_path: Path) -> None:
-    """Same cap for the gate-then-judge template: 5 of 8 judge calls at $0.01 / $0.002."""
-    body = """
-    judge_calls = []
-    def reply(model, messages):
-        if model == ns["JUDGE_MODEL"]:
-            judge_calls.append(1)
-            return '{"score": 1.0, "reason": "ok"}'
-        return '{"label": "billing"}'
-    install_replies(reply)
-    write_rows("extraction.jsonl", [{"input": {"text": f"Invoice {i}"}, "output": {"label": "billing"}} for i in range(4)])
-    ns = load_block(sys.argv[1])
-    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.01, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
-    result = ns["extract"].optimize_sync(algorithm="grid", max_trials=2)
-    emit({"judge_calls": len(judge_calls), "spent": ns["JUDGE_BUDGET"].spent})
-    """
-    result = _run_driver(tmp_path, _python_block(TEMPLATES, HYBRID_MARKER), body)
-    assert result["judge_calls"] == 5, result
-    assert abs(result["spent"] - 0.01) < 1e-9, result
+    assert result["refused_count"] == 1, result
 
 
 def test_hybrid_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
@@ -142,6 +213,7 @@ def test_hybrid_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     ns = load_block(sys.argv[1])
     example = SimpleNamespace(input_data={"text": "t"}, expected_output={"label": "a"}, metadata={"id": "row-1"})
     agent = lambda text: '{"label": "a"}'
+    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=1.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
     parse_fail = ns["hybrid_evaluator"](agent, {}, example)
     ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
     refused = ns["hybrid_evaluator"](agent, {}, example)

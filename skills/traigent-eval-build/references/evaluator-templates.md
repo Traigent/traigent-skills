@@ -75,7 +75,7 @@ Two things the template does on purpose:
 
 - **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list orients names the SDK does not recognize (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher. Declare every custom objective's orientation with `ObjectiveSchema`.
 - **Only the agent call is metered.** The SDK's `cost` and `TRAIGENT_RUN_COST_LIMIT` see the first LLM call per row, not the judge call; see "Cost metering caveat for multi-call evaluators" below.
-- **The judge budget is one run-level cap.** `JUDGE_BUDGET` counts every judge call across all rows and trials and refuses the call once the next one would pass the cap; refused rows fail closed with `judge_budget_exhausted`. Spend limits are not tuned variables, so they stay out of `configuration_space`.
+- **The judge budget is sized and reset per run.** Start every run with `run_with_judge_budget()`: it builds a fresh `JudgeBudget` for that run, refuses to start when the approved cap cannot cover `rows × max_trials × price`, and raises after the run if any judge call was refused. A refused row fails closed with `judge_budget_exhausted` and scores `0.0`, and the SDK averages that row into its trial, so **any refusal invalidates the ranking**: the trials were no longer scored on the same rows. Calling `optimize_sync()` directly, with no budget set, fails every trial instead of spending unbudgeted. Spend limits are not tuned variables, so they stay out of `configuration_space`.
 
 ```python
 import json
@@ -93,20 +93,45 @@ JUDGE_MODEL = "judge-model-name"
 JUDGE_COST_PER_CALL_USD = 0.002
 
 class JudgeBudget:
-    """Run-level judge spend cap: refuses a call instead of overspending."""
+    """Judge spend cap for ONE optimization run: refuses a call instead of overspending."""
 
     def __init__(self, cap_usd: float, per_call_usd: float) -> None:
-        self.cap, self.per_call, self.spent = cap_usd, per_call_usd, 0.0
+        self.cap, self.per_call, self.spent, self.refused = cap_usd, per_call_usd, 0.0, 0
         self._lock = threading.Lock()  # custom evaluators may run in worker threads
 
     def try_spend(self) -> bool:
         with self._lock:
             if self.spent + self.per_call > self.cap + 1e-12:
+                self.refused += 1
                 return False
             self.spent += self.per_call
             return True
 
-JUDGE_BUDGET = JudgeBudget(cap_usd=1.00, per_call_usd=JUDGE_COST_PER_CALL_USD)
+JUDGE_BUDGET: JudgeBudget | None = None  # set per run by run_with_judge_budget()
+
+def run_with_judge_budget(optimized, *, rows: int, max_trials: int, cap_usd: float, **optimize_kwargs):
+    """Run one optimization with its own judge budget, sized to the run.
+
+    A refused judge call scores its row 0.0 and the SDK averages that row into the
+    trial, so a single refusal makes the trial ranking meaningless. Refuse to start
+    when the cap cannot cover every row of every trial, and raise if a call was
+    refused anyway.
+    """
+    global JUDGE_BUDGET
+    needed_usd = rows * max_trials * JUDGE_COST_PER_CALL_USD
+    if cap_usd + 1e-12 < needed_usd:
+        raise ValueError(
+            f"judge cap ${cap_usd:.4f} does not cover {rows} rows x {max_trials} trials "
+            f"(${needed_usd:.4f}); shrink the run or raise the approved cap"
+        )
+    JUDGE_BUDGET = JudgeBudget(cap_usd=cap_usd, per_call_usd=JUDGE_COST_PER_CALL_USD)  # fresh per run
+    result = optimized.optimize_sync(max_trials=max_trials, **optimize_kwargs)
+    if JUDGE_BUDGET.refused:
+        raise RuntimeError(
+            f"{JUDGE_BUDGET.refused} judge call(s) refused (judge_budget_exhausted): "
+            "trials were scored on different rows, so do not use this ranking"
+        )
+    return result
 
 def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
     response = litellm.completion(
@@ -146,6 +171,8 @@ def parse_judge_response(raw: str) -> tuple[float, str, bool]:
 
 def llm_judge_evaluator(func, config, example) -> ExampleResult:
     started = time.perf_counter()
+    if JUDGE_BUDGET is None:
+        raise RuntimeError("no judge budget for this run: start it with run_with_judge_budget()")
 
     if not JUDGE_BUDGET.try_spend():
         return ExampleResult(
@@ -200,6 +227,9 @@ def llm_judge_evaluator(func, config, example) -> ExampleResult:
 def answer(question: str) -> str:
     cfg = traigent.get_config()
     return prompt_model(question, temperature=cfg["temperature"])
+
+# One run, one budget: cap_usd is the judge spend the user approved for this run.
+# results = run_with_judge_budget(answer, rows=50, max_trials=8, cap_usd=1.00)
 ```
 
 ## Cost metering caveat for multi-call evaluators
@@ -281,7 +311,7 @@ def answer(question: str) -> str:
 
 ## Hybrid deterministic gate then judge
 
-Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge) and only the first is metered; see "Cost metering caveat for multi-call evaluators" above. Judge spend is capped the same way as in the LLM-judge template: one run-level `JUDGE_BUDGET` refuses the judge call once the next one would pass the cap, and refused rows fail closed with `judge_budget_exhausted`.
+Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge) and only the first is metered; see "Cost metering caveat for multi-call evaluators" above. Judge spend is capped the same way as in the LLM-judge template: start each run with `run_with_judge_budget()`, which sizes and resets the budget for that run and raises if any judge call was refused, because a refused row (`judge_budget_exhausted`, quality `0.0`) invalidates the ranking.
 
 ```python
 import json
@@ -298,20 +328,45 @@ JUDGE_MODEL = "judge-model-name"
 JUDGE_COST_PER_CALL_USD = 0.002
 
 class JudgeBudget:
-    """Run-level judge spend cap: refuses a call instead of overspending."""
+    """Judge spend cap for ONE optimization run: refuses a call instead of overspending."""
 
     def __init__(self, cap_usd: float, per_call_usd: float) -> None:
-        self.cap, self.per_call, self.spent = cap_usd, per_call_usd, 0.0
+        self.cap, self.per_call, self.spent, self.refused = cap_usd, per_call_usd, 0.0, 0
         self._lock = threading.Lock()  # custom evaluators may run in worker threads
 
     def try_spend(self) -> bool:
         with self._lock:
             if self.spent + self.per_call > self.cap + 1e-12:
+                self.refused += 1
                 return False
             self.spent += self.per_call
             return True
 
-JUDGE_BUDGET = JudgeBudget(cap_usd=1.00, per_call_usd=JUDGE_COST_PER_CALL_USD)
+JUDGE_BUDGET: JudgeBudget | None = None  # set per run by run_with_judge_budget()
+
+def run_with_judge_budget(optimized, *, rows: int, max_trials: int, cap_usd: float, **optimize_kwargs):
+    """Run one optimization with its own judge budget, sized to the run.
+
+    A refused judge call scores its row 0.0 and the SDK averages that row into the
+    trial, so a single refusal makes the trial ranking meaningless. Refuse to start
+    when the cap cannot cover every row of every trial, and raise if a call was
+    refused anyway.
+    """
+    global JUDGE_BUDGET
+    needed_usd = rows * max_trials * JUDGE_COST_PER_CALL_USD
+    if cap_usd + 1e-12 < needed_usd:
+        raise ValueError(
+            f"judge cap ${cap_usd:.4f} does not cover {rows} rows x {max_trials} trials "
+            f"(${needed_usd:.4f}); shrink the run or raise the approved cap"
+        )
+    JUDGE_BUDGET = JudgeBudget(cap_usd=cap_usd, per_call_usd=JUDGE_COST_PER_CALL_USD)  # fresh per run
+    result = optimized.optimize_sync(max_trials=max_trials, **optimize_kwargs)
+    if JUDGE_BUDGET.refused:
+        raise RuntimeError(
+            f"{JUDGE_BUDGET.refused} judge call(s) refused (judge_budget_exhausted): "
+            "trials were scored on different rows, so do not use this ranking"
+        )
+    return result
 
 def extract_json(text: str, *, temperature: float = 0.0) -> str:
     response = litellm.completion(
@@ -380,6 +435,8 @@ def hybrid_evaluator(func, config, example) -> ExampleResult:
             metadata={"method": "hybrid_gate_then_judge", "judge_called": False},
         )
 
+    if JUDGE_BUDGET is None:
+        raise RuntimeError("no judge budget for this run: start it with run_with_judge_budget()")
     if not JUDGE_BUDGET.try_spend():
         return ExampleResult(
             example_id=str(example.metadata.get("id", "unknown")),
@@ -426,4 +483,7 @@ def hybrid_evaluator(func, config, example) -> ExampleResult:
 def extract(text: str) -> str:
     cfg = traigent.get_config()
     return extract_json(text, temperature=cfg["temperature"])
+
+# One run, one budget: rows x max_trials is an upper bound here (gate failures skip the judge).
+# results = run_with_judge_budget(extract, rows=50, max_trials=8, cap_usd=1.00)
 ```
