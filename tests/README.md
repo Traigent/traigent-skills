@@ -6,7 +6,11 @@ interfaces.
 It extracts these facts from skills and references:
 
 - Python facts from fenced Python blocks: imports, imported symbols, and
-  Traigent call keyword arguments.
+  Traigent call keyword arguments. A target that takes `**kwargs` but rejects
+  unknown names at runtime (`traigent.optimize`, pydantic option models with
+  `extra="forbid"`) is checked against its closed set of accepted names; inline
+  tuned variables on `optimize` (`model=Choices([...])`, `x=(0, 1)`) are not
+  keyword facts.
 - Env facts from Markdown text: `TRAIGENT_*` variables.
 - CLI facts from fenced shell blocks: `traigent ...` and
   `python -m traigent...` commands.
