@@ -321,7 +321,9 @@ def test_graduate_two_file_layout_is_read_as_a_declared_holdout(graduate) -> Non
     assert tuning["holdout_rows"] == 10
     for item in (tuning, holdout):
         assert not any("no holdout slice is declared" in f for f in item["findings"])
-    assert any("eval/holdout.jsonl" in f for f in tuning["findings"])
+    # How the holdout was declared is information, not a defect: a note.
+    assert any("eval/holdout.jsonl" in n for n in tuning["notes"])
+    assert not any("declared by" in f for f in tuning["findings"] + holdout["findings"])
 
 
 def test_graduate_overlap_is_checked_across_the_pair(graduate) -> None:
@@ -405,3 +407,60 @@ def test_eval_or_test_in_a_file_name_does_not_declare_a_holdout(tmp_path: Path) 
     for name in ("eval/examples.jsonl", "eval/eval_dataset.jsonl"):
         assert by_file[name]["holdout_rows"] == 0, name
         assert any("no holdout slice is declared" in f for f in by_file[name]["findings"]), name
+
+
+# --------------------------------------------------------------------------
+# a declared tuning/holdout pair is information, not a finding
+# --------------------------------------------------------------------------
+
+
+def _pair_project(tmp_path: Path, tuning_rows: int, holdout_rows: int) -> Path:
+    project = tmp_path / "pair"
+    (project / "eval").mkdir(parents=True)
+    for name, rows, tag in (
+        ("tuning.jsonl", range(tuning_rows), "alpha"),
+        ("holdout.jsonl", range(100, 100 + holdout_rows), "beta"),
+    ):
+        (project / "eval" / name).write_text(
+            "".join(
+                json.dumps(
+                    {
+                        "input": f"what is item number {i} called in set {tag}{i}",
+                        "output": f"name{i}",
+                    }
+                )
+                + "\n"
+                for i in rows
+            ),
+            encoding="utf-8",
+        )
+    return project
+
+
+def test_a_declared_pair_above_the_minimums_reads_ok(tmp_path: Path) -> None:
+    report, card = run_audit(_pair_project(tmp_path, 40, 35), tmp_path)
+    assert report["areas"]["dataset"]["status"] == "ok"
+    assert "## Dataset — ok" in card
+    assert (
+        "eval/holdout.jsonl: holdout slice declared by file name: 35 row(s), "
+        "no per-row split marker"
+    ) in card
+    assert (
+        "eval/tuning.jsonl: holdout slice declared by sibling file "
+        "eval/holdout.jsonl (35 row(s))"
+    ) in card
+    by_file = {item["file"]: item for item in report["datasets"]}
+    for item in by_file.values():
+        assert item["findings"] == [], item
+    assert any(
+        "declared by sibling file" in n for n in by_file["eval/tuning.jsonl"]["notes"]
+    )
+
+
+def test_a_declared_pair_under_the_minimums_still_needs_attention(
+    tmp_path: Path,
+) -> None:
+    report, card = run_audit(_pair_project(tmp_path, 8, 5), tmp_path)
+    assert report["areas"]["dataset"]["status"] == "attention"
+    assert "8 rows is under the 10-row smoke minimum" in card
+    assert "holdout slice has 5 rows, under the 30-row minimum" in card

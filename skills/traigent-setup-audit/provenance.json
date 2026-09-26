@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "dfe7bb3ca7af1631",
+  "doc_hash": "2f511fc29f60e5aa",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7"
   },
@@ -132,6 +132,94 @@
       "doc_before_hash": "70c864d93a9e8ea4",
       "doc_after_hash": "dfe7bb3ca7af1631",
       "note": "Detect normalized overlap between tagged holdout and untagged tuning rows within a file while respecting named holdout roles and explicit tags.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-305",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "dfe7bb3ca7af1631",
+      "doc_after_hash": "0ecc910f72e14788",
+      "note": "Add the missing no-dataset rung to the next-step ladder: a project with no evaluation dataset is routed to traigent-dataset-curate instead of the all-clear step.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-306",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "0ecc910f72e14788",
+      "doc_after_hash": "c5aa3f5ec751cab3",
+      "note": "Name the only input keys eval_dataset loads (input/input_data): rows keyed question/prompt/query/messages are now a dataset finding and route the next step to traigent-dataset-curate.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-308",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c5aa3f5ec751cab3",
+      "doc_after_hash": "c1a1e6abbd2365d9",
+      "note": "Safety: the scorer probe subprocess now runs with key, token, secret, password and credential variables removed from its environment.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-309",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c1a1e6abbd2365d9",
+      "doc_after_hash": "02c00f9c94f5e0fa",
+      "note": "Safety wording matches the code: the classifier reads the scorer's own file only (review helper modules by hand), and the SDK version is read from package metadata without starting the project interpreter.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-308-allowlist",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "02c00f9c94f5e0fa",
+      "doc_after_hash": "996d4f39a609135c",
+      "note": "Safety: the scorer probe now receives only an allowlisted environment (PATH, HOME, locale, TZ, temp dirs); every other variable is withheld, and the bullet says it is not a filesystem boundary.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-309-git",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "996d4f39a609135c",
+      "doc_after_hash": "7d1404e1db422b6f",
+      "note": "Safety: the .env git check runs with the project's core.fsmonitor and hooks off and an allowlisted environment, so 'user code runs only in the probe subprocess' holds.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-306-keyless",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "7d1404e1db422b6f",
+      "doc_after_hash": "7c8c65bf0ba9d9e1",
+      "note": "Dataset row and ladder row now say exactly what is reported: the count of rows with no input/input_data key, including rows with no input-like key at all.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-309-sitepkgs",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "7c8c65bf0ba9d9e1",
+      "doc_after_hash": "2f511fc29f60e5aa",
+      "note": "SDK version line says where it is installed; a venv with include-system-site-packages also reads the user site and base installation by path.",
       "source_type": "agent"
     }
   ]

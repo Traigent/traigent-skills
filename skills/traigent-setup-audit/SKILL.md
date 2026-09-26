@@ -99,7 +99,7 @@ error. A finding is not a failure.
 | Area | What is read | What is reported |
 |---|---|---|
 | Agent | `@traigent.optimize` decorators, parsed with `ast` | entry points with `file:line`; each declared knob marked read, never read, or possibly read through a mapping |
-| Dataset | JSONL / JSON arrays / CSV whose rows carry an input-like key | row count against the `traigent-dataset-curate` minimums; rows with no gold key; exact and near-duplicate inputs; whether a holdout slice exists, how large it is, and whether it overlaps another slice; label balance where the gold values are few and repeated |
+| Dataset | JSONL / JSON arrays / CSV whose rows carry an input-like key (`input`, `input_data`, `question`, `prompt`, `query`, `messages`) | the count of rows with no `input`/`input_data` key (keyed `question`/`prompt`/`query`/`messages`, or with no input-like key at all), since `eval_dataset` loads only those two keys and refuses the whole file on the first such row; row count against the `traigent-dataset-curate` minimums; rows with no gold key; exact and near-duplicate inputs; whether a holdout slice exists, how large it is, and whether it overlaps another slice; label balance where the gold values are few and repeated |
 | Scorer | functions named `score*`/`evaluate*`/`grade*`/`metric*`, or taking `expected` second | classification (deterministic / LLM judge / code-executing / hybrid); for a deterministic one, repeat-scoring plus a known-good, partial and known-bad probe |
 | Setup | the project interpreter, the environment, `.env*` files, `git check-ignore` | installed SDK version; which key **names** are set; whether `.env` is git-ignored; which model ids the configuration space declares |
 
@@ -123,8 +123,11 @@ and are not read as a holdout) is read as a declared holdout slice: its rows are
 count for both files, the holdout file is judged against the holdout minimum only, and the
 overlap check runs across the pair by normalized input; per-row split markers, when present,
 win.
-The SDK version is probed in `.venv`, then `.venv-traigent`, then the audit's own
-interpreter, and the card names which one answered.
+The SDK version is read from installed package metadata in `.venv`, then
+`.venv-traigent`, then the audit's own interpreter, without starting the project's
+interpreter, and the card says which one it is installed in. For a venv created
+with `include-system-site-packages = true`, the user site and the base
+installation named in its `pyvenv.cfg` are read too, by path.
 
 A function is reported as a scorer when its **name** says so (`score*`,
 `evaluate*`, `grade*`, `metric*`, `*_score`, `*_scorer`). A second parameter
@@ -164,6 +167,8 @@ would be measured with is still unreliable:
 | no scorer found | `traigent-eval-build` |
 | the probed scorer is not repeatable, or ranks a known-bad answer above a known-good one | `traigent-eval-build`, then `traigent-eval-audit` |
 | a scorer exists but none could be measured here | `traigent-eval-audit` |
+| no evaluation dataset found | `traigent-dataset-curate` |
+| a dataset with any row that has no `input`/`input_data` key | `traigent-dataset-curate` |
 | a dataset under the tuning or holdout minimum | `traigent-dataset-curate` |
 | nothing above fires | `traigent-optimize-run`, mock dry-run first |
 
@@ -509,8 +514,15 @@ that its zero-network property stays provable rather than inherited.
   rather than assuming it.
 - User code runs only in the probe subprocess, only for a scorer classified
   deterministic, under a 30-second timeout — inside a network namespace where one
-  is available. A judge, a code-executing scorer, or anything importing ctypes,
-  `subprocess`, `multiprocessing` or `_socket` is disclosed and routed, never run.
+  is available. The project's interpreter is started for nothing else: the SDK
+  version is read from installed package metadata. The one git call
+  (`git check-ignore` on `.env`) runs with the project's `core.fsmonitor` and
+  hooks switched off and the probe's allowlisted environment, so no command the
+  project configures runs there. A judge, a code-executing
+  scorer, or a scorer **whose own file** imports ctypes, `subprocess`,
+  `multiprocessing` or `_socket` is disclosed and routed, never run. Modules it
+  imports from your project are not read, so at the `python-level` guard review
+  those by hand.
   Naming one with `--scorer` does not override that; the audit refuses it and
   says so.
 - A failure inside your scorer is reported as the exception TYPE and a
@@ -518,6 +530,12 @@ that its zero-network property stays provable rather than inherited.
   both have been observed carrying an API key.
 - A key value is never read, shown or stored — only whether a known key **name**
   is set, and in which file it is declared.
+- The scorer probe runs with only an allowlisted environment: `PATH`, `HOME`,
+  locale (`LANG`, `LANGUAGE`, `LC_*`), `TZ` and temp-dir variables. Every other
+  variable, credentials included, is withheld, so a scorer that needs one fails
+  the probe and is reported by type and location. This is not a filesystem
+  boundary: files under your home directory and the project, a `.env` included,
+  stay readable to the scorer.
 - Anything in the second tier — every paid call and every byte that leaves the
   machine — waits for an explicit approval. Silence is not approval. Offer mode
   runs under the same network guard as Tier 1 and reports the level it had, so

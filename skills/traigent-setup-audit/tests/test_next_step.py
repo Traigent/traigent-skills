@@ -317,6 +317,104 @@ def test_branch_f_fires_on_a_dataset_under_the_minimums() -> None:
     assert "12 row(s) and a 0-row holdout slice" in step["line"]
 
 
+def test_branch_f_fires_when_no_dataset_was_found() -> None:
+    """No dataset at all is the largest dataset shortfall there is: it must not
+    fall through to the all-clear branch."""
+    entry = _entry([_knob("model", "read")])
+    step = audit.next_step(_inventory([entry], [_scorer()]), [], GOOD_PROBE, _scorer())
+    assert step["branch"] == "f"
+    assert step["skills"] == ["traigent-dataset-curate"]
+    assert step["line"].startswith("No evaluation dataset was found")
+    assert "all check out" not in step["line"]
+
+
+def test_a_project_with_no_dataset_is_routed_to_curate(tmp_path: Path) -> None:
+    project = tmp_path / "nodata"
+    project.mkdir()
+    (project / "agent.py").write_text(
+        "import traigent\n\n"
+        "@traigent.optimize(configuration_space={'model': ['gpt-4o-mini', 'gpt-4o'],"
+        " 'temperature': [0.0, 0.7]})\n"
+        "def answer(question, model='gpt-4o-mini', temperature=0.0):\n"
+        "    return f'{model}:{temperature}:{question}'\n",
+        encoding="utf-8",
+    )
+    (project / "scorer.py").write_text(
+        "def score(output, expected):\n"
+        "    return 1.0 if output.strip() == expected.strip() else 0.0\n",
+        encoding="utf-8",
+    )
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+    report, card = _run(project, out_dir)
+    assert report["datasets"] == []
+    assert report["next_step"]["branch"] == "f"
+    assert report["next_step"]["skills"] == ["traigent-dataset-curate"]
+    assert "all check out" not in card
+
+
+def test_a_dataset_the_sdk_cannot_load_is_routed_to_curate() -> None:
+    """`eval_dataset` reads only `input`/`input_data`: a large, split dataset
+    keyed any other way still stops the first run, so it is never all-clear."""
+    entry = _entry([_knob("model", "read")])
+    dataset = _dataset(80, 40)
+    dataset.input_key_counts = {"question": 80}
+    dataset.rows_without_sdk_input = 80
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [dataset], GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert step["skills"] == ["traigent-dataset-curate"]
+    assert "80 row(s) with no `input`/`input_data` key" in step["line"]
+    assert "all check out" not in step["line"]
+
+
+def test_a_row_with_no_input_like_key_is_counted_not_dropped(tmp_path: Path) -> None:
+    """The SDK refuses the whole file on one row without `input`/`input_data`,
+    even a row the audit's discovery keys do not recognise at all."""
+    path = tmp_path / "data.jsonl"
+    rows = [{"input": f"question {i}", "output": f"a{i}"} for i in range(40)]
+    rows.append({"text": "a stray row", "output": "x"})
+    path.write_text("".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8")
+    reports, _, _, _ = audit.scan_datasets([path], tmp_path)
+    assert reports[0].rows_without_sdk_input == 1
+    assert any(
+        "1 row(s) have no `input`/`input_data` key" in finding
+        for finding in reports[0].findings
+    ), reports[0].findings
+    entry = _entry([_knob("model", "read")])
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), reports, GOOD_PROBE, _scorer()
+    )
+    assert step["branch"] == "f"
+    assert "1 row(s) with no `input`/`input_data` key" in step["line"]
+
+
+def test_the_question_keys_fixture_is_flagged_and_routed(tmp_path: Path) -> None:
+    report, card = _run(FIXTURES / "question-keys", tmp_path)
+    by_file = {item["file"]: item for item in report["datasets"]}
+    for name in ("eval/tuning.jsonl", "eval/holdout.jsonl"):
+        assert any(
+            "`question`" in finding and "`eval_dataset`" in finding
+            for finding in by_file[name]["findings"]
+        ), by_file[name]["findings"]
+    assert report["next_step"]["branch"] == "f"
+    assert "all check out" not in card
+
+
+def test_an_input_keyed_dataset_gets_no_input_key_finding(tmp_path: Path) -> None:
+    path = tmp_path / "data.jsonl"
+    path.write_text(
+        "".join(
+            json.dumps({"input": f"question {i}", "output": f"a{i}"}) + "\n"
+            for i in range(40)
+        ),
+        encoding="utf-8",
+    )
+    reports, _, _, _ = audit.scan_datasets([path], tmp_path)
+    assert not any("eval_dataset" in finding for finding in reports[0].findings)
+
+
 def test_branch_f_judges_a_named_holdout_file_by_the_holdout_minimum_only() -> None:
     """A holdout file declared by its name beside a tuning file has no tuning
     rows to judge: 10 holdout rows under the holdout minimum is reported as a
@@ -378,6 +476,22 @@ def test_a_misordered_but_stable_scorer_takes_the_scorer_branch() -> None:
     )
     assert step["branch"] == "d"
     assert "did not rank a known-good answer above a known-bad one" in step["line"]
+    # It IS repeatable: the remedy is what it measures, not its repeatability.
+    assert "make it repeatable" not in step["line"]
+    assert "fix what it measures" in step["line"]
+
+
+def test_an_unstable_scorer_is_told_to_make_it_repeatable() -> None:
+    entry = _entry([_knob("model", "read")])
+    unstable = {
+        "ran": True,
+        "scores": {"good": [0.1, 0.9], "partial": [0.5], "bad": [0.0]},
+        "errors": [],
+    }
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [_dataset(80, 40)], unstable, _scorer()
+    )
+    assert "make it repeatable" in step["line"]
 
 
 def test_the_dataset_branch_never_outranks_an_unreliable_scorer() -> None:
