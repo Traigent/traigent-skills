@@ -65,7 +65,7 @@ def test_schema_vocabulary_check_fails_instead_of_skipping_under_ci(
 @pytest.mark.parametrize(
     ("workflow", "job", "step", "schema_path"),
     [
-        ("contracts.yml", "released-contracts", "Run released SDK buckets", "_schema"),
+        ("contracts.yml", "released-contracts-bucket", "Run released SDK bucket", "_schema"),
         ("contracts.yml", "develop-contracts", "Run develop contract drift check", "_schema"),
         (
             "snapshot-refresh.yml",
@@ -95,10 +95,22 @@ def test_every_ci_contract_run_has_the_public_schema(
 
 
 def _bucket_prelude() -> str:
-    """The released-contracts step up to and including its empty-list guard."""
-    run = _step(_jobs("contracts.yml")["released-contracts"], "Run released SDK buckets")["run"]
-    assert "done < <(" not in run, "process substitution hides list_buckets.py failures"
-    assert 'done <<< "$buckets"' in run
+    """The bucket-listing step up to and including its empty-list guard.
+
+    released-contracts is split into a bucket-listing job
+    (released-contracts-buckets) that fans out into a per-SDK matrix
+    (released-contracts-bucket); the empty/failing-list guard that used to
+    gate the single released-contracts loop now gates that listing step
+    instead, before it ever emits the matrix.
+    """
+    run = _step(
+        _jobs("contracts.yml")["released-contracts-buckets"], "List released SDK buckets"
+    )["run"]
+    assert 'buckets="$(python tools/contract/list_buckets.py)"' in run, (
+        "list_buckets.py must be resolved via command substitution into a "
+        "variable (which propagates its exit status under `set -e`), not a "
+        "process substitution feeding a loop directly (which would hide it)"
+    )
     head, sep, _ = run.partition("\nfi\n")
     assert sep, "empty-bucket guard not found"
     return head + sep

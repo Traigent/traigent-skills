@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.13"
+  version: "2.1.14"
 ---
 
 # Traigent Boost Agent
@@ -229,7 +229,7 @@ After a successful mock run, tell the user:
 
 1. **Pipeline validated** — trials, config space, dataset all working
 2. **Config space size** — how many unique configurations
-3. **Estimated LLM calls** — the Step 3.6 probe first (`<n>` calls on the cheapest model), then the full run: `max_trials x dataset_size` (upper bound)
+3. **Estimated LLM calls** — the Step 3.6 probe first (`<n>` calls on the cheapest model), then the full run: about `max_trials x dataset_size x model calls per example`, plus judge calls. On the first paid run of this project, show the card in `references/run-cost-and-limits.md` before asking go/no-go (it also says which calls `cost_limit` cannot see)
 4. **Cost limit** — the ceiling you propose for this run in USD (`TRAIGENT_RUN_COST_LIMIT`; the SDK default is $2.00). The figure the user approves is the one Step 5 sets
 5. **Ask for go/no-go**
 
@@ -237,7 +237,7 @@ Example:
 
 > Mock run passed: 4/4 trials, 0 failures, pipeline is valid.
 >
-> Config space: 2 models x continuous temperature. Probe first: 2 examples x 2 trials on the cheapest model (4 calls, pennies). Then the full run: with `max_trials=10` and 15 dataset examples, up to 150 LLM calls.
+> Config space: 2 models x continuous temperature. Probe first: 2 examples x 2 trials on the cheapest model (4 calls, pennies). Then the full run: `max_trials=10` × 15 dataset examples × 2 model calls per example = about 300 LLM calls, plus 150 judge calls if an LLM judge grades each answer.
 >
 > Proposed cost limit for probe and run together: $2.00 USD (the SDK default). Want me to run it for real? This will use your API keys and cost real tokens.
 
