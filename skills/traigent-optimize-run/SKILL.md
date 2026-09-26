@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.22"
+  version: "1.0.23"
 ---
 
 # Running Traigent Optimization
@@ -76,17 +76,24 @@ See `traigent-analyze-results` for the full field reference.
 > enable_mock_mode_for_quickstart()
 > results = await answer.optimize(max_trials=10, algorithm="grid")  # mock, no cost
 > print(f"Mock pipeline OK: {len(results.trials)} trials, {len(results.failed_trials)} failed")
-> # Estimate the REAL run's cost before approving. There is no `results.estimated_cost_usd`
-> # accessor — the upper bound is (max_trials x dataset_size) LLM calls; price that against
-> # your model's $/token, or set TRAIGENT_RUN_COST_LIMIT and let the run abort if it exceeds.
-> max_trials, dataset_size = 10, 15        # your run's values
-> print(f"Real run: up to {max_trials * dataset_size} LLM calls")
+> # Estimate the REAL run's calls before approving. There is no `results.estimated_cost_usd`
+> # accessor. Calls ~= trials x examples x model calls per example, plus judge calls; price
+> # that at your model's real rate. See references/run-cost-and-limits.md.
+> max_trials, dataset_size, calls_per_example = 10, 15, 2   # your run's values
+> print(f"Real run: about {max_trials * dataset_size * calls_per_example} model calls + judge calls")
 > ```
 > Mock mode avoids provider spend but can still contact the backend and consume quota when a
 > Traigent key is set. For local-only wiring, declare `offline=True` on the decorated function
 > before running it; mock mode alone is not a network boundary.
 > Only proceed to the real run below after the user explicitly approves the cost.
->
+
+<!-- PROTECTED -->
+> **Show the cost card once per project.** Before the first paid run on a project (no earlier
+> paid result in this session or in the project's results folder), show the user the card in
+> `references/run-cost-and-limits.md` — what a run costs, the guards in order, and why cost
+> Traigent cannot see is still billed — once, then ask for the dollar cap and the trial count.
+<!-- /PROTECTED -->
+
 > **Verify model IDs are live first.** Catalogs change — a delisted/renamed ID causes a 404 or a
 > degraded, unpriced trial that wastes the run. Preflight with
 > `traigent models --provider <p> --check <id>` (or the provider's live catalog endpoint). See
@@ -268,7 +275,10 @@ Results sync to the portal for every non-offline run, including `grid` and `rand
 <!-- PROTECTED -->
 ## Cost Controls
 
-Traigent tracks LLM API costs in real time and enforces budgets to prevent runaway spending.
+Traigent tracks the cost of the model calls it can see and stops a run at the cap. `cost_limit`
+bounds only that measured spend: calls Traigent cannot see (streaming, async LangChain, raw
+provider SDKs, plain HTTP — the list is in `references/run-cost-and-limits.md`) are still billed
+by the provider but show as `$0` or `None`, so the cap cannot stop them.
 <!-- /PROTECTED -->
 
 ### Cost Wiring Probe
@@ -392,7 +402,7 @@ Optimization can stop for several reasons. Check `results.stop_reason`:
 | `"max_trials_reached"` | Hit the configured `max_trials` limit. |
 | `"max_samples_reached"` | Hit the `max_total_examples` limit across all trials. |
 | `"timeout"` | Exceeded the `timeout` duration. |
-| `"cost_limit"` | Hit the `TRAIGENT_RUN_COST_LIMIT` budget. |
+| `"cost_limit"` | Hit the `cost_limit` / `TRAIGENT_RUN_COST_LIMIT` cap — or, when the stop message says `per-trial cost unknown: fallback trial limit`, a trial-count stop because cost was not measured (raising `cost_limit` does not help; see `traigent-debugging`). |
 | `"execution_budget"` | A shared `ExecutionBudget` (cost, examples, or deadline) was exhausted (SDK 0.26.0+); reported instead of `"cost_limit"`, detail in `results.metadata["execution_budget"]`. |
 | `"metric_limit"` | A soft cumulative metric limit was hit; report the completed results. |
 | `"vendor_error"` | A provider-side error (401/402/403/429, `insufficient_quota`) ended the run; the SDK does not retry by default. When every call fails before any example is scored the run instead raises `OptimizationError`, so catch that too. |
@@ -625,6 +635,7 @@ asyncio.run(main())
 - `references/algorithms.md` - Detailed algorithm comparison
 - `references/parallel-config.md` - Full ParallelConfig reference
 - `references/cost-management.md` - Cost enforcement details
+- `references/run-cost-and-limits.md` - Plain-language cost card: what a run costs, guards in order, what is and isn't measured
 - `traigent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
 - `traigent-setup-quickstart` - Installation and first optimization with mock mode
 - `traigent-setup-decorator` - Full `@traigent.optimize()` parameter reference
