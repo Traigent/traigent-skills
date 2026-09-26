@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.9"
+  version: "1.0.10"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -159,7 +159,8 @@ traigent.utils.exceptions.CostLimitExceeded: Cost limit exceeded: estimated $0.5
 **Fixes**:
 
 ```python
-# Option 1: Increase the cost limit
+# Option 1: Increase the cost limit (only after the user approves the higher ceiling;
+# it does not help when cost was not measured -- see the next entry)
 @traigent.optimize(
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
     cost_limit=2.0,  # $2.00 USD
@@ -192,6 +193,22 @@ if results.stop_reason == "cost_limit":
     # Mid-run budget hit: the paid trials are in `results`; this is a partial result, not an error.
     print(f"Budget reached after {len(results.successful_trials)} trials — partial result kept")
 ```
+
+### Run stopped because cost was not measured
+
+**Symptom**: `results.stop_reason == "cost_limit"`, but `results.total_cost` is far below the
+cap (often `$0` or `None`), and the stop message says `per-trial cost unknown: fallback trial
+limit N reached`.
+
+**Cause**: Traigent could not measure the cost of the model calls, so it stopped on a trial
+count instead of dollars. This is not a dollar cap. **Raising `cost_limit` does not help** — a cap
+cannot bound cost it cannot see, and your provider still bills those calls.
+
+**Fix**: make the calls measurable. Route them through a measured client (LangChain sync
+`.invoke`, non-streaming `litellm.completion` / `litellm.acompletion`, or Traigent's Bedrock
+client), or price a gateway/custom model with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON`. Then rerun a
+tiny paid probe and confirm `results.total_cost` is above 0. The full list of measured and
+unmeasured calls is in the `traigent-optimize-run` skill's run-cost-and-limits card.
 
 ### OptimizationStateError
 

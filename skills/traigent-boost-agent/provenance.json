@@ -1,11 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b04e83488cd0c177",
+  "doc_hash": "b4602489b1186d93",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/insights-and-iteration.md": "2fbc6034f8bd71d2",
-    "references/instrument-recipe.md": "3f2fa48719c9220c"
+    "references/instrument-recipe.md": "3f2fa48719c9220c",
+    "references/run-cost-and-limits.md": "e73185cd47b2a3af"
   },
   "entries": [
     {
@@ -211,6 +212,17 @@
       "doc_before_hash": "1583f7f0bb3152c2",
       "doc_after_hash": "b04e83488cd0c177",
       "note": "Rebuild issue #150 on current main: distinguish required and optional delegations, document dict-spread collision precedence, and keep variable-importance as an optional deep dive.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "run-cost-guidance-2026-09-26",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-26T00:00:00Z",
+      "doc_before_hash": "b04e83488cd0c177",
+      "doc_after_hash": "b4602489b1186d93",
+      "note": "Step 4 call estimate includes calls per example and judge calls, and opens the shared run-cost card (references/run-cost-and-limits.md) before the go/no-go on the first paid run.",
       "source_type": "agent"
     }
   ]
