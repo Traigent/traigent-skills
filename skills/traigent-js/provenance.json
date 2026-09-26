@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "24f18c1bfed79ec9",
+  "doc_hash": "c9c17739441b422d",
   "entries": [
     {
       "edit_id": "genesis",
@@ -39,7 +39,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "45c9bde670e83621",
       "doc_after_hash": "73f0827c04567006",
-      "note": "offline is an .optimize() option, not a spec field; mode/offlineMode/privacy/hybridApiOptions/execution.mode now throw ValidationError naming the replacement (traigent-js 7b7cd07, src/optimization/spec.ts) — the 'mode: local is canonical' paragraph was stale after traigent-js#351; Runtime Rules gain the algorithm=auto local_fallback rule (read result.metadata.source before reporting; no JS TRAIGENT_REQUIRE_CLOUD equivalent) and the note that there is no guided JS first run (traigent-first-run optimizes a Python callable). tests/data/js_api_snapshot.json was NOT refreshed: at 7b7cd07 it surfaces ~100 new exports that need coverage-ledger triage in their own PR.",
+      "note": "offline is an .optimize() option, not a spec field; mode/offlineMode/privacy/hybridApiOptions/execution.mode now throw ValidationError naming the replacement (JS SDK development branch as of 2026-09-16, src/optimization/spec.ts) — the 'mode: local is canonical' paragraph was stale after a JS SDK change; Runtime Rules gain the algorithm=auto local_fallback rule (read result.metadata.source before reporting; no JS TRAIGENT_REQUIRE_CLOUD equivalent) and the note that there is no guided JS first run (traigent-first-run optimizes a Python callable). tests/data/js_api_snapshot.json was NOT refreshed: on that branch it surfaces ~100 new exports that need coverage-ledger triage in their own PR.",
       "source_type": "agent"
     },
     {
@@ -62,6 +62,28 @@
       "doc_before_hash": "fa9a1399055b04b9",
       "doc_after_hash": "24f18c1bfed79ec9",
       "note": "Rebuild issue #150 on current main: recommend file/link path dependencies over npm link under pnpm/yarn and document the AsyncLocalStorage ESM caveat.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-303",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "24f18c1bfed79ec9",
+      "doc_after_hash": "b54e62aad87dc656",
+      "note": "Match the current JS SDK default branch: requireCloud / TRAIGENT_REQUIRE_CLOUD=1 makes algorithm='auto' fail closed; mode/offlineMode/privacy/hybridApiOptions and spec execution.mode throw; hyperband and frontier_scout are not JS algorithm values and TVL pareto_optimal/frontier_scout strategies are rejected natively; isInTrial is TrialContext.isInTrial(), not an export.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-303-review",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "b54e62aad87dc656",
+      "doc_after_hash": "c9c17739441b422d",
+      "note": "Name each removed option's replacement as its error does (hybridApiOptions points at the unsupported externalServiceEvaluator), and warn that an exported TRAIGENT_REQUIRE_CLOUD=1 makes grid/random/offline runs throw unless requireCloud: false is passed.",
       "source_type": "agent"
     }
   ]
