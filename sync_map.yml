@@ -5,7 +5,7 @@ sdk:
 default_min_sdk_version: "0.24.0"
 # Keep this pinned and update it when a new PyPI release should be covered by
 # per-PR released-contracts. Do not resolve PyPI live in PR CI.
-current_released_sdk_version: "0.27.0"
+current_released_sdk_version: "0.30.0"
 skills:
   traigent-setup-quickstart:
     # the `traigent plan` command taught below ships in traigent>=0.17.0.

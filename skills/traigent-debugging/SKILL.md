@@ -202,12 +202,17 @@ limit N reached`.
 
 **Cause**: Traigent could not measure the cost of the model calls, so it stopped on a trial
 count instead of dollars. This is not a dollar cap. **Raising `cost_limit` does not help** — a cap
-cannot bound cost it cannot see, and your provider still bills those calls.
+cannot bound cost it cannot see, and your provider still bills those calls. The result carries
+warning `COST_UNMEASURED_TRIAL_LIMIT_REACHED` (SDK 0.30.0+).
 
-**Fix**: make the calls measurable. Route them through a measured client (LangChain sync
-`.invoke`, non-streaming `litellm.completion` / `litellm.acompletion`, or Traigent's Bedrock
-client), or price a gateway/custom model with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON`. Then rerun a
-tiny paid probe and confirm `results.total_cost` is above 0. The full list of measured and
+**Fix**: make the calls measurable, or set `max_trials` explicitly. Route the calls through a
+measured client (LangChain sync `.invoke`, non-streaming `litellm.completion` /
+`litellm.acompletion`, or Traigent's Bedrock client), or price a gateway/custom model with
+`TRAIGENT_CUSTOM_MODEL_PRICING_JSON`. Then rerun a tiny paid probe and confirm
+`results.total_cost` is above 0. Or set `max_trials` explicitly (on the decorator, `.optimize()`,
+or `.optimize_sync()`) — that is taken as your consent to run unmeasured, up to the size you set
+(warning `COST_UNMEASURED_TRIALS_RAN`, SDK 0.30.0+; the default fallback trial limit, raised with
+`TRAIGENT_FALLBACK_TRIAL_LIMIT`, otherwise still applies). The full list of measured and
 unmeasured calls is in the `traigent-optimize-run` skill's run-cost-and-limits card.
 
 ### OptimizationStateError

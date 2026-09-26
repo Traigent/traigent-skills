@@ -7,9 +7,11 @@ Pinned here:
    tools/contract/sync_run_cost_reference.py, exactly like the economics reference
    (tests/contract/test_economics_reference.py).
 
-2. **Version-neutral content only.** The card ships before SDK 0.30.0, so it must not teach the
-   unmeasured-cost trial-limit rules that exist only on SDK develop (the 10-trial safety stop,
-   explicit max_trials consent, COST_UNMEASURED_* warning codes) or raw-OpenAI capture.
+2. **Version-neutral content only, except what SDK 0.30.0 released.** SDK 0.30.0 shipped the
+   unmeasured-cost trial-limit rules (the 10-trial safety stop, explicit max_trials/
+   max_total_examples consent, COST_UNMEASURED_* warning codes) and raw-OpenAI cost capture
+   (Traigent/Traigent#2441, #2447), so those are now allowed; DEFERRED_UNRELEASED_PATTERNS keeps
+   guarding anything still unreleased.
 
 3. **The corrected statements do not come back.** The call-count formula that ignored calls
    per example and judge calls, and the "tracks everything / works with every provider" claims.
@@ -127,15 +129,16 @@ def test_sync_tool_detects_a_tampered_copy(tmp_path: Path) -> None:
     assert result.returncode == 1, "--check passed on a tampered copy"
 
 
-# Rules that exist only on SDK develop (0.30.0.dev) — deferred until 0.30.0 is released.
+# Rules that exist only on SDK develop — deferred until released. SDK 0.30.0 shipped the
+# unmeasured-cost trial-limit rules and raw-OpenAI capture (Traigent/Traigent#2441, #2447), so
+# those five patterns were removed here in the same PR that bumped
+# sync_map.yml current_released_sdk_version to "0.30.0" — a deliberate gate change tied to that
+# release, not a general relaxation. `llm_usage_measured` and the literal "10-trial" phrasing stay
+# guarded: the card does not use either, and this list only relaxes patterns for content actually
+# added.
 DEFERRED_UNRELEASED_PATTERNS = (
-    r"COST_UNMEASURED_",
-    r"TRAIGENT_FALLBACK_TRIAL_LIMIT",
     r"\b10-trial",  # "10-trial safety stop"; the worked example's "10 trials × ..." is fine
-    r"(?:stops?|stopped) after \*?\*?10 trials",
     r"llm_usage_measured",
-    r"enable_openai_optimization",
-    r"OpenAI override",
 )
 
 
