@@ -1,11 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6c2a7196e03dd413",
+  "doc_hash": "2a0cd831f2fea426",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/environment-variables.md": "8ed2fa35292d9576",
-    "references/first-value-fallback.md": "7d7eaa86ba9fa986",
-    "references/installation-extras.md": "049a5aa7e3638e3a"
+    "references/environment-variables.md": "f5f40a3125b44292",
+    "references/first-value-fallback.md": "971e16f27b7620a2",
+    "references/installation-extras.md": "049a5aa7e3638e3a",
+    "references/run-cost-and-limits.md": "8579f950b7e78af6"
   },
   "entries": [
     {
@@ -243,6 +244,17 @@
       "doc_before_hash": "ae06c2993f2ee67a",
       "doc_after_hash": "6c2a7196e03dd413",
       "note": "Keep mock configuration application explicitly demo-only, return the SDK result for handoff and stop when no eligible winner exists.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "run-cost-guidance-2026-09-26",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-26T00:00:00Z",
+      "doc_before_hash": "6c2a7196e03dd413",
+      "doc_after_hash": "2a0cd831f2fea426",
+      "note": "Step 4 opens the shared run-cost card (references/run-cost-and-limits.md); cost_limit and TRAIGENT_RUN_COST_LIMIT scoped to measured calls in the fallback and env references.",
       "source_type": "agent"
     }
   ]
