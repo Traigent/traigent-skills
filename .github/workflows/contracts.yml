@@ -159,6 +159,16 @@ jobs:
   released-contracts:
     name: released-contracts
     needs: [released-contracts-buckets, released-contracts-bucket]
+    # always() is required here: GitHub's default `if: success()` for a job
+    # with `needs` means that when a matrix bucket fails, this aggregator
+    # would be SKIPPED rather than run -- and a skipped required check counts
+    # as passing for branch protection, so a real bucket failure would not
+    # block merge. always() makes the aggregator run regardless of upstream
+    # result; the event-name/ref condition (matching released-contracts-buckets'
+    # own `if`) keeps it from being forced to run -- and then failing, since
+    # its needs are legitimately skipped -- on triggers where released
+    # contracts doesn't apply (e.g. a push to develop).
+    if: always() && (github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main'))
     runs-on: ubuntu-latest
     timeout-minutes: 2
 
