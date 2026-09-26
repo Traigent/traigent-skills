@@ -1,7 +1,7 @@
 # Traigent (Codex CLI)
 
-Codex CLI does not auto-discover a skills directory the way Claude Code does — it only reads
-`AGENTS.md`. Copy the stanza below into your project's `AGENTS.md` (append if the file already
+Codex CLI reads `AGENTS.md`, but it may not open skill files mounted into a project on its own.
+Copy the stanza below into your project's `AGENTS.md` (append if the file already
 exists) after mounting the skills at `.github/skills/<name>/SKILL.md`, so Codex actually opens
 them before it acts on any Traigent task.
 

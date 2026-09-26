@@ -30,7 +30,6 @@ skills:
       - traigent-js/src/core/context.ts
       - traigent-js/src/seamless/*
       - traigent-js/src/integrations/*
-      - traigent-js/src/routing/*
       - traigent-js/README.md
       - traigent-js/docs/*
 
@@ -163,8 +162,6 @@ skills:
     sdk_paths:
       - traigent/utils/importance.py
       - traigent/utils/insights.py
-    docs:
-      - optimization trial artifact schema
 
   # Union of the two dataset-curation entries this skill was merged from
   # (curate-dataset, plus the reflect-on-hard-examples skill), folded in
