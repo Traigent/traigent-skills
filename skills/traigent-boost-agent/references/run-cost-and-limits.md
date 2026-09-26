@@ -3,7 +3,7 @@
 <!-- Generated copy: edit docs/shared/run-cost-and-limits.v1.md in the traigent-skills repo, then run python tools/contract/sync_run_cost_reference.py. -->
 
 Show this card to the user once, before the first paid run on a project. Everything here holds
-on every released Traigent SDK version.
+on every released Traigent SDK version, except the section marked otherwise.
 
 ## What you pay for
 
@@ -46,6 +46,29 @@ reports them as `$0` or as not measured (`None`), so the cap cannot stop them.
 Fix: route the model call through a measured client above. For a gateway or custom model name,
 give it a price with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON`.
 
+Streaming needs its own check even when the client is otherwise measured. `litellm` streaming
+calls (`stream=True`) are never measured, on either `completion` or `acompletion` — usage isn't
+available until your own code finishes consuming the stream. LangChain's `.stream()` /
+`.astream()` capture the *last* chunk, so they are measured only when the provider puts usage in
+that chunk (pass `stream_usage=True` to get it); without it, the call is unmeasured like any
+other stream.
+
+## When cost can't be measured (SDK 0.30.0+)
+
+From SDK 0.30.0 (see version-matrix: `unmeasured-cost-cap`) an unmeasured call shows as
+`None` / `n/a`, not `$0`, and the run guards itself:
+
+- Raw OpenAI SDK calls are measured when the OpenAI override is on
+  (`enable_openai_optimization()`, or `framework_targets=["openai.OpenAI", "openai.AsyncOpenAI"]`
+  with `auto_override_frameworks=True`). Non-streaming calls that return `usage` only.
+- If you did **not** set `max_trials` or `max_total_examples`, a run whose cost cannot be measured
+  stops after **10 trials** (a safety limit; `TRAIGENT_FALLBACK_TRIAL_LIMIT` changes it). Warning:
+  `COST_UNMEASURED_TRIAL_LIMIT_REACHED`.
+- If you **did** set one, Traigent takes that as your OK and runs up to it. Warning:
+  `COST_UNMEASURED_TRIALS_RAN`.
+- Partial capture: `COST_OBJECTIVE_PARTIAL_USAGE_CAPTURED`; nothing captured with a cost
+  objective: `COST_OBJECTIVE_NO_USAGE_CAPTURED` (this one exists from 0.29.0).
+
 ## Before a real run, check
 
 - The mock run passed, and mock mode is off for the real run: start a fresh interpreter and
@@ -54,3 +77,4 @@ give it a price with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON`.
 - A tiny paid probe (1–2 examples, fewest trials, cheapest model) shows `results.total_cost`
   above 0 — not `0.0`, not `None`.
 - The user said yes to a dollar cap and a trial count.
+- `results.total_cost` is not `None`/`n/a`.

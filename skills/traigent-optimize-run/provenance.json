@@ -1,13 +1,13 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "be279befb865fd5a",
+  "doc_hash": "d35d1f019eaced2d",
   "reference_hashes": {
     "references/algorithms.md": "1f1b85e715a30b9a",
     "references/cost-management.md": "02ddbf77a81da9ba",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/execution-budget.md": "5237d5546f884d06",
     "references/parallel-config.md": "f0979cbb952b3cf3",
-    "references/run-cost-and-limits.md": "e73185cd47b2a3af"
+    "references/run-cost-and-limits.md": "8579f950b7e78af6"
   },
   "entries": [
     {
@@ -246,6 +246,17 @@
       "doc_before_hash": "f62c81f58f91c9b4",
       "doc_after_hash": "be279befb865fd5a",
       "note": "Plain-language run-cost card (references/run-cost-and-limits.md, generated from docs/shared/run-cost-and-limits.v1.md), shown once before the first paid run on a project; call-count formula includes calls per example and judge calls; cost tracking and cost_limit scoped to measured calls; cost-unknown trial-count stop in the stop table; cost-management reference lists captured clients and uses the in-code mock-mode API.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "unmeasured-cost-030-2026-09-26",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-26T00:00:00Z",
+      "doc_before_hash": "be279befb865fd5a",
+      "doc_after_hash": "d35d1f019eaced2d",
+      "note": "SDK 0.30.0 shipped: cost_limit stop table row for the unmeasured-cost trial-count stop now names warning COST_UNMEASURED_TRIAL_LIMIT_REACHED (Traigent/Traigent#2441, #2447; see version-matrix: unmeasured-cost-cap). Gated on the SDK 0.30.0 release; see docs/version-matrix.md.",
       "source_type": "agent"
     }
   ]

@@ -402,7 +402,7 @@ Optimization can stop for several reasons. Check `results.stop_reason`:
 | `"max_trials_reached"` | Hit the configured `max_trials` limit. |
 | `"max_samples_reached"` | Hit the `max_total_examples` limit across all trials. |
 | `"timeout"` | Exceeded the `timeout` duration. |
-| `"cost_limit"` | Hit the `cost_limit` / `TRAIGENT_RUN_COST_LIMIT` cap — or, when the stop message says `per-trial cost unknown: fallback trial limit`, a trial-count stop because cost was not measured (raising `cost_limit` does not help; see `traigent-debugging`). |
+| `"cost_limit"` | Hit the `cost_limit` / `TRAIGENT_RUN_COST_LIMIT` cap — or, when the stop message says `per-trial cost unknown: fallback trial limit`, a trial-count stop because cost was not measured (warning `COST_UNMEASURED_TRIAL_LIMIT_REACHED`; raising `cost_limit` does not help; see `traigent-debugging`). |
 | `"execution_budget"` | A shared `ExecutionBudget` (cost, examples, or deadline) was exhausted (SDK 0.26.0+); reported instead of `"cost_limit"`, detail in `results.metadata["execution_budget"]`. |
 | `"metric_limit"` | A soft cumulative metric limit was hit; report the completed results. |
 | `"vendor_error"` | A provider-side error (401/402/403/429, `insufficient_quota`) ended the run; the SDK does not retry by default. When every call fails before any example is scored the run instead raises `OptimizationError`, so catch that too. |
