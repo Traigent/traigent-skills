@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+import argparse
+import json
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +15,20 @@ def repo_root() -> Path:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help=(
+            "Emit the bucket list as a single-line JSON array instead of one "
+            "version per line. Used by CI to fan the buckets out into a "
+            "matrix (strategy.matrix.bucket); the default line-per-bucket "
+            "output is unchanged and remains what tests/README.md and the "
+            "test suite exercise."
+        ),
+    )
+    args = parser.parse_args()
+
     data: dict[str, Any] = yaml.safe_load(
         (repo_root() / "sync_map.yml").read_text(encoding="utf-8")
     )
@@ -25,8 +41,12 @@ def main() -> int:
         if isinstance(entry, dict) and entry.get("min_sdk_version"):
             floors.add(str(entry["min_sdk_version"]))
 
-    for floor in sorted(floors, key=Version):
-        print(floor)
+    ordered = sorted(floors, key=Version)
+    if args.json:
+        print(json.dumps(ordered))
+    else:
+        for floor in ordered:
+            print(floor)
     return 0
 
 

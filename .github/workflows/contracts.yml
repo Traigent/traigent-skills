@@ -42,11 +42,56 @@ jobs:
       - name: Run the repository Python quality gate
         run: uv run ruff check .
 
-  released-contracts:
-    name: released-contracts
+  # released-contracts is split into three jobs so that each released SDK
+  # bucket gets its own runner (and its own 20-minute clock) instead of
+  # running all buckets back-to-back in one job that can time out partway
+  # through the last bucket. `released-contracts` is a required status check
+  # on main by exact name (see branches/main/protection/required_status_checks),
+  # so it stays as a real job here -- an aggregator that fans out to the
+  # matrix below and fails if any bucket failed -- rather than being renamed
+  # away by the matrix, which would silently stop protecting main.
+  released-contracts-buckets:
+    name: released-contracts-buckets
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
+    outputs:
+      buckets: ${{ steps.list.outputs.buckets }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv
+        run: python -m pip install "uv==0.9.11"
+
+      - name: Install harness dependencies (locked)
+        run: |
+          uv export --frozen --no-emit-project --no-hashes -o harness-requirements.txt
+          uv pip install --system -r harness-requirements.txt
+
+      - name: List released SDK buckets
+        id: list
+        run: |
+          set -euo pipefail
+          echo "buckets=$(python tools/contract/list_buckets.py --json)" >> "$GITHUB_OUTPUT"
+
+  released-contracts-bucket:
+    name: released-contracts (${{ matrix.bucket }})
+    needs: released-contracts-buckets
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        bucket: ${{ fromJson(needs.released-contracts-buckets.outputs.buckets) }}
 
     steps:
       - name: Checkout
@@ -63,8 +108,9 @@ jobs:
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.cache/uv
-          key: ${{ runner.os }}-uv-traigent-${{ hashFiles('sync_map.yml') }}
+          key: ${{ runner.os }}-uv-traigent-${{ matrix.bucket }}-${{ hashFiles('sync_map.yml') }}
           restore-keys: |
+            ${{ runner.os }}-uv-traigent-${{ matrix.bucket }}-
             ${{ runner.os }}-uv-traigent-
 
       - name: Install uv
@@ -85,30 +131,47 @@ jobs:
             && sudo apt-get install -y --no-install-recommends bubblewrap \
             || echo "bubblewrap unavailable; sandbox tests will skip"
 
-      - name: Run released SDK buckets
+      - name: Run released SDK bucket
+        env:
+          BUCKET_VERSION: ${{ matrix.bucket }}
         run: |
           set -euo pipefail
           # Locked harness tooling (harness-requirements.txt, derived from uv.lock) +
           # the matrix SDK version, which is intentionally NOT locked so every
           # released SDK is exercised against the same pinned harness.
-          while IFS= read -r version; do
-            [ -n "$version" ] || continue
-            uv venv --python "$(command -v python)" ".bucket-$version"
-            uv pip install --python ".bucket-$version/bin/python" \
-              -r harness-requirements.txt "traigent==$version"
-            ".bucket-$version/bin/python" -m pytest tests/contract --sdk-version="$version" -q
-            # The bundled per-skill suites (skills/<name>/tests). They need only
-            # the locked harness tooling already installed in this bucket venv --
-            # both current suites are standard library plus pytest -- so they add
-            # no dependency and run in the venv that is already built. They take
-            # well under a minute, against a contract run of well over a minute
-            # per bucket; the network-escape harness is the slow part, and its
-            # sandbox cases skip themselves where no namespace backend exists.
-            # A future skill whose tests need a
-            # third-party package must either vendor a stub or get its own lane;
-            # do not add the package here.
-            ".bucket-$version/bin/python" -m pytest skills/*/tests -q
-          done < <(python tools/contract/list_buckets.py)
+          version="$BUCKET_VERSION"
+          uv venv --python "$(command -v python)" ".bucket-$version"
+          uv pip install --python ".bucket-$version/bin/python" \
+            -r harness-requirements.txt "traigent==$version"
+          ".bucket-$version/bin/python" -m pytest tests/contract --sdk-version="$version" -q
+          # The bundled per-skill suites (skills/<name>/tests). They need only
+          # the locked harness tooling already installed in this bucket venv --
+          # both current suites are standard library plus pytest -- so they add
+          # no dependency and run in the venv that is already built. They take
+          # well under a minute, against a contract run of well over a minute
+          # per bucket; the network-escape harness is the slow part, and its
+          # sandbox cases skip themselves where no namespace backend exists.
+          # A future skill whose tests need a
+          # third-party package must either vendor a stub or get its own lane;
+          # do not add the package here.
+          ".bucket-$version/bin/python" -m pytest skills/*/tests -q
+
+  released-contracts:
+    name: released-contracts
+    needs: [released-contracts-buckets, released-contracts-bucket]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Confirm every released SDK bucket passed
+        run: |
+          echo "released-contracts-buckets: ${{ needs.released-contracts-buckets.result }}"
+          echo "released-contracts-bucket:  ${{ needs.released-contracts-bucket.result }}"
+          if [ "${{ needs.released-contracts-buckets.result }}" != "success" ] || \
+             [ "${{ needs.released-contracts-bucket.result }}" != "success" ]; then
+            echo "One or more released SDK buckets failed (or the bucket list job did)." >&2
+            exit 1
+          fi
 
   develop-contracts:
     name: develop-contracts
