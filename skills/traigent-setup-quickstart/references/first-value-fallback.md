@@ -135,7 +135,9 @@ Only after the user has seen the mock result and explicitly approved spend. A re
    a stated ceiling is the gate. Set `TRAIGENT_COST_APPROVED=true` only in the process of
    that approved run, never persisted.
 2. **Caps the budget.** Pass a per-run dollar `cost_limit` so an unattended sweep can't
-   overrun — a pre-run estimate over the cap stops the run before spending. See the
+   overrun — a pre-run estimate over the cap stops the run before spending. It bounds only
+   calls Traigent can measure (the bundled demo's `litellm.completion` is measured; your own
+   agent's client may not be) — see `run-cost-and-limits.md` in this folder. See the
    `traigent-optimize-run` skill for `cost_limit` behavior and stop conditions.
 3. **Drops the mock scaffolding.** Remove `enable_mock_mode_for_quickstart()`, the
    `offline=True` flag, and `mock_demo_accuracy`; let Traigent score real model output
@@ -149,9 +151,9 @@ export TRAIGENT_COST_APPROVED=true                      # only in this run's she
 ```
 
 ```python
-# A real run: no mock, no offline, a budget cap on .optimize().
+# A real run: no mock, no offline, a budget cap on the optimize call.
 # `cost_limit` caps the paid sweep; a pre-run estimate over it stops before spending.
-results = await classify_query.optimize(max_trials=6, cost_limit=1.00)
+results = classify_query.optimize_sync(max_trials=6, cost_limit=1.00)
 ```
 
 Ask the service for *what* to tune before this run — the `traigent-analyze-guidance` skill fetches

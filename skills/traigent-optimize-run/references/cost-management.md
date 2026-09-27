@@ -1,8 +1,8 @@
 # Cost Management Reference
 
-Traigent provides real-time cost tracking and enforcement to prevent runaway LLM API spending during optimization runs.
+Traigent tracks the cost of the model calls it can measure and enforces a per-run cap on that measured spend. Calls it cannot measure are still billed by your provider; see `run-cost-and-limits.md` in this folder for the plain-language card and the list of measured clients.
 
-> **Migration note:** Mock mode is now activated in code via `traigent.testing.enable_mock_mode_for_quickstart()` and is hard-blocked when `ENVIRONMENT=production`. The legacy `TRAIGENT_MOCK_LLM=true` env var still bypasses cost tracking in non-production environments for backward compatibility.
+> **Migration note:** Mock mode is now activated in code via `traigent.testing.enable_mock_mode_for_quickstart()` and is hard-blocked when `ENVIRONMENT=production`. The legacy `TRAIGENT_MOCK_LLM=true` env var is deprecated (see Mock Mode below) and does not bypass cost tracking.
 
 ## Environment Variables
 
@@ -14,7 +14,7 @@ Traigent provides real-time cost tracking and enforcement to prevent runaway LLM
 | `TRAIGENT_REQUIRE_COST_TRACKING` | `false` | Raise exception if cost tracking cannot extract costs. |
 | `TRAIGENT_COST_WARNING_THRESHOLD` | `0.5` | Warn when this fraction of the limit is consumed (0.0-1.0). |
 | `TRAIGENT_COST_DIVERGENCE_THRESHOLD` | `2.0` | Log warning if actual/estimated cost ratio exceeds this. |
-| `TRAIGENT_MOCK_LLM` | `false` | **Legacy** — bypass cost tracking in mock mode (dev only; hard-blocked in production). Prefer `traigent.testing.enable_mock_mode_for_quickstart()`. |
+| `TRAIGENT_MOCK_LLM` | `false` | **Deprecated** legacy mock-mode switch (dev only; hard-blocked in production; scheduled for removal, see Mock Mode below). Use `traigent.testing.enable_mock_mode_for_quickstart()`. |
 
 ## Setting a Cost Limit
 
@@ -59,7 +59,7 @@ from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 from traigent.utils.exceptions import CostLimitExceeded, OptimizationError
 
 try:
-    results = await func.optimize(max_trials=100, algorithm="random")
+    results = func.optimize_sync(max_trials=100, algorithm="random")
 except CostLimitExceeded as e:          # forward-compatible budget exception
     if e.estimated is None:
         print(f"Cost limit exceeded before the run; estimate unavailable; limit ${e.limit:.2f}")
@@ -74,9 +74,19 @@ else:
 
 ## Cost Tracking via LiteLLM
 
-Traigent uses LiteLLM's cost tracking to extract per-call costs from LLM API responses. This works automatically with all LiteLLM-supported providers (OpenAI, Anthropic, Cohere, etc.).
+Traigent prices the token usage it captures with LiteLLM's model price table. Capture is not
+automatic for every client: it covers LangChain chat models called with synchronous `.invoke`,
+non-streaming `litellm.completion` / `litellm.acompletion`, and Traigent's own Bedrock client.
 
-Cost tracking happens transparently:
+### When cost can't be measured
+
+Streaming calls, async LangChain (`ainvoke`, `abatch`), raw OpenAI/Anthropic/Google SDK calls,
+plain HTTP requests, and calls an evaluator or judge makes directly may not be measured. The
+provider still bills them; Traigent reports `$0` or `None` for them, so `cost_limit` cannot bound
+them. Route the call through a measured client, or price a gateway model with
+`TRAIGENT_CUSTOM_MODEL_PRICING_JSON`. Full list: `run-cost-and-limits.md`.
+
+For measured calls, tracking works like this:
 
 1. Before each trial, the `CostEnforcer` issues a `Permit` (reserving estimated cost).
 2. The trial executes and makes LLM API calls.
@@ -160,12 +170,27 @@ Trial 2: acquire_permit() -> execute -> track_cost(permit, $0.05)
 
 ## Mock Mode
 
-When `TRAIGENT_MOCK_LLM=true`, all cost tracking is bypassed. No permits are issued, no costs are recorded, and `CostLimitExceeded` is never raised. Use this for local development and testing.
+Turn mock mode on in code for the dry run, and keep it local with `offline=True` on the decorated
+function (mock mode alone can still contact the backend when a Traigent key is set):
+
+```python
+import traigent.testing
+
+traigent.testing.enable_mock_mode_for_quickstart()  # no provider calls, no spend; hard-blocked in production
+```
+
+Mock mode skips only the pre-run pricing estimate (so a pre-run `CostLimitExceeded` does not fire).
+The runtime CostEnforcer is always active: permits, `TRAIGENT_RUN_COST_LIMIT`, and
+`stop_reason="cost_limit"` apply in mock runs too, so a very low limit stops a mock run at 0 trials.
+Start a fresh interpreter for the real run: mock mode is process-local state.
 
 ```bash
-export TRAIGENT_MOCK_LLM=true
 export TRAIGENT_OFFLINE_MODE=true
 ```
+
+`TRAIGENT_MOCK_LLM=true` is deprecated on traigent 0.27.0 (DeprecationWarning, hidden by default;
+"will be removed in a future release"). Use `traigent.testing.enable_mock_mode_for_quickstart()` in
+code, e.g. from a pytest fixture/conftest, for new setups.
 
 ## Practical Examples
 
@@ -181,8 +206,10 @@ python run_optimization.py
 
 ### Development / Testing
 
+Enable mock mode from `conftest.py` with `traigent.testing.enable_mock_mode_for_quickstart()`
+(not the deprecated `TRAIGENT_MOCK_LLM` env var), then:
+
 ```bash
-export TRAIGENT_MOCK_LLM=true
 export TRAIGENT_OFFLINE_MODE=true
 
 pytest tests/
@@ -203,14 +230,15 @@ python optimize_production.py
 After optimization, cost information is available on the result object:
 
 ```python
-results = await func.optimize(max_trials=10, algorithm="grid")
+results = func.optimize_sync(max_trials=10, algorithm="grid")
 
 print(f"Total cost: ${results.total_cost:.4f}")
 print(f"Total tokens: {results.total_tokens}")
 
-# Per-trial scores/costs live in trial.metrics (works on every SDK version; score
-# mirrors the primary objective on SDKs after 0.21.3 — see version-matrix: score-relocation)
+# Per-trial objective values and costs live in trial.metrics under their own names.
+# `score` is the weighted selection basis in multi-objective runs, not an objective
+# (see version-matrix: score-relocation, SDKs after 0.21.3).
 for trial in results.trials:
     m = trial.metrics
-    print(f"Trial {trial.trial_id}: score={m.get('score')}, cost=${m.get('total_cost', 0.0):.4f}")
+    print(f"Trial {trial.trial_id}: accuracy={m.get('accuracy')}, cost=${m.get('total_cost', 0.0):.4f}")
 ```
