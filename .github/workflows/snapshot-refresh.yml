@@ -5,8 +5,13 @@ name: Snapshot Refresh
 # A separate publishing job receives only the four validated JSON snapshots and
 # has the minimum permissions needed to open or update the refresh PR.
 #
-# Requires BACKEND_REPO_TOKEN with read access to Traigent/TraigentBackend and
-# Traigent/Traigent, and JS_REPO_TOKEN with read access to Traigent/traigent-js.
+# Traigent/TraigentBackend and Traigent/traigent-js are private: each is read
+# with its own short-lived GitHub App installation token, minted per run and
+# scoped to that one repository with contents:read. Traigent/Traigent is public
+# and is checked out with no token. The repository owner provisions, once:
+#   - repo variable SKILLS_CI_READ_APP_CLIENT_ID: the App's client ID
+#   - repo secret   SKILLS_CI_READ_APP_PRIVATE_KEY: a private key for that App
+# and installs the App on both private repositories with Contents: read.
 
 on:
   schedule:
@@ -37,44 +42,65 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Guard - require upstream tokens
+      - name: Guard - require read App credentials
         env:
-          BACKEND_REPO_TOKEN: ${{ secrets.BACKEND_REPO_TOKEN }}
-          JS_REPO_TOKEN: ${{ secrets.JS_REPO_TOKEN }}
+          APP_CLIENT_ID: ${{ vars.SKILLS_CI_READ_APP_CLIENT_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.SKILLS_CI_READ_APP_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           missing=0
-          if [ -z "${BACKEND_REPO_TOKEN:-}" ]; then
-            echo "::error::BACKEND_REPO_TOKEN not set - cannot checkout TraigentBackend or Traigent SDK."
+          if [ -z "${APP_CLIENT_ID:-}" ]; then
+            echo "::error::repo variable SKILLS_CI_READ_APP_CLIENT_ID not set - cannot mint read tokens for TraigentBackend and traigent-js."
             missing=1
           fi
-          if [ -z "${JS_REPO_TOKEN:-}" ]; then
-            echo "::error::JS_REPO_TOKEN not set - cannot checkout traigent-js."
+          if [ -z "${APP_PRIVATE_KEY:-}" ]; then
+            echo "::error::repo secret SKILLS_CI_READ_APP_PRIVATE_KEY not set - cannot mint read tokens for TraigentBackend and traigent-js."
             missing=1
           fi
           if [ "$missing" -ne 0 ]; then
             exit 1
           fi
 
-      # Each private token is used only by actions/checkout. With persisted
+      - name: Mint read token (TraigentBackend only)
+        id: backend-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.SKILLS_CI_READ_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SKILLS_CI_READ_APP_PRIVATE_KEY }}
+          owner: Traigent
+          repositories: TraigentBackend
+          permission-contents: read
+
+      - name: Mint read token (traigent-js only)
+        id: js-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.SKILLS_CI_READ_APP_CLIENT_ID }}
+          private-key: ${{ secrets.SKILLS_CI_READ_APP_PRIVATE_KEY }}
+          owner: Traigent
+          repositories: traigent-js
+          permission-contents: read
+
+      # Each read token is used only by actions/checkout. With persisted
       # credentials disabled, the later install and test steps cannot recover
-      # a PAT from an upstream repository's Git configuration.
+      # a token from an upstream repository's Git configuration.
       - name: Checkout TraigentBackend
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           repository: Traigent/TraigentBackend
           ref: develop
-          token: ${{ secrets.BACKEND_REPO_TOKEN }}
+          token: ${{ steps.backend-token.outputs.token }}
           path: upstream/backend
           fetch-depth: 1
           persist-credentials: false
 
+      # Traigent/Traigent is public: no token, so no credential reaches the
+      # step that installs and runs its code.
       - name: Checkout Traigent SDK
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           repository: Traigent/Traigent
           ref: develop
-          token: ${{ secrets.BACKEND_REPO_TOKEN }}
           path: upstream/sdk
           fetch-depth: 1
           persist-credentials: false
@@ -84,9 +110,19 @@ jobs:
         with:
           repository: Traigent/traigent-js
           ref: main
-          token: ${{ secrets.JS_REPO_TOKEN }}
+          token: ${{ steps.js-token.outputs.token }}
           path: upstream/js
           fetch-depth: 1
+          persist-credentials: false
+
+      # TraigentSchema is public and owns the economics vocabulary the skills
+      # document. Without it test_economics_reference.py fails under CI rather
+      # than skipping, so the cross-repo check always runs here.
+      - name: Checkout TraigentSchema (public, read-only)
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          repository: Traigent/TraigentSchema
+          path: upstream/schema
           persist-credentials: false
 
       - name: Set up Python
@@ -127,6 +163,8 @@ jobs:
           python tools/contract/build_interface_inventory.py
 
       - name: Validate refreshed contracts
+        env:
+          TRAIGENT_SCHEMA_REPO: ${{ github.workspace }}/upstream/schema
         run: |
           set +e
           python -m pytest tests/contract --sdk-version=develop -q > contract-refresh.txt 2>&1

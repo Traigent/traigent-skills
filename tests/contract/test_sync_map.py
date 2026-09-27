@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -92,12 +93,34 @@ def _doc_cases() -> list[tuple[str, str]]:
     return cases
 
 
+# A `docs:` entry names a file in one of three trees. Only this repository's
+# own tree is present here, so only those entries can be checked for
+# existence; the rest are maintenance pointers into the upstream source trees.
+_THIS_REPO_DOC_PREFIXES = ("skills/",)
+_JS_REPO_DOC_PREFIX = "traigent-js/"
+_DOC_PATH_RE = re.compile(r"^[A-Za-z0-9_./*-]+$")
+
+
 @pytest.mark.parametrize("skill,doc_path", _doc_cases(), ids=lambda value: str(value))
-def test_sync_map_docs_are_advisory_for_released_wheel(
-    skill: str, doc_path: str
+def test_sync_map_docs_entries_are_paths(skill: str, doc_path: str) -> None:
+    assert _DOC_PATH_RE.match(doc_path), (
+        f"{skill}: docs entry {doc_path!r} is not a file path or glob"
+    )
+
+
+@pytest.mark.parametrize("skill,doc_path", _doc_cases(), ids=lambda value: str(value))
+def test_sync_map_docs_in_this_repo_exist(
+    repo_root: Path, skill: str, doc_path: str
 ) -> None:
-    pytest.skip(
-        f"{skill}: {doc_path} is repo-only advisory material; nightly SDK-repo checks own it"
+    if not doc_path.startswith(_THIS_REPO_DOC_PREFIXES):
+        tree = (
+            "the JS SDK repository"
+            if doc_path.startswith(_JS_REPO_DOC_PREFIX)
+            else "the Python SDK repository"
+        )
+        pytest.skip(f"not checked here: {skill}: {doc_path} lives in {tree}")
+    assert list(repo_root.glob(doc_path.rstrip("/"))), (
+        f"{skill}: docs entry {doc_path} matches nothing in this repository"
     )
 
 
