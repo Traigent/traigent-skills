@@ -209,6 +209,41 @@ GAP_EXCEPTIONS: dict[GapKey, str] = {
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
     ),
+    # ---- 2026-09-27: PR-stack rebase, PR #367 vs main's run-cost-guidance --
+    # PR #367 (audit-fix/boost-recipe-debug-gate) carries its own sequential
+    # boost-agent edits (audit-2026-09-23-318/349/338/339/339-r2/304/343/331,
+    # #318/#349/#338/#339/#304/#343/#331) branching from the same parent as
+    # main's run-cost-guidance-2026-09-26 (doc_after_hash b04e83488cd0c177):
+    # PR #367 was an open PR not yet merged to main when run-cost-guidance
+    # landed. Reconciled by merge-pr367-into-main-2026-09-27, which chains
+    # from run-cost-guidance's tip and recomputes doc_hash over the fully
+    # merged SKILL.md (same pattern as
+    # merge-main-taxonomy-into-econ-wi-a-2026-07-18 above). This gap is PR
+    # #367's own chain tip (after its last boost-agent commit,
+    # audit-2026-09-23-331) left with no continuation.
+    ("traigent-boost-agent", "ceef6e423373c532", "b04e83488cd0c177"): (
+        "parallel-branch entry (PR #367's own boost-agent commit chain vs "
+        "run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr367-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
+    ),
+    # ---- 2026-09-27: PR-stack rebase, PR #367 vs main's run-cost-guidance --
+    # PR #367 (audit-fix/boost-recipe-debug-gate) carries its own sequential
+    # debugging edits (audit-2026-09-23-321/322/343, #321/#322/#343) branching
+    # from the same parent as main's run-cost-guidance-2026-09-26 (doc_after_
+    # hash 565bcafed564c205): PR #367 was an open PR not yet merged to main
+    # when run-cost-guidance and unmeasured-cost-030 landed. Reconciled by
+    # merge-pr367-into-main-2026-09-27, which chains from unmeasured-cost-030's
+    # tip and recomputes doc_hash over the fully merged SKILL.md (same pattern
+    # as merge-main-taxonomy-into-econ-wi-a-2026-07-18 above). This gap is PR
+    # #367's own chain tip (after its last debugging commit,
+    # audit-2026-09-23-343) left with no continuation.
+    ("traigent-debugging", "107c8a4668b71133", "565bcafed564c205"): (
+        "parallel-branch entry (PR #367's own debugging commit chain vs "
+        "run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr367-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
+    ),
     ("traigent-dataset-curate", "fceec8f630dddba9", "f5481ef2791c45ef"): (
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"

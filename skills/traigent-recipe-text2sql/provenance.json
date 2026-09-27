@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "817315e02e52ee9e",
+  "doc_hash": "c69d354a3c7a8814",
   "reference_hashes": {
-    "references/quickstart_text2sql.md": "1585b5980b3b2277"
+    "references/quickstart_text2sql.md": "f7c4f11e20f25fac"
   },
   "entries": [
     {
@@ -84,7 +84,7 @@
       "timestamp": "2026-09-13T00:00:00Z",
       "doc_before_hash": "030cd36ac0e1e40a",
       "doc_after_hash": "c2b051b0c01c944f",
-      "note": "add 'Two scoring lessons from a real run' section from ruler-dev-001 FINDINGS.md §3-5: column-contract failures and decline/error miscounting",
+      "note": "add 'Two scoring lessons from a real run' section from an internal run's findings (§3-5): column-contract failures and decline/error miscounting",
       "source_type": "chat_decision"
     },
     {
@@ -140,6 +140,39 @@
       "doc_before_hash": "9c828ebbde1432f3",
       "doc_after_hash": "817315e02e52ee9e",
       "note": "Bound SQLite result memory (1 MB per value, 100 columns, 50 MB per result), allow read-only window, JSON-arrow and math functions so correct SQL is not scored 0, and never score an unpriced --real call as free: refuse unpriced models before spending and exit nonzero if a call cannot be priced.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-319",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "817315e02e52ee9e",
+      "doc_after_hash": "3b0b0d52661ef464",
+      "note": "Headline 20/30 -> 27/30 now says, at all three sites (description, intro, winner section), that the counts predate the result_eq comparator and were not re-scored with it; the tuning-slice caveat stays.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-320",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "3b0b0d52661ef464",
+      "doc_after_hash": "07cc45d7b8c85975",
+      "note": "Query watchdog is a wall-clock budget (_QUERY_BUDGET_S) instead of a 100k VM-step cap that aborted correct SQL on real-size tables and scored it 0; timeouts are printed and counted separately from SQL errors, and the scale-up note says when to raise the budget.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-355",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "07cc45d7b8c85975",
+      "doc_after_hash": "c69d354a3c7a8814",
+      "note": "offline=True comment scoped to no Traigent backend egress; provider calls (and LiteLLM's import-time pricing fetch unless LITELLM_LOCAL_MODEL_COST_MAP is set) still leave the machine, so it is not zero-egress.",
       "source_type": "agent"
     }
   ]

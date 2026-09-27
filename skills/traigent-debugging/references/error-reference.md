@@ -86,10 +86,13 @@ Raised when configuration values are invalid, features are unsupported, or requi
 | `details` | Additional context |
 
 **Common triggers**:
-- Non-list values in `configuration_space`
-- Empty configuration space
+- A named smart algorithm with local execution (`offline=True, algorithm="bayesian"`)
 - Invalid parameter names
 - Unsupported `algorithm` value or invalid `offline` setting
+
+Not `ConfigurationError`: a non-list `configuration_space` value raises `ValidationError`, and an
+empty `configuration_space` raises a builtin `ValueError`. Catch `ValidationError`/`TraigentError`
+or `ValueError` for those.
 
 **Resolution**: Check the error message and fix the configuration. Use `TRAIGENT_DEBUG=1` for the full traceback.
 
