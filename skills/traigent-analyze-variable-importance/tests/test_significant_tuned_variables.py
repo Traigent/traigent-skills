@@ -193,6 +193,7 @@ def test_outputs_are_written_and_parseable(tmp_path: Path) -> None:
         "significant_variables.svg",
         "insights.md",
         "video_card.json",
+        "sdk_cross_check.json",
     }
     assert expected == {path.name for path in output_dir.iterdir()}
 
@@ -509,3 +510,269 @@ def test_invalid_heldout_cost_cannot_reach_the_video_card():
                "optimized": {"accuracy": 0.6, "cost": 0.8}}
     with pytest.raises(ValueError, match=r"heldout\.baseline\.cost"):
         module.heldout_card_metrics(heldout, "accuracy")
+
+
+def test_non_completed_trials_are_skipped_not_scored_as_zero(tmp_path: Path) -> None:
+    """Issue #312: a failed SDK trial carries accuracy 0.0 but no measurement."""
+    trials_path = tmp_path / "trials.jsonl"
+    output_dir = tmp_path / "out"
+    write_jsonl(
+        trials_path,
+        [
+            {"status": "completed", "config": {"model": "small"}, "metrics": {"accuracy": 0.5}},
+            {"status": "completed", "config": {"model": "large"}, "metrics": {"accuracy": 1.0}},
+            {"status": "failed", "config": {"model": "broken"}, "metrics": {"accuracy": 0.0}},
+            {"status": "PRUNED", "config": {"model": "large"}, "metrics": {"accuracy": 0.1}},
+        ],
+    )
+
+    completed = run_cli(trials_path, output_dir)
+
+    ranking = json.loads((output_dir / "importance.json").read_text(encoding="utf-8"))
+    assert ranking[0]["knob"] == "model"
+    assert ranking[0]["spread"] == 0.5
+    assert ranking[0]["best_value"] == "large"
+    assert "skipped 2 non-completed trial(s)" in completed.stdout
+    video_card = json.loads((output_dir / "video_card.json").read_text(encoding="utf-8"))
+    assert video_card["skipped_non_completed"] == 2
+    assert video_card["n_trials"] == 2
+    insights = (output_dir / "insights.md").read_text(encoding="utf-8")
+    assert "2 non-completed trial(s)" in insights
+
+
+def test_rows_without_status_are_read_as_before(tmp_path: Path) -> None:
+    module = _load_module()
+    path = tmp_path / "trials.jsonl"
+    write_jsonl(
+        path,
+        [
+            {"config": {"k": "a"}, "accuracy": 0.0},
+            {"config": {"k": "b"}, "metrics": {"accuracy": 1.0}},
+        ],
+    )
+    trials, skipped = module.read_trial_file(path, "accuracy")
+    assert [trial.objective for trial in trials] == [0.0, 1.0]
+    assert skipped == 0
+    assert module.read_trials(path, "accuracy") == trials
+
+
+def test_only_non_completed_trials_is_an_explicit_error(tmp_path: Path) -> None:
+    module = _load_module()
+    path = tmp_path / "trials.jsonl"
+    write_jsonl(path, [{"status": "failed", "config": {"k": "a"}, "accuracy": 0.0}])
+    with pytest.raises(ValueError, match=r"1 non-completed trial\(s\) skipped"):
+        module.read_trials(path, "accuracy")
+
+
+def _pure_noise_trials(module, seed: int) -> list:
+    rng = random.Random(seed)
+    return [
+        _trial(module, rng.gauss(0.6, 0.08), {"noise": rng.randrange(3)})
+        for _ in range(60)
+    ]
+
+
+def test_confidence_is_display_only_and_never_loosens_significance() -> None:
+    """Issue #317 A: --confidence used to set alpha = 1 - confidence."""
+    module = _load_module()
+    hits = {0.5: 0, 0.9: 0}
+    for seed in range(40):
+        trials = _pure_noise_trials(module, seed)
+        labels = {}
+        for confidence in hits:
+            row = module.analyze_importance(
+                trials, None, confidence=confidence, bootstrap_draws=500,
+                sampling_design="randomized",
+            )[0]
+            labels[confidence] = row.label
+            hits[confidence] += row.label == "significant"
+        assert labels[0.5] == labels[0.9], f"seed {seed}: confidence changed the label"
+    # Default alpha 0.05 over 40 null datasets: expect ~2; 18/40 was the old
+    # --confidence 0.5 behaviour.
+    assert hits[0.5] == hits[0.9] <= 6, hits
+
+
+def test_alpha_is_bounded_and_written_to_outputs(tmp_path: Path) -> None:
+    trials_path = tmp_path / "trials.jsonl"
+    write_jsonl(trials_path, synthetic_trials(80))
+
+    run_cli(trials_path, tmp_path / "default")
+    ranking = json.loads((tmp_path / "default" / "importance.json").read_text(encoding="utf-8"))
+    assert {row["alpha"] for row in ranking} == {0.05}
+    card = json.loads((tmp_path / "default" / "video_card.json").read_text(encoding="utf-8"))
+    assert card["alpha"] == 0.05
+    with (tmp_path / "default" / "importance.csv").open(encoding="utf-8", newline="") as handle:
+        assert {row["alpha"] for row in csv.DictReader(handle)} == {"0.05"}
+
+    run_cli(trials_path, tmp_path / "loose", "--alpha", "0.1")
+    card = json.loads((tmp_path / "loose" / "video_card.json").read_text(encoding="utf-8"))
+    assert card["alpha"] == 0.1
+
+    for bad in ("0", "0.2", "0.5"):
+        with pytest.raises(subprocess.CalledProcessError):
+            run_cli(trials_path, tmp_path / f"bad{bad}", "--alpha", bad)
+
+
+def _coupled_trials(module, seed: int) -> list:
+    rng = random.Random(seed)
+    rows = []
+    for _ in range(60):
+        m = rng.randrange(2)
+        fewshot = rng.choice([4, 8]) if m else rng.choice([0, 0, 0, 4])
+        rows.append(
+            _trial(
+                module,
+                0.5 + 0.15 * m + rng.gauss(0, 0.08),
+                {"model": ["cheap", "strong"][m], "fewshot": fewshot},
+            )
+        )
+    return rows
+
+
+def test_knob_coupled_to_another_knob_is_not_labelled_significant() -> None:
+    """Issue #317 B: a no-effect knob tied to the model by a constrained space."""
+    module = _load_module()
+    for seed in range(40):
+        rows = module.analyze_importance(
+            _coupled_trials(module, seed), None, confidence=0.9,
+            bootstrap_draws=500, sampling_design="randomized",
+        )
+        by_knob = {row.knob: row for row in rows}
+        assert by_knob["fewshot"].label == "directional", seed
+        assert by_knob["fewshot"].inference_status == "knobs_not_independent", seed
+
+
+def test_independent_knobs_rarely_trip_the_dependence_screen() -> None:
+    module = _load_module()
+    rng = random.Random(317)
+    flagged = 0
+    datasets = 300
+    for _ in range(datasets):
+        knobs = [f"k{j}" for j in range(4)]
+        trials = [
+            _trial(module, 0.5, {knob: rng.randrange(3) for knob in knobs})
+            for _ in range(60)
+        ]
+        flagged += bool(module.dependent_knobs(trials, knobs))
+    # Simulated rate at the 0.001 per-pair level is about 0.5% for 6 pairs.
+    assert flagged <= 0.03 * datasets, flagged
+
+
+@pytest.mark.parametrize(
+    ("statistic", "dof", "expected"),
+    [
+        (3.841458820694124, 1, 0.05),
+        (5.991464547107979, 2, 0.05),
+        (10.827566170662733, 1, 0.001),
+        (16.918977604620448, 9, 0.05),
+        (0.0, 3, 1.0),
+    ],
+)
+def test_chi2_survival_matches_reference_quantiles(statistic, dof, expected) -> None:
+    module = _load_module()
+    assert module.chi2_survival(statistic, dof) == pytest.approx(expected, rel=1e-9, abs=1e-12)
+
+
+def test_sdk_cross_check_claim_is_backed_by_an_output_file(tmp_path: Path) -> None:
+    """Issue #317 C: the cross-check numbers must be inspectable.
+
+    Skips (never passes vacuously) where the SDK analyzer cannot be imported.
+    """
+    pytest.importorskip("traigent.utils.importance")
+    trials_path = tmp_path / "trials.jsonl"
+    output_dir = tmp_path / "out"
+    write_jsonl(trials_path, synthetic_trials(80))
+    run_cli(trials_path, output_dir)
+
+    insights = (output_dir / "insights.md").read_text(encoding="utf-8")
+    cross_check = json.loads((output_dir / "sdk_cross_check.json").read_text(encoding="utf-8"))
+    claims_computed = "variance-based output was computed" in insights
+    assert claims_computed, "with the SDK installed, 80 trials must yield a cross-check"
+    assert cross_check["computed"] is claims_computed
+    assert bool(cross_check["results"]) is claims_computed
+    assert ("## SDK cross-check" in insights) is claims_computed
+    if claims_computed:
+        for name, result in cross_check["results"].items():
+            assert f"`{name}`" in insights
+            assert set(result) >= {"importance_score", "confidence_interval", "sample_size"}
+
+
+def test_insights_renders_sdk_cross_check_table(tmp_path: Path) -> None:
+    module = _load_module()
+    trials = [_trial(module, 0.9 if i % 2 else 0.2, {"knob": i % 2}) for i in range(40)]
+    rows = module.analyze_importance(trials, None, confidence=0.9, bootstrap_draws=500)
+    payload = {
+        "knob": {
+            "importance_score": 0.75,
+            "confidence_interval": [0.5, 0.9],
+            "method": "variance",
+            "sample_size": 40,
+        }
+    }
+    path = tmp_path / "insights.md"
+    module.write_insights_md(
+        path, rows, n_trials=40, objective="accuracy", confidence=0.9,
+        heldout=None, sdk_note="computed", sdk_payload=payload,
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "## SDK cross-check" in text
+    assert "| `knob` | 0.75 | [0.5, 0.9] | 40 |" in text
+
+
+def _six_knob_factorial(count: int = 128) -> list[dict]:
+    """Two replicates of a full 2^6 factorial: every knob exactly independent."""
+    rows = []
+    for index in range(count):
+        config = {f"k{j}": (index >> j) & 1 for j in range(6)}
+        # A real effect on k0 only, plus a small deterministic wobble.
+        accuracy = (0.8 if config["k0"] else 0.4) + 0.01 * ((index * 7) % 5)
+        rows.append({"accuracy": accuracy, "config": config})
+    return rows
+
+
+def test_default_draws_resolve_a_six_knob_family(tmp_path: Path) -> None:
+    """Review of #317: at the default alpha the default draws must cover a 6-knob family."""
+    trials_path = tmp_path / "trials.jsonl"
+    output_dir = tmp_path / "out"
+    write_jsonl(trials_path, _six_knob_factorial())
+    subprocess.run(
+        [
+            sys.executable, str(SCRIPT), "--trials", str(trials_path),
+            "--output-dir", str(output_dir), "--sampling-design", "randomized",
+        ],
+        check=True, text=True, capture_output=True,
+    )
+    ranking = json.loads((output_dir / "importance.json").read_text(encoding="utf-8"))
+    by_knob = {row["knob"]: row for row in ranking}
+    assert by_knob["k0"]["family_size"] == 6
+    assert by_knob["k0"]["inference_status"] == "tested"
+    assert by_knob["k0"]["label"] == "significant"
+
+
+def test_resolution_shortfall_names_the_draws_flag(tmp_path: Path) -> None:
+    trials_path = tmp_path / "trials.jsonl"
+    output_dir = tmp_path / "out"
+    write_jsonl(trials_path, _six_knob_factorial())
+    subprocess.run(
+        [
+            sys.executable, str(SCRIPT), "--trials", str(trials_path),
+            "--output-dir", str(output_dir), "--sampling-design", "randomized",
+            "--bootstrap-draws", "500",
+        ],
+        check=True, text=True, capture_output=True,
+    )
+    ranking = json.loads((output_dir / "importance.json").read_text(encoding="utf-8"))
+    assert {row["inference_status"] for row in ranking} == {
+        "insufficient_permutation_resolution"
+    }
+    insights = (output_dir / "insights.md").read_text(encoding="utf-8")
+    assert "--bootstrap-draws 1200" in insights
+
+
+def test_worked_example_lists_every_randomized_condition() -> None:
+    text = " ".join(
+        (SCRIPTS_DIR.parent / "SKILL.md").read_text(encoding="utf-8").split()
+    )
+    assert "all three conditions" not in text
+    assert "verifies all four conditions" in text
+    assert "each knob was assigned independently of the others" in text

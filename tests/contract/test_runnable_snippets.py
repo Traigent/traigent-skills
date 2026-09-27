@@ -9,23 +9,25 @@ from pathlib import Path
 from .extract import RunnableSnippet
 
 
-SENSITIVE_ENV_NAMES = {
-    "ANTHROPIC_API_KEY",
-    "AZURE_OPENAI_API_KEY",
-    "COHERE_API_KEY",
-    "GEMINI_API_KEY",
-    "GOOGLE_API_KEY",
-    "GROQ_API_KEY",
-    "OPENAI_API_KEY",
-    "OPENROUTER_API_KEY",
-    "TRAIGENT_API_KEY",
-}
-CI_ENV_NAMES = {
-    "CI",
-    "GITHUB_ACTIONS",
-    "GITHUB_RUN_ID",
-    "GITHUB_WORKFLOW",
-}
+# The child environment is built from an allowlist, not by removing known-bad
+# names from the caller's shell: an ambient TRAIGENT_* setting, a provider key
+# or a CI marker would otherwise change the verdict for the same tree. Only
+# what a Python process needs to start and find its interpreter passes through;
+# the runner then pins offline mode and gives the snippet its own HOME.
+PASSTHROUGH_ENV_NAMES = frozenset(
+    {
+        "LANG",
+        "LC_ALL",
+        "LC_CTYPE",
+        "PATH",
+        "PYTHONPATH",
+        "SYSTEMROOT",
+        "TEMP",
+        "TMP",
+        "TMPDIR",
+        "VIRTUAL_ENV",
+    }
+)
 
 
 def test_runnable_python_snippet_executes_in_offline_mock(
@@ -99,12 +101,8 @@ def _offline_mock_env() -> dict[str, str]:
     env = {
         key: value
         for key, value in os.environ.items()
-        if key not in SENSITIVE_ENV_NAMES and key not in CI_ENV_NAMES
+        if key in PASSTHROUGH_ENV_NAMES
     }
-    for key in list(env):
-        if key.endswith("_API_KEY") or key.endswith("_SECRET_ACCESS_KEY"):
-            env.pop(key, None)
-
     env.update(
         {
             "ENVIRONMENT": "test",

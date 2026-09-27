@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "37a3c2f59d7c5da0",
+  "doc_hash": "872de6c4103547a8",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/evaluation-options.md": "6ddebf1de9dd5838",
-    "references/execution-modes.md": "2a6a0fb6b19b78d7",
-    "references/injection-modes.md": "be8c4d49b4992b0e",
+    "references/evaluation-options.md": "f766d4df828a1ade",
+    "references/execution-modes.md": "9d797be6dae9c6e1",
+    "references/injection-modes.md": "d81067c2dff72c82",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
   },
   "entries": [
@@ -208,6 +208,39 @@
       "doc_before_hash": "085f427ca6ccf5f0",
       "doc_after_hash": "37a3c2f59d7c5da0",
       "note": "Rebuild issue #195 on current main: correct legacy execution-mode behavior and distinguish custom-evaluator arity errors from parameter-name warnings.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-355",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "37a3c2f59d7c5da0",
+      "doc_after_hash": "07a58de11a248b06",
+      "note": "Scope offline=True to zero Traigent backend egress and say that a no-network run also needs LITELLM_LOCAL_MODEL_COST_MAP=True before litellm is imported; import traigent does not set it.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-356",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "07a58de11a248b06",
+      "doc_after_hash": "42f73a0bd02c83dc",
+      "note": "Move algorithm/offline into the ExecutionOptions bundle so following the offline=True comment no longer raises a conflict, drop its zero-egress claim, and use optimize_sync in the Complete Example instead of a module-level await.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-355",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "42f73a0bd02c83dc",
+      "doc_after_hash": "872de6c4103547a8",
+      "note": "Scope the When-to-Use bullet to zero Traigent backend egress, matching the offline=True wording.",
       "source_type": "agent"
     }
   ]

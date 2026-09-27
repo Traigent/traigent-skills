@@ -1,13 +1,16 @@
 # LangChain Integration Reference
 
 > **Dry-run first.** Before running any real LangChain optimization, activate `enable_mock_mode_for_quickstart()`, run, review the cost estimate, and get explicit approval. See the `traigent-boost-agent` skill for the dry-run-first / cost-approval mandate.
+> - LangChain clients require a key at construction, so set a non-secret
+>   placeholder in the dry-run process only — e.g. `OPENAI_API_KEY=mock-placeholder` (it cannot bill;
+>   the calls are intercepted).
 
 ## Overview
 
 Traigent integrates with LangChain to optimize model selection, temperature, and other parameters across chains, agents, and RAG pipelines. There are two approaches:
 
 1. **Manual config injection** - call `traigent.get_config()` and construct LangChain objects yourself
-2. **Auto override** - let Traigent intercept LangChain model instantiation via `auto_override_frameworks` or `framework_targets`
+2. **Auto override** - let Traigent intercept LangChain model instantiation via `auto_override_frameworks=True` together with `framework_targets`
 
 ## Installation
 
@@ -19,6 +22,13 @@ pip install langchain-openai langchain-anthropic langchain-google-genai
 ```
 
 ## auto_override_frameworks
+
+> **Released SDK caveat:** on `traigent<=0.27.0` auto-override is a silent no-op — every trial
+> constructs the client with the literal values in your code, and the run still ranks the trials
+> and reports a `best_config`. Until a release that fixes it, use manual injection (the Basic
+> Pattern: build the client from `traigent.get_config()`). Before any paid run, verify in mock mode
+> that the constructed client's `model_name` differs across two trials (the preflight in
+> [Verify the override before a paid run](#verify-the-override-before-a-paid-run) below).
 
 > **Requires `framework_targets`.** `auto_override_frameworks=True` alone is not sufficient — both flags must be set together, otherwise the override is silently skipped.
 >
@@ -46,7 +56,46 @@ def my_chain(text):
     return llm.invoke(text).content
 ```
 
-During optimization, each trial replaces the `model` and `temperature` arguments with the trial's configuration values. After optimization, calling `apply_best_config()` locks in the best configuration.
+On an SDK where auto-override applies (see the caveat above), each trial replaces the `model` and `temperature` arguments with the trial's configuration values. After optimization, calling `apply_best_config()` locks in the best configuration.
+
+### Verify the override before a paid run
+
+Run this keyless mock check first. It fails when the constructed client never changes across
+trials. `OPENAI_API_KEY=mock-placeholder` is a non-secret placeholder: LangChain needs a key at
+construction, and mock mode intercepts the calls, so nothing is billed.
+
+```python
+# OPENAI_API_KEY=mock-placeholder python verify_override.py
+import traigent
+from langchain_openai import ChatOpenAI
+from traigent.testing import enable_mock_mode_for_quickstart
+
+enable_mock_mode_for_quickstart()
+built = set()
+
+@traigent.optimize(
+    eval_dataset="questions.jsonl",  # a few rows of {"input": {"question": ...}, "output": ...}
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
+    objectives=["accuracy"],
+    offline=True,
+    algorithm="grid",
+    max_trials=2,
+    auto_override_frameworks=True,
+    framework_targets=["langchain_openai.ChatOpenAI"],
+)
+def probe(question):
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5)
+    built.add(llm.model_name)
+    return llm.invoke(question).content
+
+probe.optimize_sync()
+if len(built) < 2:
+    raise SystemExit(f"auto-override did not apply: every trial built {sorted(built)}; use manual injection")
+print("auto-override applied:", sorted(built))
+```
+
+On `traigent<=0.27.0` this check exits with `auto-override did not apply` — that is expected on
+those versions; use manual injection.
 
 ### How It Works
 
@@ -59,13 +108,13 @@ During optimization, each trial replaces the `model` and `temperature` arguments
 
 - `langchain_openai.ChatOpenAI`
 - `langchain_anthropic.ChatAnthropic`
-- `langchain_google_genai.ChatGoogleGenerativeAI`
 - `openai.OpenAI`, `openai.AsyncOpenAI`
 - `anthropic.Anthropic`, `anthropic.AsyncAnthropic`
 
 ## framework_targets
 
-For finer control, specify exactly which classes to override:
+For finer control, specify exactly which classes to override. `framework_targets` does nothing
+without `auto_override_frameworks=True` in the same call, and the released-SDK caveat above applies:
 
 ```python
 @traigent.optimize(
@@ -75,6 +124,7 @@ For finer control, specify exactly which classes to override:
     },
     objectives=["accuracy"],
     max_trials=8,
+    auto_override_frameworks=True,  # required
     framework_targets=["langchain_openai.ChatOpenAI"],
 )
 def my_func(text):

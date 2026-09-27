@@ -44,12 +44,8 @@ def _orphan_provenance_skills(root: Path) -> list[Path]:
     ]
 
 
-def _unprovenanced_skills(root: Path) -> list[Path]:
-    return [
-        d
-        for d in _skill_dirs(root)
-        if (d / "SKILL.md").is_file() and not (d / "provenance.json").is_file()
-    ]
+def _skills(root: Path) -> list[Path]:
+    return [d for d in _skill_dirs(root) if (d / "SKILL.md").is_file()]
 
 
 def _skills_with_references(root: Path) -> list[Path]:
@@ -61,7 +57,7 @@ def _skills_with_references(root: Path) -> list[Path]:
 
 
 PROVENANCED_SKILLS = _provenanced_skills(repo_root())
-UNPROVENANCED_SKILLS = _unprovenanced_skills(repo_root())
+SKILLS = _skills(repo_root())
 SKILLS_WITH_REFERENCES = _skills_with_references(repo_root())
 
 
@@ -109,13 +105,12 @@ def test_provenance_reference_hashes_match_references(skill_dir: Path) -> None:
     )
 
 
-@pytest.mark.parametrize(
-    "skill_dir", UNPROVENANCED_SKILLS, ids=[d.name for d in UNPROVENANCED_SKILLS]
-)
-def test_skill_without_provenance_is_skipped(skill_dir: Path) -> None:
-    pytest.skip(
-        f"{skill_dir.name}: no provenance.json yet — genesis entries are owned by "
-        "the private evaluation harness (eval-artifacts/README.md, Provenance v1)"
+@pytest.mark.parametrize("skill_dir", SKILLS, ids=[d.name for d in SKILLS])
+def test_every_skill_has_provenance(skill_dir: Path) -> None:
+    """Every shipped skill carries the provenance.json the README promises."""
+    assert (skill_dir / "provenance.json").is_file(), (
+        f"{skill_dir.name}: missing provenance.json — add one with a genesis entry "
+        "and the current doc_hash (eval-artifacts/README.md, Provenance v1)"
     )
 
 
@@ -192,9 +187,62 @@ GAP_EXCEPTIONS: dict[GapKey, str] = {
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
     ),
+    # ---- 2026-09-27: PR-stack rebase, PR #365 vs main's run-cost-guidance --
+    # PR #365 (audit-fix/analyze) carries its own sequential analyze-results
+    # edits (audit-2026-09-23-311/311-r2/314/311-r2/311-r2b, #311/#313/#314)
+    # branching from the same parent as main's run-cost-guidance-2026-09-26
+    # (doc_after_hash 0f379cbfc1e67371): PR #365 was an open PR not yet
+    # merged to main when run-cost-guidance and unmeasured-cost-030 landed.
+    # Reconciled by merge-pr365-into-main-2026-09-27, which chains from
+    # unmeasured-cost-030's tip and recomputes doc_hash over the fully merged
+    # SKILL.md (same pattern as merge-main-taxonomy-into-econ-wi-a-2026-07-18
+    # above). This gap is PR #365's own chain tip (after its last
+    # analyze-results commit, audit-2026-09-23-311-r2b) left with no
+    # continuation.
+    ("traigent-analyze-results", "c0175e1d49ce3513", "0f379cbfc1e67371"): (
+        "parallel-branch entry (PR #365's own analyze-results commit chain "
+        "vs run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr365-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
+    ),
     ("traigent-boost-agent", "a1ba7cac8c65847e", "23c57e5772586d93"): (
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
+    ),
+    # ---- 2026-09-27: PR-stack rebase, PR #367 vs main's run-cost-guidance --
+    # PR #367 (audit-fix/boost-recipe-debug-gate) carries its own sequential
+    # boost-agent edits (audit-2026-09-23-318/349/338/339/339-r2/304/343/331,
+    # #318/#349/#338/#339/#304/#343/#331) branching from the same parent as
+    # main's run-cost-guidance-2026-09-26 (doc_after_hash b04e83488cd0c177):
+    # PR #367 was an open PR not yet merged to main when run-cost-guidance
+    # landed. Reconciled by merge-pr367-into-main-2026-09-27, which chains
+    # from run-cost-guidance's tip and recomputes doc_hash over the fully
+    # merged SKILL.md (same pattern as
+    # merge-main-taxonomy-into-econ-wi-a-2026-07-18 above). This gap is PR
+    # #367's own chain tip (after its last boost-agent commit,
+    # audit-2026-09-23-331) left with no continuation.
+    ("traigent-boost-agent", "ceef6e423373c532", "b04e83488cd0c177"): (
+        "parallel-branch entry (PR #367's own boost-agent commit chain vs "
+        "run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr367-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
+    ),
+    # ---- 2026-09-27: PR-stack rebase, PR #367 vs main's run-cost-guidance --
+    # PR #367 (audit-fix/boost-recipe-debug-gate) carries its own sequential
+    # debugging edits (audit-2026-09-23-321/322/343, #321/#322/#343) branching
+    # from the same parent as main's run-cost-guidance-2026-09-26 (doc_after_
+    # hash 565bcafed564c205): PR #367 was an open PR not yet merged to main
+    # when run-cost-guidance and unmeasured-cost-030 landed. Reconciled by
+    # merge-pr367-into-main-2026-09-27, which chains from unmeasured-cost-030's
+    # tip and recomputes doc_hash over the fully merged SKILL.md (same pattern
+    # as merge-main-taxonomy-into-econ-wi-a-2026-07-18 above). This gap is PR
+    # #367's own chain tip (after its last debugging commit,
+    # audit-2026-09-23-343) left with no continuation.
+    ("traigent-debugging", "107c8a4668b71133", "565bcafed564c205"): (
+        "parallel-branch entry (PR #367's own debugging commit chain vs "
+        "run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr367-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
     ),
     ("traigent-dataset-curate", "fceec8f630dddba9", "f5481ef2791c45ef"): (
         "parallel-branch entry (economics-bounded-investment-posture); "
@@ -208,6 +256,25 @@ GAP_EXCEPTIONS: dict[GapKey, str] = {
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
     ),
+    # ---- 2026-09-27: PR-stack rebase, PR #360 vs main's run-cost-guidance --
+    # PR #360 (audit-fix/optimize) carries six of its own sequential
+    # optimize-run edits (audit-2026-09-23-304/324/339/339-r2/356/355,
+    # #304/#324/#339/#342/#356/#355) branching from the same parent as main's
+    # run-cost-guidance-2026-09-26 (astra-fable-review-2026-09-20, doc_after_hash
+    # f62c81f58f91c9b4): PR #360 was an open PR not yet merged to main when
+    # run-cost-guidance and unmeasured-cost-030 landed on main. Reconciled by
+    # merge-pr360-into-main-2026-09-27, which chains from unmeasured-cost-030's
+    # tip and recomputes doc_hash over the fully merged SKILL.md (same pattern
+    # as merge-main-taxonomy-into-econ-wi-a-2026-07-18 above). This gap is PR
+    # #360's own chain tip (after its last optimize-run commit,
+    # audit-2026-09-23-355) left with no continuation, same shape as the
+    # economics-bounded-investment-posture gaps above.
+    ("traigent-optimize-run", "9d05b7f639c7e4a6", "f62c81f58f91c9b4"): (
+        "parallel-branch entry (PR #360's own optimize-run commit chain vs "
+        "run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr360-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
+    ),
     ("traigent-setup-decorator", "56d38399635cfff3", "3db71bdafe5e0a1a"): (
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
@@ -215,6 +282,23 @@ GAP_EXCEPTIONS: dict[GapKey, str] = {
     ("traigent-setup-quickstart", "59f3b56507cbe500", "3a19554c5624fb4f"): (
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
+    ),
+    # ---- 2026-09-27: PR-stack rebase, PR #364 vs main's run-cost-guidance --
+    # PR #364 (audit-fix/setup) carries its own sequential setup-quickstart
+    # edits (audit-2026-09-23-351/355/343, #351/#355/#343) branching from the
+    # same parent as main's run-cost-guidance-2026-09-26 (doc_after_hash
+    # 6c2a7196e03dd413): PR #364 was an open PR not yet merged to main when
+    # run-cost-guidance landed. Reconciled by merge-pr364-into-main-2026-09-27,
+    # which chains from run-cost-guidance's tip and recomputes doc_hash over
+    # the fully merged SKILL.md (same pattern as
+    # merge-main-taxonomy-into-econ-wi-a-2026-07-18 above). This gap is PR
+    # #364's own chain tip (after its last setup-quickstart commit,
+    # audit-2026-09-23-343) left with no continuation.
+    ("traigent-setup-quickstart", "28ebcd5ceadef7cb", "6c2a7196e03dd413"): (
+        "parallel-branch entry (PR #364's own setup-quickstart commit chain "
+        "vs run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr364-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
     ),
     # ---- gaps recorded by an unhashed entry, hashes not reconstructed --
     # A human did record that something changed here (a "sync"-style entry

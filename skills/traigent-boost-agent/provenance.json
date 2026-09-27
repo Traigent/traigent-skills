@@ -1,11 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ceef6e423373c532",
+  "doc_hash": "4b8a6a2a2e9bdb53",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
     "references/insights-and-iteration.md": "8f7cd2450d5bb2be",
-    "references/instrument-recipe.md": "db2c3f40e4327736"
+    "references/instrument-recipe.md": "db2c3f40e4327736",
+    "references/run-cost-and-limits.md": "8579f950b7e78af6"
   },
   "entries": [
     {
@@ -244,6 +245,28 @@
       "doc_before_hash": "527998aaeedcdd8a",
       "doc_after_hash": "ceef6e423373c532",
       "note": "The wire-first ladder ends at custom_evaluator and the smoke gate calls a custom_evaluator directly; BaseEvaluator is stated as not wireable through @traigent.optimize on traigent <= 0.27.0 (an instance passed as custom_evaluator fails with ValueError), and the insights symptom table no longer offers a BaseEvaluator path. Version 2.1.14.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "run-cost-guidance-2026-09-26",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-26T00:00:00Z",
+      "doc_before_hash": "b04e83488cd0c177",
+      "doc_after_hash": "b4602489b1186d93",
+      "note": "Step 4 call estimate includes calls per example and judge calls, and opens the shared run-cost card (references/run-cost-and-limits.md) before the go/no-go on the first paid run.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "merge-pr367-into-main-2026-09-27",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-27T00:00:00Z",
+      "doc_before_hash": "b4602489b1186d93",
+      "doc_after_hash": "4b8a6a2a2e9bdb53",
+      "note": "PR-stack rebase reconciliation: final merge of PR #367's boost-agent edits (audit-2026-09-23-318/349/338/339/339-r2/304/343/331, all open-PR commits not yet on main when run-cost-guidance-2026-09-26 landed) with main's tip; doc_hash recomputed over the fully merged SKILL.md (same pattern as merge-main-taxonomy-into-econ-wi-a-2026-07-18). See GAP_EXCEPTIONS in tests/contract/test_provenance.py for the parallel-branch gap this closes on one side.",
       "source_type": "agent"
     }
   ]

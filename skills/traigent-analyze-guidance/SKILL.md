@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.4"
+  version: "1.2.5"
 ---
 
 # Traigent Analyze Guidance
@@ -57,8 +57,12 @@ the service computes; it is not a local calculator, and a plausible-looking numb
 here is a fabricated one.
 
 **When the service returns no economics result:** say so plainly — "Traigent hasn't returned
-a budget for this run, so I don't have one to give you" — and stop, or continue in Mode C
-with **no budget number at all**. Diagnosis without a budget is a valid answer; an invented
+a budget for this run, so I don't have one to give you" — then present the options and the
+approval ask with **no budget number at all** of your own (no daily budget, floor, or payback
+figure). Still state the run's own spend cap and its dry-run cost estimate in that ask, and say
+that the Traigent service sizes the budget and has not returned one yet; do not present `$0` as
+the recommendation unless the service returns `$0`. Without a run to approve, continue in
+Mode C, still with no budget number. Diagnosis without a budget is a valid answer; an invented
 budget is not. There is no local fallback calculator, and until the economics service ships
 there may simply be no number available.
 
@@ -201,6 +205,12 @@ This mode is a thin client. Fetch the post-run brief through the
 `traigent-analytics` MCP server, present the backend's headline and recommended
 action verbatim, then send that direction into Mode A as context for a fresh
 service plan.
+
+The server needs a one-time setup: `pip install "traigent[mcp]>=0.19"` (already included
+in `traigent[recommended]`), then register the stdio command `traigent-analytics-mcp`
+with your coding assistant under the name `traigent-analytics`. The full steps are in
+`traigent-analyze-results` → "Prerequisites (one time)". If the `analytics_*` tools
+are not listed, the brief cannot be fetched.
 
 This mode is inert without the backend payload. If the tool cannot fetch a
 service response, report that directly and stop unless the user asks you to
@@ -452,18 +462,26 @@ Backend-only report surfaces, each requiring a Traigent account/backend:
 Use weak examples as evidence, not as a replacement for a holdout.
 
 ```python
+# (input, expected, actual) for each case the current prompt handles poorly.
 weak_examples = [
     ("question text", "expected answer", "candidate answer"),
 ]
 
+def my_rewrite_llm(prompt: str) -> str:
+    """Your own model call, on your own provider key. Example content stays on your machine."""
+    ...
+
 results = answer.optimize_with_guidance(
-    provider=provider,
+    provider=provider,            # a GuidancePlanProvider
+    rewrite_llm=my_rewrite_llm,   # required: Traigent never builds one from environment credentials
+    plan_kind="prompt_rewrite",   # weak_examples are read only by a prompt-rewrite plan
+    prompt_param="system_prompt", # the tuned knob whose string values are prompt variants
     weak_examples=weak_examples,
     max_trials=8,
 )
 ```
 
-`optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). Keep the provider and rewrite settings project-specific, and confirm the new candidate still improves on a heldout slice.
+`optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). `rewrite_llm` is required (a callable `fn(prompt) -> str` or a constructed client); `provider` supplies the guidance plan. `weak_examples` are `(input, expected, actual)` tuples, and only a `plan_kind="prompt_rewrite"` plan reads them: it rewrites the prompt variants of the knob named by `prompt_param` (a tuned knob whose values are prompt strings). Under the default `benchmark_guide` plan they are ignored. Keep the provider and rewrite model project-specific, and confirm the new candidate still improves on a heldout slice.
 
 This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent` lifecycle skill).
 
