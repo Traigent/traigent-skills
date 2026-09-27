@@ -115,7 +115,7 @@ def test_sync_tool_detects_a_tampered_copy(tmp_path: Path) -> None:
         _repo_root(),
         repo_copy,
         ignore=shutil.ignore_patterns(
-            ".git", ".venv", ".bucket-*", "__pycache__", ".pytest_cache"
+            ".git", ".venv", ".bucket-*", "__pycache__", ".pytest_cache", "upstream"
         ),
     )
     tampered = repo_copy / "skills" / CARRIERS[0].name / REFERENCE_RELPATH
