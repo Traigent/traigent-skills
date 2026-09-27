@@ -1,7 +1,7 @@
 {
   "generated_from": {
-    "commit_sha": "aa0f1a1438a2acf8d045f5a4e91335b7b4632dd6",
-    "ref": "origin/develop",
+    "commit_sha": "eae60d7ebc4cf98ad356f25f125f6e3d3b43fa67",
+    "ref": "HEAD",
     "repo": "Traigent/TraigentBackend"
   },
   "routes": [
@@ -590,6 +590,12 @@
     {
       "blueprint": "auth",
       "method": "GET",
+      "path_template": "/api/v1/auth/me/tenants",
+      "source_file": "src/routes/auth_routes.py"
+    },
+    {
+      "blueprint": "auth",
+      "method": "GET",
       "path_template": "/api/v1/auth/sso/oidc/callback",
       "source_file": "src/routes/auth_routes.py"
     },
@@ -621,6 +627,12 @@
       "blueprint": "best_configs",
       "method": "GET",
       "path_template": "/api/v1/best-configs/<config_id>/versions",
+      "source_file": "src/routes/best_config_routes.py"
+    },
+    {
+      "blueprint": "best_configs",
+      "method": "GET",
+      "path_template": "/api/v1/best-configs/agent-heads/<path:agent_id>",
       "source_file": "src/routes/best_config_routes.py"
     },
     {
@@ -866,6 +878,12 @@
     {
       "blueprint": "dataset_version",
       "method": "GET",
+      "path_template": "/api/v1/datasets/<dataset_id>/versions/<version_id>/content-identity",
+      "source_file": "src/routes/dataset_version_routes.py"
+    },
+    {
+      "blueprint": "dataset_version",
+      "method": "GET",
       "path_template": "/api/v1/datasets/<dataset_id>/versions/<version_id>/snapshot",
       "source_file": "src/routes/dataset_version_routes.py"
     },
@@ -894,10 +912,28 @@
       "source_file": "src/routes/dataset_routes.py"
     },
     {
+      "blueprint": "dataset_version",
+      "method": "GET",
+      "path_template": "/api/v1/datasets/versions/by-root/<root>",
+      "source_file": "src/routes/dataset_version_routes.py"
+    },
+    {
       "blueprint": "demo",
       "method": "GET",
       "path_template": "/api/v1/demo/basic",
       "source_file": "src/routes/demo_routes.py"
+    },
+    {
+      "blueprint": "director",
+      "method": "GET",
+      "path_template": "/api/v1/director/sessions",
+      "source_file": "src/routes/director_routes.py"
+    },
+    {
+      "blueprint": "director",
+      "method": "GET",
+      "path_template": "/api/v1/director/sessions/<session_id>/state",
+      "source_file": "src/routes/director_routes.py"
     },
     {
       "blueprint": "example_set",
@@ -1344,6 +1380,12 @@
       "source_file": "src/routes/traigent_session_routes.py"
     },
     {
+      "blueprint": "traigent_session",
+      "method": "GET",
+      "path_template": "/api/v1/sessions/<session_id>/identity-binding",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
       "blueprint": "trace",
       "method": "GET",
       "path_template": "/api/v1/traces/<trace_id>",
@@ -1584,6 +1626,18 @@
       "source_file": "src/routes/evaluation_routes.py"
     },
     {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/evaluators/<string:evaluator_id>/versions",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/evaluators/<string:evaluator_id>/versions/<version_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
       "blueprint": "observability",
       "method": "GET",
       "path_template": "/api/v1beta/observability/analysis/insights",
@@ -1732,6 +1786,24 @@
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/agent-lifecycle/agent-revisions/<string:agent_revision_ref>/record",
       "source_file": "src/routes/agent_lifecycle_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/<path:agent_id>",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/fleet-posture",
+      "source_file": "src/routes/agent_readiness_routes.py"
     },
     {
       "blueprint": "agent",
@@ -1962,6 +2034,30 @@
       "source_file": "src/routes/core_metrics_routes.py"
     },
     {
+      "blueprint": "evaluation_system_reviewer_grants",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluation-system-reviewer-grants",
+      "source_file": "src/routes/evaluation_system_reviewer_grant_routes.py"
+    },
+    {
+      "blueprint": "evaluation_system_reviewer_grants",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluation-system-reviewer-grants/me",
+      "source_file": "src/routes/evaluation_system_reviewer_grant_routes.py"
+    },
+    {
+      "blueprint": "evaluation_system_validations",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluation-system-validations",
+      "source_file": "src/routes/evaluation_system_validation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_system_validations",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluation-system-validations/<validation_id>",
+      "source_file": "src/routes/evaluation_system_validation_routes.py"
+    },
+    {
       "blueprint": "evaluation_ops",
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/evaluator-runs",
@@ -1983,6 +2079,18 @@
       "blueprint": "evaluation_ops",
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/versions",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/versions/<version_id>",
       "source_file": "src/routes/evaluation_routes.py"
     },
     {
@@ -2820,6 +2928,24 @@
       "source_file": "src/routes/billing_routes.py"
     },
     {
+      "blueprint": "marketplace",
+      "method": "POST",
+      "path_template": "/api/v1/billing/marketplace/complete",
+      "source_file": "src/routes/marketplace_routes.py"
+    },
+    {
+      "blueprint": "marketplace",
+      "method": "POST",
+      "path_template": "/api/v1/billing/marketplace/events",
+      "source_file": "src/routes/marketplace_routes.py"
+    },
+    {
+      "blueprint": "marketplace",
+      "method": "POST",
+      "path_template": "/api/v1/billing/marketplace/register",
+      "source_file": "src/routes/marketplace_routes.py"
+    },
+    {
       "blueprint": "billing",
       "method": "POST",
       "path_template": "/api/v1/billing/preflight",
@@ -2922,6 +3048,12 @@
       "source_file": "src/routes/contact_routes.py"
     },
     {
+      "blueprint": "content_identity",
+      "method": "POST",
+      "path_template": "/api/v1/content-identity/purpose-keys",
+      "source_file": "src/routes/content_identity_routes.py"
+    },
+    {
       "blueprint": "costs",
       "method": "POST",
       "path_template": "/api/v1/costs/alerts",
@@ -2998,6 +3130,24 @@
       "method": "POST",
       "path_template": "/api/v1/datasets/generate",
       "source_file": "src/routes/dataset_routes.py"
+    },
+    {
+      "blueprint": "director",
+      "method": "POST",
+      "path_template": "/api/v1/director/agents/<agent_id>/session",
+      "source_file": "src/routes/director_routes.py"
+    },
+    {
+      "blueprint": "director",
+      "method": "POST",
+      "path_template": "/api/v1/director/sessions",
+      "source_file": "src/routes/director_routes.py"
+    },
+    {
+      "blueprint": "director",
+      "method": "POST",
+      "path_template": "/api/v1/director/sessions/<session_id>/turn",
+      "source_file": "src/routes/director_routes.py"
     },
     {
       "blueprint": "economics",
@@ -3362,6 +3512,12 @@
     {
       "blueprint": "traigent_session",
       "method": "POST",
+      "path_template": "/api/v1/sessions/<session_id>/identity-binding/complete",
+      "source_file": "src/routes/traigent_session_routes.py"
+    },
+    {
+      "blueprint": "traigent_session",
+      "method": "POST",
       "path_template": "/api/v1/sessions/<session_id>/intermediate-report",
       "source_file": "src/routes/traigent_session_routes.py"
     },
@@ -3474,6 +3630,12 @@
       "source_file": "src/routes/evaluation_routes.py"
     },
     {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/evaluators/<string:evaluator_id>/versions",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
       "blueprint": "observability",
       "method": "POST",
       "path_template": "/api/v1beta/observability/analysis/cohorts/compare",
@@ -3483,6 +3645,12 @@
       "blueprint": "observability",
       "method": "POST",
       "path_template": "/api/v1beta/observability/ingest",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "POST",
+      "path_template": "/api/v1beta/observability/sessions/<session_id>/outcome",
       "source_file": "src/routes/observability_routes.py"
     },
     {
@@ -3514,6 +3682,18 @@
       "method": "POST",
       "path_template": "/api/v1beta/projects/<string:project_id>/agent-lifecycle/measurement-contracts",
       "source_file": "src/routes/agent_lifecycle_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/<path:agent_id>/posture-revisions",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/<path:agent_id>/target-revisions",
+      "source_file": "src/routes/agent_readiness_routes.py"
     },
     {
       "blueprint": "agent",
@@ -3594,6 +3774,18 @@
       "source_file": "src/routes/observability_routes.py"
     },
     {
+      "blueprint": "evaluation_system_reviewer_grants",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluation-system-reviewer-grants",
+      "source_file": "src/routes/evaluation_system_reviewer_grant_routes.py"
+    },
+    {
+      "blueprint": "evaluation_system_validations",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluation-system-validations",
+      "source_file": "src/routes/evaluation_system_validation_routes.py"
+    },
+    {
       "blueprint": "evaluation_ops",
       "method": "POST",
       "path_template": "/api/v1beta/projects/<string:project_id>/evaluator-runs/<string:run_id>/retry",
@@ -3615,6 +3807,12 @@
       "blueprint": "evaluation_ops",
       "method": "POST",
       "path_template": "/api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/execute",
+      "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "evaluation_ops",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/evaluators/<string:evaluator_id>/versions",
       "source_file": "src/routes/evaluation_routes.py"
     },
     {
@@ -3681,6 +3879,12 @@
       "blueprint": "observability",
       "method": "POST",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/ingest",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions/<session_id>/outcome",
       "source_file": "src/routes/observability_routes.py"
     },
     {
@@ -3892,6 +4096,12 @@
       "method": "PUT",
       "path_template": "/api/v1/costs/budget/<budget_id>",
       "source_file": "src/routes/cost_routes.py"
+    },
+    {
+      "blueprint": "dataset_version",
+      "method": "PUT",
+      "path_template": "/api/v1/datasets/<dataset_id>/public-benchmark",
+      "source_file": "src/routes/dataset_version_routes.py"
     },
     {
       "blueprint": "dataset",
