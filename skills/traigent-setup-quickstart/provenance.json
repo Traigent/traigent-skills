@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "2a0cd831f2fea426",
+  "doc_hash": "1b28651275d824d6",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "6226ea9f4a085da7",
-    "references/environment-variables.md": "f5f40a3125b44292",
-    "references/first-value-fallback.md": "971e16f27b7620a2",
-    "references/installation-extras.md": "049a5aa7e3638e3a",
+    "references/environment-variables.md": "ecbad3a819bff13f",
+    "references/first-value-fallback.md": "7b0ebf2aadd2e679",
+    "references/installation-extras.md": "1f85f18cdd0be60e",
     "references/run-cost-and-limits.md": "8579f950b7e78af6"
   },
   "entries": [
@@ -247,6 +247,39 @@
       "source_type": "agent"
     },
     {
+      "edit_id": "audit-2026-09-23-351",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "6c2a7196e03dd413",
+      "doc_after_hash": "c1cf70f19ff2238f",
+      "note": "Stop teaching the nonexistent dspy extra (install and pin dspy alongside Traigent), regenerate the recommended/all/enterprise/hybrid extras rows from the released wheel, and explain that 'does not provide the extra' on a real version means the extra does not exist.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-355",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "c1cf70f19ff2238f",
+      "doc_after_hash": "28b41506b1843b04",
+      "note": "Correct the LITELLM_LOCAL_MODEL_COST_MAP guidance: import traigent does not set it, so a script that imports litellm must set it to avoid a pricing-map download even with offline=True; scope offline=True to backend egress.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-23-343",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-23T00:00:00Z",
+      "doc_before_hash": "28b41506b1843b04",
+      "doc_after_hash": "28ebcd5ceadef7cb",
+      "note": "Say that the TRAIGENT_MOCK_LLM env var is deprecated on traigent 0.27.0 (hidden DeprecationWarning, scheduled for removal) and point new setups to enable_mock_mode_for_quickstart().",
+      "source_type": "agent"
+    },
+    {
       "edit_id": "run-cost-guidance-2026-09-26",
       "op": "manual_edit",
       "status": "accepted",
@@ -255,6 +288,26 @@
       "doc_before_hash": "6c2a7196e03dd413",
       "doc_after_hash": "2a0cd831f2fea426",
       "note": "Step 4 opens the shared run-cost card (references/run-cost-and-limits.md); cost_limit and TRAIGENT_RUN_COST_LIMIT scoped to measured calls in the fallback and env references.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "merge-pr364-into-main-2026-09-27",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-27T00:00:00Z",
+      "doc_before_hash": "2a0cd831f2fea426",
+      "doc_after_hash": "1b28651275d824d6",
+      "note": "PR-stack rebase reconciliation: final merge of PR #364's setup-quickstart edits (audit-2026-09-23-351/355/343, all open-PR commits not yet on main when run-cost-guidance-2026-09-26 landed) with main's tip; doc_hash recomputed over the fully merged SKILL.md (same pattern as merge-main-taxonomy-into-econ-wi-a-2026-07-18). See GAP_EXCEPTIONS in tests/contract/test_provenance.py for the parallel-branch gap this closes on one side.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-27-355-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-27T00:00:00Z",
+      "note": "references/environment-variables.md only (SKILL.md unchanged): the LITELLM_LOCAL_MODEL_COST_MAP row now says traigent <= 0.28.0 requires setting it yourself, fixed in 0.29.0 (traigent/__init__.py sets it unconditionally on import, provided traigent is imported before litellm; TRAIGENT_LITELLM_LIVE_PRICES=1 is the SDK's own documented opt-out and still leaks on every version).",
       "source_type": "agent"
     }
   ]

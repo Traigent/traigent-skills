@@ -230,6 +230,23 @@ GAP_EXCEPTIONS: dict[GapKey, str] = {
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
     ),
+    # ---- 2026-09-27: PR-stack rebase, PR #364 vs main's run-cost-guidance --
+    # PR #364 (audit-fix/setup) carries its own sequential setup-quickstart
+    # edits (audit-2026-09-23-351/355/343, #351/#355/#343) branching from the
+    # same parent as main's run-cost-guidance-2026-09-26 (doc_after_hash
+    # 6c2a7196e03dd413): PR #364 was an open PR not yet merged to main when
+    # run-cost-guidance landed. Reconciled by merge-pr364-into-main-2026-09-27,
+    # which chains from run-cost-guidance's tip and recomputes doc_hash over
+    # the fully merged SKILL.md (same pattern as
+    # merge-main-taxonomy-into-econ-wi-a-2026-07-18 above). This gap is PR
+    # #364's own chain tip (after its last setup-quickstart commit,
+    # audit-2026-09-23-343) left with no continuation.
+    ("traigent-setup-quickstart", "28ebcd5ceadef7cb", "6c2a7196e03dd413"): (
+        "parallel-branch entry (PR #364's own setup-quickstart commit chain "
+        "vs run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr364-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
+    ),
     # ---- gaps recorded by an unhashed entry, hashes not reconstructed --
     # A human did record that something changed here (a "sync"-style entry
     # with no doc_before_hash/doc_after_hash), but never computed the hashes

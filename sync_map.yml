@@ -14,6 +14,10 @@ skills:
       # TRAIGENT_LOG_LEVEL ships in traigent>=0.13.0; the reference table row
       # carries the version note in prose.
       TRAIGENT_LOG_LEVEL: "0.13.0.dev1"
+      # TRAIGENT_LITELLM_LIVE_PRICES ships in traigent>=0.29.0 (the same
+      # release that made traigent's own import set LITELLM_LOCAL_MODEL_COST_MAP
+      # by default); the reference table row carries the version note in prose.
+      TRAIGENT_LITELLM_LIVE_PRICES: "0.29.0"
     sdk_paths:
       - traigent/utils/cost_calculator.py
       - traigent/core/cost_estimator.py
