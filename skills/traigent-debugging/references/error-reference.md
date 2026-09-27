@@ -133,6 +133,10 @@ if results.stop_reason == "cost_limit":
     print("Budget reached mid-run — partial result, paid trials kept")
 ```
 
+A `stop_reason == "cost_limit"` whose stop message says `per-trial cost unknown: fallback trial
+limit` is not a dollar cap: cost was not measured. Raising `cost_limit` does not help — see
+"Run stopped because cost was not measured" in `SKILL.md`.
+
 **Resolution**: take the estimate back to the user for an explicit approval of a stated ceiling,
 or shrink the run (cheaper models, fewer `max_trials`). Never set `TRAIGENT_COST_APPROVED=true`
 persistently to make the decline go away.

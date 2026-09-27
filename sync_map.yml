@@ -5,7 +5,7 @@ sdk:
 default_min_sdk_version: "0.24.0"
 # Keep this pinned and update it when a new PyPI release should be covered by
 # per-PR released-contracts. Do not resolve PyPI live in PR CI.
-current_released_sdk_version: "0.27.0"
+current_released_sdk_version: "0.30.0"
 skills:
   traigent-setup-quickstart:
     # the `traigent plan` command taught below ships in traigent>=0.17.0.
@@ -30,7 +30,6 @@ skills:
       - traigent-js/src/core/context.ts
       - traigent-js/src/seamless/*
       - traigent-js/src/integrations/*
-      - traigent-js/src/routing/*
       - traigent-js/README.md
       - traigent-js/docs/*
 
@@ -163,8 +162,6 @@ skills:
     sdk_paths:
       - traigent/utils/importance.py
       - traigent/utils/insights.py
-    docs:
-      - optimization trial artifact schema
 
   # Union of the two dataset-curation entries this skill was merged from
   # (curate-dataset, plus the reflect-on-hard-examples skill), folded in

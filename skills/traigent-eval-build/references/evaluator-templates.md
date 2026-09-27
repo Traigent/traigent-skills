@@ -81,7 +81,7 @@ Use this only when deterministic labels are insufficient. The judge score is a m
 Three things the template does on purpose:
 
 - **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list only knows the orientation of built-in names such as `accuracy`, `cost` and `latency`. On traigent <= 0.27.0 it orients any other name (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher, and newer SDK builds refuse an undeclared custom name. Declare every custom objective's orientation with `ObjectiveSchema`.
-- **Only the agent call is metered.** The SDK's `cost` and `TRAIGENT_RUN_COST_LIMIT` see the first LLM call per row, not the judge call; see "Cost metering caveat for multi-call evaluators" below.
+- **Only the agent call is metered on traigent <= 0.29.0** (fixed in 0.30.0). The SDK's `cost` and `TRAIGENT_RUN_COST_LIMIT` used to see only the first LLM call per row, not the judge call; see "Cost metering caveat for multi-call evaluators" below.
 - **The judge budget is sized and reset per run.** Start every run with `run_with_judge_budget()`: it builds a fresh `JudgeBudget` for that run, refuses to start when the approved cap cannot cover `rows × max_trials × price`, and raises after the run if any judge call was refused. A refused row fails closed with `judge_budget_exhausted` and scores `0.0`, and the SDK averages that row into its trial, so **any refusal invalidates the ranking**: the trials were no longer scored on the same rows. Calling `optimize_sync()` directly, with no budget set, fails every trial instead of spending unbudgeted. Spend limits are not tuned variables, so they stay out of `configuration_space`.
 
 ```python
@@ -241,14 +241,17 @@ def answer(question: str) -> str:
 
 ## Cost metering caveat for multi-call evaluators
 
-> **Cost metering caveat (traigent <= 0.27.0):** inside a `custom_evaluator`, the SDK meters only the **first**
-> LLM call per row. A template that calls the agent N times, or calls the agent and then a judge, reports
-> about 1/N of its real cost in `cost`, and `TRAIGENT_RUN_COST_LIMIT` is enforced against that figure. Budget
-> `calls_per_row × rows × trials × price` yourself, keep the limit conservative, and do not read the
-> `cost` objective as comparing different repetition counts.
-<!-- contract: literal "response = captured_responses[0]" in traigent.core.evaluator_wrapper -->
+> **Cost metering caveat (traigent <= 0.29.0, fixed in 0.30.0):** on traigent <= 0.29.0, inside a
+> `custom_evaluator`, the SDK meters only the **first** LLM call per row. A template that calls the agent N
+> times, or calls the agent and then a judge, reports about 1/N of its real cost in `cost`, and
+> `TRAIGENT_RUN_COST_LIMIT` is enforced against that figure. Budget `calls_per_row × rows × trials × price`
+> yourself, keep the limit conservative, and do not read the `cost` objective as comparing different
+> repetition counts. Traigent 0.30.0 meters every call per row instead (Traigent/Traigent#2441); on
+> traigent >= 0.30.0 `cost` and `TRAIGENT_RUN_COST_LIMIT` already see the full total and this manual
+> budgeting is no longer required.
+<!-- contract: literal "_has_llm_measurement" in traigent.core.evaluator_wrapper @ SDK 0.30.0 -->
 
-This applies to the statistical template below (`EVAL_REPS` agent calls per row) and to the LLM-judge and hybrid templates (one agent call plus one judge call per row).
+On traigent <= 0.29.0 this applied to the statistical template below (`EVAL_REPS` agent calls per row) and to the LLM-judge and hybrid templates (one agent call plus one judge call per row); on traigent >= 0.30.0 all calls in each are metered.
 
 ## Statistical agreement over repeated calls
 
@@ -318,7 +321,7 @@ def answer(question: str) -> str:
 
 ## Hybrid deterministic gate then judge
 
-Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge) and only the first is metered; see "Cost metering caveat for multi-call evaluators" above. Judge spend is capped the same way as in the LLM-judge template: start each run with `run_with_judge_budget()`, which sizes and resets the budget for that run and raises if any judge call was refused, because a refused row (`judge_budget_exhausted`, quality `0.0`) invalidates the ranking.
+Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge); on traigent <= 0.29.0 only the first is metered, fixed in 0.30.0 (see "Cost metering caveat for multi-call evaluators" above). Judge spend is capped the same way as in the LLM-judge template: start each run with `run_with_judge_budget()`, which sizes and resets the budget for that run and raises if any judge call was refused, because a refused row (`judge_budget_exhausted`, quality `0.0`) invalidates the ranking.
 
 ```python
 import json

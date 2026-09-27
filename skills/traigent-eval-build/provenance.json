@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "283249089d05c914",
+  "doc_hash": "1d79ccf7ce0a0182",
   "reference_hashes": {
-    "references/evaluator-templates.md": "f09d3965ac694c29"
+    "references/evaluator-templates.md": "6c11c29158dbc53e"
   },
   "entries": [
     {
@@ -162,6 +162,17 @@
       "doc_before_hash": "bf970067de631e68",
       "doc_after_hash": "283249089d05c914",
       "note": "Declare the orientation of every custom objective name (label_accuracy, valid_json, exec_acc) with ObjectiveSchema; newer SDK builds refuse an undeclared custom name.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-09-27-329-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-09-27T00:00:00Z",
+      "doc_before_hash": "283249089d05c914",
+      "doc_after_hash": "1d79ccf7ce0a0182",
+      "note": "Scope the multi-call cost-metering caveat (SKILL.md cost-limit pointer and references/evaluator-templates.md) to traigent <= 0.29.0 and name 0.30.0 as the release that fixed it (Traigent 0.30.0 meters every captured call per row, Traigent/Traigent#2441); restamp the caveat's docstamp from the removed literal `response = captured_responses[0]` to `_has_llm_measurement` @ SDK 0.30.0, proving the fix instead of the historical bug.",
       "source_type": "agent"
     }
   ]
