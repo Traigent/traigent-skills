@@ -187,6 +187,24 @@ GAP_EXCEPTIONS: dict[GapKey, str] = {
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
     ),
+    # ---- 2026-09-27: PR-stack rebase, PR #365 vs main's run-cost-guidance --
+    # PR #365 (audit-fix/analyze) carries its own sequential analyze-results
+    # edits (audit-2026-09-23-311/311-r2/314/311-r2/311-r2b, #311/#313/#314)
+    # branching from the same parent as main's run-cost-guidance-2026-09-26
+    # (doc_after_hash 0f379cbfc1e67371): PR #365 was an open PR not yet
+    # merged to main when run-cost-guidance and unmeasured-cost-030 landed.
+    # Reconciled by merge-pr365-into-main-2026-09-27, which chains from
+    # unmeasured-cost-030's tip and recomputes doc_hash over the fully merged
+    # SKILL.md (same pattern as merge-main-taxonomy-into-econ-wi-a-2026-07-18
+    # above). This gap is PR #365's own chain tip (after its last
+    # analyze-results commit, audit-2026-09-23-311-r2b) left with no
+    # continuation.
+    ("traigent-analyze-results", "c0175e1d49ce3513", "0f379cbfc1e67371"): (
+        "parallel-branch entry (PR #365's own analyze-results commit chain "
+        "vs run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr365-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
+    ),
     ("traigent-boost-agent", "a1ba7cac8c65847e", "23c57e5772586d93"): (
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"

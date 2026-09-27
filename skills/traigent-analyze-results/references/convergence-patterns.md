@@ -24,21 +24,30 @@ info = results.convergence_info
 
 There is **no** `best_score_history` / `score_history` / `improvement_rate` /
 `plateau_detected` / `exploration_ratio` key — guarding on those (`if "best_score_history"
-in info`) silently no-ops. Build the curve yourself:
+in info`) silently no-ops. Build the curve yourself.
+
+Read each trial's objective by its own name (for example `trial.metrics["accuracy"]`), not
+`trial.metrics["score"]` (see version-matrix: `score-relocation`). On SDKs after 0.21.3 `score`
+equals the objective only for a single built-in objective: a weighted multi-objective run
+records its normalised selection basis there, and a custom scorer registered under its own
+objective name (for example `quality`) leaves `score` at the built-in exact-match value.
 
 ```python
-def best_score_curve(results) -> list[float]:
-    """Reconstruct the best-score-so-far curve from the trial list.
+def best_score_curve(results, objective=None, maximize=True) -> list[float]:
+    """Reconstruct the best-so-far curve of one objective from the trial list.
 
-    Per-trial scores live in trial.metrics (key "score"); convergence_info only
-    carries run-level summary stats, not the curve.
+    Per-trial values live in trial.metrics under the objective's own name;
+    convergence_info only carries run-level summary stats, not the curve.
+    Pass maximize=False for an objective you minimize (cost, latency).
     """
+    objective = objective or results.objectives[0]
+    pick = max if maximize else min
     best, curve = None, []
     for trial in results.trials:               # trials are in run order
-        score = trial.metrics.get("score")
-        if score is None:                      # skip failed trials
+        value = trial.metrics.get(objective)
+        if value is None:                      # skip failed trials
             continue
-        best = score if best is None else max(best, score)
+        best = value if best is None else pick(best, value)
         curve.append(best)
     return curve
 ```
@@ -170,14 +179,15 @@ If you want to plot convergence (requires matplotlib):
 ```python
 import matplotlib.pyplot as plt
 
-curve = best_score_curve(results)
-per_trial = [t.metrics.get("score") for t in results.trials if t.metrics.get("score") is not None]
+objective = results.objectives[0]              # or the objective you want to plot
+curve = best_score_curve(results, objective)
+per_trial = [t.metrics[objective] for t in results.trials if t.metrics.get(objective) is not None]
 
 plt.figure(figsize=(10, 5))
-plt.plot(curve, label="Best score so far")
+plt.plot(curve, label=f"Best {objective} so far")
 plt.scatter(range(len(per_trial)), per_trial, alpha=0.3, label="Individual trials")
 plt.xlabel("Trial")
-plt.ylabel("Score")
+plt.ylabel(objective)
 plt.title(f"Convergence (stop_reason={results.stop_reason})")
 plt.legend()
 plt.grid(True, alpha=0.3)
