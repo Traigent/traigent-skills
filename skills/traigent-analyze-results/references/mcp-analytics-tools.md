@@ -4,6 +4,21 @@ This reference documents the `traigent-analytics` MCP server surface that the sk
 call for cloud/portal runs. The skill orchestrates and narrates; it must not compute
 analytics, rank trials, fit Pareto frontiers, infer hidden fields, or run auth/tenant logic.
 
+## Install and Register
+
+The server is the SDK's `traigent-analytics-mcp` console command. It needs the `mcp` extra
+(`pip install "traigent[mcp]>=0.19"`; the `recommended` and `all` extras include it) and reuses the SDK
+credentials from `traigent auth login` or `TRAIGENT_API_KEY`. Register it with the coding
+assistant as a stdio server named `traigent-analytics`:
+
+```json
+{"mcpServers": {"traigent-analytics": {"command": "traigent-analytics-mcp"}}}
+```
+
+Use the absolute path to `traigent-analytics-mcp` when the SDK lives in a virtualenv. The
+server's `health_check` and `auth_status` tools report readiness and masked credential status
+with no network call; they are not analytics tools and return no run data.
+
 ## Registered Tools
 
 Use only these analytics tool names:

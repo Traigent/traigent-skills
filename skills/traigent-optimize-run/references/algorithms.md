@@ -3,7 +3,7 @@
 Traigent uses `algorithm="auto"` by default for connected real runs and also supports explicit local search algorithms (`"grid"`, `"random"`). Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`); they never run locally or offline (see the note below the comparison table). Pass the algorithm name as a string to `optimize()` or `optimize_sync()`.
 
 ```python
-results = await func.optimize(max_trials=10)  # default algorithm="auto"
+results = func.optimize_sync(max_trials=10)  # default algorithm="auto"
 ```
 
 > `auto` with no key found, or a connectivity/5xx/400 failure at session creation, degrades to a local `random` search and still returns a result (a rejected key raises instead): launch a run approved as managed search with `TRAIGENT_REQUIRE_CLOUD=1`, and treat `results.metadata.get("source") == "local_fallback"` as a failure to investigate (see the callout under Quick Comparison in `SKILL.md`).
@@ -18,14 +18,14 @@ results = await func.optimize(max_trials=10)  # default algorithm="auto"
 | `"bayesian"` | Surrogate model guided | Any | Any | No | **Cloud (connected only, SDK 0.20.1+)** | Named backend Optuna strategy |
 | `"optuna"` | Advanced TPE sampling | Any | Any | No | **Cloud (connected only, SDK 0.20.1+)** | Named backend Optuna strategy |
 
-> **Named smart selectors execute on connected runs since 0.20.1** (see version-matrix: `smart-selector-exec`). On an authenticated connected run, the supported names (`"bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"`) bind to the typed backend Optuna strategy and are serialized on session creation; unsupported smart names such as `"nsga2"`/`"cmaes"` fail fast before session creation with a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no named smart selector executed end-to-end). They never run locally on any version: with `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*), and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). Use `algorithm="auto"` (or omit `algorithm`) for the default connected smart path; use `"grid"` or `"random"` only for explicit local search. Results sync to the portal for every non-offline run, including local search; `offline=True` is the zero-egress path and does not sync results.
+> **Named smart selectors execute on connected runs since 0.20.1** (see version-matrix: `smart-selector-exec`). On an authenticated connected run, the supported names (`"bayesian"`, `"tpe"`, `"optuna"`, `"optuna_tpe"`, `"optuna_random"`) bind to the typed backend Optuna strategy and are serialized on session creation; unsupported smart names such as `"nsga2"`/`"cmaes"` fail fast before session creation with a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no named smart selector executed end-to-end). They never run locally on any version: with `offline=True` the decorator raises `ConfigurationError` at decoration time (*"requires managed optimization and cannot be used with offline=True"*), and the SDK's local optimizer registry rejects the names with `OptimizationError` (*"Smart optimization ('bayesian') runs in the Traigent cloud and is not available in the local SDK (which supports 'grid' and 'random')"*). Use `algorithm="auto"` (or omit `algorithm`) for the default connected smart path; use `"grid"` or `"random"` only for explicit local search. Results sync to the portal for every non-offline run, including local search; `offline=True` is the zero Traigent backend egress path and does not sync results. It does not stop provider calls, and LiteLLM fetches its public pricing map at import unless `LITELLM_LOCAL_MODEL_COST_MAP=True` is set before importing it.
 
 ## Grid Search
 
 Enumerates every combination in the configuration space, so the best in-space configuration on the evaluation dataset is always found.
 
 ```python
-results = await func.optimize(algorithm="grid")
+results = func.optimize_sync(algorithm="grid")
 ```
 
 ### Parameter Order
@@ -33,7 +33,7 @@ results = await func.optimize(algorithm="grid")
 Control which parameters vary fastest vs slowest:
 
 ```python
-results = await func.optimize(
+results = func.optimize_sync(
     algorithm="grid",
     parameter_order={"model": 0, "temperature": 1, "max_tokens": 2},
 )
@@ -52,14 +52,16 @@ Lower values vary slowest (outer loop), higher values vary fastest (inner loop).
 
 - Stops with `stop_reason="optimizer"` when all combinations are exhausted
 - If `max_trials` is smaller than the config space, only a prefix is tested
-- Iteration order is lexicographic by default (or controlled by `parameter_order`)
+- Default order: parameters sorted alphabetically, except `model`, which is placed last and varies
+  fastest. A `max_trials` below the grid size therefore covers every model at the first values of
+  the other knobs. Use `parameter_order` to change this (lower number = varies slower).
 
 ## Random Search
 
 Samples configurations uniformly at random from the config space. Each trial is independent.
 
 ```python
-results = await func.optimize(max_trials=20, algorithm="random")
+results = func.optimize_sync(max_trials=20, algorithm="random")
 ```
 
 ### When to Use
@@ -71,8 +73,9 @@ results = await func.optimize(max_trials=20, algorithm="random")
 
 ### Behavior
 
-- May sample the same configuration twice (with replacement)
-- Stops when `max_trials` is reached
+- On discrete spaces, samples without repeating a configuration
+- Stops at `max_trials`, or earlier with `stop_reason="optimizer"` once every configuration has run
+  (continuous ranges are sampled freely)
 - Provides good coverage of high-dimensional spaces with fewer trials than grid
 
 ## Bayesian Optimization — Connected Only (SDK 0.20.1+)
@@ -81,10 +84,10 @@ A probabilistic surrogate model predicts which configurations are likely to perf
 
 ```python
 # Connected only (TRAIGENT_API_KEY set, offline=False, SDK 0.20.1+):
-results = await func.optimize(max_trials=30, algorithm="bayesian")
+results = func.optimize_sync(max_trials=30, algorithm="bayesian")
 
 # Default connected smart path when you don't need a specific strategy:
-results = await func.optimize(max_trials=30, algorithm="auto")
+results = func.optimize_sync(max_trials=30, algorithm="auto")
 ```
 
 Use `"auto"` for connected real runs when you do not need a specific named strategy; use `"random"` only when you explicitly want local search.
@@ -95,7 +98,7 @@ Advanced Optuna-style optimization dispatched to the Traigent cloud. On an authe
 
 ```python
 # Connected only (TRAIGENT_API_KEY set, offline=False, SDK 0.20.1+):
-results = await func.optimize(max_trials=50, algorithm="optuna")
+results = func.optimize_sync(max_trials=50, algorithm="optuna")
 ```
 
 ## Choosing an Algorithm
@@ -139,5 +142,5 @@ def my_func(query: str) -> str:
 
 # Override at runtime — "auto"/"grid"/"random" work anywhere; named smart
 # algorithms (e.g. "bayesian") are connected-only (SDK 0.20.1+, see above).
-results = await my_func.optimize(algorithm="random", max_trials=20)
+results = my_func.optimize_sync(algorithm="random", max_trials=20)
 ```

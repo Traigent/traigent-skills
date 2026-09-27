@@ -250,11 +250,17 @@ def my_function(query: str) -> str:
     ...
 ```
 
-Lambda constraints can also receive metrics from past trials:
+A lambda that takes a second `metrics` argument is a **post-trial** check. It runs after that
+trial has been evaluated (and paid for), receives the trial's own aggregate metrics, and
+marks the trial failed if it returns False. Use it to disqualify results, not to limit spend
+(use `cost_limit` / `ExecutionBudget` for that). Keys include `accuracy`, `cost` (trial USD),
+`response_time_ms` (mean per example), `total_tokens`; `latency` exists only when it is a
+declared objective. Default a missing key to fail, not pass:
 
 ```python
 constraints=[
-    lambda config, metrics: metrics.get("cost", 0) <= 0.10,
+    lambda config, metrics: metrics.get("cost", float("inf")) <= 0.10,
+    lambda config, metrics: metrics.get("response_time_ms", float("inf")) <= 5000,
 ]
 ```
 
@@ -381,14 +387,25 @@ print(result.is_valid)  # True
 sat = space.check_satisfiability()
 print(sat)
 # `check_satisfiability()` returns a `SatResult` (frozen dataclass, no truthiness override —
-# `bool(sat)` is always True, so never `if sat:`). Check the field instead:
+# `bool(sat)` is always True, so never `if sat:`). Check the field instead. The built-in
+# validator only enumerates FINITE spaces of up to 10,000 combinations. Choices and IntRange are
+# finite (an IntRange step defaults to 1); a Range without `step=` (like `temperature` above) is
+# not, and neither is any space above the cap. Either returns SatStatus.UNKNOWN = "not checked".
 from traigent_validation import SatStatus
 
 if sat.status is SatStatus.UNSAT:
-    # `sat.unsat_core` names the offending constraint indices. The constraints rule out every
-    # combination in the space — no trial can ever run. Loosen or drop a constraint (widen a
-    # `Range`, remove an `implies`/mutual-exclusion rule) and re-check before wiring the
-    # decorator; do not proceed to `@traigent.optimize` with an unsatisfiable space.
+    # Every finite combination is ruled out, so no trial can ever run. `sat.unsat_core` lists
+    # ALL constraint indices (not a minimal core); bisect the constraints to find the conflict.
+    # Loosen or drop a constraint (widen a `Range`, remove an `implies`/mutual-exclusion rule)
+    # and re-check before wiring the decorator; do not proceed to `@traigent.optimize` with an
+    # unsatisfiable space.
+    ...
+elif sat.status is SatStatus.UNKNOWN:
+    # Not proven either way. To actually check, make the space finite AND under the cap. Here that
+    # means `Range(0.0, 1.0, step=0.1, ...)` for temperature plus a coarse
+    # `IntRange(100, 4096, step=512, ...)` for max_tokens (3,997 values alone keeps it over the
+    # cap), which checks 176 combinations and returns SAT. Or spot-check with
+    # space.validate({...}) on representative configs.
     ...
 
 # Use with decorator
@@ -539,7 +556,7 @@ You have defined the search space. Now run it:
 
 ## See Also
 
-- `traigent` — lifecycle driver (dry-run-first / cost-approval mandate)
+- `traigent-boost-agent` — lifecycle driver (dry-run-first / cost-approval mandate)
 - `traigent-optimize-run` — run the space you just defined
 - `traigent-analyze-results` — read `best_config`/`best_score` and the trade-off after the run
 

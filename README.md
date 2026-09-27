@@ -47,7 +47,7 @@ These 19 skills guide your agent through the full Traigent optimization lifecycl
 | Gate & Debug | [traigent-ci-safety-gate](skills/traigent-ci-safety-gate/) | Gate an optimized agent — candidate-vs-incumbent `PromotionGate`, TVL spec validation, planned in-run `safety_constraints` (not yet implemented), and GitHub Actions checks for safety (holdout regression) and efficiency (cost/latency budgets). |
 | Gate & Debug | [traigent-debugging](skills/traigent-debugging/) | Troubleshoot optimization failures — mock mode for CI/CD without API keys, `TRAIGENT_LOG_LEVEL=DEBUG` logging, error-class reference (`CostLimitExceeded`, `ConfigurationError`, `OptimizationStateError`), portal / local-fallback diagnosis for a connected run that ended local-only, and missing-dependency diagnosis. |
 | JS/TS | [traigent-js](skills/traigent-js/) | Set up and run native JavaScript/TypeScript optimization with `@traigent/sdk` — `optimize(spec)(agentFn)`, `param.*` search spaces, evaluation blocks, trial context, budgets, injection modes, and hybrid config-space authoring. |
-| Recipes | [traigent-recipe-text2sql](skills/traigent-recipe-text2sql/) | End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 20/30 -> 27/30 on its tuning slice on the cheap model. |
+| Recipes | [traigent-recipe-text2sql](skills/traigent-recipe-text2sql/) | End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 20/30 -> 27/30 on its tuning slice on the cheap model (counts that predate the recipe's result_eq comparator and were not re-scored with it). |
 
 ### Renamed in the 2026-07 consolidation (pre-release)
 
@@ -75,8 +75,8 @@ These skills were renamed or merged as part of a taxonomy consolidation. No prio
 
 ### As a plugin (recommended — one step, stays in sync)
 
-This repo is a plugin marketplace for Claude Code, OpenAI Codex, and GitHub
-Copilot CLI. Installing the `traigent` plugin gives you all 19 skills at once,
+This repo is a plugin marketplace for Claude Code and GitHub Copilot CLI.
+Installing the `traigent` plugin gives you all 19 skills at once,
 namespaced as `traigent:<skill-name>`, with updates delivered through your
 agent's normal plugin-update flow.
 
@@ -90,7 +90,7 @@ copilot plugin marketplace add Traigent/traigent-skills
 copilot plugin install traigent@traigent
 ```
 
-**Note for OpenAI Codex**: Codex CLI does not auto-load a skills directory the way Claude Code does — it only reads `AGENTS.md`. See the [Codex CLI](#using-with-codex-cli) section below for the correct setup path.
+**Note for OpenAI Codex**: the plugin commands above are for Claude Code and Copilot CLI. For Codex, use the [Codex CLI](#using-with-codex-cli) setup below: it puts the instructions in `AGENTS.md`, which Codex reads, so it does not depend on Codex loading a skills folder or plugin.
 
 ### Via `npx skills` (cross-agent, pick individual skills)
 
@@ -128,7 +128,7 @@ cp -r traigent-skills/skills/traigent-setup-quickstart .agents/skills/
 cp -r traigent-skills/skills/* ~/.claude/skills/
 ```
 
-**Codex (OpenAI) on VSCode** does not auto-discover skill folders — inline the instructions into your project's `AGENTS.md`:
+**Codex (OpenAI) on VSCode** may not pick up skill folders on its own — inline the instructions into your project's `AGENTS.md`:
 
 ```bash
 for skill in traigent-skills/skills/*/SKILL.md; do
@@ -139,9 +139,8 @@ done
 
 ### Using with Codex CLI
 
-Codex CLI also does not auto-load a skills directory the way Claude Code does — it only reads
-`AGENTS.md`. In a 20-cell simulation wave, 7 of 7 Codex agents ignored mounted skills for exactly
-this reason. If you mount these skills into a project (e.g. copied to
+Codex CLI reads `AGENTS.md`, but it may not open skill files you mount into a project on its own:
+in a 20-cell simulation wave, 7 of 7 Codex agents ignored mounted skills. If you mount these skills into a project (e.g. copied to
 `.github/skills/<name>/SKILL.md`), copy the ready-made stanza from
 [`templates/AGENTS.md.example`](templates/AGENTS.md.example) into your project's `AGENTS.md` — it
 points Codex at the mounted skill files and states the two most load-bearing rules (dry-run first

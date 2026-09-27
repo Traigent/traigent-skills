@@ -86,10 +86,13 @@ Raised when configuration values are invalid, features are unsupported, or requi
 | `details` | Additional context |
 
 **Common triggers**:
-- Non-list values in `configuration_space`
-- Empty configuration space
+- A named smart algorithm with local execution (`offline=True, algorithm="bayesian"`)
 - Invalid parameter names
 - Unsupported `algorithm` value or invalid `offline` setting
+
+Not `ConfigurationError`: a non-list `configuration_space` value raises `ValidationError`, and an
+empty `configuration_space` raises a builtin `ValueError`. Catch `ValidationError`/`TraigentError`
+or `ValueError` for those.
 
 **Resolution**: Check the error message and fix the configuration. Use `TRAIGENT_DEBUG=1` for the full traceback.
 
@@ -132,6 +135,10 @@ except CostLimitExceeded as e:
 if results.stop_reason == "cost_limit":
     print("Budget reached mid-run — partial result, paid trials kept")
 ```
+
+A `stop_reason == "cost_limit"` whose stop message says `per-trial cost unknown: fallback trial
+limit` is not a dollar cap: cost was not measured. Raising `cost_limit` does not help — see
+"Run stopped because cost was not measured" in `SKILL.md`.
 
 **Resolution**: take the estimate back to the user for an explicit approval of a stated ceiling,
 or shrink the run (cheaper models, fewer `max_trials`). Never set `TRAIGENT_COST_APPROVED=true`

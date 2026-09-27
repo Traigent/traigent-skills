@@ -6,12 +6,13 @@ Common environment variables for Traigent quickstart workflows.
 
 | Variable                           | Default         | Description                                                                                         |
 | ---------------------------------- | --------------- | --------------------------------------------------------------------------------------------------- |
-| `TRAIGENT_MOCK_LLM`               | `false`         | **Legacy** — when `true`, mocks all LLM API calls. Honored only outside production; **hard-blocked when `ENVIRONMENT=production`** (raises `OSError` at the first decoration, `optimize()` or CLI use, not at import). Prefer the in-code API `traigent.testing.enable_mock_mode_for_quickstart()` for new code. |
-| `TRAIGENT_RUN_COST_LIMIT`         | `2.0`           | Maximum cost budget (in USD) per optimization run. Optimization stops when this limit is reached.    |
+| `TRAIGENT_MOCK_LLM`               | `false`         | **Deprecated** (DeprecationWarning on traigent 0.27.0, hidden by default; "will be removed in a future release") — when `true`, mocks all LLM API calls. Honored only outside production; **hard-blocked when `ENVIRONMENT=production`** (raises `OSError` at the first decoration, `optimize()` or CLI use, not at import). Prefer the in-code API `traigent.testing.enable_mock_mode_for_quickstart()` for new code. |
+| `TRAIGENT_RUN_COST_LIMIT`         | `2.0`           | Maximum cost budget (in USD) per optimization run. Optimization stops when this limit is reached — for measured cost only; calls Traigent cannot measure are still billed (see `run-cost-and-limits.md`). |
+| `TRAIGENT_FALLBACK_TRIAL_LIMIT`   | `10`            | SDK 0.30.0+. Trial cap for a run whose cost cannot be measured and that did not set `max_trials`/`max_total_examples` explicitly; the run stops at this many trials with warning `COST_UNMEASURED_TRIAL_LIMIT_REACHED` (see `run-cost-and-limits.md`). |
 | `TRAIGENT_COST_APPROVED`          | `false`         | When `true`, skips the SDK's pre-run cost handshake (which fires only when the estimate exceeds `TRAIGENT_RUN_COST_LIMIT` or a model is unpriced) and downgrades the unpriced-model refusal to a warning. Set it per approved process, never as a standing export. |
 | `TRAIGENT_SKIP_PROVIDER_VALIDATION`| `false`        | Gates only your own call to `traigent.providers.validate_providers`; the SDK runs no automatic provider validation at decoration time. |
 | `TRAIGENT_OFFLINE_MODE`           | `false`         | When `true` (alias `TRAIGENT_OFFLINE`), zero backend egress: no session, no portal rows. Read live when the decorator and the run resolve it, so set it before the decorated function is defined. |
-| `LITELLM_LOCAL_MODEL_COST_MAP`    | `True` (set by the SDK) | The SDK sets this itself before it imports LiteLLM, so `import traigent` triggers no pricing-map fetch. Set it yourself only if your script imports `litellm` before `traigent`; set it to `false` before importing to opt back into the remote map. |
+| `LITELLM_LOCAL_MODEL_COST_MAP`    | unset (on traigent <= 0.28.0, Traigent sets it only when its cost module loads; SDK 0.29.0+ sets it as soon as `traigent` is imported) | Set `LITELLM_LOCAL_MODEL_COST_MAP=True` in the environment, or in `os.environ` before any import, whenever your script imports `litellm` itself — otherwise LiteLLM downloads its pricing map from GitHub on import, even with `offline=True`. On traigent <= 0.28.0 this is required; fixed in 0.29.0, provided `traigent` is imported before `litellm` (if `litellm` is imported first, even 0.29.0+ cannot stop its import-time fetch). Set it to `false` to opt into the remote map (or `TRAIGENT_LITELLM_LIVE_PRICES=1` on SDK 0.29.0+). |
 | `TRAIGENT_REQUIRE_CLOUD`          | (unset)         | When `1`, a connected run fails before any trial if the backend session cannot be created, instead of silently falling back to a local random search. |
 | `TRAIGENT_LOG_EXAMPLE_CONTENT`    | `true`          | The SDK writes per-example prompt/response/expected text to its local run logs by default; set to `false` to keep ids and metrics only. |
 | `TRAIGENT_BACKEND_URL`            | `https://portal.traigent.ai` | Backend the SDK talks to. Set only for a dev or self-hosted backend; a key issued by one backend is a 401 on another. |
@@ -53,13 +54,14 @@ enable_mock_mode_for_quickstart()
 ```
 
 ```bash
+export LITELLM_LOCAL_MODEL_COST_MAP=True   # no pricing-map download when your script imports litellm
 export TRAIGENT_LOG_LEVEL=DEBUG
 python my_optimization.py
 ```
 
 ### CI/CD Pipeline
 
-CI environments typically already have a conftest or fixture that calls `enable_mock_mode_for_quickstart()`. The legacy `TRAIGENT_MOCK_LLM=true` env var still works in CI (`ENVIRONMENT` is normally not `production` in CI), but the in-code path is preferred.
+CI environments typically already have a conftest or fixture that calls `enable_mock_mode_for_quickstart()`. The legacy `TRAIGENT_MOCK_LLM=true` env var still works in CI (`ENVIRONMENT` is normally not `production` in CI), but it is deprecated and will be removed in a future release — use the in-code path for new setups.
 
 ```bash
 export TRAIGENT_RUN_APPROVED=1            # CI approval gate: GitHub Actions requires it even for mock/offline runs

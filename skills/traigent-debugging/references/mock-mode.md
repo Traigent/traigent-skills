@@ -7,7 +7,7 @@
 > enable_mock_mode_for_quickstart()
 > ```
 >
-> The legacy `TRAIGENT_MOCK_LLM=true` env var still works in non-production environments for backward compatibility, but **is hard-blocked when `ENVIRONMENT=production`** (raises `OSError`). The block does **not** fire at `import traigent` — a bare import succeeds even with both set. It fires the first time env config is loaded (decoration/CLI/`optimize()`), so on the decorator path the earliest you'll see it is at `@traigent.optimize(...)` (any `traigent` CLI command raises it too). All examples below that set `TRAIGENT_MOCK_LLM=true` continue to work in dev/test; new code should use the in-code API for clarity and code-review visibility.
+> The legacy `TRAIGENT_MOCK_LLM=true` env var is **deprecated**: on traigent 0.27.0 it emits a DeprecationWarning (hidden by default) saying it "will be removed in a future release". It still works in non-production environments for backward compatibility, but **is hard-blocked when `ENVIRONMENT=production`** (raises `OSError`). The block does **not** fire at `import traigent` — a bare import succeeds even with both set. It fires the first time env config is loaded (decoration/CLI/`optimize()`), so on the decorator path the earliest you'll see it is at `@traigent.optimize(...)` (any `traigent` CLI command raises it too). The examples below lead with the in-code API; the env-var forms are kept, marked deprecated, only for existing setups. Use `enable_mock_mode_for_quickstart()` in code, e.g. from a pytest fixture/conftest, for new setups.
 
 ## Overview
 
@@ -16,23 +16,15 @@ Traigent supports two ways to activate mock mode:
 | Path | When to use |
 |---|---|
 | `traigent.testing.enable_mock_mode_for_quickstart()` (in code) | Recommended. Production-blocked. |
-| `TRAIGENT_MOCK_LLM=true` (env var) | Legacy fallback. Honored only outside production. |
+| `TRAIGENT_MOCK_LLM=true` (env var) | Deprecated legacy fallback, scheduled for removal. Honored only outside production. |
 
-For zero-egress testing, pass `offline=True` on the decorator or optimization call. Mock
+For zero Traigent backend egress, pass `offline=True` on the decorator or optimization call. Mock
 mode controls provider-call interception; `offline=True` controls Traigent backend egress and
-portal result sync.
+portal result sync. Neither stops other traffic: provider calls that mock mode does not intercept
+still go out, and `import litellm` fetches LiteLLM's public pricing map over the network unless
+`LITELLM_LOCAL_MODEL_COST_MAP=True` is set before that import.
 
 ## Enabling Mock Mode
-
-### Environment Variables
-
-```bash
-# Legacy fallback for mock LLM responses
-export TRAIGENT_MOCK_LLM=true
-
-# Then run your code
-python my_optimization.py
-```
 
 ### In Python
 
@@ -44,28 +36,41 @@ enable_mock_mode_for_quickstart()
 
 ### In pytest
 
+Activation is process-local and cannot be switched off in the same process, so enable it
+once for a test session that should run fully mocked, e.g. in `tests/conftest.py`:
+
 ```python
 import pytest
+from traigent.testing import enable_mock_mode_for_quickstart
 
-@pytest.fixture(autouse=True)
-def mock_traigent_env(monkeypatch):
-    monkeypatch.setenv("TRAIGENT_MOCK_LLM", "true")
+
+@pytest.fixture(autouse=True, scope="session")
+def traigent_mock_mode():
+    enable_mock_mode_for_quickstart()
 ```
 
-Or via pytest CLI:
+### Environment variable (deprecated)
+
+`TRAIGENT_MOCK_LLM=true` is deprecated on traigent 0.27.0 (a DeprecationWarning, hidden by default, says it "will be removed in a future release"). Use `traigent.testing.enable_mock_mode_for_quickstart()` in code, e.g. from a pytest fixture/conftest, for new setups.
 
 ```bash
+# Deprecated legacy fallback; prefer enable_mock_mode_for_quickstart() in code
+export TRAIGENT_MOCK_LLM=true
+python my_optimization.py
+
+# Deprecated: the same, for one pytest run
 TRAIGENT_MOCK_LLM=true pytest tests/
 ```
 
-## What TRAIGENT_MOCK_LLM Does
+## What Mock Mode Does
 
-When `TRAIGENT_MOCK_LLM=true`:
+When mock mode is active (`enable_mock_mode_for_quickstart()`, or the deprecated `TRAIGENT_MOCK_LLM=true`):
 
 - LLM API calls return synthetic/mock responses instead of calling real providers
 - No API keys are required (OpenAI, Anthropic, etc.)
-- No network calls are made to LLM providers
-- Cost tracking reports zero or minimal cost
+- No network calls are made to LLM providers for the calls it intercepts (see "What Is NOT Mocked" below)
+- Cost tracking reports zero or minimal cost, but cost limits still apply: a very low
+  `TRAIGENT_RUN_COST_LIMIT` stops a mock run at 0 trials with `stop_reason="cost_limit"`
 - Response times are near-instant
 
 ### What Gets Mocked
@@ -109,7 +114,7 @@ Use this when:
 
 ## Using Mock Mode with `offline=True`
 
-The most common zero-egress validation pattern is to enable mock mode and pass `offline=True`:
+The most common validation pattern with zero Traigent backend egress is to enable mock mode and pass `offline=True`:
 
 ```python
 import traigent
@@ -130,10 +135,13 @@ def my_func(text):
 results = my_func.optimize_sync(max_trials=3)
 ```
 
-This gives you a fully self-contained environment:
+This gives you a self-contained environment:
 - No API keys needed
-- No backend connection needed
-- No network calls at all
+- No backend connection needed (zero Traigent backend egress)
+- No provider calls for LiteLLM/LangChain calls, which mock mode intercepts; a raw `openai` /
+  `anthropic` client in the function still calls the provider
+- If your code imports `litellm` itself, set `LITELLM_LOCAL_MODEL_COST_MAP=True` before that
+  import, or LiteLLM fetches its public pricing map over the network
 - Fast execution (no real LLM latency)
 
 ## Limitations of Mock Mode
@@ -164,14 +172,14 @@ Mock mode has important limitations to be aware of:
 name: Test Optimization Setup
 on: [push]
 jobs:
-	  test:
-	    runs-on: ubuntu-latest
-	    env:
-	      TRAIGENT_MOCK_LLM: "true"
-	      TRAIGENT_RUN_APPROVED: "1"   # under GITHUB_ACTIONS every optimize() — mock included — refuses to run without this
-	    steps:
-	      - uses: actions/checkout@v4
-	      - uses: actions/setup-python@v5
+  test:
+    runs-on: ubuntu-latest
+    env:
+      # tests/conftest.py enables mock mode in code (see "In pytest" above)
+      TRAIGENT_RUN_APPROVED: "1"   # under GITHUB_ACTIONS every optimize() — mock included — refuses to run without this
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: pip install "traigent[dev]>=0.19"
@@ -213,7 +221,9 @@ print("Setup is valid - ready for real optimization")
 
 ## Disabling Mock Mode
 
-For the legacy env-var path, remove or unset the variable:
+The in-code activation lasts until the process exits; run the real optimization in a process
+that never calls `enable_mock_mode_for_quickstart()`. For the deprecated env-var path, remove or
+unset the variable:
 
 ```bash
 unset TRAIGENT_MOCK_LLM

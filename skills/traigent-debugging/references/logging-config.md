@@ -2,11 +2,11 @@
 
 ## Overview
 
-Traigent uses Python's standard `logging` module with two primary environment variables for controlling verbosity:
+Traigent uses Python's standard `logging` module. Verbosity is set in code with `traigent.configure(logging_level=...)`, and two environment variables adjust it:
 
 | Variable | Purpose | Values |
 |---|---|---|
-| `TRAIGENT_LOG_LEVEL` | Set the logging level for all Traigent loggers | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `TRAIGENT_LOG_LEVEL` | Level for Traigent loggers, applied only when `traigent.configure(logging_level=...)`, `traigent.initialize()` or the `traigent` CLI sets up logging (it overrides the level they are given) | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
 | `TRAIGENT_DEBUG` | Enable full tracebacks for ConfigurationError | `1` (enabled), unset (disabled) |
 
 ## TRAIGENT_LOG_LEVEL
@@ -15,27 +15,33 @@ Controls the verbosity of Traigent's internal logging.
 
 ### Setting
 
-```bash
-# Command line
-export TRAIGENT_LOG_LEVEL=DEBUG  # read on all current SDK versions
+```python
+import traigent
 
-# Or inline
+traigent.configure(logging_level="DEBUG")  # before defining/running the optimization
+```
+
+`@traigent.optimize` and `optimize_sync()` do not set up logging themselves. The level
+(from `TRAIGENT_LOG_LEVEL` when set, otherwise the one passed in) is applied only by
+`traigent.configure(logging_level=...)`, `traigent.initialize()` and the `traigent` CLI.
+In a script that only uses the decorator, `export TRAIGENT_LOG_LEVEL=DEBUG` changes
+LiteLLM's verbosity but leaves the `traigent` loggers at Python's default (WARNING).
+
+```bash
+# Takes effect in a script that calls traigent.configure(logging_level=...);
+# the environment value then overrides the level passed in code.
 TRAIGENT_LOG_LEVEL=DEBUG python my_script.py
 ```
 
-```python
-# In Python (set before importing traigent)
-import os
-os.environ["TRAIGENT_LOG_LEVEL"] = "DEBUG"
-import traigent
-```
+`configure()` replaces the ROOT logger's handlers. A host application with its own
+logging setup should use the scoped snippet under "Programmatic Logging Configuration".
 
 ### Log Levels
 
 | Level | What It Shows |
 |---|---|
 | `DEBUG` | Everything: config sampling, trial start/stop, metric extraction, cost tracking, backend communication, internal state changes. Very verbose. |
-| `INFO` | Optimization lifecycle events: run start, trial completion, best config updates, run completion. The default level. |
+| `INFO` | Optimization lifecycle events: run start, trial completion, best config updates, run completion. The level `traigent.initialize()` uses when none is configured. A decorated run that never calls `configure()` stays at Python's default, WARNING, so INFO lines do not appear. |
 | `WARNING` | Non-fatal issues: deprecated API usage, non-numeric metric values, retry attempts, fallback behavior. |
 | `ERROR` | Trial failures, evaluation errors, provider errors, unrecoverable issues within a trial. |
 | `CRITICAL` | Fatal errors that prevent the optimization from continuing at all. Rare. |
@@ -99,8 +105,10 @@ This variable controls traceback display for `ConfigurationError` specifically.
 ConfigurationError shows a clean, single-line message:
 
 ```
-traigent.utils.exceptions.ConfigurationError: Invalid configuration_space: 'model' values must be a list
+traigent.utils.exceptions.ConfigurationError: algorithm='bayesian' requires managed optimization and cannot be used with offline=True or TRAIGENT_OFFLINE=1.
 ```
+
+(Raised at decoration by `@traigent.optimize(..., offline=True, algorithm="bayesian")`.)
 
 ### With TRAIGENT_DEBUG=1
 
@@ -108,14 +116,19 @@ Full Python traceback is shown:
 
 ```
 Traceback (most recent call last):
-  File "my_script.py", line 15, in <module>
-    results = func.optimize_sync()
-  File "/path/to/traigent/core/optimized_function.py", line 234, in optimize
-    self._validate_config_space(config_space)
-  File "/path/to/traigent/core/optimized_function.py", line 178, in _validate_config_space
-    raise ConfigurationError(f"Invalid configuration_space: '{key}' values must be a list")
-traigent.utils.exceptions.ConfigurationError: Invalid configuration_space: 'model' values must be a list
+  File "my_script.py", line 2, in <module>
+    @traigent.optimize(eval_dataset="eval_data.jsonl", configuration_space={"model": ["a", "b"]}, offline=True, algorithm="bayesian")
+  File "/path/to/traigent/api/decorators.py", line 3088, in optimize
+    execution_policy = _resolve_execution_policy_from_options(
+  File "/path/to/traigent/api/decorators.py", line 1687, in _resolve_execution_policy_from_options
+    return resolve_execution_policy(
+  File "/path/to/traigent/config/types.py", line 550, in resolve_execution_policy
+    raise ConfigurationError(
+traigent.utils.exceptions.ConfigurationError: algorithm='bayesian' requires managed optimization and cannot be used with offline=True or TRAIGENT_OFFLINE=1.
 ```
+
+Line numbers vary by SDK version. A non-list or empty `configuration_space` is not a
+`ConfigurationError` (see [Error Reference](error-reference.md)).
 
 ```bash
 # Enable
@@ -132,7 +145,7 @@ This only affects `ConfigurationError` and its subclasses. All other exceptions 
 For maximum diagnostic information:
 
 ```bash
-export TRAIGENT_LOG_LEVEL=DEBUG  # read on all current SDK versions
+# my_script.py calls traigent.configure(logging_level="DEBUG") before the run
 export TRAIGENT_DEBUG=1
 python my_script.py
 ```
@@ -147,7 +160,8 @@ python my_script.py
 
 ## Programmatic Logging Configuration
 
-You can also configure Traigent's logger directly:
+You can also configure Traigent's logger directly. This works on a decorated run and leaves
+the host application's root logging untouched:
 
 ```python
 import logging

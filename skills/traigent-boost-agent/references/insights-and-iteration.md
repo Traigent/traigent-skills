@@ -68,6 +68,7 @@ With that approval: `job = await client.compute_scores(experiment_run_id=run_id)
 Use these outputs to target curation or audit work, not to claim hidden causal explanations.
 
 The `analytics_get_example_insights` MCP tool (or `GET /api/v1/analytics/runs/{run_id}/example-insights`) provides a ranked and flagged complement: up to 100 rows ordered by `review_priority` (critical | high | medium | low), each with `suspicious_flags` and a `recommended_action`. This surface is non-signal — it ranks by review urgency and provides enum flags, not raw scores or formulas. Use the flag-to-action guide below when acting on these rows.
+The MCP tool needs the analytics MCP server installed and registered once; see the analyze-results skill → "Prerequisites (one time)". The REST route works without it.
 
 ## Symptom-to-Next-Step Table
 
@@ -76,7 +77,7 @@ The `analytics_get_example_insights` MCP tool (or `GET /api/v1/analytics/runs/{r
 | Scores are flat everywhere | Add harder or more discriminating examples, then rerun a small controlled search | `traigent-dataset-curate` |
 | Winner ties baseline but product tradeoff still feels wrong | Revisit the objective, weights, or decision threshold before changing code | `traigent-eval-choose-metric` |
 | Evaluator flips on repetitions or judge output is noisy | Audit agreement, repetition stability, bias, parse failures, and calibration | `traigent-eval-audit` |
-| Evaluator cannot express the chosen metric | Wire a stronger deterministic, statistical, hybrid, or `BaseEvaluator` path | `traigent-eval-build` |
+| Evaluator cannot express the chosen metric | Wire a stronger deterministic, statistical, or hybrid scorer through `scoring_function`, `metric_functions` or `custom_evaluator` | `traigent-eval-build` |
 | One tuned variable dominates the run | Narrow that variable's range and rerun with a focused hypothesis | `traigent-optimize-config-space` |
 | Scalar knobs are not enough for the agent shape | Add a composite pattern that matches the codebase shape | `traigent-optimize-composite-knobs` |
 | Search stopped because of budget or trials | Adjust algorithm, `max_trials`, parallelism, model mix, or cost limit after approval | `traigent-optimize-run` |

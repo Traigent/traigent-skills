@@ -28,15 +28,13 @@ def answer_question(question: str) -> str:
 ```python
 from time import perf_counter
 
+import litellm
 import traigent
-from openai import OpenAI
 from traigent.api.decorators import EvaluationOptions
 from traigent.config_generator import generate_config
 from traigent.knobs.patterns import self_consistency
 from traigent.knobs.runtime import StageRunner, execute_composite
 from traigent.knobs.telemetry import merge_composite_measures
-
-client = OpenAI()
 
 # Reads the target file and proposes tuned variables from the shipped TVar
 # catalog. enrich=False keeps it offline: no LLM call, no spend.
@@ -53,24 +51,22 @@ CONSISTENCY = self_consistency(
     "qa_self_consistency",
     stage="answer",
     cardinality="candidate_count",
-    stage_tuned_params=(
-        "model",
-        "temperature",
-        "retrieval_k",
-        "context_selection_policy",
-        "context_order",
-    ),
+    stage_tuned_params=("model", "temperature", "retrieval_k"),
 )
 
 # generate_config returns ROWS, not a ready configuration_space dict. Build the
-# space from the rows you actually decide to tune -- each carries range_type and
-# range_kwargs (e.g. Choices -> {"values": [...]}, IntRange -> {"low":, "high":}).
-# Take Choices rows literally; convert numeric ranges with Range/IntRange from
-# traigent, and read apply_guidance first for knobs that need runtime wiring.
+# space only from rows the function below actually reads -- a declared knob the
+# function never reads is a silent no-op that still multiplies the search. Each
+# row carries range_type and range_kwargs (e.g. Choices -> {"values": [...]},
+# IntRange -> {"low":, "high":}). Take Choices rows literally; convert numeric
+# ranges with Range/IntRange from traigent, and read apply_guidance first for
+# knobs that need runtime wiring. Add a name to WIRED only after wiring it.
+WIRED = {"context_selection_policy", "context_order", "summary_style", "citation_policy"}
+
 SUGGESTED_CHOICES = {
     rec.name: rec.range_kwargs["values"]
     for rec in SUGGESTED.recommendations
-    if rec.range_type == "Choices"
+    if rec.range_type == "Choices" and rec.name in WIRED
 }
 
 CONFIGURATION_SPACE = {
@@ -78,6 +74,7 @@ CONFIGURATION_SPACE = {
     "model": ["gpt-4o-mini", "gpt-4o"],
     "temperature": [0.0, 0.2, 0.7],
     "candidate_count": [1, 2, 3],
+    "retrieval_k": [2, 4, 8],
     **CONSISTENCY.members,
 }
 
@@ -103,9 +100,11 @@ def _render_context(question: str, cfg: dict) -> str:
     )
 
 
-def _call_answer_model(question: str, cfg: dict) -> str:
+def _call_answer_model(question: str, cfg: dict) -> tuple[str, float]:
     context = _render_context(question, cfg)
-    response = client.chat.completions.create(
+    # litellm.completion, not a raw provider client: mock mode intercepts only
+    # LiteLLM/LangChain calls, so the dry-run below stays keyless and free.
+    response = litellm.completion(
         model=cfg["model"],
         temperature=float(cfg["temperature"]),
         messages=[
@@ -113,25 +112,17 @@ def _call_answer_model(question: str, cfg: dict) -> str:
             {"role": "user", "content": f"Context:\n{context}\n\nQuestion: {question}"},
         ],
     )
-    return response.choices[0].message.content
+    # Price THIS call; the example's cost is the sum over all its calls.
+    return response.choices[0].message.content, estimate_call_cost_usd(response)
 
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
         # Built-in evaluator: expected outputs live in the JSONL rows and are
-        # exact-matched against the function's output. With the composite
-        # (output, metrics) tuple return, USE THE BUILT-IN EVALUATOR — a custom
-        # `scoring_function` (and 3-arg `metric_functions`) is currently NOT
-        # invoked with the unpacked prediction on this path and every trial
-        # silently scores accuracy=0.0 (known SDK issue). Diagnostic tell, by
-        # SDK version: on <= 0.21.3 the built-in exact-match value appears as
-        # metrics["score"] (uniform zero accuracy next to a sane "score" =
-        # this wiring, not your agent); score mirrors the primary objective on
-        # SDKs after 0.21.3 (see version-matrix: score-relocation), so "score"
-        # is ALSO 0.0 here and the sane built-in value is
-        # relocated to metrics["exact_match_default"] — check that key, and
-        # look for the run-level "custom scoring_function defines the
-        # 'accuracy' objective" log line.
+        # exact-matched against the function's unpacked `output` (it unwraps
+        # the with_usage(...) result below). A custom scoring_function /
+        # metric_functions receives that with_usage result as a dict: score
+        # output["text"], or every example scores 0.0.
         eval_dataset="evals/qa.jsonl",
     ),
     objectives=["accuracy", "cost"],
@@ -141,9 +132,15 @@ def answer_question(question: str):
     cfg = dict(traigent.get_config())
     candidate_count = int(cfg["candidate_count"])
     started = perf_counter()
+    call_costs: list[float] = []
 
     def run_answer(_item: dict) -> list[str]:
-        return [_call_answer_model(question, cfg) for _ in range(candidate_count)]
+        answers = []
+        for _ in range(candidate_count):
+            answer, cost = _call_answer_model(question, cfg)
+            answers.append(answer)
+            call_costs.append(cost)
+        return answers
 
     run = execute_composite(
         CONSISTENCY.structure,
@@ -158,21 +155,29 @@ def answer_question(question: str):
         calibrated_values={},
     )
 
-    output = "" if run.result_kind.value != "output" else str(run.output)
+    if run.result_kind.value != "output":
+        # A composite with no answer is a FAILED example, not an empty answer:
+        # returning "" would let a run where every model call failed pass as green.
+        raise RuntimeError(f"composite produced no output: {run.result_kind.value}")
     metrics: dict[str, float] = {
         "latency_ms": (perf_counter() - started) * 1000.0,
-        "cost": estimate_last_call_cost_usd(),
     }
     merge_composite_measures(metrics, run)
-    return output, metrics
+    # Report cost through with_usage, not a "cost" key: cost/total_cost are
+    # evaluator-reserved and dropped from metrics with a WARNING. with_usage
+    # feeds the cost objective, results.total_cost and cost caps. Sum every
+    # call: candidate_count calls cost candidate_count times one call, and that
+    # multiplier is exactly what the cost objective must trade against.
+    return traigent.with_usage(str(run.output), total_cost=sum(call_costs)), metrics
 ```
 
 Notes:
 
 - `execute_composite(..., config=cfg, ...)` passes the config mapping as the item to stage runners. Close over the original function input, as shown with `question`.
-- The two-item tuple is intentional: the evaluator sees `output`, and numeric `metrics` ride the measures channel.
+- The two-item tuple is intentional: the evaluator sees `output`, and numeric `metrics` ride the measures channel. Keep reserved keys (e.g. `accuracy`, `cost`, `total_cost`, `input_cost`, `output_cost`, `latency`, `score`) out of `metrics`: they are dropped with a "Skipping user metric ... reserved" WARNING. Report the cost your code computes with `traigent.with_usage(text, total_cost=usd)` as the first tuple element; outside optimization it returns `text` unchanged. The built-in evaluator scores the text inside it, but a custom `scoring_function` / `metric_functions` receives the wrapper dict during optimization and must read `output["text"]`.
+- Read per-trial results by objective name (`trial.metrics["accuracy"]`, `trial.metrics["cost"]`), not `score`: `score` mirrors a single built-in primary objective on SDKs after 0.21.3 only (see version-matrix: score-relocation). With `objectives=["accuracy", "cost"]` it is the weighted selection basis, not accuracy.
 - If production code must keep returning `str`, keep this optimized function as the eval surface and expose `def answer_question_plain(question: str) -> str: return answer_question(question)[0]` only where needed.
-- The helper functions `retrieve_context`, `format_context`, and `estimate_last_call_cost_usd` are application code, not Traigent APIs.
+- The helper functions `retrieve_context`, `format_context`, and `estimate_call_cost_usd` are application code, not Traigent APIs. `estimate_call_cost_usd(response)` prices one call (for LiteLLM, `litellm.completion_cost(completion_response=response)`); make it raise, not return `0.0`, when a call cannot be priced, or the cost objective counts that call as free.
 
 ## Environment
 
@@ -188,6 +193,8 @@ from traigent.testing import enable_mock_mode_for_quickstart
 
 enable_mock_mode_for_quickstart()
 ```
+
+> Mock mode covers LiteLLM/LangChain calls only — a raw `openai` / `anthropic` client in the body makes real, billable calls even during a "keyless" mock dry-run. The After block calls `litellm.completion` for that reason; if you keep your own client, stub it for the dry-run.
 
 Real optimization:
 

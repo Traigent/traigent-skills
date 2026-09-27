@@ -34,7 +34,7 @@ pip install "traigent[integrations]>=0.19"
 # Or install individual frameworks alongside Traigent
 pip install "traigent>=0.19" langchain-openai langchain-anthropic
 pip install "traigent>=0.19" litellm
-pip install "traigent>=0.19" dspy
+pip install "traigent>=0.19" "dspy==3.3.1"
 ```
 
 > **Pin, don't float, the framework version.** `langchain-openai`/`langchain-anthropic` and `dspy` both
@@ -43,11 +43,18 @@ pip install "traigent>=0.19" dspy
 > unpinned install can silently pick up a version whose import paths or call signatures differ from
 > the examples below. Traigent's own `integrations` extra already floors
 > `langchain-openai>=1.1.14`/`langchain-anthropic>=0.2.0` (security floors — see `pip show traigent`);
-> stay at or above those, e.g. `langchain-openai>=1.1.14,<2`. `dspy` is not part of that extra and has
-> no SDK-verified floor here — pin to the exact `dspy` version you test the examples below against, or
-> treat them as unverified against your installed version until you do.
+> stay at or above those, e.g. `langchain-openai>=1.1.14,<2`. `dspy` is not part of that extra. The DSPy examples below were
+> verified with `dspy==3.3.1` on `traigent==0.27.0`; pin that version, or re-verify the examples
+> against the exact `dspy` version you pin before relying on them.
 
-> **Dry-run first.** Before any paid optimization run, activate mock mode (`enable_mock_mode_for_quickstart()`), run with your chosen config, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers.
+> **Dry-run first.** Before any paid optimization run, dry-run in mock mode (`enable_mock_mode_for_quickstart()`) with **no real provider key**, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers:
+> - LiteLLM examples: `enable_mock_mode_for_quickstart()` is enough.
+> - LangChain examples: LangChain clients require a key at construction, so set a non-secret
+>   placeholder in the dry-run process only — e.g. `OPENAI_API_KEY=mock-placeholder` (it cannot bill;
+>   the calls are intercepted).
+> - DSPy examples: mock mode's canned text cannot satisfy DSPy's structured outputs (every trial
+>   fails). Dry-run with `dspy.utils.DummyLM([...])` as the LM instead of `dspy.LM(...)` — one dict per
+>   call, keyed by the signature's output fields, e.g. `DummyLM([{"answer": "4"}] * 50)`.
 
 ## LangChain Integration
 
@@ -89,6 +96,13 @@ results = answer_question.optimize_sync()  # real run — only after dry-run app
 ```
 
 ### Auto Override Frameworks
+
+> **Released SDK caveat:** on `traigent<=0.27.0` auto-override is a silent no-op — every trial
+> constructs the client with the literal values in your code, and the run still ranks the trials
+> and reports a `best_config`. Until a release that fixes it, use manual injection (the Basic
+> Pattern: build the client from `traigent.get_config()`). Before any paid run, verify in mock mode
+> that the constructed client's `model_name` differs across two trials (the preflight in
+> [LangChain reference → Verify the override before a paid run](references/langchain.md#verify-the-override-before-a-paid-run)).
 
 > **Auto-override requires `framework_targets`.** Setting `auto_override_frameworks=True` alone does nothing — the SDK gate requires **both** `auto_override_frameworks=True` and an explicit `framework_targets` list. Without `framework_targets`, the override is silently skipped.
 >
@@ -213,10 +227,14 @@ See [LiteLLM reference](references/litellm.md) for the full provider list and co
 
 Traigent provides a `DSPyPromptOptimizer` adapter that wraps DSPy's MIPROv2 and BootstrapFewShot optimizers for automatic prompt engineering:
 
+> `method="mipro"` (the constructor default) raises `TypeError: MIPROv2.__init__() got an unexpected
+> keyword argument 'requires_permission_to_run'` on `traigent<=0.27.0` with DSPy 2.6/3.x. Pass
+> `method="bootstrap"` explicitly until a fixed SDK release.
+
 ```python
 from traigent.integrations.dspy_adapter import DSPyPromptOptimizer
 
-optimizer = DSPyPromptOptimizer(method="mipro")
+optimizer = DSPyPromptOptimizer(method="bootstrap")
 
 result = optimizer.optimize_prompt(
     module=my_dspy_module,
@@ -248,14 +266,19 @@ import dspy
 def dspy_qa(question):
     config = traigent.get_config()
     lm = dspy.LM(config["model"], temperature=config["temperature"])
-    dspy.configure(lm=lm)
-
-    qa = dspy.Predict("question -> answer")
-    result = qa(question=question)
+    with dspy.context(lm=lm):  # not dspy.configure(): trials run on worker threads
+        qa = dspy.Predict("question -> answer")
+        result = qa(question=question)
     return result.answer
 ```
 
-See [DSPy reference](references/dspy.md) for BootstrapFewShot patterns and advanced configuration.
+> **Use `dspy.context`, not `dspy.configure`, inside the optimized function.** Traigent runs examples
+> on worker threads, and DSPy lets only the thread that first configured it call `dspy.configure`.
+> Every other thread raises, and those examples score as wrong. A trial fails only if all of its
+> examples do, so accuracy is usually just deflated, with no error signal. Module-level
+> `dspy.configure(...)` on the main thread is fine.
+
+See [DSPy reference](references/dspy.md) for the full constructor and `optimize_prompt()` parameters and advanced configuration.
 
 ## Observability Integrations
 
@@ -344,7 +367,7 @@ def my_func(text):
     return llm.invoke(text).content  # Always uses the same model
 ```
 
-The exception is when using `auto_override_frameworks=True`, which intercepts client construction automatically.
+The exception is when using `auto_override_frameworks=True` with `framework_targets`, which intercepts client construction — but see the released-SDK caveat under Auto Override Frameworks: on `traigent<=0.27.0` it does not apply the trial values.
 
 ## Reference Files
 

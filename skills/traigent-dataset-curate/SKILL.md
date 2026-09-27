@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.8"
+  version: "1.1.9"
 ---
 
 # Traigent Curate Dataset
@@ -21,7 +21,7 @@ Use this skill when you need to build, grow, or audit the examples that Traigent
 
 - Start from existing fixtures, golden sets, support tickets, logs, traces, or manually labeled examples.
 - Keep tuning and holdout slices separate. Never tune and claim on the same slice.
-- Mock or zero-egress check first with `enable_mock_mode_for_quickstart()`, `offline=True`, and a small local sample.
+- Mock check first, with zero Traigent backend egress: `enable_mock_mode_for_quickstart()`, `offline=True`, and a small local sample. `offline=True` stops only Traigent backend traffic: LiteLLM still downloads its pricing map when it is imported unless `LITELLM_LOCAL_MODEL_COST_MAP=True` is set before the import, and any provider call that mock mode does not intercept still goes out. Mock mode does not reach a standalone `ExampleSynthesizer`: smoke-test synthesis with a stub `llm` instead (see "Synthesize examples client-side with no backend egress").
 - Before paid provider or backend runs, estimate cost, ask for user approval, and set `TRAIGENT_RUN_COST_LIMIT`.
 - For task-shape recipes, read `references/dataset-recipes.md`.
 - Only when none of the above sources exist at all — no fixtures, golden sets, tickets, logs, traces, or labeled examples anywhere — consider the cold-start path. It exists in the SDK from 0.27.0 but is gated by a backend flag that is off by default; read `references/cold-start.md` before offering it.
@@ -216,7 +216,35 @@ for example in synthetic_examples:
     example.metadata["review_status"] = "needs_human_label_check"
 ```
 
-For guided optimization flows, grow examples from the optimized function instead of separately managing the synthesizer:
+> **Mock mode does not cover this snippet** (traigent <= 0.27.0): the SDK only intercepts litellm once an
+> evaluator has been built, and a standalone `ExampleSynthesizer` never builds one, so
+> `enable_mock_mode_for_quickstart()` leaves `private_llm` making real provider calls. Smoke-test
+> synthesis with a local stub instead. It makes zero provider calls. Switch to `private_llm` only after
+> explicit user approval, since it sends seed rows to your provider.
+
+```python runnable
+from traigent.evaluators import Dataset
+from traigent.evaluators.base import EvaluationExample
+from traigent.generation import ExampleSynthesizer, GuidanceAction
+
+# A tiny in-memory seed stands in for Dataset.from_jsonl("eval/tune.jsonl").
+seed_dataset = Dataset(
+    examples=[EvaluationExample(input_data={"question": "Seed question"}, expected_output="seed answer")],
+    name="seed",
+)
+stub = ExampleSynthesizer(llm=lambda prompt: '[{"input": {"question": "stub"}, "expected_output": "stub"}]')
+rows = stub.synthesize(seed_examples=seed_dataset.examples[:2], action=GuidanceAction.GENERATE_HARDER, count=1)
+assert len(rows) == 1  # the synthesis pipeline ran end to end with no provider call
+```
+
+For exploratory guided optimization flows, grow examples from the optimized function instead of separately managing the synthesizer:
+
+> `optimize_with_guidance(grow_dataset=...)` adds the synthesized rows, with gold answers written by
+> `rewrite_llm`, to the evaluated dataset **in the same call**, before any human review, and returns
+> the best-scoring round across datasets of different sizes. Use it only for exploration. For
+> tuning-slice changes, use the standalone `ExampleSynthesizer` above, review the labels, then start
+> a new run. `weak_examples` takes `(input, expected, actual)` tuples and is read only with
+> `plan_kind="prompt_rewrite"` and `prompt_param=...`; it does not steer dataset growth.
 
 ```python
 import litellm
@@ -249,15 +277,12 @@ growth_options = DatasetGrowthOptions(
     max_total_examples_added=12,
 )
 
-# `guidance_provider` and `weak_examples` are NOT defined here — they come
-# from your prior run: the service next-step payload (see `traigent-analyze-guidance`)
-# supplies the provider, and the flagged/weak example ids come from that
-# payload or your own analysis (see "Reflect on Hard Examples" below).
+# `guidance_provider` is NOT defined here — it comes from your prior run:
+# the service next-step payload (see `traigent-analyze-guidance`) supplies it.
 results = answer.optimize_with_guidance(
     provider=guidance_provider,      # from the traigent-analyze-guidance payload
     rewrite_llm=prompt_model,
     grow_dataset=growth_options,
-    weak_examples=weak_examples,     # flagged example ids from the prior run
     max_trials=8,
 )
 ```
@@ -315,11 +340,15 @@ does not decide which examples are hard.
    `traigent-eval-audit` — do not manually re-rank or re-score
    evaluators.
 5. Pick exactly one server-suggested action and ask the user to approve it:
-   `ExampleSynthesizer` with `GuidanceAction.GENERATE_HARDER` or
-   `GENERATE_SIMILAR`, or `optimize_with_guidance(grow_dataset=...,
-   weak_examples=...)` — see "Synthesize examples client-side with no backend
-   egress" above for the exact call patterns — a prompt rewrite, a trained
-   skill, or a fix to the agent code.
+   dataset growth with the standalone `ExampleSynthesizer`
+   (`GuidanceAction.GENERATE_HARDER` or `GENERATE_SIMILAR`) followed by label
+   review — see "Synthesize examples client-side with no backend egress" above
+   for the exact call pattern; a prompt rewrite with
+   `optimize_with_guidance(guidance_provider, rewrite_llm=prompt_model,
+   plan_kind="prompt_rewrite", prompt_param=...,
+   weak_examples=[(input, expected, actual), ...])`, built from the joined
+   local content of the flagged rows (not their ids); a trained skill; or a
+   fix to the agent code.
 6. Execute the approved action locally. For generated or changed examples,
    mark them for human label review before they can enter the tuning slice; they
    never enter the holdout (see the holdout rules above).
@@ -373,6 +402,8 @@ Prefer client-side synthesis when data-handling review is incomplete, no account
 <!-- PROTECTED -->
 Important honesty point: the backend redacts proprietary scoring signals. The client receives non-signal metadata such as example ids, sample counts, algorithm version, scored flags, and quality-job status. Do not teach or infer hidden difficulty, informativeness, or ambiguity values from the client response. The ranked and flagged "examples to review" surface (`analytics_get_example_insights` / `GET /api/v1/analytics/runs/{run_id}/example-insights`) is likewise non-signal: it conveys review urgency, enum flags, and a suggested action — never raw scores, formulas, or composite values.
 <!-- /PROTECTED -->
+
+The `analytics_get_example_insights` MCP tool needs the analytics MCP server installed and registered with your coding assistant first; see the analyze-results skill, "Prerequisites (one time)". The REST route works without it.
 
 > **Import note (verified against SDK 0.18.x):** `ExampleInsightsClient` ships in the core SDK at `traigent.analytics` — no separate install required. The `traigent.analytics` module docstring recommends the separate `traigent-analytics` plugin (`pip install traigent-analytics`), but that plugin's public API (meta-learning, predictive analytics, anomaly detection, cost optimization, scheduling — see its own `__all__`) does not include `ExampleInsightsClient`; `from traigent_analytics import ExampleInsightsClient` raises `ImportError`. Ignore the module's `DeprecationWarning` for this class specifically.
 >

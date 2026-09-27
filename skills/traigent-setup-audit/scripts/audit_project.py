@@ -26,6 +26,7 @@ from __future__ import annotations
 import argparse
 import ast
 import csv
+import importlib.metadata as md
 import json
 import os
 import re
@@ -102,8 +103,13 @@ SKIP_DIRS = frozenset(
 )
 
 # Dataset row keys, in the order the SDK resolves them
-# (traigent/evaluators/base.py `_EXPECTED_OUTPUT_FIELDS` for the gold keys).
-INPUT_KEYS = ("input", "input_data", "question", "prompt", "query", "messages")
+# (traigent/evaluators/base.py: `input` then `input_data` for the input,
+# `_EXPECTED_OUTPUT_FIELDS` for the gold keys). The SDK loads only
+# SDK_INPUT_KEYS; the wider INPUT_KEYS list decides which files are candidate
+# datasets, and a row keyed by anything outside SDK_INPUT_KEYS is a finding,
+# because `eval_dataset` refuses that file.
+SDK_INPUT_KEYS = ("input", "input_data")
+INPUT_KEYS = (*SDK_INPUT_KEYS, "question", "prompt", "query", "messages")
 EXPECTED_KEYS = ("output", "expected", "expected_output", "answer", "target", "label")
 HOLDOUT_VALUES = frozenset({"holdout", "test", "validation", "val", "eval"})
 # A dataset file whose name carries one of these tokens, beside another dataset
@@ -241,6 +247,36 @@ KEY_ENV_NAMES = (
     "GROQ_API_KEY",
     "COHERE_API_KEY",
 )
+# The only environment variables a child that runs project code receives. An
+# allowlist, not a credential denylist: credentials follow no naming rule
+# (PGPASSWORD, DATABASE_URL, SSH_AUTH_SOCK, a proxy URL with a password in it),
+# and neither the probe nor the sandbox prefix reads any other variable.
+CHILD_ENV_NAMES = (
+    "PATH",
+    "HOME",
+    "LANG",
+    "LANGUAGE",
+    "TZ",
+    "TMPDIR",
+    "TMP",
+    "TEMP",
+    # The POSIX and glibc locale categories, named one by one so the child's
+    # environment is built by looking up each name, never by walking the
+    # whole environment.
+    "LC_ALL",
+    "LC_ADDRESS",
+    "LC_COLLATE",
+    "LC_CTYPE",
+    "LC_IDENTIFICATION",
+    "LC_MEASUREMENT",
+    "LC_MESSAGES",
+    "LC_MONETARY",
+    "LC_NAME",
+    "LC_NUMERIC",
+    "LC_PAPER",
+    "LC_TELEPHONE",
+    "LC_TIME",
+)
 MODEL_KNOB_NAMES = frozenset({"model", "model_name", "llm", "engine", "model_id"})
 
 # Names a knob can be read through without the parser being able to follow it.
@@ -274,33 +310,6 @@ PROBE_TIMEOUT_SECONDS = 30
 # dozens of eval files or scorers stays readable.
 MAX_DATASETS_IN_CARD = 10
 MAX_SCORERS_IN_CARD = 8
-
-_VERSION_PROBE_SOURCE = """
-import json
-import socket
-
-
-class _Refused(RuntimeError):
-    pass
-
-
-def _refuse(*args, **kwargs):
-    raise _Refused("traigent-setup-audit: network disabled in the free audit")
-
-
-socket.socket = _refuse
-socket.create_connection = _refuse
-socket.getaddrinfo = _refuse
-socket.gethostbyname = _refuse
-
-import importlib.metadata as md
-
-try:
-    version = md.version("traigent")
-except Exception:
-    version = None
-print(json.dumps({"traigent_version": version}))
-"""
 
 
 # --------------------------------------------------------------------------
@@ -1077,6 +1086,12 @@ class DatasetReport:
     # True when this file IS the holdout slice (declared by its name beside a
     # tuning file): it is judged against the holdout minimum only.
     holdout_by_name: bool = False
+    # Informational lines (how the holdout slice was declared). Printed as
+    # evidence, never counted as a problem: a finding is something to fix.
+    notes: list[str] = field(default_factory=list)
+    # Rows with neither `input` nor `input_data`: the SDK refuses the whole
+    # file on the first one. One field drives both the finding and the next step.
+    rows_without_sdk_input: int = 0
 
 
 NO_HOLDOUT_FINDING = "no split marker on any row, so no holdout slice is declared"
@@ -1298,6 +1313,23 @@ def analyse_dataset(
         findings.append(
             f"{count} rows is under the {MIN_TUNING}-row first-tuning-slice minimum"
         )
+    other_keys = {
+        key: value
+        for key, value in sorted(input_key_counts.items())
+        if key not in SDK_INPUT_KEYS
+    }
+    keyless = len(rows) - sum(input_key_counts.values())
+    rows_without_sdk_input = sum(other_keys.values()) + keyless
+    if rows_without_sdk_input:
+        detail = [f"{value} keyed `{key}`" for key, value in other_keys.items()]
+        if keyless:
+            detail.append(f"{keyless} with no input-like key at all")
+        findings.append(
+            f"{rows_without_sdk_input} row(s) have no `input`/`input_data` key "
+            f"({', '.join(detail)}); `eval_dataset` reads only `input` or "
+            "`input_data` and refuses the whole file on the first such row — "
+            "rename or add the key"
+        )
     if missing_expected:
         findings.append(
             f"{len(missing_expected)} row(s) carry no gold key "
@@ -1356,6 +1388,7 @@ def analyse_dataset(
         holdout_overlap=holdout_overlap[:20],
         label_counts=label_counts,
         findings=findings,
+        rows_without_sdk_input=rows_without_sdk_input,
         input_index=dict(by_input),
         holdout_input_index=dict(holdout_by_input),
         non_holdout_input_index=dict(non_holdout_by_input),
@@ -1401,7 +1434,7 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                         "split marker(s) naming a non-holdout slice; per-row markers win"
                     )
                 if untagged_rows:
-                    report.findings.append(
+                    report.notes.append(
                         f"{untagged_rows} untagged row(s) inherit the holdout role "
                         "from the file name"
                     )
@@ -1428,7 +1461,7 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                 holdout_inputs.update(report.input_index)
                 report.holdout_rows = report.rows
                 report.holdout_by_name = True
-                report.findings.append(
+                report.notes.append(
                     f"holdout slice declared by file name: {report.rows} row(s), "
                     "no per-row split marker"
                 )
@@ -1459,7 +1492,7 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                         "split markers present but none name a holdout slice"
                     )
                 ]
-                report.findings.append(
+                report.notes.append(
                     f"holdout slice declared by sibling file {names} ({total} row(s))"
                 )
             overlap = sorted(
@@ -1669,6 +1702,17 @@ def _framed_lines(stdout: str) -> list[str]:
     ]
 
 
+def probe_environment() -> dict[str, str]:
+    """The allowlisted environment for a child that may run project code.
+
+    Only PATH, HOME, locale, timezone and temp-dir variables pass; every other
+    variable, credentials included, is withheld. A scorer that needs another
+    variable fails the probe and is reported by exception type and location.
+    """
+    values = {name: os.getenv(name) for name in CHILD_ENV_NAMES}
+    return {name: value for name, value in values.items() if value is not None}
+
+
 def run_scorer_probe(
     interpreter: str,
     scorer: ScorerCandidate,
@@ -1698,6 +1742,7 @@ def run_scorer_probe(
             text=True,
             timeout=PROBE_TIMEOUT_SECONDS,
             check=False,
+            env=probe_environment(),
         )
     except subprocess.TimeoutExpired:
         return {"ran": False, "stage": "timeout", "payload_source": source}
@@ -1863,6 +1908,35 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
     return status, evidence
 
 
+def probe_symptom(metrics: dict) -> str:
+    """Why a probe that ran is not reliable, in the probe's own numbers.
+
+    Only meaningful for a ``probe_metrics`` result with verdict ``ran`` that is
+    not both stable and ordered; shared by the next step and the Tier 2 cards.
+    """
+    if not metrics["stable"]:
+        return (
+            f"returned {metrics['distinct']} different scores for the same "
+            f"pair across {metrics['repeats']} repeats"
+        )
+    return (
+        "did not rank a known-good answer above a known-bad one "
+        f"({_show(metrics['good'])} vs {_show(metrics['bad'])})"
+    )
+
+
+def probe_remedy(metrics: dict) -> str:
+    """What to do about the symptom ``probe_symptom`` names.
+
+    An unstable scorer needs to be made repeatable; a stable one that ranks a
+    known-bad answer at or above a known-good one IS repeatable, and what it
+    measures is what needs fixing.
+    """
+    if not metrics["stable"]:
+        return "make it repeatable"
+    return "fix what it measures"
+
+
 # --------------------------------------------------------------------------
 # setup checks
 # --------------------------------------------------------------------------
@@ -1878,31 +1952,89 @@ def project_interpreter(root: Path) -> str:
     return sys.executable
 
 
-def read_sdk_version(interpreter: str) -> dict:
-    command = [interpreter, "-c", _VERSION_PROBE_SOURCE]
+def _pyvenv_cfg(venv: Path) -> dict[str, str]:
+    """`key = value` lines of a venv's pyvenv.cfg; empty when it cannot be read."""
+    values: dict[str, str] = {}
     try:
-        completed = subprocess.run(
-            command,
-            capture_output=True,
-            text=True,
-            timeout=PROBE_TIMEOUT_SECONDS,
-            check=False,
-        )
-    except (subprocess.TimeoutExpired, OSError) as exc:
+        text = (venv / "pyvenv.cfg").read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        return values
+    for line in text.splitlines():
+        key, sep, value = line.partition("=")
+        if sep:
+            values[key.strip().lower()] = value.strip()
+    return values
+
+
+def venv_site_paths(venv: Path) -> tuple[list[str], bool]:
+    """Every directory the venv's interpreter would import an installed package
+    from, found by path: ``(paths, reads_base)``.
+
+    With ``include-system-site-packages = true`` that interpreter also imports
+    from the user site (searched first) and the base installation named by
+    ``home``; those are read too, in the same order. Nothing is executed:
+    ``home`` is written by the project, so its interpreter is not started either.
+    """
+    own = sorted(str(path) for path in venv.glob("lib/python3*/site-packages"))
+    cfg = _pyvenv_cfg(venv)
+    if cfg.get("include-system-site-packages", "false").lower() != "true":
+        return own, False
+    version = cfg.get("version") or cfg.get("version_info") or ""
+    parts = version.split(".")
+    xy = f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else ""
+    user = Path.home()
+    if xy:
+        user_sites = [
+            user / ".local" / "lib" / f"python{xy}" / "site-packages",
+            user / "Library" / "Python" / xy / "lib" / "python" / "site-packages",
+        ]
+    else:
+        user_sites = sorted((user / ".local" / "lib").glob("python3*/site-packages"))
+    base: list[Path] = []
+    home = cfg.get("home")
+    if home:
+        prefix = Path(home).parent
+        lib = f"python{xy}" if xy else "python3*"
+        for pattern in (
+            f"lib/{lib}/site-packages",
+            f"lib/{lib}/dist-packages",
+            "lib/python3/dist-packages",
+            f"local/lib/{lib}/dist-packages",
+        ):
+            base.extend(sorted(prefix.glob(pattern)))
+    paths = [str(path) for path in user_sites] + own + [str(path) for path in base]
+    return paths, True
+
+
+def read_sdk_version(interpreter: str) -> dict:
+    """Read the installed SDK version from package metadata; start nothing.
+
+    A project venv's interpreter is never executed here: starting it runs the
+    venv's site hooks, which are project code, outside the probe sandbox. Its
+    site-packages is read by path instead. (`python -I -S` is no way round
+    that: without `site` the venv's site-packages is not on the path at all.)
+    Only the scorer probe starts the project interpreter.
+    """
+    reads_base = False
+    try:
+        if interpreter == sys.executable:
+            found = md.distributions(name="traigent")
+        else:
+            paths, reads_base = venv_site_paths(Path(interpreter).parent.parent)
+            found = md.distributions(name="traigent", path=paths)
+        dist = next(iter(found), None)
+        version = dist.version if dist is not None else None
+    except (OSError, ValueError) as exc:
         return {
             "interpreter": interpreter,
             "traigent_version": None,
             "error_type": type(exc).__name__,
         }
-    try:
-        payload = json.loads(completed.stdout.strip().splitlines()[-1])
-    except (ValueError, IndexError):
-        return {
-            "interpreter": interpreter,
-            "traigent_version": None,
-            "error_type": "UnreadableVersionProbe",
-        }
-    return {"interpreter": interpreter, "traigent_version": payload["traigent_version"]}
+    return {
+        "interpreter": interpreter,
+        "traigent_version": version,
+        "read_base_installation": reads_base,
+    }
 
 
 def key_presence(root: Path, files: list[Path]) -> dict:
@@ -1935,10 +2067,28 @@ def key_presence(root: Path, files: list[Path]) -> dict:
 def env_file_ignored(root: Path) -> str:
     if not (root / ".env").exists():
         return "no .env file"
-    command = ["git", "-C", str(root), "check-ignore", "-q", ".env"]
+    # A project's git config can name commands git runs on its behalf
+    # (`core.fsmonitor`, hooks): switch those off, and give git the same
+    # allowlisted environment as the probe, so no project-chosen code runs here.
+    command = [
+        "git",
+        "-c",
+        "core.fsmonitor=false",
+        "-c",
+        f"core.hooksPath={os.devnull}",
+        "-C",
+        str(root),
+        "check-ignore",
+        "-q",
+        ".env",
+    ]
     try:
         completed = subprocess.run(
-            command, capture_output=True, timeout=15, check=False
+            command,
+            capture_output=True,
+            timeout=15,
+            check=False,
+            env=probe_environment(),
         )
     except (subprocess.TimeoutExpired, OSError):
         return "unknown"
@@ -2093,6 +2243,8 @@ def dataset_area(
             f"gold key(s) {', '.join(report.expected_key_counts) or 'none'}, "
             f"split marker(s) {', '.join(f'{k}={v}' for k, v in report.split_counts.items()) or 'none'}"
         )
+        for note in report.notes:
+            evidence.append(f"{report.file}: {note}")
         for finding in report.findings:
             evidence.append(f"{report.file}: {finding}")
         if report.missing_expected:
@@ -2277,11 +2429,17 @@ def setup_area(sdk: dict, keys: dict, ignored: str, model_ids: list[str]) -> dic
     evidence: list[str] = []
     version = sdk.get("traigent_version")
     if version:
-        evidence.append(f"traigent {version} is importable by {sdk['interpreter']}")
+        evidence.append(f"traigent {version} is installed in {sdk['interpreter']}")
     else:
         evidence.append(
             f"traigent is not installed for {sdk['interpreter']}"
             + (f" ({sdk['error_type']})" if sdk.get("error_type") else "")
+            + (
+                " — read by path from its own site-packages, the user site and "
+                "the base installation it includes"
+                if sdk.get("read_base_installation")
+                else ""
+            )
         )
     if keys["names_set_in_environment"]:
         evidence.append(
@@ -2401,23 +2559,15 @@ def next_step(
         }
 
     if metrics["verdict"] == "ran" and not (metrics["stable"] and metrics["ordered"]):
-        if not metrics["stable"]:
-            symptom = (
-                f"returned {metrics['distinct']} different scores for the same "
-                f"pair across {metrics['repeats']} repeats"
-            )
-        else:
-            symptom = (
-                "did not rank a known-good answer above a known-bad one "
-                f"({_show(metrics['good'])} vs {_show(metrics['bad'])})"
-            )
+        symptom = probe_symptom(metrics)
+        remedy = probe_remedy(metrics)
         return {
             "branch": "d",
             "skills": ["traigent-eval-build", "traigent-eval-audit"],
             "line": (
                 f"`{probed.function}` at {probed.file}:{probed.line} {symptom}, so a "
-                "configuration comparison would be measuring the scorer — make it "
-                "repeatable with `traigent-eval-build`, then assess it with "
+                f"configuration comparison would be measuring the scorer — {remedy} "
+                "with `traigent-eval-build`, then assess it with "
                 "`traigent-eval-audit`."
             ),
         }
@@ -2432,6 +2582,32 @@ def next_step(
                 f"{len(inventory.scorers)} scorer(s) were found ({summary}) and none "
                 "was measured here, so their reliability is unknown — assess them "
                 "with `traigent-eval-audit`."
+            ),
+        }
+
+    if not reports:
+        return {
+            "branch": "f",
+            "skills": ["traigent-dataset-curate"],
+            "line": (
+                "No evaluation dataset was found, so there is nothing to score a "
+                "configuration against — build a first tuning slice and a holdout "
+                "slice with `traigent-dataset-curate`."
+            ),
+        }
+
+    # A dataset the SDK cannot load stops the first run outright, so it outranks
+    # a row shortfall.
+    unloadable = [report for report in reports if report.rows_without_sdk_input]
+    if unloadable:
+        worst = unloadable[0]
+        return {
+            "branch": "f",
+            "skills": ["traigent-dataset-curate"],
+            "line": (
+                f"{worst.file} has {worst.rows_without_sdk_input} row(s) with no "
+                "`input`/`input_data` key, so `eval_dataset` will refuse to load "
+                "it — rename or add the key with `traigent-dataset-curate`."
             ),
         }
 
@@ -2721,6 +2897,8 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
                 "holdout_overlap_rows": report.holdout_overlap,
                 "label_counts": report.label_counts,
                 "findings": report.findings,
+                "notes": report.notes,
+                "rows_without_sdk_input_key": report.rows_without_sdk_input,
             }
             for report in reports
         ],
