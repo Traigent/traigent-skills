@@ -2,7 +2,7 @@
   "schema": "skill-provenance/v1",
   "doc_hash": "872de6c4103547a8",
   "reference_hashes": {
-    "references/economics-characterization.v0.md": "6226ea9f4a085da7",
+    "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/evaluation-options.md": "f766d4df828a1ade",
     "references/execution-modes.md": "9d797be6dae9c6e1",
     "references/injection-modes.md": "d81067c2dff72c82",
