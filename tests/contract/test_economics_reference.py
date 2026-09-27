@@ -170,7 +170,11 @@ def test_sync_tool_detects_a_tampered_copy(tmp_path: Path) -> None:
     shutil.copytree(
         root,
         repo_copy,
-        ignore=shutil.ignore_patterns(".git", ".venv", "__pycache__", ".pytest_cache"),
+        # upstream/ holds CI's shallow checkouts of other repos (snapshot-refresh.yml);
+        # they contain dangling symlinks and the sync tool never reads them.
+        ignore=shutil.ignore_patterns(
+            ".git", ".venv", "__pycache__", ".pytest_cache", "upstream"
+        ),
     )
     tampered = repo_copy / "skills" / ECONOMICS_SKILLS[0].name / REFERENCE_RELPATH
     tampered.write_text("locally edited generated artifact\n", encoding="utf-8")
