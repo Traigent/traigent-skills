@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.26"
+  version: "1.0.27"
 ---
 
 # Traigent Quickstart
@@ -84,7 +84,8 @@ The linear path:
    the loop work at zero cost and zero egress.
 4. **Confirm the real run explicitly.** A real (paid) run happens only after the user
    sees the mock result and says go — and after the cost-gate approval. Never jump from
-   mock straight to spend.
+   mock straight to spend. Show the card in `references/run-cost-and-limits.md` first:
+   `cost_limit` only bounds the calls Traigent can measure.
 5. **View it in the portal.** Once a real run launches, watch the run start, watch the
    rows appear on the portal, and have the user open and inspect the run.
 

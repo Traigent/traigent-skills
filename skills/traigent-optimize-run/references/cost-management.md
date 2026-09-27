@@ -1,6 +1,6 @@
 # Cost Management Reference
 
-Traigent provides real-time cost tracking and enforcement to prevent runaway LLM API spending during optimization runs.
+Traigent tracks the cost of the model calls it can measure and enforces a per-run cap on that measured spend. Calls it cannot measure are still billed by your provider; see `run-cost-and-limits.md` in this folder for the plain-language card and the list of measured clients.
 
 > **Migration note:** Mock mode is now activated in code via `traigent.testing.enable_mock_mode_for_quickstart()` and is hard-blocked when `ENVIRONMENT=production`. The legacy `TRAIGENT_MOCK_LLM=true` env var is deprecated (see Mock Mode below) and does not bypass cost tracking.
 
@@ -74,9 +74,19 @@ else:
 
 ## Cost Tracking via LiteLLM
 
-Traigent uses LiteLLM's cost tracking to extract per-call costs from LLM API responses. This works automatically with all LiteLLM-supported providers (OpenAI, Anthropic, Cohere, etc.).
+Traigent prices the token usage it captures with LiteLLM's model price table. Capture is not
+automatic for every client: it covers LangChain chat models called with synchronous `.invoke`,
+non-streaming `litellm.completion` / `litellm.acompletion`, and Traigent's own Bedrock client.
 
-Cost tracking happens transparently:
+### When cost can't be measured
+
+Streaming calls, async LangChain (`ainvoke`, `abatch`), raw OpenAI/Anthropic/Google SDK calls,
+plain HTTP requests, and calls an evaluator or judge makes directly may not be measured. The
+provider still bills them; Traigent reports `$0` or `None` for them, so `cost_limit` cannot bound
+them. Route the call through a measured client, or price a gateway model with
+`TRAIGENT_CUSTOM_MODEL_PRICING_JSON`. Full list: `run-cost-and-limits.md`.
+
+For measured calls, tracking works like this:
 
 1. Before each trial, the `CostEnforcer` issues a `Permit` (reserving estimated cost).
 2. The trial executes and makes LLM API calls.
@@ -160,17 +170,19 @@ Trial 2: acquire_permit() -> execute -> track_cost(permit, $0.05)
 
 ## Mock Mode
 
-Mock mode skips only the pre-run pricing estimate (so a pre-run `CostLimitExceeded` does not fire).
-The runtime CostEnforcer is always active: permits, `TRAIGENT_RUN_COST_LIMIT`, and
-`stop_reason="cost_limit"` apply in mock runs too, so a very low limit stops a mock run at 0 trials.
-
-Turn mock mode on in code (in tests, from a pytest fixture or `conftest.py`) and keep the run local:
+Turn mock mode on in code for the dry run, and keep it local with `offline=True` on the decorated
+function (mock mode alone can still contact the backend when a Traigent key is set):
 
 ```python
 import traigent.testing
 
-traigent.testing.enable_mock_mode_for_quickstart()
+traigent.testing.enable_mock_mode_for_quickstart()  # no provider calls, no spend; hard-blocked in production
 ```
+
+Mock mode skips only the pre-run pricing estimate (so a pre-run `CostLimitExceeded` does not fire).
+The runtime CostEnforcer is always active: permits, `TRAIGENT_RUN_COST_LIMIT`, and
+`stop_reason="cost_limit"` apply in mock runs too, so a very low limit stops a mock run at 0 trials.
+Start a fresh interpreter for the real run: mock mode is process-local state.
 
 ```bash
 export TRAIGENT_OFFLINE_MODE=true

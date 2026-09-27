@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.9"
+  version: "1.1.10"
 ---
 
 # Evaluator Audit
@@ -109,7 +109,7 @@ protocol already run once: start from what it left open, on the customer's own e
 
 ## Gold-Set Agreement (Manual Protocol)
 
-Build a 20-50 example human-labeled gold slice from the same evaluation dataset distribution the optimizer will use, but **disjoint from the holdout** that will back the final claim — draw it from the tuning slice or from fresh examples, never from holdout rows. Include easy, borderline, and known-bad cases; if known-bad (negative) cases are naturally rare — the common situation for safety gates — **oversample them deliberately**, because the false-pass bar below is meaningless on two negatives. Lock the labels before inspecting judge outputs.
+Build a human-labeled gold slice of at least 30 examples (50-100 when you can) from the same evaluation dataset distribution the optimizer will use, but **disjoint from the holdout** that will back the final claim — draw it from the tuning slice or from fresh examples, never from holdout rows. Include easy, borderline, and known-bad cases; if known-bad (negative) cases are naturally rare — the common situation for safety gates — **oversample them deliberately**, because the false-pass bar below is meaningless on two negatives. Lock the labels before inspecting judge outputs. Below about 60 gold rows, calibrate the threshold with k-fold cross-validation (see "Threshold Calibration") rather than a split: a 30-row slice split in half leaves 15 reporting rows, where even 15/15 cannot clear the 85% agreement bar.
 
 > **The disjointness invariant (applies across all evaluator skills):** any slice used to *tune*
 > a threshold, rubric, prompt, or metric must be disjoint from the holdout used to *claim* the
@@ -123,21 +123,35 @@ Minimum bars for the manual gold-slice protocol before trusting the judge as a p
 - False-pass rate on known-bad cases: low enough for the product risk. For safety or compliance gates, any repeated false pass is a blocker.
 - Disagreement review: every disagreement gets a written reason, assigned to either human label error, ambiguous rubric, judge failure, or data ambiguity.
 
-These bars are noisy estimates at 20-50 examples — one flipped example moves agreement by 2-5
-points, so 84% vs 86% is not a meaningful pass/fail difference. For a result near a bar, either
-grow the gold slice before deciding or require a margin (e.g. clear the bar by 5+ points);
-never report a near-bar pass as confident.
+These bars are estimates from a few dozen examples. The resolution step is 2-4 points (1/n), and the
+sampling noise is larger (about 4-7 points standard error). Treat a bar as cleared only when the
+**95% Wilson lower bound**, computed on the **reporting rows**, clears it. The reporting rows are the
+rows the threshold was not chosen on: the held-out part of a split, or all n rows when every row is
+scored out-of-fold by k-fold cross-validation. For the 85% agreement bar that means at least 30/30 at
+n=30, 48/50 at n=50, or 92/100 at n=100 reporting rows. Below 22 reporting rows it cannot be cleared
+at all (21/21 has a lower bound of 84.5%), so grow the slice. Report the interval, not only the point
+estimate, and never report a near-bar pass as confident.
 
 ```python
+from math import sqrt
 from statistics import mean
 
 def agreement_rate(gold_labels, judge_labels):
     pairs = list(zip(gold_labels, judge_labels, strict=True))
     return mean(1.0 if expected == observed else 0.0 for expected, observed in pairs)
 
+def wilson_interval(successes, n, z=1.96):
+    p = successes / n
+    denominator = 1 + z * z / n
+    center = p + z * z / (2 * n)
+    half_width = z * sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return (center - half_width) / denominator, (center + half_width) / denominator
+
 gold = ["pass", "fail", "pass", "fail"]
 judge = ["pass", "fail", "fail", "fail"]
-print(f"agreement={agreement_rate(gold, judge):.1%}")
+agree = sum(expected == observed for expected, observed in zip(gold, judge, strict=True))
+low, high = wilson_interval(agree, len(gold))
+print(f"agreement={agreement_rate(gold, judge):.1%} 95% CI=[{low:.1%}, {high:.1%}] clears_85={low >= 0.85}")
 ```
 
 If the judge misses the bar, do not use it as the sole objective. Fix the rubric, add deterministic checks, or use it only as a diagnostic signal.
@@ -175,6 +189,7 @@ Use a strict output schema. Count parse failures as first-class failures. FAIL-C
 
 ```python
 import json
+import math
 from typing import Any
 
 REQUIRED_KEYS = {"score", "decision", "reason"}
@@ -182,13 +197,20 @@ REQUIRED_KEYS = {"score", "decision", "reason"}
 def parse_judge_output(raw: str) -> dict[str, Any]:
     try:
         payload = json.loads(raw)
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a JSON object")
         missing = REQUIRED_KEYS - set(payload)
         if missing:
             raise ValueError(f"missing keys: {sorted(missing)}")
         if payload["decision"] not in {"pass", "fail", "abstain"}:
             raise ValueError("decision must be pass, fail, or abstain")
-        payload["score"] = float(payload["score"])
-        return {**payload, "parse_failed": False}
+        if isinstance(payload["score"], bool):
+            raise ValueError("score must be a number, not a boolean")
+        score = float(payload["score"])
+        # NaN, Infinity and wrong-scale scores (e.g. 7 on a 1-10 scale) are parse failures, not passes.
+        if not math.isfinite(score) or not 0.0 <= score <= 1.0:
+            raise ValueError("score must be a finite number in [0, 1]")
+        return {**payload, "score": score, "parse_failed": False}
     except (json.JSONDecodeError, TypeError, ValueError):
         return {
             "score": 0.0,
@@ -207,6 +229,12 @@ Sweep the judge threshold against the gold slice before using it in optimization
 - For quality ranking, maximize balanced accuracy or F1 on the gold slice.
 - For safety gates, prefer lower false-pass rate even if recall drops.
 - For noisy judges, require a margin: do not treat scores near the threshold as confident passes.
+
+Never report the agreement and false-pass bars on the rows used to pick the threshold: those bars
+are optimistic. Below about 60 gold rows, use k-fold cross-validation (for example 5-fold): pick the
+threshold on k-1 folds, apply it to the held-out fold, and report the bars on the pooled out-of-fold
+decisions, so all n rows are reporting rows. With 60 or more rows a split is enough: choose the
+threshold on one part and report the bars on the other, keeping at least 30 reporting rows.
 
 ```python
 def confusion_counts(gold_pass, scores, threshold):

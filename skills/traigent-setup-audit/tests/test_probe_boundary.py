@@ -429,3 +429,219 @@ def test_a_nonexistent_bind_is_skipped_rather_than_breaking_the_probe() -> None:
     missing = Path("/definitely/not/here/at/all")
     command = audit.isolation_command(backend, args, terminator, [missing])
     assert str(missing) not in command
+
+
+# --------------------------------------------------------------------------
+# #309 — what the classifier reads, and the version check starts nothing
+# --------------------------------------------------------------------------
+
+
+def test_the_classifier_reads_the_scorers_own_file_only(tmp_path: Path) -> None:
+    """Pinned as TODAY's reach, so widening it is a visible decision.
+
+    A helper module the scorer imports from the project is not read: its
+    `import subprocess` leaves the scorer deterministic. SKILL.md's Safety
+    section says exactly this, and tells the reader to review helpers by hand.
+    """
+    (tmp_path / "helpers.py").write_text(
+        "import subprocess  # imported, never called\n\n"
+        "def normalize(text):\n    return text.strip().lower()\n",
+        encoding="utf-8",
+    )
+    scorer = tmp_path / "scorer.py"
+    scorer.write_text(
+        "from helpers import normalize\n\n"
+        "def score(output, expected):\n"
+        "    return 1.0 if normalize(output) == normalize(expected) else 0.0\n",
+        encoding="utf-8",
+    )
+    kind, _ = audit.classify_module_function(scorer, "score")
+    assert kind == "deterministic"
+    # Control: the same import in the scorer's own file is refused.
+    scorer.write_text(
+        "import subprocess\n\ndef score(output, expected):\n    return 1.0\n",
+        encoding="utf-8",
+    )
+    kind, _ = audit.classify_module_function(scorer, "score")
+    assert kind == "executing"
+
+
+def _project_with_venv(tmp_path: Path, version: str | None) -> tuple[Path, Path]:
+    root = tmp_path / "interp"
+    bin_dir = root / ".venv" / "bin"
+    bin_dir.mkdir(parents=True)
+    (root / "agent.py").write_text(
+        "import traigent\n\n"
+        "@traigent.optimize(configuration_space={'temperature': [0.0, 0.7]})\n"
+        "def answer(q, temperature=0.0):\n    return f'{temperature}:{q}'\n",
+        encoding="utf-8",
+    )
+    marker = tmp_path / "interpreter-ran.txt"
+    shim = bin_dir / "python"
+    shim.write_text(
+        f"#!/bin/sh\necho started >> '{marker}'\nexec '{sys.executable}' \"$@\"\n",
+        encoding="utf-8",
+    )
+    shim.chmod(0o755)
+    if version is not None:
+        dist_info = (
+            root
+            / ".venv"
+            / "lib"
+            / "python3.12"
+            / "site-packages"
+            / f"traigent-{version}.dist-info"
+        )
+        dist_info.mkdir(parents=True)
+        (dist_info / "METADATA").write_text(
+            f"Metadata-Version: 2.1\nName: traigent\nVersion: {version}\n",
+            encoding="utf-8",
+        )
+    return root, marker
+
+
+def test_the_version_check_never_starts_the_project_interpreter(
+    tmp_path: Path,
+) -> None:
+    root, marker = _project_with_venv(tmp_path, "0.27.0")
+    report, card = _run(root, tmp_path)
+    assert not marker.exists(), marker.read_text(encoding="utf-8")
+    assert report["setup"]["sdk"]["traigent_version"] == "0.27.0"
+    assert "traigent 0.27.0 is installed in" in card
+
+
+def _write_dist_info(site: Path, version: str) -> None:
+    dist_info = site / f"traigent-{version}.dist-info"
+    dist_info.mkdir(parents=True)
+    (dist_info / "METADATA").write_text(
+        f"Metadata-Version: 2.1\nName: traigent\nVersion: {version}\n",
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize("where", ["base", "user"])
+def test_a_system_site_venv_reads_the_base_installation_too(
+    where: str, monkeypatch, tmp_path: Path
+) -> None:
+    """`include-system-site-packages = true`: the SDK may live in the base
+    installation or the user site, which that interpreter also imports from.
+    Both are read by path; nothing is started."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    base_prefix = tmp_path / "base"
+    (base_prefix / "bin").mkdir(parents=True)
+    root, marker = _project_with_venv(tmp_path, None)
+    (root / ".venv" / "pyvenv.cfg").write_text(
+        f"home = {base_prefix / 'bin'}\n"
+        "include-system-site-packages = true\n"
+        "version = 3.12.3\n",
+        encoding="utf-8",
+    )
+    if where == "base":
+        _write_dist_info(base_prefix / "lib" / "python3.12" / "site-packages", "0.26.0")
+    else:
+        _write_dist_info(
+            home / ".local" / "lib" / "python3.12" / "site-packages", "0.26.0"
+        )
+    report, card = _run(root, tmp_path)
+    assert not marker.exists()
+    assert report["setup"]["sdk"]["traigent_version"] == "0.26.0"
+    assert "traigent 0.26.0 is installed in" in card
+
+
+def test_an_isolated_venv_does_not_read_the_base_installation(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """Teeth: with `include-system-site-packages = false` the base copy is not
+    importable by the venv, so it must not be reported."""
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    base_prefix = tmp_path / "base"
+    (base_prefix / "bin").mkdir(parents=True)
+    root, _ = _project_with_venv(tmp_path, None)
+    (root / ".venv" / "pyvenv.cfg").write_text(
+        f"home = {base_prefix / 'bin'}\n"
+        "include-system-site-packages = false\n"
+        "version = 3.12.3\n",
+        encoding="utf-8",
+    )
+    _write_dist_info(base_prefix / "lib" / "python3.12" / "site-packages", "0.26.0")
+    report, _ = _run(root, tmp_path)
+    assert report["setup"]["sdk"]["traigent_version"] is None
+
+
+def test_with_no_project_venv_the_audits_own_interpreter_is_read(
+    tmp_path: Path,
+) -> None:
+    import importlib.metadata
+
+    try:
+        expected = importlib.metadata.version("traigent")
+    except importlib.metadata.PackageNotFoundError:
+        pytest.skip("the interpreter running the tests has no traigent installed")
+    root = tmp_path / "novenv"
+    root.mkdir()
+    report, _ = _run(root, tmp_path)
+    assert report["setup"]["sdk"]["interpreter"] == sys.executable
+    assert report["setup"]["sdk"]["traigent_version"] == expected
+
+
+def test_a_venv_without_the_sdk_reads_as_not_installed(tmp_path: Path) -> None:
+    root, marker = _project_with_venv(tmp_path, None)
+    report, card = _run(root, tmp_path)
+    assert not marker.exists()
+    assert report["setup"]["sdk"]["traigent_version"] is None
+    assert "traigent is not installed for" in card
+
+
+needs_git = pytest.mark.skipif(
+    shutil.which("git") is None, reason="git is not installed"
+)
+
+
+def _git(root: Path, *args: str) -> None:
+    subprocess.run(
+        ["git", "-C", str(root), *args], capture_output=True, check=True, timeout=60
+    )
+
+
+@needs_git
+@pytest.mark.parametrize("ignored", [True, False])
+def test_the_env_file_check_runs_no_project_configured_git_hook(
+    ignored: bool, sentinel_key, tmp_path: Path
+) -> None:
+    """`git check-ignore` honours a project's `core.fsmonitor`, which is a
+    command the project chooses. The audit must not run it, and the answer
+    about `.env` must still be right."""
+    root = tmp_path / "project"
+    root.mkdir()
+    _git(root, "init", "-q")
+    marker = tmp_path / "fsmonitor-ran.txt"
+    hook = tmp_path / "fsmonitor.sh"
+    hook.write_text(
+        f"#!/bin/sh\necho \"key=${{TRAIGENT_API_KEY:-unset}}\" >> '{marker}'\n",
+        encoding="utf-8",
+    )
+    hook.chmod(0o755)
+    _git(root, "config", "core.fsmonitor", str(hook))
+    (root / ".env").write_text("TRAIGENT_API_KEY=placeholder\n", encoding="utf-8")
+    if ignored:
+        (root / ".gitignore").write_text(".env\n", encoding="utf-8")
+    # Teeth: plain git in this repo really does run the hook.
+    subprocess.run(
+        ["git", "-C", str(root), "check-ignore", "-q", ".env"],
+        capture_output=True,
+        timeout=60,
+        check=False,
+    )
+    assert marker.exists(), "git did not run the fsmonitor hook, so this proves nothing"
+    marker.unlink()
+
+    assert audit.env_file_ignored(root) == ("ignored" if ignored else "not ignored")
+    report, _ = _run(root, tmp_path)
+    assert not marker.exists(), marker.read_text(encoding="utf-8")
+    assert report["setup"]["env_file_git_status"] == (
+        "ignored" if ignored else "not ignored"
+    )
