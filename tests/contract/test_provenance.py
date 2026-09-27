@@ -203,6 +203,25 @@ GAP_EXCEPTIONS: dict[GapKey, str] = {
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
     ),
+    # ---- 2026-09-27: PR-stack rebase, PR #360 vs main's run-cost-guidance --
+    # PR #360 (audit-fix/optimize) carries six of its own sequential
+    # optimize-run edits (audit-2026-09-23-304/324/339/339-r2/356/355,
+    # #304/#324/#339/#342/#356/#355) branching from the same parent as main's
+    # run-cost-guidance-2026-09-26 (astra-fable-review-2026-09-20, doc_after_hash
+    # f62c81f58f91c9b4): PR #360 was an open PR not yet merged to main when
+    # run-cost-guidance and unmeasured-cost-030 landed on main. Reconciled by
+    # merge-pr360-into-main-2026-09-27, which chains from unmeasured-cost-030's
+    # tip and recomputes doc_hash over the fully merged SKILL.md (same pattern
+    # as merge-main-taxonomy-into-econ-wi-a-2026-07-18 above). This gap is PR
+    # #360's own chain tip (after its last optimize-run commit,
+    # audit-2026-09-23-355) left with no continuation, same shape as the
+    # economics-bounded-investment-posture gaps above.
+    ("traigent-optimize-run", "9d05b7f639c7e4a6", "f62c81f58f91c9b4"): (
+        "parallel-branch entry (PR #360's own optimize-run commit chain vs "
+        "run-cost-guidance-2026-09-26); reconciled by "
+        "merge-pr360-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
+        "rebase"
+    ),
     ("traigent-setup-decorator", "56d38399635cfff3", "3db71bdafe5e0a1a"): (
         "parallel-branch entry (economics-bounded-investment-posture); "
         "pre-existing, out of scope for #196"
