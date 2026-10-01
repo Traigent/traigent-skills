@@ -52,26 +52,32 @@ def test_strict_parse(reply, expected):
 def test_resolve_side_retry_and_unresolved():
     assert mod.resolve_side(["garbage", "equivalent"]) == EQ
     assert mod.resolve_side(["equivalent", "not-equivalent"]) == EQ
-    assert mod.resolve_side(["garbage", "more garbage"]) == NE
-    assert mod.resolve_side(["garbage", "garbage", "equivalent"]) == NE  # only one retry
-    assert mod.resolve_side(None) == NE
+    assert mod.resolve_side(["garbage", "more garbage"]) == UN
+    assert mod.resolve_side(["garbage", "garbage", "equivalent"]) == UN  # only one retry
+    assert mod.resolve_side(None) == UN
 
 
-def test_answer_needs_both_orders():
+def test_answer_abstains_on_disagreement():
     assert mod.answer_outcome(EQ, EQ) == "equivalent"
-    assert mod.answer_outcome(EQ, NE) == "not_equivalent"
+    assert mod.answer_outcome(NE, NE) == "not_equivalent"
+    assert mod.answer_outcome(EQ, NE) == "unsure"  # was not_equivalent before
+    assert mod.answer_outcome(NE, EQ) == "unsure"
     assert mod.answer_outcome(EQ, UN) == "unsure"
-    assert mod.answer_outcome(UN, NE) == "not_equivalent"
-    assert mod.answer_outcome(EQ, None) == "not_judged"  # a missing order is never equivalent
+    assert mod.answer_outcome(UN, NE) == "unsure"
+    assert mod.answer_outcome(UN, UN) == "unsure"
+    assert mod.answer_outcome(EQ, None) == "not_judged"
     assert mod.answer_outcome(None, EQ) == "not_judged"
 
 
-def test_example_verdict_threshold():
+def test_example_verdict_over_decided_answers():
     e, n, u = "equivalent", "not_equivalent", "unsure"
-    assert mod.example_verdict([e, n]) == "equivalent"  # exactly 50%
+    assert mod.example_verdict([e, n]) == "equivalent"  # exactly 50% of decided
     assert mod.example_verdict([e, n, n]) == "not_equivalent"
     assert mod.example_verdict([n, n]) == "not_equivalent"
-    assert mod.example_verdict([e, u, n, n]) == "unsure"  # unsure could reach 50%
+    assert mod.example_verdict([e, u, n, n]) == "not_equivalent"  # unsure leaves the denominator
+    assert mod.example_verdict([e, u, u, u]) == "equivalent"
+    assert mod.example_verdict([u, u]) == "unsure"
+    assert mod.example_verdict([u, "not_judged"]) == "unsure"
     assert mod.example_verdict([]) == "not_judged"
     assert mod.example_verdict(["not_judged"]) == "not_judged"
 
@@ -90,21 +96,23 @@ def _judgments():
     return [
         {"example_id": "a", "answers": [{"forward": [EQ], "reverse": [EQ]}]},
         {"example_id": "b", "answers": [{"forward": [EQ], "reverse": ["junk", NE]}]},
+        {"example_id": "d", "answers": [{"forward": [NE], "reverse": [NE]}]},
     ]
 
 
 def test_build_result_shape_and_drops_text():
     j = _judgments()
     j[0]["answers"][0]["forward"] = ["equivalent"]
-    result = mod.build_result(j, ["a", "b", "c"], "gemini-2.5-pro")
+    result = mod.build_result(j, ["a", "b", "c", "d"], "gemini-2.5-pro")
     assert result == {
         "protocol": "p3b-v1",
         "judge": "gemini-2.5-pro",
         "orders": "both",
         "verdicts": [
             {"example_id": "a", "verdict": "equivalent"},
-            {"example_id": "b", "verdict": "not_equivalent"},
+            {"example_id": "b", "verdict": "unsure"},
             {"example_id": "c", "verdict": "not_judged"},
+            {"example_id": "d", "verdict": "not_equivalent"},
         ],
     }
 

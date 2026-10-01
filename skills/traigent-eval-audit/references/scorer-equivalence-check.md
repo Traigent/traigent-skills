@@ -48,12 +48,15 @@ that figure is unverified for any other model or dataset.
 4. **Strict parse, one retry.** A reply must be exactly one word: `equivalent`,
    `not-equivalent`, or `unsure` (case, quotes and one final period tolerated; anything else,
    including prose or "not equivalent", is a parse failure). On a parse failure, ask once more
-   with the same prompt. If it still fails, that order counts as `not-equivalent`.
-5. **Per answer:** it counts as equivalent **only if both orders say equivalent**. An answer
-   with a missing order is not judged and is left out of the example's count.
-6. **Per example:** `equivalent` if at least 50% of its failing answers are equivalent;
-   `unsure` if below 50% but equivalent plus unsure answers reach 50%; `not_equivalent`
-   otherwise when judged; `not_judged` when no answer was judged.
+   with the same prompt. If it still fails, that order counts as `unsure`.
+5. **Per answer (abstain on disagreement):** `equivalent` only if **both orders say equivalent**;
+   `not_equivalent` only if both say not-equivalent; any disagreement, any `unsure`, or an
+   unresolved parse in either order makes the answer `unsure`. An answer with a missing order is
+   not judged. Unsure and not-judged answers are left out of the example's count.
+6. **Per example**, over its decided answers (equivalent plus not_equivalent): `equivalent` if at
+   least 50% are equivalent; `not_equivalent` if decided answers exist and fewer than 50% are
+   equivalent; `unsure` if answers were judged in both orders but none was decided; `not_judged`
+   if no answer was judged in both orders.
 7. **Build the result** with the helper (keeps only the parsed word, discards reply text, and
    validates the closed schema). Record, per answer and order, the raw replies (first and optional
    retry) in a temporary local JSON file, then:

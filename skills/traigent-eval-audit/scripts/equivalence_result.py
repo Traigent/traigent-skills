@@ -106,50 +106,48 @@ def resolve_side(replies: Sequence[str | None] | None) -> str:
     """One order's replies (first attempt, optional single retry) -> a judge word.
 
     The first parseable reply wins; at most one retry is honored. Unresolved
-    (nothing parseable) is `not-equivalent`.
+    (nothing parseable) is `unsure`.
     """
     for reply in list(replies or [])[:2]:
         word = parse_verdict(reply)
         if word is not None:
             return word
-    return "not-equivalent"
+    return "unsure"
 
 
 def answer_outcome(forward: str | None, reverse: str | None) -> str:
-    """Per-answer outcome. An answer is judged only if BOTH orders were run.
+    """Per-answer outcome, abstaining on disagreement.
 
-    Equivalent only with two equivalent judgments. A missing order means the
-    answer is `not_judged` (excluded from the example's denominator).
+    A missing order means `not_judged`. Otherwise `equivalent` iff both orders say
+    equivalent, `not_equivalent` iff both say not-equivalent, and anything else
+    (a disagreement, any `unsure`, an unresolved parse) is `unsure`.
     """
     if forward is None or reverse is None:
         return "not_judged"
-    words = [forward, reverse]
-    if all(w == "equivalent" for w in words):
+    if forward == "equivalent" and reverse == "equivalent":
         return "equivalent"
-    if "not-equivalent" not in words and "unsure" in words:
-        return "unsure"
-    return "not_equivalent"
+    if forward == "not-equivalent" and reverse == "not-equivalent":
+        return "not_equivalent"
+    return "unsure"
 
 
 def example_verdict(outcomes: Sequence[str]) -> str:
     """Example verdict from its distinct failing answers' outcomes.
 
-    equivalent      >= 50% of answers equivalent
-    not_equivalent  judged, below 50%, and unsure answers could not reach 50%
-    unsure          below 50% equivalent, but equivalent + unsure answers reach 50%
-    not_judged      no answers were judged
+    Unsure and not-judged answers are excluded from the denominator.
+    equivalent      decided answers exist and >= 50% of them are equivalent
+    not_equivalent  decided answers exist and < 50% are equivalent
+    unsure          answers judged in both orders, but none decided
+    not_judged      no answer judged in both orders
     """
     judged = [o for o in outcomes if o != "not_judged"]
     if not judged:
         return "not_judged"
-    n = len(judged)
-    equivalent = sum(o == "equivalent" for o in judged)
-    unsure = sum(o == "unsure" for o in judged)
-    if 2 * equivalent >= n:
-        return "equivalent"
-    if 2 * (equivalent + unsure) >= n:
+    decided = [o for o in judged if o in ("equivalent", "not_equivalent")]
+    if not decided:
         return "unsure"
-    return "not_equivalent"
+    equivalent = sum(o == "equivalent" for o in decided)
+    return "equivalent" if 2 * equivalent >= len(decided) else "not_equivalent"
 
 
 def judge_tag(model: str | None, thinking_budget: int | None, temperature: float | None) -> str:
