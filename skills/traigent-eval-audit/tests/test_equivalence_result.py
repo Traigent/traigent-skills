@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import importlib.util
 import json
 import subprocess
 import sys
@@ -8,11 +7,10 @@ from pathlib import Path
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "equivalence_result.py"
-_spec = importlib.util.spec_from_file_location("equivalence_result", SCRIPT)
-mod = importlib.util.module_from_spec(_spec)
-sys.modules["equivalence_result"] = mod
-_spec.loader.exec_module(mod)
+SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
+SCRIPT = SCRIPTS_DIR / "equivalence_result.py"
+sys.path.insert(0, str(SCRIPTS_DIR))
+import equivalence_result as mod  # noqa: E402
 
 EQ, NE, UN = "equivalent", "not-equivalent", "unsure"
 
