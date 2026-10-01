@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.10"
+  version: "1.1.11"
 ---
 
 # Evaluator Audit
@@ -106,6 +106,20 @@ as a coverage gap instead. Re-run after any evaluator repair.
 
 A prior run's calibration record (the guided first run leaves one under `traigent-runs/`) is this
 protocol already run once: start from what it left open, on the customer's own evaluation policy.
+
+## Scorer-Equivalence Check (when the service recommends `check_scorer_equivalence`)
+
+When the Traigent service recommends the operation `check_scorer_equivalence` for a run, follow
+**`references/scorer-equivalence-check.md`** (read it from this skill's directory). In short: for
+each example id the instruction names, the coding agent judges the example's distinct failing
+answers against the reference **locally**, with the user's own model key and a frozen judge prompt
+(protocol `p3b-v1`), in both orders with a strict one-word parse, after the user approves the paid
+calls. Then it reports **only** a closed result of enums per example id through the existing
+report-progress path, built with `scripts/equivalence_result.py`.
+
+**NEVER include question, reference or answer text, judge rationale, or any free text in that
+report**; the service rejects every other field. Validated on HotpotQA only; the judge misses about
+8% of valid answers; the outcome is advice, never an automatic rescore or data edit.
 
 ## Gold-Set Agreement (Manual Protocol)
 
