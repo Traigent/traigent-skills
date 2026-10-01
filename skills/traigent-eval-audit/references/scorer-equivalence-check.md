@@ -49,7 +49,8 @@ that figure is unverified for any other model or dataset.
    `not-equivalent`, or `unsure` (case, quotes and one final period tolerated; anything else,
    including prose or "not equivalent", is a parse failure). On a parse failure, ask once more
    with the same prompt. If it still fails, that order counts as `not-equivalent`.
-5. **Per answer:** it counts as equivalent **only if both orders say equivalent**.
+5. **Per answer:** it counts as equivalent **only if both orders say equivalent**. An answer
+   with a missing order is not judged and is left out of the example's count.
 6. **Per example:** `equivalent` if at least 50% of its failing answers are equivalent;
    `unsure` if below 50% but equivalent plus unsure answers reach 50%; `not_equivalent`
    otherwise when judged; `not_judged` when no answer was judged.
@@ -64,8 +65,9 @@ python3 <skill-dir>/scripts/equivalence_result.py result \
 ```
 
 `judgments.json` is `{"examples": [{"example_id": <id>, "answers": [{"forward": [<reply>, <retry?>],
-"reverse": [<reply>, <retry?>]}]}]}`. Use `"reverse": null` if the second order was not run;
-the result then reports `orders: "single"`. Delete the temporary files afterwards.
+"reverse": [<reply>, <retry?>]}]}]}`. Use `"reverse": null` (or `"forward": null`) if an order was not run;
+such an answer is not judged and is left out, and an example with no answer judged in both orders
+reports `not_judged`. Delete the temporary files afterwards.
 
 ## The closed result (the only thing reported)
 
@@ -80,7 +82,8 @@ the result then reports `orders: "single"`. Delete the temporary files afterward
 
 - `protocol`: `p3b-v1`.
 - `judge`: `gemini-2.5-pro` only for the validated settings above, otherwise `other`.
-- `orders`: `both` only if every judged answer was judged in both orders, otherwise `single`.
+- `orders`: always `both`: only answers judged in both orders count. `single` is reserved in the
+  enum and is never emitted by this procedure.
 - `verdicts[].verdict`: one of `equivalent`, `not_equivalent`, `unsure`, `not_judged`.
 - One entry per id that was sent, at most; never an id that was not sent.
 

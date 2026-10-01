@@ -115,9 +115,15 @@ def resolve_side(replies: Sequence[str | None] | None) -> str:
     return "not-equivalent"
 
 
-def answer_outcome(forward: str, reverse: str | None) -> str:
-    """Per-answer outcome. Equivalent only if every order that ran says equivalent."""
-    words = [forward] + ([reverse] if reverse is not None else [])
+def answer_outcome(forward: str | None, reverse: str | None) -> str:
+    """Per-answer outcome. An answer is judged only if BOTH orders were run.
+
+    Equivalent only with two equivalent judgments. A missing order means the
+    answer is `not_judged` (excluded from the example's denominator).
+    """
+    if forward is None or reverse is None:
+        return "not_judged"
+    words = [forward, reverse]
     if all(w == "equivalent" for w in words):
         return "equivalent"
     if "not-equivalent" not in words and "unsure" in words:
@@ -198,7 +204,8 @@ def build_result(
     `judgments`: one item per example, {"example_id": id, "answers": [
     {"forward": [reply, retry?], "reverse": [reply, retry?] | null}, ...]}.
     Only the strictly parsed judge word survives; reply text is discarded.
-    `reverse` null (or missing) means that order was not run (orders: single).
+    A null or missing `forward`/`reverse` means that order was not run: the answer is not judged
+    and is excluded from the example (no answer judged in both orders -> `not_judged`).
     Examples sent but absent from `judgments` are reported `not_judged`.
     """
     by_id: dict[str, Mapping[str, Any]] = {}
@@ -208,26 +215,24 @@ def build_result(
             raise ValueError("duplicate example_id in judgments")
         by_id[key] = item
 
-    all_both = True
-    any_judged = False
     verdicts: list[dict[str, Any]] = []
     for example_id in sent_ids:
         item = by_id.get(json.dumps(example_id, sort_keys=True))
         outcomes: list[str] = []
         for answer in (item or {}).get("answers", []):
-            forward = resolve_side(answer.get("forward"))
+            forward_replies = answer.get("forward")
             reverse_replies = answer.get("reverse")
+            forward = resolve_side(forward_replies) if forward_replies is not None else None
             reverse = resolve_side(reverse_replies) if reverse_replies is not None else None
-            if reverse is None:
-                all_both = False
             outcomes.append(answer_outcome(forward, reverse))
-            any_judged = True
         verdicts.append({"example_id": example_id, "verdict": example_verdict(outcomes)})
 
+    # Only answers judged in both orders can contribute, so `orders` is always
+    # "both". "single" stays in the closed enum but is reserved and never emitted.
     result = {
         "protocol": PROTOCOL,
         "judge": judge,
-        "orders": "both" if (all_both and any_judged) else "single",
+        "orders": "both",
         "verdicts": verdicts,
     }
     validate_result(result, sent_ids)

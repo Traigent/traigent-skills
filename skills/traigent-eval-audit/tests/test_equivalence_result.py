@@ -64,7 +64,8 @@ def test_answer_needs_both_orders():
     assert mod.answer_outcome(EQ, NE) == "not_equivalent"
     assert mod.answer_outcome(EQ, UN) == "unsure"
     assert mod.answer_outcome(UN, NE) == "not_equivalent"
-    assert mod.answer_outcome(EQ, None) == "equivalent"  # single order
+    assert mod.answer_outcome(EQ, None) == "not_judged"  # a missing order is never equivalent
+    assert mod.answer_outcome(None, EQ) == "not_judged"
 
 
 def test_example_verdict_threshold():
@@ -118,10 +119,23 @@ def test_free_text_replies_never_reach_result():
     assert result["verdicts"] == [{"example_id": 1, "verdict": "equivalent"}]
 
 
-def test_single_order_is_reported():
+def test_missing_order_is_never_equivalent():
     j = [{"example_id": "a", "answers": [{"forward": [EQ], "reverse": None}]}]
-    assert mod.build_result(j, ["a"], "other")["orders"] == "single"
-    assert mod.build_result([], ["a"], "other")["orders"] == "single"
+    result = mod.build_result(j, ["a"], "other")
+    assert result["verdicts"] == [{"example_id": "a", "verdict": "not_judged"}]
+    assert result["orders"] == "both"  # "single" is reserved, never emitted
+    j = [{"example_id": "a", "answers": [{"forward": [EQ]}]}]
+    assert mod.build_result(j, ["a"], "other")["verdicts"][0]["verdict"] == "not_judged"
+
+
+def test_half_judged_answers_leave_the_denominator():
+    j = [{"example_id": "a", "answers": [
+        {"forward": [EQ], "reverse": [EQ]},
+        {"forward": [EQ], "reverse": None},
+        {"forward": [NE], "reverse": None},
+    ]}]
+    assert mod.build_result(j, ["a"], "other")["verdicts"][0]["verdict"] == "equivalent"
+    assert mod.build_result([], ["a"], "other")["orders"] == "both"
 
 
 def test_unsent_or_duplicate_ids_rejected():
