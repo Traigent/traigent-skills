@@ -7,6 +7,7 @@ It never calls a model and never reads the network. Customer text enters only
 through the prompt builder and is never written to the result.
 
 Subcommands (see SKILL.md / references/scorer-equivalence-check.md):
+  verify-selection  check a fetched example-id selection against the instruction's check block
   messages     read {"question","reference","candidate","order"} on stdin, print judge messages
   result       build the closed result from recorded one-word judge replies
   self-check   verify the frozen prompt hashes
@@ -237,6 +238,45 @@ def build_result(
     return result
 
 
+SELECTION_RULE = "sel-v1"
+
+
+def selection_digest(example_ids: Sequence[str]) -> str:
+    """`sha256:<hex>` over the compact JSON of the ids, in the order returned."""
+    payload = json.dumps(list(example_ids), separators=(",", ":"))
+    return "sha256:" + _sha256(payload)
+
+
+def verify_selection(selection: Any, check: Mapping[str, Any] | None = None) -> list[str]:
+    """Validate a fetched check-examples response; return its ids exactly as returned.
+
+    Raises ValueError (so the caller stops and reports) unless the protocol and
+    selection rule are the known ones, the ids are strings, the count equals the
+    number of ids, and the digest matches the recomputed digest. When the
+    instruction's `check` block is given, its protocol, run id, selection rule,
+    count and digest must all agree with the response too.
+    """
+    if not isinstance(selection, dict):
+        raise ValueError("selection must be a JSON object")
+    if selection.get("protocol") != PROTOCOL:
+        raise ValueError("unknown protocol")
+    if selection.get("selection_rule") != SELECTION_RULE:
+        raise ValueError("unknown selection rule")
+    ids = selection.get("example_ids")
+    if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
+        raise ValueError("example_ids must be a list of strings")
+    count = selection.get("count")
+    if isinstance(count, bool) or not isinstance(count, int) or count != len(ids):
+        raise ValueError("count does not match the number of example_ids")
+    if selection.get("digest") != selection_digest(ids):
+        raise ValueError("digest does not match the example_ids")
+    if check is not None:
+        for key in ("protocol", "run_id", "selection_rule", "count", "digest"):
+            if check.get(key) != selection.get(key):
+                raise ValueError(f"{key} differs from the instruction's check block")
+    return list(ids)
+
+
 def _load_json(path: str) -> Any:
     with open(path, encoding="utf-8") as handle:
         return json.load(handle)
@@ -247,6 +287,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("self-check")
     sub.add_parser("messages")
+    ver = sub.add_parser("verify-selection")
+    ver.add_argument("--selection", required=True, help="JSON file: the check-examples response")
+    ver.add_argument("--check", help="JSON file: the instruction's check block")
     res = sub.add_parser("result")
     res.add_argument("--judgments", required=True, help="JSON file of recorded one-word replies")
     res.add_argument("--sent-ids", required=True, help="JSON list of the example ids sent")
@@ -258,6 +301,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "self-check":
         print(json.dumps({"prompt_hashes_ok": prompt_hashes_ok()}))
         return 0 if prompt_hashes_ok() else 1
+    if args.command == "verify-selection":
+        check = _load_json(args.check) if args.check else None
+        try:
+            ids = verify_selection(_load_json(args.selection), check)
+        except ValueError as exc:
+            print(json.dumps({"ok": False, "error": str(exc)}))
+            return 1
+        print(json.dumps({"ok": True, "count": len(ids), "example_ids": ids}))
+        return 0
     if args.command == "messages":
         spec = json.load(sys.stdin)
         messages = build_messages(

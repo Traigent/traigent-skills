@@ -5,7 +5,7 @@ It asks one question: **for examples the scorer marked wrong, are the failing an
 equivalent to the reference?** If many are, the scorer may be too strict on those examples.
 
 The check runs **entirely on the customer's machine**, with the customer's own model key. The
-service sends only ids and a protocol name, and receives only a closed list of enums back. No
+service sends only a protocol name and a selection digest (the ids are fetched separately), and receives only a closed list of enums back. No
 question, reference or answer text ever leaves the machine toward Traigent.
 
 > **Report ONLY the closed result below. NEVER include question, reference or answer text, judge
@@ -14,10 +14,40 @@ question, reference or answer text ever leaves the machine toward Traigent.
 
 ## Input (from the recommended instruction)
 
-- the run id,
-- a list of example ids (the examples to check),
-- the protocol id: `p3b-v1`. If it is any other value, stop and report that this plugin version
-  does not know that protocol; do not improvise a judge prompt.
+The instruction carries no example ids. It carries a `check` block:
+
+```json
+{"protocol": "p3b-v1", "run_id": "<run id>", "selection_rule": "sel-v1", "count": 12,
+ "digest": "sha256:<hex>"}
+```
+
+If `protocol` is not `p3b-v1`, or `selection_rule` is not `sel-v1`, stop and report that this
+plugin version does not know it; do not improvise a judge prompt or a selection.
+
+## Step 1: fetch the example ids
+
+With the service's normal authenticated access (the same one used to read the session state), call:
+
+`GET /api/v1/director/sessions/{session_id}/instructions/{instruction_id}/check-examples`
+
+where `instruction_id` is the id of the instruction that issued the check. No query parameters.
+A 200 returns `protocol`, `run_id`, `selection_rule`, `count`, `digest` and `example_ids`
+(strings, in selection order; use them exactly as returned). A 404 means the session, tenant or
+instruction is unknown, it is not a check, or the feature is off: stop and report that.
+
+## Step 2: verify the selection
+
+Save the response and the instruction's `check` block as local JSON files and run:
+
+```bash
+python3 <skill-dir>/scripts/equivalence_result.py verify-selection \
+  --selection selection.json --check check.json
+```
+
+It recomputes `sha256:` over `json.dumps(example_ids, separators=(",", ":"))`, and checks the id
+list length against `count`, and the response against the `check` block. It prints
+`{"ok": true, ...}` or `{"ok": false, "error": ...}` and exits non-zero. If it does not pass,
+**stop and report; do not judge anything.**
 
 ## Before any model call
 
@@ -27,7 +57,7 @@ of judge calls (examples x distinct failing answers x 2 orders, plus retries), a
 user declines. In one validation run the validated judge cost about USD 0.75 for 99 answer groups;
 that figure is unverified for any other model or dataset.
 
-## Procedure (all local)
+## Procedure (all local), after Steps 1 and 2
 
 1. **Collect.** For each example id sent, find that example's question and reference answer in
    the local dataset, and its **distinct** failing answers (the answers the scorer marked wrong,
@@ -67,6 +97,7 @@ python3 <skill-dir>/scripts/equivalence_result.py result \
   --model gemini-2.5-pro --thinking-budget 1024 --temperature 0
 ```
 
+`sent_ids.json` is the verified `example_ids` list from Step 2.
 `judgments.json` is `{"examples": [{"example_id": <id>, "answers": [{"forward": [<reply>, <retry?>],
 "reverse": [<reply>, <retry?>]}]}]}`. Use `"reverse": null` (or `"forward": null`) if an order was not run;
 such an answer is not judged and is left out, and an example with no answer judged in both orders
@@ -91,7 +122,10 @@ reports `not_judged`. Delete the temporary files afterwards.
 - One entry per id that was sent, at most; never an id that was not sent.
 
 Send it through the existing report-progress path, as the `result` of the instruction being
-reported on, with the instruction's own id and status. Nothing else is attached.
+reported on, with the instruction's own id and status. Nothing else is attached. Use each
+`example_id` exactly as returned in Step 1. If the report is answered with 409
+`check_selection_changed`, the selection moved: re-run Steps 1 and 2 to get the new ids, then redo
+the check and report again.
 
 ## Scope and limits (carry these into what you tell the user)
 

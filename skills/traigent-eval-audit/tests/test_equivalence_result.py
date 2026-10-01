@@ -194,3 +194,69 @@ def test_cli_result_and_selfcheck(tmp_path):
         capture_output=True, text=True, check=True,
     )
     assert "Reference answer: c" in json.loads(msg.stdout)[1]["content"]
+
+
+def _selection(ids=("h1", "h2")):
+    ids = list(ids)
+    return {"protocol": "p3b-v1", "run_id": "run-1", "selection_rule": "sel-v1",
+            "count": len(ids), "digest": mod.selection_digest(ids), "example_ids": ids}
+
+
+def test_selection_digest_is_compact_json_sha256():
+    import hashlib
+    expected = "sha256:" + hashlib.sha256(b'["a","b"]').hexdigest()
+    assert mod.selection_digest(["a", "b"]) == expected
+    assert mod.selection_digest(["b", "a"]) != expected  # order matters
+
+
+def test_verify_selection_accepts_and_preserves_order():
+    sel = _selection(("z", "a", "m"))
+    check = {k: sel[k] for k in ("protocol", "run_id", "selection_rule", "count", "digest")}
+    assert mod.verify_selection(sel, check) == ["z", "a", "m"]
+    assert mod.verify_selection(sel) == ["z", "a", "m"]
+    assert mod.verify_selection(_selection(())) == []
+
+
+@pytest.mark.parametrize(
+    "mutate",
+    [
+        lambda s: s.update(count=3),
+        lambda s: s.update(count=True),
+        lambda s: s.update(digest="sha256:" + "0" * 64),
+        lambda s: s.update(digest=None),
+        lambda s: s["example_ids"].reverse(),
+        lambda s: s["example_ids"].append("h3"),
+        lambda s: s.update(example_ids=["h1", 2]),
+        lambda s: s.update(example_ids="h1"),
+        lambda s: s.update(protocol="p3b-v2"),
+        lambda s: s.update(selection_rule="sel-v2"),
+    ],
+)
+def test_verify_selection_rejects_tampering(mutate):
+    sel = _selection()
+    mutate(sel)
+    with pytest.raises(ValueError):
+        mod.verify_selection(sel)
+
+
+def test_verify_selection_must_match_check_block():
+    sel = _selection()
+    check = {k: sel[k] for k in ("protocol", "run_id", "selection_rule", "count", "digest")}
+    for key, value in (("run_id", "other"), ("count", 5), ("digest", "sha256:" + "1" * 64)):
+        with pytest.raises(ValueError, match=key):
+            mod.verify_selection(sel, {**check, key: value})
+    with pytest.raises(ValueError):
+        mod.verify_selection([])
+
+
+def test_cli_verify_selection(tmp_path):
+    sel = _selection()
+    (tmp_path / "s.json").write_text(json.dumps(sel))
+    ok = subprocess.run([sys.executable, str(SCRIPT), "verify-selection", "--selection", str(tmp_path / "s.json")],
+                        capture_output=True, text=True)
+    assert ok.returncode == 0 and json.loads(ok.stdout)["example_ids"] == ["h1", "h2"]
+    sel["count"] = 9
+    (tmp_path / "s.json").write_text(json.dumps(sel))
+    bad = subprocess.run([sys.executable, str(SCRIPT), "verify-selection", "--selection", str(tmp_path / "s.json")],
+                         capture_output=True, text=True)
+    assert bad.returncode == 1 and json.loads(bad.stdout)["ok"] is False
