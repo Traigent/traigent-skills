@@ -311,7 +311,11 @@ skills:
     # `traigent models`, whose shape and network behaviour are read out of these
     # SDK sources, and mirrors the gold-key alias order from the SDK evaluator
     # base. Floored at 0.27.0: that is the release those two commands were read
-    # against, and it is already a bucket (current_released_sdk_version).
+    # against. This floor also keeps 0.27.0 -- the last release whose
+    # EvaluationOptions rejects task_type -- a released CI bucket, which
+    # tests/contract/test_audit_378_task_type_floor.py requires (#270/#378).
+    # Raising it drops that bucket and reds that test; keep 0.27.0 a bucket
+    # another way first.
     min_sdk_version: "0.27.0"
     # Tier 2 teaches these backend families directly: the analytics readers, the
     # experiments listing and the experiment-runs listing that turn an experiment
