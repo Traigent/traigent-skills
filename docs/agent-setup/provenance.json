@@ -1,6 +1,6 @@
 {
   "schema": "agent-setup-prompt-provenance/v1",
-  "doc_hash": "6c93b0f874b28004",
+  "doc_hash": "378e092a7b9c4818",
   "entries": [
     {
       "edit_id": "genesis",
@@ -12,6 +12,28 @@
       "doc_after_hash": "6c93b0f874b28004",
       "note": "pin the first checksum baseline for docs/agent-setup/prompt.md (issue #234): the canonical body as merged in #241, the state the TraigentFrontend vendored copy was hand-synced against (see docs/agent-setup/README.md's bump protocol for the current list of downstream copies and what this checksum does and does not guard).",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-04-979c63ad",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-04T00:00:00Z",
+      "doc_before_hash": "6c93b0f874b28004",
+      "doc_after_hash": "979c63adce71d44d",
+      "note": "Issue #363: drop the unverified 'Codex only reads AGENTS.md' claim; a Codex CLI 0.160.0 check showed the plugin's skills load in a fresh session. Keep the AGENTS.md stanza for mounted-skill setups.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-04-378e092a",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-04T00:00:00Z",
+      "doc_before_hash": "979c63adce71d44d",
+      "doc_after_hash": "378e092a7b9c4818",
+      "note": "Issue #363 review: scope the end-of-setup reload reminder per agent (new Codex session) instead of a universal 'don't load into the current session', and move the Codex new-session step to after setup.",
+      "source_type": "human"
     }
   ]
 }
