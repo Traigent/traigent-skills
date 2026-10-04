@@ -5,7 +5,7 @@ whose ``EvaluationOptions`` accepts ``task_type`` (the floor); older SDKs reject
 it at construction (pydantic ``extra_forbidden``). The two skills that teach the
 field split their guidance by version, and the #270 rule must keep holding: an
 SDK below the floor (0.27.x included) is never told to pass ``task_type``. It is
-held by three checks:
+held by four checks:
 
 - The SKILL.md text is version-conditional: a floor-and-later path pointing at
   the ``evaluation-task-type`` matrix row, and a below-the-floor "do not pass"
@@ -15,19 +15,28 @@ held by three checks:
 - The runnable recipe lives in ``references/task-type.md``, floored in
   sync_map.yml at exactly the matrix row's ``changed_in_version``, so released
   buckets below the floor never execute it.
+- The released CI buckets, taken from ``tools/contract/list_buckets.py``,
+  include ``LAST_RELEASE_REJECTING_TASK_TYPE`` and at least one release at or
+  above the floor, and the floor sits above that last rejecting release.
 - The installed SDK accepts ``task_type`` iff it is at or above that floor. The
-  CI buckets (0.21.3, 0.24.0, 0.27.0, 0.30.0, develop) prove only that
-  0.27.0 < floor <= 0.30.0. The exact 0.28.0 boundary rests on offline
-  construction probes of 0.27.0, 0.28.0, 0.29.0 and 0.30.0 recorded for #378.
+  buckets prove only that the last rejecting release < floor <= the newest
+  bucket; the exact boundary rests on the offline construction probes recorded
+  for #378 (see ``LAST_RELEASE_REJECTING_TASK_TYPE``).
 - **Residual, review only:** new ``task_type`` prose outside these assertions
-  is caught by review, not by this module.
+  is caught by review, not by this module. So are semantic edits inside the
+  asserted paragraphs that keep every matched phrase (e.g. an added workaround
+  sentence, or ``task_type=None`` offered to a below-the-floor SDK): the checks
+  are phrase presence, not meaning.
 """
 
 from __future__ import annotations
 
 import ast
 import importlib.metadata
+import json
 import re
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -47,6 +56,10 @@ VALIDATION_ERROR_RE = re.compile(r"ValidationError")
 EXTRA_FORBIDDEN_RE = re.compile(r"Extra inputs are not\s+permitted")
 ABSTAIN_RE = re.compile(r"\babstain", re.I)
 STALE_CLAIMS = ("in no released version", "expected in a later SDK release")
+# Offline construction probes recorded for traigent-skills#378:
+# EvaluationOptions(task_type=...) on 0.27.0 raises ValidationError
+# (extra_forbidden); 0.28.0, 0.29.0 and 0.30.0 accept it.
+LAST_RELEASE_REJECTING_TASK_TYPE = "0.27.0"
 
 
 def _floor(repo_root: Path) -> str:
@@ -149,6 +162,34 @@ def test_task_type_reference_floor_matches_version_matrix(
             f"{path.relative_to(repo_root)}: no ```python runnable block calls "
             "EvaluationOptions(..., task_type=...)"
         )
+
+
+def test_released_buckets_straddle_the_task_type_floor(repo_root: Path) -> None:
+    # The same command contracts.yml fans out into strategy.matrix.bucket.
+    output = subprocess.check_output(
+        [sys.executable, str(repo_root / "tools/contract/list_buckets.py"), "--json"],
+        cwd=repo_root,
+        text=True,
+    )
+    buckets = sorted(Version(b) for b in json.loads(output))
+    floor = Version(_floor(repo_root))
+
+    last_rejecting = Version(LAST_RELEASE_REJECTING_TASK_TYPE)
+    assert floor > last_rejecting, (
+        f"the `{FACT_ID}` floor {floor} is not above {last_rejecting}, the last "
+        "release whose EvaluationOptions rejects task_type (#378 probes): #270 "
+        "forbids telling that SDK to pass task_type"
+    )
+    assert last_rejecting in buckets, (
+        f"{last_rejecting}, the last release that rejects task_type, is not a "
+        f"released CI bucket (buckets {[str(b) for b in buckets]}): #270 requires "
+        "the 'below the floor rejects task_type' path to run on that exact release"
+    )
+    assert any(b >= floor for b in buckets), (
+        f"no released CI bucket is at or above the `{FACT_ID}` floor {floor} "
+        f"(buckets {[str(b) for b in buckets]}): the acceptance path would only "
+        "run against develop"
+    )
 
 
 def test_task_type_accepted_iff_installed_sdk_at_or_above_floor(
