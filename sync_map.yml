@@ -48,16 +48,19 @@ skills:
       - docs/user-guide/tuned_variables.md
 
   traigent-setup-decorator:
-    # The skill itself still targets the released floor. Only the
-    # winner-stability-reps reference documents an unreleased API, so it
-    # carries a PER-FILE floor instead: raising min_sdk_version to 0.27.0
-    # would make list_buckets.py try to `pip install traigent==0.27.0`,
-    # which does not exist.
+    # The skill itself keeps the released floor. References that document
+    # an API newer than that floor carry PER-FILE floors instead: raising
+    # min_sdk_version would gate the whole skill on the newest API any one
+    # reference needs, turning the floor into a bucket.
     python_version_floors:
       # winner_stability_reps shipped in 0.27.0 (Traigent/Traigent@867a7288,
       # on PyPI since 2026-09-02); the reference states the requirement
       # in prose at the top of the file.
       references/winner-stability-reps.md: "0.27.0"
+      # EvaluationOptions.task_type first shipped in 0.28.0
+      # (Traigent/Traigent#2226); older SDKs follow the no-task_type path in
+      # SKILL.md, which stays unfloored.
+      references/task-type.md: "0.28.0"
     modules:
       - traigent.api.decorators
     sdk_paths:
@@ -234,6 +237,11 @@ skills:
       - traigent/evaluators/hybrid_api.py
 
   traigent-eval-audit:
+    python_version_floors:
+      # EvaluationOptions.task_type first shipped in 0.28.0
+      # (Traigent/Traigent#2226); older SDKs follow the no-task_type path in
+      # SKILL.md, which stays unfloored.
+      references/task-type.md: "0.28.0"
     backend_prefixes:
       - /api/v1/analytics/runs
     modules:

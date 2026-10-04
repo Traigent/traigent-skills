@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.11"
+  version: "1.1.12"
 ---
 
 # Evaluator Audit
@@ -298,8 +298,7 @@ Audit results hold only for the audited evaluation dataset distribution, judge m
 
 For service-side audits: the confidence ceiling is a hard cap, not a display hint. A result based on a substitute signal cannot be cited as independently verified evidence. Promotion requires a service-audit verdict backed by an independent, verifiable correctness signal — an abstain, a substitute-signal result, or manual gold-slice calibration alone is not sufficient for promotion.
 
-**Precondition — an audit needs an anchor, and the released SDK gives you no way to declare
-one.** A service-side audit is anchored: it scores your evaluator against a verifiable
+**Precondition — an audit needs an independent anchor.** A service-side audit is anchored: it scores your evaluator against a verifiable
 correctness signal computed *independently of that evaluator*. The anchor is designated
 **server-side**, from the independent correctness signal registered for the run; you never
 name one yourself. The service will not infer which signal applies, so a run with no such
@@ -307,14 +306,21 @@ signal registered resolves to "no anchor" and the audit abstains: on a real text
 against the portal on 2026-09-13 the payload read `status: abstain`, `reason: audit_abstained`,
 `anchor.anchor_type: none`, `evaluators: []`.
 
-There is no client-side field for this on the released SDK. `EvaluationOptions` forbids
-unknown fields, so `EvaluationOptions(task_type="exact_match")` raises
-`ValidationError: Extra inputs are not permitted` at construction on traigent 0.27.0 — do
-**not** pass `task_type`. A coarse task-category field is expected in a later SDK release,
-but it is in no released version, so nothing you write against the released SDK today
-designates an anchor. Only exact-match-style anchors exist at all, and free-form tasks have
-none by construction, so for those an abstain is the honest answer rather than a fixable
-problem.
+**SDK 0.28.0 and later:** `EvaluationOptions.task_type` is supported since 0.28.0
+(see version-matrix: evaluation-task-type).
+Pass the coarse task category through that field, following
+[the supported-version recipe](references/task-type.md). The service maps the category to an
+evaluator-quality anchor policy; you still never name an anchor, and declaring a category
+does not guarantee that one exists. Unknown categories resolve to "no anchor". Only
+exact-match-style anchors exist at all, and free-form tasks have none by construction, so for
+those an abstain is the honest answer rather than a fixable problem.
+
+**SDKs below 0.28.0, including 0.27.x:** do **not** pass `task_type`. `EvaluationOptions`
+forbids unknown fields there, so `EvaluationOptions(task_type="exact_match")` raises
+`ValidationError: Extra inputs are not permitted` at construction. Keep your evaluation
+settings without that field. Without an independent correctness signal registered for the
+run, the audit abstains. Upgrade to traigent 0.28.0 or later to declare a task category;
+upgrading alone does not establish anchor coverage.
 
 The promotion gate itself is served by two advisory, anchor-gated endpoints over one optimization run:
 
