@@ -20,7 +20,7 @@ from contextlib import redirect_stderr
 from dataclasses import dataclass
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Sequence
 
 BOOTSTRAP_SEED = 55
 # Permutation resolution needs draws + 1 >= 10 * family_size / alpha: at the default
@@ -82,7 +82,7 @@ class KnobImportance:
             "ci_low": round_float(self.ci_low),
             "ci_high": round_float(self.ci_high),
             "label": self.label,
-            "best_value": self.best_value,
+            "best_value": json_knob_value(self.best_value),
             "best_value_mean_acc": round_float(self.best_value_mean_acc),
             "cost_effect": round_float_or_none(self.cost_effect),
             "p_value": self.p_value,
@@ -110,6 +110,8 @@ def round_float_or_none(value: float | None) -> float | None:
 
 
 def canonical_value(value: Any) -> str:
+    # Grouping identity only, never written to an artifact: it keeps the number
+    # Infinity (key `Infinity`) apart from the string "Infinity" (key `"Infinity"`).
     try:
         return json.dumps(value, sort_keys=True, ensure_ascii=False)
     except TypeError:
@@ -120,6 +122,118 @@ def display_value(value: Any) -> str:
     if isinstance(value, str):
         return value
     return json.dumps(value, sort_keys=True, ensure_ascii=False)
+
+
+def json_knob_value(value: Any) -> Any:
+    """Spell a non-finite knob number as a string, so strict JSON can carry it.
+
+    Used only where a raw knob value enters a JSON artifact (``best_value``);
+    grouping and human-readable output keep the original value.
+    """
+    if isinstance(value, float) and not math.isfinite(value):
+        return json.dumps(value)
+    if isinstance(value, dict):
+        return {key: json_knob_value(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [json_knob_value(item) for item in value]
+    return value
+
+
+def nonfinite_value_path(value: Any, path: str) -> tuple[str, float] | None:
+    """Return the path and value of the first non-finite float inside ``value``."""
+    if isinstance(value, float):
+        return None if math.isfinite(value) else (path, value)
+    if isinstance(value, dict):
+        children = (
+            (f"{path}[{json.dumps(str(key), ensure_ascii=False)}]", item)
+            for key, item in value.items()
+        )
+    elif isinstance(value, (list, tuple)):
+        children = ((f"{path}[{index}]", item) for index, item in enumerate(value))
+    else:
+        return None
+    for child_path, item in children:
+        found = nonfinite_value_path(item, child_path)
+        if found is not None:
+            return found
+    return None
+
+
+def _is_unicode_text(text: str) -> bool:
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
+def invalid_text_error(value: Any, path: str) -> str | None:
+    """Describe the first key or string inside ``value`` that is not valid Unicode text.
+
+    ``json.loads`` accepts a lone surrogate escape such as ``"\\ud800"``, which no
+    report file can encode as UTF-8. Path parts are ASCII-escaped, so the
+    message itself can always be printed.
+    """
+    if isinstance(value, str):
+        if _is_unicode_text(value):
+            return None
+        return f"{path} must be valid Unicode text, got {json.dumps(value)}"
+    if isinstance(value, dict):
+        for key, item in value.items():
+            child_path = f"{path}[{json.dumps(str(key))}]"
+            if not _is_unicode_text(str(key)):
+                return f"{child_path} names a key that is not valid Unicode text"
+            found = invalid_text_error(item, child_path)
+            if found is not None:
+                return found
+    elif isinstance(value, (list, tuple)):
+        for index, item in enumerate(value):
+            found = invalid_text_error(item, f"{path}[{index}]")
+            if found is not None:
+                return found
+    return None
+
+
+def contains_nan(value: Any) -> bool:
+    if isinstance(value, float):
+        return math.isnan(value)
+    if isinstance(value, dict):
+        return any(contains_nan(item) for item in value.values())
+    if isinstance(value, (list, tuple)):
+        return any(contains_nan(item) for item in value)
+    return False
+
+
+def nonfinite_knob_summary(
+    trials: list[Trial],
+) -> tuple[int, list[str], list[str], bool]:
+    """Count measured trials with a NaN/Infinity knob value, and where they are.
+
+    Returns the trial count, the knobs carrying such a value, the knobs on
+    which a number and a string share one spelling once JSON outputs write the
+    number as a string (they stay separate values in the ranking), and whether
+    any of those values is a NaN.
+    """
+    count = 0
+    has_nan = False
+    knobs: set[str] = set()
+    values_by_knob: dict[str, list[Any]] = defaultdict(list)
+    for trial in trials:
+        carries = False
+        for knob, value in trial.config.items():
+            values_by_knob[knob].append(value)
+            if nonfinite_value_path(value, "") is not None:
+                knobs.add(knob)
+                carries = True
+                has_nan = has_nan or contains_nan(value)
+        count += carries
+    collisions = [
+        knob
+        for knob in sorted(knobs)
+        if len({canonical_value(json_knob_value(value)) for value in values_by_knob[knob]})
+        < len({canonical_value(value) for value in values_by_knob[knob]})
+    ]
+    return count, sorted(knobs), collisions, has_nan
 
 
 def measured_number(value: Any, field: str, *, nonnegative: bool = False) -> float | None:
@@ -164,12 +278,27 @@ def read_trials(path: Path, objective: str) -> list[Trial]:
 def read_trial_file(path: Path, objective: str) -> tuple[list[Trial], int]:
     """Return the completed trials and how many non-completed rows were skipped.
 
+    Kept as a two-tuple for existing callers; the missing-objective count is
+    available from ``_read_trial_file_with_counts``.
+    """
+    trials, skipped_non_completed, _ = _read_trial_file_with_counts(path, objective)
+    return trials, skipped_non_completed
+
+
+def _read_trial_file_with_counts(
+    path: Path, objective: str
+) -> tuple[list[Trial], int, int]:
+    """Return measured trials plus the non-completed and missing-objective skips.
+
     A failed, pruned or cancelled SDK trial still carries a metrics dict (a
     failed trial scores 0.0), so it must not enter the ranking as a measured
-    score. Rows without a ``status`` field are read as measured.
+    score. Rows without a ``status`` field are read as measured. A completed or
+    status-unspecified row with no value for ``objective`` is dropped too, but
+    counted, so a reader can see how much of the run the ranking rests on.
     """
     trials: list[Trial] = []
     skipped_non_completed = 0
+    skipped_missing_objective = 0
     with path.open("r", encoding="utf-8") as handle:
         for line_number, line in enumerate(handle, 1):
             stripped = line.strip()
@@ -186,6 +315,9 @@ def read_trial_file(path: Path, objective: str) -> tuple[list[Trial], int]:
             config = record.get("config")
             if not isinstance(config, dict):
                 raise ValueError(f"{path}:{line_number}: missing object field 'config'")
+            text_error = invalid_text_error(config, "config")
+            if text_error is not None:
+                raise ValueError(f"{path}:{line_number}: {text_error}")
             status = record.get("status")
             if isinstance(status, str) and status.lower() != "completed":
                 skipped_non_completed += 1
@@ -196,6 +328,7 @@ def read_trial_file(path: Path, objective: str) -> tuple[list[Trial], int]:
             except ValueError as exc:
                 raise ValueError(f"{path}:{line_number}: {exc}") from exc
             if metric is None:
+                skipped_missing_objective += 1
                 continue
             trials.append(
                 Trial(
@@ -208,9 +341,11 @@ def read_trial_file(path: Path, objective: str) -> tuple[list[Trial], int]:
     if not trials:
         raise ValueError(
             f"No completed trials with numeric objective '{objective}' found in {path}"
-            f" ({skipped_non_completed} non-completed trial(s) skipped)"
+            f" ({skipped_non_completed} non-completed trial(s) skipped;"
+            f" {skipped_missing_objective} completed or status-unspecified trial(s)"
+            f" with no value for '{objective}' skipped)"
         )
-    return trials, skipped_non_completed
+    return trials, skipped_non_completed, skipped_missing_objective
 
 
 def read_config_space(path: Path | None) -> dict[str, list[Any]] | None:
@@ -220,6 +355,9 @@ def read_config_space(path: Path | None) -> dict[str, list[Any]] | None:
         data = json.load(handle)
     if not isinstance(data, dict):
         raise ValueError(f"{path}: config-space JSON must be an object")
+    text_error = invalid_text_error(data, "config_space")
+    if text_error is not None:
+        raise ValueError(f"{path}: {text_error}")
     config_space: dict[str, list[Any]] = {}
     for key, values in data.items():
         if isinstance(values, list):
@@ -625,6 +763,57 @@ def analyze_importance(
     return rows
 
 
+def sdk_cross_check_payload(results: dict[Any, Any]) -> dict[str, Any]:
+    """Validate SDK importance output before it can reach a report artifact.
+
+    Scores and interval endpoints follow the same finite-number rule as trial
+    measurements, checked before rounding (which would turn a boolean into 1.0).
+    Every field is type-checked by name, so an error says which one is invalid.
+    """
+    missing = object()
+
+    def field(result: Any, name: str) -> Any:
+        value = getattr(result, name, missing)
+        if value is missing:
+            raise ValueError(f"{name} is missing")
+        return value
+
+    for name in results:
+        # Knob names become JSON object keys and are sorted below.
+        if not isinstance(name, str):
+            raise ValueError(f"knob name {name!r} is not a string")
+    payload: dict[str, Any] = {}
+    for name, result in sorted(results.items()):
+        try:
+            score = field(result, "importance_score")
+            interval = field(result, "confidence_interval")
+            if not isinstance(interval, (list, tuple)) or len(interval) != 2:
+                raise ValueError("confidence_interval is not a pair of endpoints")
+            measurements = (
+                ("importance_score", score),
+                ("confidence_interval[0]", interval[0]),
+                ("confidence_interval[1]", interval[1]),
+            )
+            for label, value in measurements:
+                if measured_number(value, label) is None:
+                    raise ValueError(f"{label} is missing")
+            method = field(result, "method")
+            if not isinstance(method, str):
+                raise ValueError("method is not a string")
+            sample_size = field(result, "sample_size")
+            if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size < 0:
+                raise ValueError("sample_size is not a nonnegative integer")
+        except ValueError as exc:
+            raise ValueError(f"{name}: {exc}") from exc
+        payload[name] = {
+            "importance_score": round_float(score),
+            "confidence_interval": [round_float(interval[0]), round_float(interval[1])],
+            "method": method,
+            "sample_size": sample_size,
+        }
+    return payload
+
+
 def attempt_sdk_importance(
     trials: list[Trial], objective: str
 ) -> tuple[str, dict[str, Any]]:
@@ -665,18 +854,15 @@ def attempt_sdk_importance(
             {},
         )
 
-    payload = {
-        name: {
-            "importance_score": round_float(result.importance_score),
-            "confidence_interval": [
-                round_float(result.confidence_interval[0]),
-                round_float(result.confidence_interval[1]),
-            ],
-            "method": result.method,
-            "sample_size": result.sample_size,
-        }
-        for name, result in sorted(results.items())
-    }
+    try:
+        payload = sdk_cross_check_payload(results)
+    except Exception as exc:
+        return (
+            "Traigent SDK ParameterImportanceAnalyzer returned output this report cannot "
+            "use, so no SDK cross-check is reported; used the skill variance/bootstrap "
+            f"method. SDK output error: {type(exc).__name__}: {exc}",
+            {},
+        )
     return (
         "Traigent SDK ParameterImportanceAnalyzer variance-based output was computed "
         "as a cross-check (see the SDK cross-check table below and sdk_cross_check.json); "
@@ -744,21 +930,39 @@ def heldout_card_metrics(
     return (accuracy_pp, cost_delta_pct)
 
 
+def strict_json_text(payload: Any, artifact: str) -> str:
+    """Serialize a report artifact as strict JSON, naming any non-finite value."""
+    found = nonfinite_value_path(payload, artifact)
+    if found is not None:
+        path, value = found
+        raise ValueError(
+            f"{artifact}: {path} is {value!r}: a number derived from the inputs is "
+            "not finite, so it cannot be written as strict JSON"
+        )
+    return json.dumps(payload, indent=2, ensure_ascii=False, allow_nan=False)
+
+
+def build_importance_payload(rows: list[KnobImportance]) -> list[dict[str, Any]]:
+    return [row.required_dict() for row in rows]
+
+
 def write_importance_json(path: Path, rows: list[KnobImportance]) -> None:
-    payload = [row.required_dict() for row in rows]
-    path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    payload = build_importance_payload(rows)
+    # Strict JSON: a non-finite value raises before the file is opened.
+    path.write_text(strict_json_text(payload, path.name) + "\n", encoding="utf-8")
+
+
+def build_sdk_cross_check_payload(note: str, payload: dict[str, Any]) -> dict[str, Any]:
+    return {"computed": bool(payload), "note": note, "results": payload}
 
 
 def write_sdk_cross_check_json(
     path: Path, note: str, payload: dict[str, Any]
 ) -> None:
     """Always written, so the cross-check claim in insights.md is inspectable."""
-    data = {"computed": bool(payload), "note": note, "results": payload}
-    path.write_text(
-        json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
-    )
+    data = build_sdk_cross_check_payload(note, payload)
+    # Strict JSON: a non-finite value raises before the file is opened.
+    path.write_text(strict_json_text(data, path.name) + "\n", encoding="utf-8")
 
 
 def write_importance_csv(path: Path, rows: list[KnobImportance]) -> None:
@@ -789,7 +993,7 @@ def write_importance_csv(path: Path, rows: list[KnobImportance]) -> None:
         writer.writeheader()
         for row in rows:
             payload = row.required_dict()
-            payload["best_value"] = display_value(payload["best_value"])
+            payload["best_value"] = display_value(row.best_value)
             writer.writerow(payload)
 
 
@@ -817,11 +1021,13 @@ def write_svg(
     row_h = 92
     bar_h = 28
     axis_w = chart_w
-    caption = (
-        f"directional (n={n_trials}): fewer than 20 trials to test against a null"
-        if n_trials < 20
-        else f"n={n_trials}; significant requires Holm-adjusted permutation evidence from randomized sampling at alpha={alpha:g} (CI whiskers show scale only)"
-    )
+    # An empty ranking has no confidence to describe, whatever the run size.
+    if not top_rows:
+        caption = f"n={n_trials}: no tuned variable could be ranked (no knob had two or more observed values)"
+    elif n_trials < 20:
+        caption = f"directional (n={n_trials}): fewer than 20 trials to test against a null"
+    else:
+        caption = f"n={n_trials}; significant requires Holm-adjusted permutation evidence from randomized sampling at alpha={alpha:g} (CI whiskers show scale only)"
 
     parts = [
         '<?xml version="1.0" encoding="UTF-8"?>',
@@ -889,8 +1095,7 @@ def format_pct(value: float | None) -> str:
     return f"{sign}{value:.1f}%"
 
 
-def write_video_card_json(
-    path: Path,
+def build_video_card_payload(
     rows: list[KnobImportance],
     top_k: int,
     n_trials: int,
@@ -899,6 +1104,8 @@ def write_video_card_json(
     slice_label: str = "this evaluation slice",
     skipped_non_completed: int = 0,
     alpha: float = DEFAULT_ALPHA,
+    *,
+    skipped_missing_objective: int = 0,
 ) -> dict[str, Any]:
     heldout_accuracy_pp, heldout_cost_delta_pct = heldout_card_metrics(
         heldout, objective
@@ -911,7 +1118,7 @@ def write_video_card_json(
         top_variables.append(
             {
                 "knob": row.knob,
-                "best_value": row.best_value,
+                "best_value": json_knob_value(row.best_value),
                 "accuracy_pp": round_float(row.spread * 100.0),
                 "cost_delta_pct": round_float_or_none(row.cost_effect_pct),
                 "label": row.label,
@@ -923,7 +1130,8 @@ def write_video_card_json(
             }
         )
 
-    if heldout_accuracy_pp is not None or heldout_cost_delta_pct is not None:
+    has_heldout = heldout_accuracy_pp is not None or heldout_cost_delta_pct is not None
+    if has_heldout:
         delta_clause = (
             f"heldout optimized-vs-baseline {format_pp(heldout_accuracy_pp)}, "
             f"{format_pct(heldout_cost_delta_pct)} cost"
@@ -933,29 +1141,67 @@ def write_video_card_json(
             "card deltas use optimization-slice spread and best-vs-worst cost"
         )
 
-    label_clause = (
-        "directional only"
-        if all(row.label == "directional" for row in rows[:top_k])
-        else "mixed confidence"
-    )
-    payload = {
-        "top_variables": top_variables,
-        "n_trials": n_trials,
-        "skipped_non_completed": skipped_non_completed,
-        "alpha": alpha,
-        "objective": objective,
-        "heldout_accuracy_pp": round_float_or_none(heldout_accuracy_pp),
-        "heldout_cost_delta_pct": round_float_or_none(heldout_cost_delta_pct),
-        "caption": (
+    if not top_variables:
+        # all([]) is True: without this branch an empty ranking would read as a
+        # weak "directional only" result instead of "nothing could be ranked".
+        caption = (
+            f"On {slice_label}, in this run: no tuned variable could be ranked "
+            "(no multi-value tuned variables were available to rank)"
+            + (f"; run-level {delta_clause}" if has_heldout else "")
+            + "."
+        )
+    else:
+        label_clause = (
+            "directional only"
+            if all(row.label == "directional" for row in rows[:top_k])
+            else "mixed confidence"
+        )
+        caption = (
             f"On {slice_label}, in this run: "
             f"{label_clause}; {delta_clause}. "
             "Per-knob deltas are that knob's own effect; the heldout delta is "
             "run-level. Variable ranking is observational, not a causal proof."
-        ),
+        )
+    payload = {
+        "top_variables": top_variables,
+        "n_trials": n_trials,
+        "skipped_non_completed": skipped_non_completed,
+        "skipped_missing_objective": skipped_missing_objective,
+        "alpha": alpha,
+        "objective": objective,
+        "heldout_accuracy_pp": round_float_or_none(heldout_accuracy_pp),
+        "heldout_cost_delta_pct": round_float_or_none(heldout_cost_delta_pct),
+        "caption": caption,
     }
-    path.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    return payload
+
+
+def write_video_card_json(
+    path: Path,
+    rows: list[KnobImportance],
+    top_k: int,
+    n_trials: int,
+    objective: str,
+    heldout: dict[str, Any] | None,
+    slice_label: str = "this evaluation slice",
+    skipped_non_completed: int = 0,
+    alpha: float = DEFAULT_ALPHA,
+    *,
+    skipped_missing_objective: int = 0,
+) -> dict[str, Any]:
+    payload = build_video_card_payload(
+        rows,
+        top_k,
+        n_trials,
+        objective,
+        heldout,
+        slice_label,
+        skipped_non_completed,
+        alpha,
+        skipped_missing_objective=skipped_missing_objective,
     )
+    # Strict JSON: a non-finite value raises before the file is opened.
+    path.write_text(strict_json_text(payload, path.name) + "\n", encoding="utf-8")
     return payload
 
 
@@ -971,6 +1217,12 @@ def write_insights_md(
     skipped_non_completed: int = 0,
     alpha: float = DEFAULT_ALPHA,
     sdk_payload: dict[str, Any] | None = None,
+    *,
+    skipped_missing_objective: int = 0,
+    nonfinite_trials: int = 0,
+    nonfinite_knobs: Sequence[str] = (),
+    nonfinite_collisions: Sequence[str] = (),
+    nonfinite_has_nan: bool = False,
 ) -> None:
     heldout_accuracy_pp, heldout_cost_delta_pct = heldout_card_metrics(
         heldout, objective
@@ -988,6 +1240,31 @@ def write_insights_md(
                 "",
             ]
         )
+    if skipped_missing_objective:
+        lines.extend(
+            [
+                f"{skipped_missing_objective} completed or status-unspecified trial(s) were skipped because they carry no value for {objective}; the ranking rests on the remaining {n_trials} measured trial(s).",
+                "",
+            ]
+        )
+    if nonfinite_trials:
+        knob_list = ", ".join(f"`{knob}`" for knob in nonfinite_knobs)
+        paragraph = (
+            f"{nonfinite_trials} measured trial(s) carry a NaN or Infinity knob value ({knob_list}); "
+            'wherever such a value appears in JSON outputs, it is written as the string "NaN", '
+            '"Infinity" or "-Infinity".'
+        )
+        if nonfinite_has_nan:
+            paragraph += (
+                " Every NaN value is grouped as one value; if NaN marks a knob that does not apply "
+                "to a trial, omit the key instead — each knob is ranked over the trials that carry it."
+            )
+        for knob in nonfinite_collisions:
+            paragraph += (
+                f" On `{knob}`, a number and a string share one spelling in the outputs; "
+                "they are ranked as separate values."
+            )
+        lines.extend([paragraph, ""])
     lines += [
         f"Honesty rule: `significant` requires randomized assignment with each knob assigned independently of the others, at least 20 observations for that knob and 5 per observed value, adequate permutation resolution, and a Holm-adjusted p-value below alpha={alpha:g}. Adaptive or unknown sampling stays `directional` because label exchangeability is not established, and so does a knob whose values were assigned together with another knob's (`knobs_not_independent`). The bootstrap CI is a scale annotation, not the significance test.",
         "",
@@ -1135,7 +1412,12 @@ def main() -> int:
     validate_args(args)
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
-    trials, skipped_non_completed = read_trial_file(args.trials, args.objective)
+    trials, skipped_non_completed, skipped_missing_objective = (
+        _read_trial_file_with_counts(args.trials, args.objective)
+    )
+    nonfinite_trials, nonfinite_knobs, nonfinite_collisions, nonfinite_has_nan = (
+        nonfinite_knob_summary(trials)
+    )
     config_space = read_config_space(args.config_space)
     heldout = read_heldout(args.heldout)
     rows = analyze_importance(
@@ -1147,6 +1429,32 @@ def main() -> int:
         alpha=args.alpha,
     )
     sdk_note, sdk_payload = attempt_sdk_importance(trials, args.objective)
+
+    # Check every JSON output before the first file is written, so a non-finite
+    # derived number leaves the previous run's report whole. The writers below
+    # then write in place, as before.
+    card_payload = build_video_card_payload(
+        rows,
+        args.top_k,
+        len(trials),
+        args.objective,
+        heldout,
+        args.slice_label,
+        skipped_non_completed,
+        args.alpha,
+        skipped_missing_objective=skipped_missing_objective,
+    )
+    try:
+        strict_json_text(build_importance_payload(rows), "importance.json")
+        strict_json_text(
+            build_sdk_cross_check_payload(sdk_note, sdk_payload), "sdk_cross_check.json"
+        )
+        strict_json_text(card_payload, "video_card.json")
+        card_text = strict_json_text(card_payload, "stdout card")
+    except ValueError as exc:
+        raise ValueError(
+            f"{exc}. No report file in {args.output_dir} was written or replaced."
+        ) from exc
 
     write_importance_json(args.output_dir / "importance.json", rows)
     write_sdk_cross_check_json(
@@ -1173,8 +1481,13 @@ def main() -> int:
         skipped_non_completed=skipped_non_completed,
         alpha=args.alpha,
         sdk_payload=sdk_payload,
+        skipped_missing_objective=skipped_missing_objective,
+        nonfinite_trials=nonfinite_trials,
+        nonfinite_knobs=nonfinite_knobs,
+        nonfinite_collisions=nonfinite_collisions,
+        nonfinite_has_nan=nonfinite_has_nan,
     )
-    video_card = write_video_card_json(
+    write_video_card_json(
         args.output_dir / "video_card.json",
         rows=rows,
         top_k=args.top_k,
@@ -1184,10 +1497,27 @@ def main() -> int:
         slice_label=args.slice_label,
         skipped_non_completed=skipped_non_completed,
         alpha=args.alpha,
+        skipped_missing_objective=skipped_missing_objective,
     )
 
     if skipped_non_completed:
         print(f"skipped {skipped_non_completed} non-completed trial(s)")
+    if skipped_missing_objective:
+        print(
+            f"skipped {skipped_missing_objective} completed or status-unspecified "
+            f"trial(s) with no value for objective '{args.objective}'"
+        )
+    if nonfinite_trials:
+        print(
+            f"{nonfinite_trials} measured trial(s) carry a NaN or Infinity knob value "
+            f"({', '.join(nonfinite_knobs)}); wherever such a value appears in JSON "
+            'outputs, it is written as the string "NaN", "Infinity" or "-Infinity"'
+        )
+    for knob in nonfinite_collisions:
+        print(
+            f"knob '{knob}': a number and a string share one spelling in the outputs; "
+            "they are ranked as separate values"
+        )
     print(f"Wrote {len(rows)} ranked tuned variables to {args.output_dir}")
     if rows:
         for index, row in enumerate(rows[: args.top_k], 1):
@@ -1199,7 +1529,7 @@ def main() -> int:
                 f"family={row.family_size}, status={row.inference_status}, "
                 f"label={row.label}, best={display_value(row.best_value)}"
             )
-    print(json.dumps(video_card, indent=2, ensure_ascii=False))
+    print(card_text)
     return 0
 
 
