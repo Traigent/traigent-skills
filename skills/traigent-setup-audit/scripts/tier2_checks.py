@@ -37,6 +37,7 @@ import ipaddress
 import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -52,8 +53,10 @@ if str(SCRIPT_DIR) not in sys.path:
 
 # The guard is imported, never copied: one implementation, one set of tests.
 from audit_project import (  # noqa: E402
+    SCORER_MEASURED,
     install_network_guard,
     printable_text,
+    probe_consequence,
     probe_metrics,
     probe_remedy,
     probe_symptom,
@@ -423,10 +426,16 @@ class Tier1:
     probe_verdict: str
     probe_symptom: str
     probe_remedy: str
+    probe_consequence: str
     model_ids: list[str]
     dataset_candidates: int
     python_files: int
     key_names_set: list[str]
+
+    @property
+    def stale_all_clear(self) -> bool:
+        """The report records the all-clear its own probe evidence does not support."""
+        return self.branch == "g" and self.probe_verdict != "repeatable"
 
     @property
     def largest_dataset(self) -> dict | None:
@@ -468,18 +477,27 @@ def load_tier1(path: Path) -> Tier1:
     setup = report.get("setup") or {}
     keys = setup.get("keys") or {}
     next_step = report.get("next_step") or {}
-    metrics = probe_metrics(probe) if probe else {"verdict": "none"}
-    symptom = remedy = ""
-    if metrics["verdict"] == "none":
-        verdict = "none"
-    elif metrics["verdict"] != "ran":
-        verdict = "not-run"
-    elif metrics["stable"] and metrics["ordered"]:
-        verdict = "repeatable"
-    else:
-        verdict = "unreliable"
-        symptom = probe_symptom(metrics)
-        remedy = probe_remedy(metrics)
+    symptom = remedy = consequence = ""
+    # The stored probe is the one input to this reading the parent never
+    # validated: a malformed one reads as not run, so a stored all-clear over
+    # it is answered with a re-run rather than a traceback.
+    try:
+        metrics = probe_metrics(probe) if probe else {"verdict": "none"}
+        if metrics["verdict"] == "none":
+            verdict = "none"
+        elif metrics["verdict"] != "ran":
+            verdict = "not-run"
+            symptom = metrics.get("sentence", "")
+        elif metrics["ready"]:
+            verdict = "repeatable"
+        else:
+            verdict = "unreliable"
+            symptom = probe_symptom(metrics)
+            remedy = probe_remedy(metrics)
+            consequence = probe_consequence(metrics)
+    except (TypeError, AttributeError, ValueError, OverflowError, KeyError):
+        verdict, remedy, consequence = "not-run", "", ""
+        symptom = "its stored probe result could not be read"
 
     return Tier1(
         path=path,
@@ -496,6 +514,7 @@ def load_tier1(path: Path) -> Tier1:
         probe_verdict=verdict,
         probe_symptom=symptom,
         probe_remedy=remedy,
+        probe_consequence=consequence,
         model_ids=[str(item) for item in (setup.get("model_ids_declared") or [])],
         dataset_candidates=int(files.get("dataset_candidates") or 0),
         python_files=int(files.get("python_parsed") or 0),
@@ -532,10 +551,17 @@ def motivation(check_id: str, tier1: Tier1, run_id: str | None) -> str:
         )
     if check_id == "evaluator-quality":
         if tier1.probe_verdict == "unreliable":
+            # Only a scorer that scored every call is judged unreliable, or
+            # said to be repeat-scored; a failed or non-finite call leaves that
+            # not established.
+            judged = (
+                "repeat-scored your scorer and it is NOT reliable: it "
+                if tier1.probe_consequence == SCORER_MEASURED
+                else "probed your scorer and it "
+            )
             basis = (
-                "Tier 1 repeat-scored your scorer and it is NOT reliable: it "
-                f"{tier1.probe_symptom}, so a configuration comparison would be "
-                "measuring the scorer. First "
+                f"Tier 1 {judged}"
+                f"{tier1.probe_symptom}, so {tier1.probe_consequence}. Next: "
                 f"{tier1.probe_remedy}, with `traigent-eval-build`"
             )
         elif tier1.probe_verdict == "repeatable":
@@ -631,6 +657,20 @@ def motivation(check_id: str, tier1: Tier1, run_id: str | None) -> str:
             "tuning moves the score is the one question only a real run answers."
         )
     if check_id == "stop-here":
+        if tier1.stale_all_clear:
+            # A not-run symptom is already a whole clause naming its subject.
+            symptom = tier1.probe_symptom if tier1.probe_verdict == "not-run" else (
+                f"the scorer {tier1.probe_symptom}"
+            )
+            root = shlex.quote(tier1.root) if tier1.root else "<project>"
+            return (
+                "This report records the all-clear, but its own scorer probe does "
+                f"not support it{f' ({symptom})' if tier1.probe_symptom else ''} — "
+                "it was written by an older audit or edited. Re-run the free audit "
+                "before anything else, with the same options you used before (for "
+                "example --scorer, --dataset, --repeats): audit_project.py --root "
+                f"{root} --json {shlex.quote(str(tier1.path))}"
+            )
         return (
             "Tier 1 named a local next step and it is still open: "
             f"{tier1.next_step_line or 'not recorded'} Every reader above needs a "
@@ -679,7 +719,9 @@ def recommended_id(tier1: Tier1, run_id: str | None,
                    offered: list[str]) -> str | None:
     """One recommendation, chosen by Tier 1's own ladder.
 
-    Two rules, in this order:
+    A stored all-clear that the report's own probe evidence does not support
+    (``Tier1.stale_all_clear``) is answered first, in either mode: re-run the
+    audit. Then two rules, in this order:
 
     1. With a completed run in hand, read it — a scorer nobody trusts is read
        about before a dataset is grown, because the dataset would otherwise be
@@ -691,6 +733,8 @@ def recommended_id(tier1: Tier1, run_id: str | None,
        still abstain. `plan` is recommended only when Tier 1 found nothing left
        to fix locally, which is exactly when sizing a first run is the question.
     """
+    if tier1.stale_all_clear and "stop-here" in offered:
+        return "stop-here"
     if run_id:
         if tier1.branch in {"d", "e"} and "evaluator-quality" in offered:
             return "evaluator-quality"
@@ -1402,7 +1446,7 @@ def render_card(check: Check, tier1: Tier1, run_id: str | None, backend_url: str
     lines.append(f"Stop rule           : {check.stop_rule}")
     if check.id == "stop-here":
         lines.append(
-            "How to take it      : do nothing here. Act on the Tier 1 next step "
+            "How to take it      : do nothing here. Act on the local next step "
             "quoted above; this card needs no approval, and `--approve "
             "stop-here` is an error."
         )

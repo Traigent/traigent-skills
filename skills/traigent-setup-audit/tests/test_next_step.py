@@ -10,11 +10,14 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 
 import pytest
+from conftest import strict_json
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 SCRIPT = SCRIPTS_DIR / "audit_project.py"
@@ -45,17 +48,33 @@ ALL_ROUTED_SKILLS = {
 # --------------------------------------------------------------------------
 
 
-def _run(root: Path, out_dir: Path):
+def _run(root: Path, out_dir: Path, *extra: str):
     report_path = out_dir / "report.json"
     completed = subprocess.run(
-        [sys.executable, str(SCRIPT), "--root", str(root), "--json", str(report_path)],
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(root),
+            "--json",
+            str(report_path),
+            *extra,
+        ],
         capture_output=True,
         text=True,
         timeout=300,
         check=False,
     )
     assert completed.returncode == 0, completed.stderr
-    return json.loads(report_path.read_text(encoding="utf-8")), completed.stdout
+    return strict_json(report_path.read_text(encoding="utf-8")), completed.stdout
+
+
+def _variant(tmp_path: Path, scorer_src: str) -> Path:
+    """The healthy fixture with its scorer replaced: one changed file per case."""
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    (root / "scorer.py").write_text(scorer_src, encoding="utf-8")
+    return root
 
 
 @pytest.mark.parametrize(
@@ -522,3 +541,467 @@ def test_interpreter_probe_order_is_venv_then_venv_traigent(tmp_path: Path) -> N
     preferred.write_text("")
     assert audit.project_interpreter(root) == str(preferred)
     assert audit.project_interpreter(tmp_path / "empty") == sys.executable
+
+
+# --------------------------------------------------------------------------
+# what the scorer probe may conclude from a partial or non-numeric outcome
+# --------------------------------------------------------------------------
+
+PROBE_CONDITIONS = "rule out the probe's own conditions"
+NOT_ESTABLISHED = (
+    "so it is not established that a run would get a usable score for every row"
+)
+
+
+def _three_way(
+    good: str = "return 1.0",
+    partial: str = "return 0.5",
+    bad: str = "return 0.0",
+    head: str = "",
+) -> str:
+    """The healthy fixture's exact-match scorer, one statement per probe case.
+
+    The probe calls it with (good, good), (good minus its last word, good) and
+    (an unrelated row's answer, good), so each branch below is one case.
+    """
+    return (
+        f"{head}def score(output, expected):\n"
+        f"    if output == expected:\n        {good}\n"
+        f"    if expected.startswith(output):\n        {partial}\n"
+        f"    {bad}\n"
+    )
+
+
+RAISE_ON_PARTIAL = _three_way(partial="raise RuntimeError('partial')")
+QUALITY_VALUE = (
+    "def quality_value(answer, reference):\n"
+    "    return 1.0 if answer == reference else 0.0\n"
+)
+
+REPROS = {
+    "healthy": (_three_way(), None, "ok", "g"),
+    "posinf": (_three_way(good="return float('inf')"), None, "attention", "d"),
+    "partial_raise": (RAISE_ON_PARTIAL, None, "attention", "d"),
+    "renamed": (QUALITY_VALUE, "quality_value", "ok", "g"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(REPROS))
+def test_issue_repros_agree_end_to_end(case: str, tmp_path: Path) -> None:
+    """The JSON, the area and the next step tell one story for each issue."""
+    source, selector, status, branch = REPROS[case]
+    root = _variant(tmp_path, source)
+    extra = ("--scorer", f"{root}/scorer.py:{selector}") if selector else ()
+    report, card = _run(root, tmp_path, *extra)
+    assert report["areas"]["scorer"]["status"] == status
+    assert report["next_step"]["branch"] == branch
+    assert report["next_step"]["line"] in card
+    if branch != "g":
+        assert "all check out" not in card
+        assert "ordered as expected" not in card
+    if selector:
+        assert report["scorers"][0]["function"] == selector
+        assert report["scorers"][0]["selected"] is True
+        assert f"probed `{selector}` at scorer.py:" in card
+
+
+NON_FINITE = {
+    "nan": (_three_way(good="return float('nan')"), 1),
+    "posinf": (_three_way(good="return float('inf')"), 1),
+    "neginf": (
+        _three_way(partial="return float('-inf')", bad="return float('-inf')"),
+        2,
+    ),
+    "nan_all": (_three_way(*["return float('nan')"] * 3), 3),
+    # Teeth: a finite number outside 0..1 is a score, not a defect.
+    "finite_control": (_three_way(good="return 2.0"), 0),
+}
+
+
+@pytest.mark.parametrize("case", sorted(NON_FINITE))
+def test_non_finite_scores_never_reach_the_all_clear(case: str, tmp_path: Path) -> None:
+    source, withheld = NON_FINITE[case]
+    report, card = _run(_variant(tmp_path, source), tmp_path)
+    text = (tmp_path / "report.json").read_text(encoding="utf-8")
+    assert "Infinity" not in text
+    assert "NaN" not in text
+    marked = [e for e in report["scorer_probe"]["errors"] if e.get("non_finite")]
+    assert len(marked) == withheld, report["scorer_probe"]
+    if not withheld:
+        assert report["next_step"]["branch"] == "g"
+        assert report["areas"]["scorer"]["status"] == "ok"
+        return
+    assert all(error["error_type"] is None for error in marked)
+    assert report["next_step"]["branch"] == "d"
+    assert report["areas"]["scorer"]["status"] == "attention"
+    line = report["next_step"]["line"]
+    assert (
+        f"{withheld} probe call(s) returned a value that is not a finite number"
+        in line
+    )
+    assert "make it return a finite number" in line
+    assert "not a finite number" in card
+
+
+MIXED = {
+    "partial_raise": RAISE_ON_PARTIAL,
+    "good_raise_repeat": _three_way(
+        head="CALLS = []\n\n\n",
+        good="CALLS.append(1)\n"
+        "        if len(CALLS) > 1:\n"
+        "            raise RuntimeError('repeat')\n"
+        "        return 1.0",
+    ),
+    # 10**400 is finite; float() of it raises OverflowError in the probe.
+    "hugeint_good": _three_way(good="return 10**400"),
+    # None is not a number, so the probe raises TypeError for that call.
+    "none_on_partial": _three_way(partial="return None"),
+    # A return the probe does not read, on the exact match only.
+    "np_float32_good": _three_way(
+        good="return np.float32(1.0)", head="import numpy as np\n\n\n"
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(MIXED))
+def test_mixed_outcomes_go_to_d_with_neutral_wording(case: str, tmp_path: Path) -> None:
+    """Some calls scored and some raised: report what was observed, name the
+    probe's own conditions first, and claim no cause."""
+    if case.startswith("np_"):
+        pytest.importorskip("numpy")
+    report, card = _run(_variant(tmp_path, MIXED[case]), tmp_path)
+    line = report["next_step"]["line"]
+    assert report["next_step"]["branch"] == "d"
+    assert "scored some probe calls and 1 probe call(s) raised" in line
+    assert NOT_ESTABLISHED in line
+    assert PROBE_CONDITIONS in line
+    assert line.index(PROBE_CONDITIONS) < line.index("traigent-eval-build")
+    # The remedy names the return values the probe reads, and states only
+    # conditions the probe really has.
+    assert "reads a return value only as" in line
+    assert "described under Safety in the traigent-setup-audit skill" in line
+    assert "has no network access" not in line
+    meaning = report["areas"]["scorer"]["meaning"]
+    assert meaning.startswith("Not every probe call produced a finite score")
+    assert "returns different numbers for the same pair" not in meaning
+    for phrase in ("measuring the scorer", "convention", "ordered as expected"):
+        assert phrase not in card
+    if case == "good_raise_repeat":
+        assert "returned one identical score" not in card
+
+
+EVERY_CALL = {
+    "all_raise": (_three_way(*["raise RuntimeError('always')"] * 3), "RuntimeError"),
+    "async": ("async def score(output, expected):\n    return 1.0\n", "TypeError"),
+    "acc_dict": (_three_way(*["return {'accuracy': 1.0}"] * 3), "TypeError"),
+    "hugeint_all": (_three_way(*["return 10**400"] * 3), "OverflowError"),
+    "np_int64": (
+        _three_way(*["return np.int64(1)"] * 3, head="import numpy as np\n\n\n"),
+        "TypeError",
+    ),
+    "np_float32": (
+        _three_way(*["return np.float32(1.0)"] * 3, head="import numpy as np\n\n\n"),
+        "TypeError",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(EVERY_CALL))
+def test_every_call_failure_keeps_branch_e(case: str, tmp_path: Path) -> None:
+    """Pinned as today's routing: nothing scored, so nothing was measured."""
+    source, raised = EVERY_CALL[case]
+    if case.startswith("np_"):
+        pytest.importorskip("numpy")
+    report, card = _run(_variant(tmp_path, source), tmp_path)
+    assert report["next_step"]["branch"] == "e"
+    assert report["areas"]["scorer"]["status"] == "attention"
+    assert f"every probe call raised {raised}" in card
+
+
+def test_a_non_ascii_exception_class_is_kept_and_routes_to_d(tmp_path: Path) -> None:
+    """A type name the report cannot carry is withheld; the record is not."""
+    source = _three_way(
+        head="class Échec(Exception):\n    pass\n\n\n",
+        partial="raise Échec('partial')",
+    )
+    report, card = _run(_variant(tmp_path, source), tmp_path)
+    errors = report["scorer_probe"].get("errors")
+    assert isinstance(errors, list) and len(errors) == 1, report["scorer_probe"]
+    assert errors[0]["case"] == "partial"
+    assert errors[0]["error_type"] is None
+    assert re.fullmatch(r"scorer\.py:\d+", errors[0]["error_site"] or "")
+    assert report["next_step"]["branch"] == "d"
+    assert re.search(r"raised an error at scorer\.py:\d+", card), card
+
+
+SELECTIONS = {
+    # case: (scorer.py, --scorer function, entry flagged selected, branch, status)
+    "inventoried": (
+        _three_way() + "\n\ndef evaluate_other(output, expected):\n    return 0.0\n",
+        "score",
+        "score",
+        "g",
+        "ok",
+    ),
+    "private": (
+        _three_way().replace("def score(", "def _score("),
+        "_score",
+        "_score",
+        "g",
+        "ok",
+    ),
+    "refused": (
+        "import subprocess\n\n\n" + QUALITY_VALUE,
+        "quality_value",
+        "quality_value",
+        "e",
+        "attention",
+    ),
+    "missing_with_inventory": (_three_way(), "nope", None, "e", "attention"),
+    "missing_empty_inventory": (QUALITY_VALUE, "nope", None, "c", "attention"),
+    # Bound by the module however it is nested in its top-level statements:
+    # the probe loaded and scored it, so it is a found scorer.
+    "in_try": (
+        "try:\n"
+        "    def quality_value(answer, reference):\n"
+        "        return 1.0 if answer == reference else 0.0\n"
+        "except ImportError:\n    pass\n",
+        "quality_value",
+        "quality_value",
+        "g",
+        "ok",
+    ),
+    "in_if": (
+        "if True:\n"
+        "    def quality_value(answer, reference):\n"
+        "        return 1.0 if answer == reference else 0.0\n",
+        "quality_value",
+        "quality_value",
+        "g",
+        "ok",
+    ),
+    # Refused, so never loaded: found by name is enough to count it.
+    "refused_method": (
+        "import subprocess\n\n\nclass C:\n"
+        "    def quality_value(self, a, b):\n        return 1.0\n",
+        "quality_value",
+        "quality_value",
+        "e",
+        "attention",
+    ),
+    # Found by name, so present, though the probe's loader cannot bind it: the
+    # card shows that real probe failure instead of "no scorer found".
+    "rebound": (
+        QUALITY_VALUE + "\n\nquality_value = None\n",
+        "quality_value",
+        "quality_value",
+        "e",
+        "attention",
+    ),
+    "method": (
+        "class C:\n    def quality_value(self, a, b):\n        return 1.0\n",
+        "quality_value",
+        "quality_value",
+        "e",
+        "attention",
+    ),
+    "nested": (
+        "def outer():\n    def quality_value(a, b):\n        return 1.0\n",
+        "quality_value",
+        "quality_value",
+        "e",
+        "attention",
+    ),
+    "main_guard": (
+        'if __name__ == "__main__":\n'
+        "    def quality_value(a, b):\n        return 1.0\n",
+        "quality_value",
+        "quality_value",
+        "e",
+        "attention",
+    ),
+    # The module's own LookupError at import is not the loader's "not bound".
+    "lookup_at_import": (
+        "raise LookupError('at import')\n\n\n" + QUALITY_VALUE,
+        "quality_value",
+        "quality_value",
+        "e",
+        "attention",
+    ),
+}
+LOAD_FAILURES = {"rebound", "method", "nested", "main_guard", "lookup_at_import"}
+
+
+@pytest.mark.parametrize("case", sorted(SELECTIONS))
+def test_explicit_selection(case: str, tmp_path: Path) -> None:
+    source, function, selected, branch, status = SELECTIONS[case]
+    root = _variant(tmp_path, source)
+    report, card = _run(root, tmp_path, "--scorer", f"{root}/scorer.py:{function}")
+    assert report["next_step"]["branch"] == branch
+    assert report["areas"]["scorer"]["status"] == status
+    flagged = [entry for entry in report["scorers"] if "selected" in entry]
+    assert [entry["function"] for entry in flagged] == ([selected] if selected else [])
+    assert all(entry["selected"] is True for entry in flagged)
+    assert all(entry["line"] > 0 for entry in flagged)
+    skipped = {item["function"] for item in report["skipped_scorer_candidates"]}
+    assert function not in skipped
+    if case == "inventoried":
+        assert {e["function"] for e in report["scorers"]} == {"score", "evaluate_other"}
+    if case == "refused":
+        assert "was selected with --scorer and refused" in card
+        assert "1 scorer(s) were found (1 executing)" in report["next_step"]["line"]
+    if case.startswith("missing"):
+        assert "the function was not found in the module" in card
+    if branch == "c":
+        assert report["scorers"] == []
+    if case in LOAD_FAILURES:
+        assert report["scorer_probe"]["stage"] == "load"
+        assert "raised LookupError" in card
+        assert "while loading, so it never ran" in card
+
+
+@pytest.mark.parametrize(
+    "literal",
+    ["[0.0, 1e999]", "Choices(0.0, 1e999)", '[0.0, {"t": 1e999}]'],
+    ids=["list", "choices", "dict"],
+)
+def test_a_non_finite_knob_value_is_reported_as_unreadable(
+    literal: str, tmp_path: Path
+) -> None:
+    """`1e999` parses to inf, which strict JSON cannot carry: the knob is
+    listed without values, and the report is still written."""
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    agent = root / "agent.py"
+    source = agent.read_text(encoding="utf-8")
+    widened = source.replace('"temperature": [0.0, 0.7]', f'"temperature": {literal}')
+    assert widened != source
+    agent.write_text(widened, encoding="utf-8")
+    report, card = _run(root, tmp_path)
+    assert "Infinity" not in (tmp_path / "report.json").read_text(encoding="utf-8")
+    knobs = {
+        knob["name"]: knob
+        for entry in report["entry_points"]
+        for knob in entry["knobs"]
+    }
+    assert knobs["temperature"]["values_readable"] is False
+    assert knobs["temperature"]["values"] == []
+    assert knobs["top_k"]["values_readable"] is True
+    assert "has values the audit could not read" in card
+
+
+@pytest.mark.parametrize("target", ["existing_file", "missing_dir"])
+def test_a_report_that_cannot_be_strict_json_is_not_written(
+    target: str, tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """The backstop for a non-finite number from any other source: refuse
+    the whole report rather than write `Infinity`, and write nothing."""
+    # Run in-process without patching this test process's sockets.
+    monkeypatch.setattr(audit, "install_network_guard", lambda: None)
+    monkeypatch.setattr(audit, "verify_network_guard", lambda: "active")
+    real_build_report = audit.build_report
+
+    def build_report(*args, **kwargs) -> dict:
+        report = real_build_report(*args, **kwargs)
+        report["poisoned"] = float("inf")
+        return report
+
+    monkeypatch.setattr(audit, "build_report", build_report)
+    if target == "existing_file":
+        out = tmp_path / "report.json"
+        out.write_text('"sentinel"\n', encoding="utf-8")
+    else:
+        out = tmp_path / "not-yet" / "report.json"
+    code = audit.main(["--root", str(FIXTURES / "healthy"), "--json", str(out)])
+    captured = capsys.readouterr()
+    assert code == 2, captured.out
+    assert captured.err.startswith("audit_project.py:"), captured.err
+    assert "## Next step" not in captured.out
+    if target == "existing_file":
+        assert out.read_text(encoding="utf-8") == '"sentinel"\n'
+    else:
+        assert not out.parent.exists()
+
+
+def test_readiness_is_one_predicate() -> None:
+    """The area status, the next step and Tier 2 read the same `ready`."""
+    inventory = _inventory([_entry([_knob("model", "read")])], [_scorer()])
+    datasets = [_dataset(80, 40)]
+
+    def step(probe: dict) -> dict:
+        return audit.next_step(inventory, datasets, probe, _scorer())
+
+    cases = ("good", "partial", "bad")
+    assert audit.probe_metrics(GOOD_PROBE).get("ready") is True
+    assert audit.summarize_probe(GOOD_PROBE)[0] == "ok"
+    assert step(GOOD_PROBE)["branch"] == "g"
+
+    raised = {
+        "ran": True,
+        "scores": {"good": [1.0, 1.0], "partial": [], "bad": [0.0]},
+        "errors": [
+            {"case": "partial", "error_type": "RuntimeError", "error_site": "scorer.py:6"}
+        ],
+    }
+    assert step(raised)["branch"] == "d"
+    assert audit.probe_metrics(raised)["ready"] is False
+    assert audit.summarize_probe(raised)[0] == "attention"
+
+    every_call_raised = {
+        "ran": True,
+        "scores": {case: [] for case in cases},
+        "errors": [
+            {"case": case, "error_type": "RuntimeError", "error_site": "scorer.py:2"}
+            for case in cases
+        ],
+    }
+    assert step(every_call_raised)["branch"] == "e"
+
+    withheld = {
+        "ran": True,
+        "scores": {case: [] for case in cases},
+        "errors": [
+            {"case": case, "error_type": None, "error_site": None, "non_finite": True}
+            for case in cases
+        ],
+    }
+    assert step(withheld)["branch"] == "d"
+    assert "make it return a finite number" in step(withheld)["line"]
+
+    # No error recorded, yet the partial case has no score: an honest probe
+    # never produces that, so it is read as a malformed result.
+    incomplete = {
+        "ran": True,
+        "scores": {"good": [1.0, 1.0], "partial": [], "bad": [0.0]},
+        "errors": [],
+    }
+    metrics = audit.probe_metrics(incomplete)
+    assert (metrics["verdict"], metrics.get("stage")) == ("failed", "tampered-result")
+    assert step(incomplete)["branch"] == "e"
+
+    # A stored report can still hold inf scores with no error, and inf > 0.5
+    # would otherwise read as stable and ordered.
+    infinite = {
+        "ran": True,
+        "scores": {"good": [float("inf")] * 5, "partial": [0.5], "bad": [0.0]},
+        "errors": [],
+    }
+    metrics = audit.probe_metrics(infinite)
+    assert (metrics["stable"], metrics["ordered"]) == (True, True)
+    assert (metrics["finite"], metrics["ready"]) == (False, False)
+    status, evidence = audit.summarize_probe(infinite)
+    assert status == "attention"
+    assert not any("ordered as expected" in line for line in evidence)
+    assert step(infinite)["branch"] == "d"
+
+    # An older parent dropped error records it could not name, leaving only a
+    # count: complete-looking scores with a dropped key are not complete.
+    legacy = {
+        "ran": True,
+        "scores": {"good": [1.0], "partial": [0.5], "bad": [0.0]},
+        "dropped_keys": 1,
+    }
+    metrics = audit.probe_metrics(legacy)
+    assert (metrics["verdict"], metrics.get("stage")) == ("failed", "tampered-result")
+    assert step(legacy)["branch"] == "e"
+    assert audit.probe_metrics({**legacy, "dropped_keys": 0})["ready"] is True

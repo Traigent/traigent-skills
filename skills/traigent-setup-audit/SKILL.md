@@ -88,11 +88,16 @@ python3 <skill-dir>/scripts/audit_project.py \
 - `--json` writes the same report as machine-readable JSON.
 - `--dataset` audits one file instead of searching the tree.
 - `--scorer FILE.py:FUNCTION` picks which scorer to probe. Without it the audit
-  probes a scorer only when exactly one deterministic candidate was found.
+  probes a scorer only when exactly one deterministic candidate was found. A
+  function named this way counts as a found scorer even when its name or
+  signature is outside the search, and its `scorers` entry carries
+  `selected: true`; one the audit cannot find by name, or the probe cannot
+  load by that name, is not counted, as before.
 - `--repeats` is how many times the same pair is re-scored (default 5).
 
 Exit code is `0` whenever the audit ran, whatever it found, and `2` on a usage
-error. A finding is not a failure.
+error or when the report cannot be written as strict JSON (then nothing is
+written). A finding is not a failure.
 
 ## What it checks
 
@@ -165,8 +170,8 @@ would be measured with is still unreliable:
 | no `@traigent.optimize` anywhere | `traigent-setup-quickstart`, then `traigent-setup-decorator` |
 | a decorated function with no knobs, or no knob its body reads | `traigent-optimize-config-space` |
 | no scorer found | `traigent-eval-build` |
-| the probed scorer is not repeatable, or ranks a known-bad answer above a known-good one | `traigent-eval-build`, then `traigent-eval-audit` |
-| a scorer exists but none could be measured here | `traigent-eval-audit` |
+| the probed scorer is not repeatable, ranks a known-bad answer above a known-good one, had some probe calls raise while others scored, or returned a non-finite number | `traigent-eval-build`, then `traigent-eval-audit` |
+| a scorer exists but none could be measured here (including one that raised on every probe call or returned something that is not a number) | `traigent-eval-audit` |
 | no evaluation dataset found | `traigent-dataset-curate` |
 | a dataset with any row that has no `input`/`input_data` key | `traigent-dataset-curate` |
 | a dataset under the tuning or holdout minimum | `traigent-dataset-curate` |
@@ -271,7 +276,10 @@ uses: with a run in hand, an unreliable scorer is read about before a dataset is
 grown, because the dataset would otherwise be measured with that scorer. With no
 run in hand and a local fix still open, **the recommended card is `stop-here`** —
 recommending a reader then would be recommending a paid run whose only purpose is
-to make an analysis service answer, and it may still abstain. **Stopping after
+to make an analysis service answer, and it may still abstain. A stored all-clear
+that the report's own probe evidence does not support (for example, one written
+by an older audit) also gets `stop-here`, with the command to re-run the audit.
+**Stopping after
 Tier 1 is always a valid option and the offer says so. Silence is not approval** —
 nothing runs until `--approve` names it.
 
@@ -527,7 +535,10 @@ that its zero-network property stays provable rather than inherited.
   says so.
 - A failure inside your scorer is reported as the exception TYPE and a
   `file:line`. Its message and the process's stderr are never relayed, because
-  both have been observed carrying an API key.
+  both have been observed carrying an API key. A type name the report cannot
+  carry is shown as "an error" with its location. When some probe calls score
+  and others raise, the next step names the probe's own conditions before the
+  scorer, without claiming which caused it.
 - A key value is never read, shown or stored — only whether a known key **name**
   is set, and in which file it is declared.
 - The scorer probe runs with only an allowlisted environment: `PATH`, `HOME`,
@@ -536,6 +547,11 @@ that its zero-network property stays provable rather than inherited.
   the probe and is reported by type and location. This is not a filesystem
   boundary: files under your home directory and the project, a `.env` included,
   stay readable to the scorer.
+- The probe loads the scorer's file on its own (`runpy.run_path`, with that
+  file's directory on `sys.path`), so a package-relative import (`from . import
+  x`) fails there. It runs in the directory the audit was started from, not the
+  project's. Under `isolated (bwrap)` the filesystem is read-only apart from an
+  empty `/tmp` (a project under `/tmp` is bound back in, read-only).
 - Anything in the second tier — every paid call and every byte that leaves the
   machine — waits for an explicit approval. Silence is not approval. Offer mode
   runs under the same network guard as Tier 1 and reports the level it had, so
