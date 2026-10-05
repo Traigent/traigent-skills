@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.27"
+  version: "1.0.28"
 ---
 
 # Traigent Quickstart
@@ -284,19 +284,13 @@ Backend-connected features (the default cloud smart optimizer, dataset synthesis
 2. In your project settings, go to **API Keys → Create key** and choose **Full access**. The dialog's default preset is **read-only**: a read-only key is refused at session creation (nothing spent), or, if accepted and then rejected mid-run, drops the run to local-only tracking while it keeps spending.
 3. The key is `user`-type with the `uk_` prefix; with full access it covers SDK optimizations and analytics.
 
-```bash
-export TRAIGENT_API_KEY="uk_..."   # portal keys use the uk_ prefix
-```
+Put the key in `.env` via [Using a .env File](#using-a-env-file) (its checks run before any key is written); don't type it into an `export` at a shell prompt, which keeps it in shell history.
 
 ### CLI device-authorization key (project-scoped)
 
 The CLI device-flow issues a project-scoped `sk_`-prefixed key with broader permissions (quota, dataset management, full project access). Use this when you need project-level operations beyond experiments.
 
-Run `traigent auth login` in your terminal — it opens a browser for OAuth device authorization. The key is saved to your encrypted local credential store at `~/.traigent/secure_credentials.enc` (secured with `TRAIGENT_MASTER_PASSWORD`); the legacy plaintext `~/.traigent/credentials.json` is no longer read unless `TRAIGENT_ALLOW_PLAINTEXT_CREDENTIALS=true` is set for a one-time migration. Then export it:
-
-```bash
-export TRAIGENT_API_KEY="sk_..."
-```
+Run `traigent auth login` in your terminal — it opens a browser for OAuth device authorization. The key is saved to your encrypted local credential store at `~/.traigent/secure_credentials.enc` (secured with `TRAIGENT_MASTER_PASSWORD`); the legacy plaintext `~/.traigent/credentials.json` is no longer read unless `TRAIGENT_ALLOW_PLAINTEXT_CREDENTIALS=true` is set for a one-time migration. If a process needs it as `TRAIGENT_API_KEY`, put it in `.env` the same way — not in an `export` typed at a shell prompt.
 
 **Which key to use?** A Full-access portal key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
@@ -319,7 +313,7 @@ For a run the user approved *as* managed optimization, set `TRAIGENT_REQUIRE_CLO
 > Portal-issued API keys use the `uk_...` prefix.
 >
 > ```bash
-> export TRAIGENT_API_KEY="uk_..."                              # portal-issued key
+> # TRAIGENT_API_KEY: put it in .env via "Using a .env File" below, not in an export here
 > export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"     # optional: cloud is already the default
 > ```
 
@@ -368,13 +362,53 @@ e.g. from a pytest fixture/conftest, for new setups.
 
 ### Using a .env File
 
-Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). The SDK does **not** read your project's `.env` (it only looks beside its own installed package); whether `litellm`'s import happens to find yours depends on where the venv sits. Create a `.env` file in your project root:
+Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). The SDK does **not** read your project's `.env` (it only looks beside its own installed package); whether `litellm`'s import happens to find yours depends on where the venv sits. Before any key goes into `.env`, run this from the project root. It writes nothing unless `.env` is absent or a regular file and, inside Git, untracked and ignored by the repository's own rules (a global excludes file does not count) or, outside Git, already listed in `./.gitignore`; then it leaves `.env` at mode 0600:
+
+```bash
+(
+  if [ -n "${GIT_DIR-}" ] || [ -n "${GIT_WORK_TREE-}" ]; then
+    echo "STOP: GIT_DIR or GIT_WORK_TREE is set; unset them and rerun" >&2; exit 1
+  fi
+  in_git=no; d=$(pwd -P)
+  while :; do
+    if [ -e "$d/.git" ]; then in_git=yes; break; fi
+    [ -n "$d" ] || break
+    d=${d%/*}
+  done
+  if [ "$in_git" = yes ] && [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]; then
+    echo "STOP: could not confirm the Git state; is git installed, and is this repo owned by you?" >&2; exit 1
+  fi
+  if [ -L .env ] || { [ -e .env ] && [ ! -f .env ]; }; then
+    echo "STOP: .env is a symlink or not a regular file; replace it with a plain file" >&2; exit 1
+  fi
+  if [ "$in_git" = yes ]; then
+    rc=0; git ls-files --error-unmatch -- .env >/dev/null 2>&1 || rc=$?
+    case $rc in
+      1) ;;  # untracked: the only safe answer
+      0) echo "STOP: .env is tracked by Git; untrack it before adding keys" >&2; exit 1 ;;
+      *) echo "STOP: could not check whether .env is tracked" >&2; exit 1 ;;
+    esac
+    git -c core.excludesFile=/dev/null check-ignore -q -- .env || {
+      echo "STOP: this repo's own rules do not ignore .env; add /.env to the .gitignore next to it" >&2; exit 1; }
+  elif ! grep -Eq '^[[:space:]]*/?\.env[[:space:]]*$' .gitignore 2>/dev/null; then
+    echo "STOP: not in a Git repo and ./.gitignore has no .env line; add /.env to .gitignore" >&2; exit 1
+  fi
+  umask 077
+  touch .env && chmod 600 .env
+)
+```
+
+Continue only if it exits 0. If it stops, follow its message — usually add a `/.env` line to the `.gitignore` in the folder that holds `.env` (or untrack the file) — and rerun. Outside a Git repository it runs no Git command but requires `./.gitignore` to already list `.env` (a `.env` or `/.env` line), so a later `git init && git add -A` cannot stage the key; it reads that file and never edits it. It also stops, instead of guessing, when `GIT_DIR` or `GIT_WORK_TREE` is set, when a `.git` exists here or in a parent folder but Git cannot confirm the repository (git not installed, or a repository owned by another user), and when `.env` is a symlink or not a regular file.
+
+Then the `.env` file in your project root (only after the checks pass):
 
 ```
 TRAIGENT_API_KEY=uk_...   # portal key; use your sk_... key here if you used the CLI device flow
 OPENAI_API_KEY=sk-...
 TRAIGENT_DEBUG=1
 ```
+
+Shell commands do not read `.env` either. For a CLI command that needs a key (such as `traigent plan`), load the file into the current shell with `set -a; . ./.env; set +a` — no key is typed, so none lands in shell history. It runs `.env` as shell code: use it only for a `.env` written as plain `KEY=value` lines.
 
 #### Recommended: have the user paste keys into `.env`, never into the chat
 
@@ -383,8 +417,13 @@ conversation — it would be captured in the agent transcript, logs, and context
 `.env` file for them to paste into directly. This is both **more secure** (the raw key
 never touches the chat) and **better UX** (they see exactly where it goes). Procedure:
 
-1. **Create the file** from the project template if one exists (`cp .env.example .env`),
-   otherwise create a minimal `.env` with key *names* pre-filled and values blank, so the
+1. **Check first, then fill the file.** Before writing anything, run the check block in
+   [Using a .env File](#using-a-env-file) from the project root and continue only if it
+   exits 0; a key pasted into a tracked or un-ignored file is already the state that block
+   exists to prevent. On success `.env` exists as a plain file at mode 0600. If it is still
+   empty (`[ ! -s .env ]`), write the project template into it if one exists
+   (`cat .env.example > .env` — a redirect into the existing file keeps mode 0600), otherwise
+   write a minimal template with key *names* pre-filled and values blank, so the
    user only pastes after each `=`:
    ```
    TRAIGENT_API_KEY=
@@ -395,10 +434,6 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    ```
 2. **Always show the user the absolute path** (e.g. `/home/me/proj/.env`). This is the
    guaranteed fallback — they can open it in their own editor no matter what happens next.
-   Before any key is pasted, run `chmod 600 .env`, `git ls-files --error-unmatch -- .env`
-   (must exit 1 — a tracked `.env` stays tracked whatever `.gitignore` says) and
-   `git check-ignore -q -- .env` (must exit 0); a key pasted into a tracked file is already
-   the state these checks exist to prevent.
 3. **Best-effort: pop the file open in a _standalone_ editor window, launched _detached_.**
    Pick the launcher by OS; never wrap it in `timeout`:
    - **Linux:** `setsid -f gnome-text-editor "$ENV"` — or the first of
@@ -420,20 +455,14 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    Bedrock), **ask the user which provider(s)** and label the matching key(s) in `.env`.
 5. **Wait** for the user to paste and save.
 6. **Fallback:** if no standalone editor opens (or the user says no window appeared), have
-   them open the printed path manually; only as a last resort use a terminal `export VAR=...`
-   (less private than the file).
+   them open the printed path manually. Never have them type a key into a shell `export`
+   (it stays in shell history).
 
 > Never echo, log, or read back the key value. `.env` must be git-ignored — never commit real keys.
 
 ### Production Mode
 
-For production, set your provider API keys and don't call `enable_mock_mode_for_quickstart()`:
-
-```bash
-export OPENAI_API_KEY=sk-...
-# or
-export ANTHROPIC_API_KEY=sk-ant-...
-```
+For production, set your provider API keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, ...) through the deployment's environment or secret store, never typed at an interactive prompt. For local runs, put them in `.env` via [Using a .env File](#using-a-env-file) and call `load_dotenv()` before creating the provider client. Don't call `enable_mock_mode_for_quickstart()`.
 
 > **Before your first real run, verify your model IDs are live.** Provider catalogs change — a
 > delisted or renamed ID causes a 404 or a degraded/unpriced trial. Preflight with
