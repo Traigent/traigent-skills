@@ -3,7 +3,7 @@
   "doc_hash": "2afd60f6338b61b5",
   "reference_hashes": {
     "references/gate-workflow.md": "1c682ea2f7f932aa",
-    "references/in-run-safety.md": "6b0ff1bad7333974"
+    "references/in-run-safety.md": "b2555bc3020ce177"
   },
   "entries": [
     {
@@ -132,6 +132,15 @@
       "doc_before_hash": "290513e3fb2be53d",
       "doc_after_hash": "2afd60f6338b61b5",
       "note": "In-run safety_constraints is accepted since SDK 0.28.0 (see version-matrix: safety-constraints-impl): the section is now version-conditional (0.28.0+: soft, run-level statistical halt that does not filter trials, so an unsafe config can still be best_config; below 0.28.0: do not pass a non-empty value, it raises NotImplementedError at decoration time); new references/in-run-safety.md, floored at 0.28.0, with semantics, min_samples sizing and two runnable examples (violating run halts with stop_reason safety_constraint and best_config still set; fully compliant run also halts on insufficient evidence); states that optimize() applies best_config to the decorated function, so after a safety halt that instance already runs the winner: optimize in a separate candidate process and promote only through PromotionGate; the reference scopes the missing-metric default (hallucination_rate() preset 1.0, custom MetricKeyMetric 0.0); drops the stale 0.18.x stamp.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "safety-constraints-out-of-range-threshold-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "note": "references/in-run-safety.md only (SKILL.md unchanged): the Halt rule states that the `1 - v` / `v` required-compliance-rate formula assumes a [0, 1] metric. traigent 0.30.0 _required_compliance_rate (traigent/api/safety.py) returns 1.0 for a below()/</<= threshold outside [0, 1] and threshold.value unchanged for above(), so below(500) or above(5) requires a rate no finite-sample lower bound reaches and a fully compliant run halts at min_samples; hint to constrain a 0..1 metric or ratio instead.",
       "source_type": "agent"
     }
   ]

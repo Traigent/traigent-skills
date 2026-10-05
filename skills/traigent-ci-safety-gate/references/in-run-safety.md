@@ -27,6 +27,11 @@ the installed `traigent.__version__` before pointing a user at this recipe.
   with `OptimizationResult.stop_reason == "safety_constraint"` whenever the
   confidence lower bound on the share of compliant trials is below the
   required compliance rate: `1 - v` for `below(v)`, `v` for `above(v)`.
+  That formula assumes a metric on a [0, 1] scale: for `below(v)` with `v`
+  outside [0, 1] (for example a `below(500)` latency bar) the SDK requires a
+  compliance rate of `1.0`, and `above(v)` with `v > 1` requires `v`, which
+  no finite-sample lower bound reaches, so even a fully compliant run halts
+  at `min_samples`; constrain a 0..1 metric or ratio instead.
   This includes a run where every trial complied but there is not yet enough
   evidence: "not yet shown safe" halts the run the same way "shown unsafe"
   does.
