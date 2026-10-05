@@ -86,8 +86,29 @@ portal result history) need `TRAIGENT_API_KEY`, and the key must be **read + wri
 (`experiments:write`): with a read-only key the cloud optimizer and dataset synthesis get a 403 and
 the SDK silently falls back to local — the run never reaches portal history.
 
-- **If a key was pasted into this prompt** (a portal handed it to you), add it to this project's
-  `.env` as `TRAIGENT_API_KEY` (don't echo it) and continue.
+- **If a key was pasted into this prompt** (a portal handed it to you), write it to this project's
+  `.env` only after each check below has positively passed — they are based on the `.env` checks
+  in the `traigent-setup-quickstart` skill's "Using a .env File" section, made fail-closed here.
+  Any other result — another exit code, unexpected output, or a check you can't run — is a stop.
+  A stop here does not end setup: don't add the key, tell the user which check failed so they can
+  add it themselves, continue with step 4 (the keyless mock run), and render the summary box's
+  `⧗  TRAIGENT_API_KEY` line.
+  1. `.env` is a regular file, not a symbolic link: first, if `test -L .env` exits 0, `.env` is a
+     symbolic link — even a broken one, or one pointing at a tracked config file — so stop without
+     creating anything. Otherwise create it if it's missing, preserving any existing content, then
+     check `test -f .env && ! test -L .env` exits 0.
+  2. On macOS/Linux, and only after step 1 passed, set mode 0600 (`chmod 600 .env`).
+  3. The repository status is known: run `LC_ALL=C git rev-parse --is-inside-work-tree`. If it
+     prints `true`, run steps 4 and 5. Skip steps 4 and 5 only if it fails with exactly
+     `fatal: not a git repository (or any of the parent directories): .git` — there is nothing to
+     track or ignore. Any other result (e.g. a "dubious ownership", "parent up to mount point",
+     permission or config error) is a stop.
+  4. `.env` is untracked: `git ls-files --error-unmatch -- .env` exits 1. Git prints an
+     `error: pathspec` line and a hint — that is the expected, passing answer; judge by the exit
+     code, not the message. Exit 0 means `.env` is tracked: stop.
+  5. `.env` is git-ignored: `git check-ignore -q -- .env` exits 0. If it exits 1, add `/.env` once
+     to the `.gitignore` in the same directory as `.env` and re-run; it must then exit 0.
+  6. Then add the key as `TRAIGENT_API_KEY` without printing it, and continue.
 - **Otherwise**, prepare `.env` first, then send the user to create a key:
   1. Create this project's `.env` if it's missing, preserving any existing content. If
      `TRAIGENT_API_KEY` already has a non-empty value, keep it (don't overwrite) and skip creating a
@@ -121,6 +142,15 @@ Prove the whole pipeline end-to-end at **zero cost and zero egress** using the
 `@traigent.optimize`-decorated classifier that calls `enable_mock_mode_for_quickstart()` and passes
 `offline=True`), and runs `classify_ticket.optimize_sync(max_trials=4, algorithm="grid")`. Run it
 in the foreground and wait for the final line `TRAIGENT-DRY-RUN-OK`.
+
+The skills from step 1 may not be loaded in this session yet, so read the block from disk; reading a
+file does not need the skill loaded in this session. Search your agent's config directory (e.g.
+`~/.claude`, `~/.codex`, `~/.copilot`) or this project's skills folder for a path ending in
+`traigent-setup-quickstart/SKILL.md`. Prefer the installed plugin or skill directory over a
+marketplace checkout; if several copies exist, use the one step 1 just installed, or the newest
+installed version if you can't tell which that is. Use SKILL.md's
+"Literal First Run" block or the identical `references/literal-quickstart.sh` beside it. If you
+can't find either, stop and report.
 
 Then show the user the ranked results — the best config and the per-trial scores, for example:
 

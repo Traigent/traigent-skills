@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.5"
+  version: "1.2.6"
 ---
 
 # Traigent Analyze Guidance
@@ -209,8 +209,14 @@ service plan.
 The server needs a one-time setup: `pip install "traigent[mcp]>=0.19"` (already included
 in `traigent[recommended]`), then register the stdio command `traigent-analytics-mcp`
 with your coding assistant under the name `traigent-analytics`. The full steps are in
-`traigent-analyze-results` → "Prerequisites (one time)". If the `analytics_*` tools
-are not listed, the brief cannot be fetched.
+`traigent-analyze-results` → "Prerequisites (one time)", including what to do when the
+`analytics_*` tools are not listed: check whether `traigent-analytics` is already
+registered in this client's MCP config; register it only if it is not (never
+re-register), then have the user restart/reload the session or reconnect once and
+re-run the request. Registered but not listed means **not loaded yet**, not a fetch
+failure: don't retry the fetch; you can offer the run's portal deep-link meanwhile. If
+the tools are still not listed after that one restart, reload or reconnect, the brief
+cannot be fetched.
 
 This mode is inert without the backend payload. If the tool cannot fetch a
 service response, report that directly and stop unless the user asks you to
