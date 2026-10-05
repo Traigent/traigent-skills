@@ -1693,10 +1693,10 @@ def validate_probe_payload(payload: object) -> tuple[dict, int]:
     if isinstance(payload.get("network_blocked"), bool):
         clean["network_blocked"] = payload["network_blocked"]
         known += 1
-    if payload.get("network_guard") in GUARD_STATES:
+    if isinstance(payload.get("network_guard"), str) and payload["network_guard"] in GUARD_STATES:
         clean["network_guard"] = payload["network_guard"]
         known += 1
-    if payload.get("stage") in PROBE_STAGES:
+    if isinstance(payload.get("stage"), str) and payload["stage"] in PROBE_STAGES:
         clean["stage"] = payload["stage"]
         known += 1
 
@@ -1728,6 +1728,42 @@ def validate_probe_payload(payload: object) -> tuple[dict, int]:
     if "ran" not in clean:
         return {"ran": False, "stage": "tampered-result"}, len(payload)
     return clean, max(0, len(payload) - known)
+
+
+def validate_probe_evidence(payload: object, repeats: int | None = None) -> tuple[dict, int]:
+    """Validate measurements before either tier can use them as evidence.
+
+    The requested count is parent-owned. Older stored reports lack it, so their
+    types and completeness are checked without inventing a historical count.
+    Error-bearing results retain their existing repair-versus-not-run reading.
+    """
+    if not isinstance(payload, dict) or type(payload.get("ran")) is not bool:
+        raise ValueError("probe ran must be a boolean")
+    if repeats is not None and (type(repeats) is not int or repeats < 1):
+        raise ValueError("requested repeats must be a positive integer")
+    clean, dropped = validate_probe_payload(payload)
+    if payload["ran"]:
+        scores = clean.get("scores")
+        errors = clean.get("errors")
+        if not isinstance(scores, dict) or set(scores) != SCORE_CASES or errors is None:
+            raise ValueError("probe measurements are malformed")
+        if not errors:
+            good_count = len(scores["good"])
+            if (good_count != repeats if repeats is not None else good_count < 1):
+                raise ValueError("probe good count differs from requested repeats")
+            if len(scores["partial"]) != 1 or len(scores["bad"]) != 1:
+                raise ValueError("probe comparison cases are incomplete")
+    return clean, dropped
+
+
+def _unique_members(pairs: list[tuple[str, object]]) -> dict:
+    """Do not allow a later JSON member to erase earlier evidence."""
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate member in the probe result")
+        result[name] = value
+    return result
 
 
 def _refuse_constant(name: str) -> float:
@@ -1828,13 +1864,16 @@ def run_scorer_probe(
             "framed_result_lines": len(framed),
             "payload_source": source,
         }
+    parsed = None
     try:
         parsed = json.loads(
             framed[0],
             parse_constant=_refuse_constant,
             parse_float=_strict_float,
             parse_int=_strict_int,
+            object_pairs_hook=_unique_members,
         )
+        result, dropped = validate_probe_evidence(parsed, repeats)
     except ValueError:
         return {
             "ran": False,
@@ -1842,8 +1881,9 @@ def run_scorer_probe(
             "stderr_bytes": stderr_bytes,
             "framed_result_lines": 1,
             "payload_source": source,
+            "dropped_keys": validate_probe_payload(parsed)[1] if isinstance(parsed, dict) else 0,
         }
-    result, dropped = validate_probe_payload(parsed)
+    result["requested_repeats"] = repeats
     result["payload_source"] = source
     result["stderr_bytes"] = stderr_bytes
     result["framed_result_lines"] = 1

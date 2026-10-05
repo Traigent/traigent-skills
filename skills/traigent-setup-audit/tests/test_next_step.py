@@ -1042,7 +1042,11 @@ def test_two_files_that_differ_only_in_case_stay_separate(
     selected = [entry["file"] for entry in report["scorers"] if "selected" in entry]
     assert selected == ["scorer.py"]
     assert report["scorer_selection_refused"] is None
-    assert report["scorer_probe"] is not None
+    assert report["scorer_probe"]["ran"] is True
+    assert report["scorer_probe"]["scores"] == {
+        "good": [1.0] * 5, "partial": [0.5], "bad": [0.0]
+    }
+    assert report["next_step"]["branch"] == "g"
 
 
 def test_a_selection_symlinked_out_of_the_root_is_listed_once(

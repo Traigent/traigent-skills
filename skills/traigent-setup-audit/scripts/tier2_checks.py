@@ -54,12 +54,14 @@ if str(SCRIPT_DIR) not in sys.path:
 # The guard is imported, never copied: one implementation, one set of tests.
 from audit_project import (  # noqa: E402
     SCORER_MEASURED,
+    _unique_members,
     install_network_guard,
     printable_text,
     probe_consequence,
     probe_metrics,
     probe_remedy,
     probe_symptom,
+    validate_probe_evidence,
     verify_network_guard,
 )
 
@@ -457,7 +459,7 @@ class Tier1:
 
 def load_tier1(path: Path) -> Tier1:
     try:
-        report = json.loads(path.read_text(encoding="utf-8"))
+        report = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_members)
     except (OSError, ValueError) as exc:
         raise ValueError(
             f"--from-audit {path} could not be read as JSON ({type(exc).__name__}). "
@@ -482,7 +484,18 @@ def load_tier1(path: Path) -> Tier1:
     # validated: a malformed one reads as not run, so a stored all-clear over
     # it is answered with a re-run rather than a traceback.
     try:
-        metrics = probe_metrics(probe) if probe else {"verdict": "none"}
+        if probe:
+            # Report metadata was added by the parent, never by the child.
+            metadata = {"requested_repeats", "payload_source", "stderr_bytes",
+                        "framed_result_lines", "dropped_keys"}
+            payload = {key: value for key, value in probe.items() if key not in metadata}
+            if "requested_repeats" in probe and probe["requested_repeats"] is None:
+                raise ValueError("requested repeats must be a positive integer")
+            clean, dropped = validate_probe_evidence(payload, probe.get("requested_repeats"))
+            clean["dropped_keys"] = dropped or probe.get("dropped_keys", 0)
+            metrics = probe_metrics(clean)
+        else:
+            metrics = {"verdict": "none"}
         if metrics["verdict"] == "none":
             verdict = "none"
         elif metrics["verdict"] != "ran":
