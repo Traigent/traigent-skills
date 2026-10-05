@@ -1406,7 +1406,7 @@ def run_cli(argv: list[str], executable: str, subprocesses: list[dict],
 
 
 def run_model_ids(tier1: Tier1, executable: str, subprocesses: list[dict],
-                  api_key: str,
+                  key_value: str,
                   out: list[str]) -> dict:
     record: dict = {"check": "model-ids", "results": []}
     for model_id in tier1.model_ids:
@@ -1430,7 +1430,7 @@ def run_model_ids(tier1: Tier1, executable: str, subprocesses: list[dict],
         if payload is None:
             record["results"].append({"model_id": model_id, "relayed": False})
             continue
-        dumped = safe_dump(payload, api_key)
+        dumped = safe_dump(payload, key_value)
         if dumped is None:
             out.append("  the output echoed a value equal to your API key; not shown.")
             record["results"].append({"model_id": model_id, "relayed": False})
@@ -1444,7 +1444,7 @@ def run_model_ids(tier1: Tier1, executable: str, subprocesses: list[dict],
 
 def run_plan(tier1: Tier1, args, backend_url: str, executable: str,
              subprocesses: list[dict],
-             api_key: str,
+             key_value: str,
              out: list[str]) -> dict:
     task = args.task or default_task(tier1)
     argv = [
@@ -1467,7 +1467,7 @@ def run_plan(tier1: Tier1, args, backend_url: str, executable: str,
     record: dict = {"check": "plan", "relayed": False}
     if payload is None:
         return record
-    dumped = safe_dump(payload, api_key)
+    dumped = safe_dump(payload, key_value)
     if dumped is None:
         out.append("  the output echoed a value equal to your API key; not shown.")
         return record
