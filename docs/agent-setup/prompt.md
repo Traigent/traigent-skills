@@ -111,7 +111,7 @@ this protection.
      `TRAIGENT_API_KEY` already has a non-empty value, keep it (don't overwrite) and skip creating a
      new key — but it must be **read + write** (`experiments:write`); if a later cloud run 403s, that
      key is read-only and needs replacing via the Full-access flow below. Otherwise add the line
-     `TRAIGENT_API_KEY=` with the value left blank and print its **absolute path**. Then set `$ENV` to that path and best-effort
+     for `TRAIGENT_API_KEY` with the value left blank and print its **absolute path**. Then set `$ENV` to that path and best-effort
      open it in a **standalone, detached** editor — Linux: `setsid -f gnome-text-editor "$ENV"` (or
      the first of `kate`/`gedit`/`xed`/`mousepad` that exists; last resort `xdg-open "$ENV"`);
      macOS: `open -t "$ENV"`; Windows: `start "" notepad "<that absolute path>"`. Do **not** open it through the

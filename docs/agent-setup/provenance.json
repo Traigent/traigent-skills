@@ -1,6 +1,6 @@
 {
   "schema": "agent-setup-prompt-provenance/v1",
-  "doc_hash": "f9c10de9ca0f098b",
+  "doc_hash": "6267651a672b0f34",
   "entries": [
     {
       "edit_id": "genesis",
@@ -55,6 +55,17 @@
       "doc_before_hash": "0badbf7b431b8221",
       "doc_after_hash": "f9c10de9ca0f098b",
       "note": "Use the adjacent .env ignore rule in both key-entry flows, matching setup-quickstart; keep keyless verification available on refusal.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-05-6267651a",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "f9c10de9ca0f098b",
+      "doc_after_hash": "6267651a672b0f34",
+      "note": "Phrase the blank API-key entry as an instruction, avoiding an assignment-like label without changing key-entry behavior.",
       "source_type": "human"
     }
   ]
