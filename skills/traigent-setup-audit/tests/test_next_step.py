@@ -935,6 +935,74 @@ def test_a_symlink_loop_selection_is_refused_not_a_traceback(tmp_path: Path) -> 
     assert refusal in completed.stdout
 
 
+def test_a_selection_that_does_not_exist_is_refused_not_a_traceback(
+    tmp_path: Path,
+) -> None:
+    root = _variant(tmp_path, _three_way())
+    report_path = tmp_path / "report.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(root),
+            "--json",
+            str(report_path),
+            "--scorer",
+            "nope.py:score",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    assert "Traceback" not in completed.stderr, completed.stderr
+    assert completed.returncode == 0, completed.stderr
+    report = strict_json(report_path.read_text(encoding="utf-8"))
+    refusal = report["scorer_selection_refused"]
+    assert refusal.startswith("`score` at nope.py was selected"), refusal
+    assert "the module could not be parsed" in refusal
+    assert report["scorer_probe"] is None
+
+
+def test_a_relative_root_with_an_external_selector_probes_that_file(
+    tmp_path: Path,
+) -> None:
+    """`--root project --scorer ../outside.py:score` from the directory holding
+    `project` is joined to the root once: `outside.py` beside it is probed, not
+    a doubled `project/project/../outside.py` that does not exist."""
+    root = _variant(tmp_path, _three_way())
+    # Unlike the project's own `score`, this one returns inf for a match, so
+    # the verdict shows which file was probed.
+    outside = tmp_path / "outside.py"
+    outside.write_text(_three_way(good="return float('inf')"), encoding="utf-8")
+    report_path = tmp_path / "report.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            root.name,
+            "--json",
+            str(report_path),
+            "--scorer",
+            "../outside.py:score",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    report = strict_json(report_path.read_text(encoding="utf-8"))
+    assert report["scorer_selection_refused"] is None
+    assert report["scorer_probe"] is not None
+    selected = [entry["file"] for entry in report["scorers"] if "selected" in entry]
+    assert selected == [Path(os.path.realpath(outside)).as_posix()]
+    assert report["next_step"]["branch"] == "d"
+
+
 @pytest.mark.parametrize("equality", ["native", "folds_case"])
 def test_two_files_that_differ_only_in_case_stay_separate(
     equality: str, tmp_path: Path, monkeypatch, capsys

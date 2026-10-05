@@ -2898,23 +2898,19 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         file_part, _, function_part = args.scorer.rpartition(":")
         if not file_part or not function_part:
             raise ValueError("--scorer must be given as FILE.py:FUNCTION")
-        # Normalised against --root as well as the working directory, so a
-        # relative `sub/../scorer.py` from outside --root is reported as
-        # `scorer.py` whether or not the inventory reached it.
-        chosen_file = relative(root / relative(Path(file_part), root), root)
+        # A relative selector is read against the working directory when that
+        # lands inside --root, else against --root: joined to the root once.
+        # Every read of the selected file uses this one resolved path.
+        sel_abs = os.path.realpath(root / relative(Path(file_part), root))
+        chosen_file = relative(Path(sel_abs), root)
 
         def is_selection(file: str, function: str) -> bool:
-            # The same file on disk, not the same spelling: path equality
-            # folds case on Windows (two files on a case-sensitive directory
-            # merge) and does not on a case-insensitive macOS volume (one
-            # file is listed twice). Unreadable, a symlink loop say, is
-            # not a match; it is refused below as a module not parsed.
-            if function != function_part:
-                return False
-            try:
-                return os.path.samefile(root / chosen_file, root / file)
-            except (OSError, RuntimeError, ValueError):
-                return False
+            # Same resolved path, not same spelling or inode. Known limit: on a
+            # case-insensitive volume a differently-cased selection lists twice.
+            return (
+                function == function_part
+                and os.path.realpath(root / file) == sel_abs
+            )
 
         selected = next(
             (
@@ -2926,7 +2922,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         )
         if selected is None:
             kind, signals, line = classify_module_function(
-                root / chosen_file, function_part
+                Path(sel_abs), function_part
             )
             selected = ScorerCandidate(
                 function=function_part,
