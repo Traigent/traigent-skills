@@ -73,7 +73,6 @@ NOT_IMPLEMENTED_RE = re.compile(r"\bNotImplementedError\b")
 DECORATION_RE = re.compile(r"\bdecoration\b", re.I)
 DOES_NOT_FILTER_RE = re.compile(r"\bdoes\s+(?:\*\*)?not(?:\*\*)?\s+filter\b", re.I)
 BEST_CONFIG_RE = re.compile(r"\bbest_config\b")
-STOP_REASON_RE = re.compile(r"""\bstop_reason\b.*?["']safety_constraint["']""", re.S)
 STALE_CLAIMS = (
     "Not Yet Available",
     "planned but not yet implemented",
@@ -203,6 +202,27 @@ def _passes_safety_constraints_to_optimize(code: str) -> bool:
     return False
 
 
+def _asserts_safety_constraint_stop(code: str) -> bool:
+    """An executed ``assert <x>.stop_reason == "safety_constraint"``, not a comment or a string."""
+    for node in ast.walk(ast.parse(code)):
+        if not isinstance(node, ast.Assert) or not isinstance(node.test, ast.Compare):
+            continue
+        operands = [node.test.left, *node.test.comparators]
+        if (
+            all(isinstance(op, ast.Eq) for op in node.test.ops)
+            and any(
+                isinstance(o, ast.Attribute) and o.attr == "stop_reason"
+                for o in operands
+            )
+            and any(
+                isinstance(o, ast.Constant) and o.value == "safety_constraint"
+                for o in operands
+            )
+        ):
+            return True
+    return False
+
+
 def test_safety_constraints_reference_floor_matches_version_matrix(
     repo_root: Path, sync_map: dict
 ) -> None:
@@ -221,7 +241,9 @@ def test_safety_constraints_reference_floor_matches_version_matrix(
 
     path = repo_root / "skills" / GATE_SKILL / REFERENCE
     assert path.is_file(), f"{path.relative_to(repo_root)} is missing"
-    assert DOES_NOT_FILTER_RE.search(" ".join(path.read_text(encoding="utf-8").split())), (
+    assert DOES_NOT_FILTER_RE.search(
+        " ".join(path.read_text(encoding="utf-8").split())
+    ), (
         f"{path.relative_to(repo_root)} must state that the constraint does not "
         "filter trials"
     )
@@ -231,12 +253,13 @@ def test_safety_constraints_reference_floor_matches_version_matrix(
         if s.language.lower() == "python"
     ]
     assert any(
-        _passes_safety_constraints_to_optimize(s.text) and STOP_REASON_RE.search(s.text)
+        _passes_safety_constraints_to_optimize(s.text)
+        and _asserts_safety_constraint_stop(s.text)
         for s in snippets
     ), (
         f"{path.relative_to(repo_root)}: no ```python runnable block calls "
         "traigent.optimize(..., safety_constraints=...) and checks "
-        "stop_reason == \"safety_constraint\""
+        'stop_reason == "safety_constraint"'
     )
 
 

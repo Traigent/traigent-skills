@@ -106,6 +106,7 @@ def answer(q: str) -> str:
 result = answer.optimize_sync()
 assert result.stop_reason == "safety_constraint", result.stop_reason
 assert len(result.trials) == 3  # halted at min_samples, one trial short of max_trials
+assert [t.metrics.get("hallucination_rate") for t in result.trials] == [0.5] * len(result.trials)  # the metric reached the SDK
 assert result.best_config  # still populated: violating trials are not filtered
 print(result.stop_reason, len(result.trials), result.best_config)
 ```
@@ -149,6 +150,7 @@ def answer(q: str) -> str:
 result = answer.optimize_sync()
 assert result.stop_reason == "safety_constraint", result.stop_reason
 assert len(result.trials) == 3  # halted although every trial complied
+assert [t.metrics.get("hallucination_rate") for t in result.trials] == [0.0] * len(result.trials)  # the metric reached the SDK
 assert result.best_config  # still populated
 print(result.stop_reason, len(result.trials), result.best_config)
 ```
@@ -194,6 +196,7 @@ def answer(q: str) -> str:
 result = answer.optimize_sync()
 assert result.stop_reason == "max_trials_reached", result.stop_reason
 assert len(result.trials) == 4  # every trial violated, yet no safety halt
+assert [t.metrics.get("hallucination_rate") for t in result.trials] == [0.5] * len(result.trials)  # the metric reached the SDK
 assert result.best_config  # unsafe, and nothing on the result says so
 print(result.stop_reason, len(result.trials), result.best_config)
 ```
