@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.7"
+  version: "1.0.8"
 ---
 
 # CI Safety Gate
@@ -41,7 +41,12 @@ can still be `best_config`. One sample is one completed trial. Below
 `min_samples` completed trials (default 30) it never halts; at or after that
 floor the run stops with `stop_reason == "safety_constraint"` when the
 confidence lower bound on per-trial compliance is below the required rate —
-including when every trial complied but there is not yet enough evidence. Read
+including when every trial complied but there is not yet enough evidence. The
+check runs after the `max_trials` check, so a failing constraint on the trial
+that reaches `max_trials` (or on a run that ends below `min_samples`) leaves a
+non-safety `stop_reason` such as `"max_trials_reached"`; that is not a pass,
+the SDK reports no separate safety verdict, so keep `min_samples` below
+`max_trials` without raising `max_trials` just to reach it. Read
 `stop_reason` before using `best_config`, and do not promote from it without
 the `PromotionGate` holdout check below. `optimize()` / `optimize_sync()`
 applies `best_config` to the decorated function as for any run, so after a
@@ -55,7 +60,7 @@ SDKs below 0.28.0, including 0.27.x: do not pass a non-empty
 `safety_constraints` value — it raises `NotImplementedError` at decoration
 time. Omit the argument, or upgrade.
 
-On every SDK version, the two mechanisms below complement in-run constraints:
+`PromotionGate` on a holdout is the safety gate on every SDK version; in-run constraints only end a run early and never certify a config. On every SDK version, use:
 
 - **`PromotionGate`** (below) to statistically compare a candidate config against the incumbent before promoting it.
 - **TVL spec validation** (`python -m traigent.tvl ... --strict`) to enforce configuration-space and objective constraints ahead of a run.

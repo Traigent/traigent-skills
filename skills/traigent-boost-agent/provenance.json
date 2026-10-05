@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f317d8a46c768e90",
+  "doc_hash": "08911536100f8563",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
@@ -278,6 +278,17 @@
       "doc_before_hash": "4b8a6a2a2e9bdb53",
       "doc_after_hash": "f317d8a46c768e90",
       "note": "Step 12: in-run safety_constraints is version-conditional (0.28.0+: accepted, a run-level statistical halt that does not filter trials, see version-matrix: safety-constraints-impl and traigent-ci-safety-gate; below 0.28.0: do not pass a non-empty value, it raises NotImplementedError at decoration time); PromotionGate complements it on every SDK version.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "safety-gate-framing-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "f317d8a46c768e90",
+      "doc_after_hash": "08911536100f8563",
+      "note": "Step 12: 'PromotionGate complements in-run constraints' replaced with: PromotionGate on a holdout is the safety gate on every SDK version; in-run constraints only end a run early and never certify a config.",
       "source_type": "agent"
     }
   ]
