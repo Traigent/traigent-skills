@@ -192,7 +192,7 @@ def test_judge_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     install_replies(lambda model, messages: "not json at all")
     ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=1.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
     parse_fail = ns["llm_judge_evaluator"](agent, {}, example)
-    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
+    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=ns["JUDGE_COST_PER_CALL_USD"] / 2, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
     refused = ns["llm_judge_evaluator"](agent, {}, example)
     emit({
         "parse_fail": [parse_fail.success, parse_fail.metrics["quality"], parse_fail.error_message],
@@ -216,7 +216,7 @@ def test_hybrid_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     agent = lambda text: '{"label": "a"}'
     ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=1.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
     parse_fail = ns["hybrid_evaluator"](agent, {}, example)
-    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
+    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=ns["JUDGE_COST_PER_CALL_USD"] / 2, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
     refused = ns["hybrid_evaluator"](agent, {}, example)
     emit({
         "parse_fail": [parse_fail.success, parse_fail.metrics["quality"], parse_fail.error_message],
@@ -252,7 +252,7 @@ unlocked_writes = []
 class CheckedBudget(Budget):
     def __setattr__(self, name, value):
         lock = self.__dict__.get("_lock")
-        if name in ("spent", "refused") and isinstance(lock, HeldLock) and not lock.held:
+        if name in ("calls", "spent", "refused") and isinstance(lock, HeldLock) and not lock.held:
             unlocked_writes.append(name)
         super().__setattr__(name, value)
 

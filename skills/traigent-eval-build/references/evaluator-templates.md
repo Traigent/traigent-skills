@@ -82,12 +82,14 @@ Three things the template does on purpose:
 
 - **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list only knows the orientation of built-in names such as `accuracy`, `cost` and `latency`. On traigent <= 0.27.0 it orients any other name (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher, and newer SDK builds refuse an undeclared custom name. Declare every custom objective's orientation with `ObjectiveSchema`.
 - **Only the agent call is metered on traigent <= 0.29.0** (fixed in 0.30.0). The SDK's `cost` and `TRAIGENT_RUN_COST_LIMIT` used to see only the first LLM call per row, not the judge call; see "Cost metering caveat for multi-call evaluators" below.
-- **The judge budget is sized and reset per run.** Start every run with `run_with_judge_budget()`: it builds a fresh `JudgeBudget` for that run, refuses to start when the approved cap cannot cover `rows × max_trials × price`, and raises after the run if any judge call was refused. A refused row fails closed with `judge_budget_exhausted` and scores `0.0`, and the SDK averages that row into its trial, so **any refusal invalidates the ranking**: the trials were no longer scored on the same rows. Calling `optimize_sync()` directly, with no budget set, fails every trial instead of spending unbudgeted. Spend limits are not tuned variables, so they stay out of `configuration_space`.
+- **The judge budget is sized and reset per run.** Start every run with `run_with_judge_budget()`: it builds a fresh `JudgeBudget` for that run, refuses to start when the approved cap cannot cover `rows × max_trials × price`, and raises after the run if any judge call was refused. A refused row fails closed with `judge_budget_exhausted` and scores `0.0`, and the SDK averages that row into its trial, so **any refusal invalidates the ranking**: the trials were no longer scored on the same rows. Calling `optimize_sync()` directly, with no budget set, fails every trial instead of spending unbudgeted. Spend limits are not tuned variables, so they stay out of `configuration_space`. Inputs are validated up front, because a `NaN` or infinite cap passes every `cap < needed` check: the cap and `JUDGE_COST_PER_CALL_USD` must each be a plain Python `int` or `float` (convert a numpy scalar with `float()`), finite, above zero and at most $1e15, and `rows` and `max_trials` plain positive `int`s; any other value raises `ValueError` before a judge call is made. The run gets exactly `floor(cap / price)` judge calls, computed once and exactly from the decimal values as written. Only one budgeted run can be in progress per process, and the budget is cleared when it ends. For a free or local judge, set `JUDGE_COST_PER_CALL_USD` to a small positive price. Write the cap as a decimal literal: `0.165` for 11 calls at $0.015, not `11 * 0.015`, which is `0.16499999999999998` and buys 10.
 
 ```python
 import json
+import math
 import threading
 import time
+from fractions import Fraction
 from typing import Any
 
 import litellm
@@ -103,39 +105,72 @@ class JudgeBudget:
     """Judge spend cap for ONE optimization run: refuses a call instead of overspending."""
 
     def __init__(self, cap_usd: float, per_call_usd: float) -> None:
-        self.cap, self.per_call, self.spent, self.refused = cap_usd, per_call_usd, 0.0, 0
+        # A NaN or infinite cap passes every `cap < needed` check, and a zero price never binds.
+        # Exact built-in types only: a subclass (or numpy scalar) can misreport its value.
+        # The chained compare is False for NaN and compares a huge int without overflow.
+        for name, value in (("cap_usd", cap_usd), ("per_call_usd", per_call_usd)):
+            if type(value) not in (int, float) or not 0 < value <= MAX_JUDGE_USD:
+                raise ValueError(
+                    f"JudgeBudget {name} must be a plain int or float, finite, > 0 "
+                    f"and <= {MAX_JUDGE_USD:g}, got {value!r}"
+                )
+        # Money is the decimal as written: repr() of a plain float is its shortest
+        # round-tripping literal, and every int up to the ceiling is an exact float.
+        self._cap = Fraction(repr(float(cap_usd)))
+        self._price = Fraction(repr(float(per_call_usd)))
+        # Whole calls the cap buys, computed once and exactly. Adding float prices up
+        # drifts: a $50 cap at $0.002 would grant 24,999 calls instead of 25,000.
+        self.max_calls = math.floor(self._cap / self._price)
+        self.cap, self.per_call = float(cap_usd), float(per_call_usd)
+        self.calls, self.spent, self.refused = 0, 0.0, 0
         self._lock = threading.Lock()  # custom evaluators may run in worker threads
 
     def try_spend(self) -> bool:
         with self._lock:
-            if self.spent + self.per_call > self.cap + 1e-12:
+            if self.calls >= self.max_calls:
                 self.refused += 1
                 return False
-            self.spent += self.per_call
+            self.calls += 1
+            self.spent = float(self.calls * self._price)  # for reporting; never above cap
             return True
 
+MAX_JUDGE_USD = 1e15  # below 2**53, so every int up to it is an exact float
 JUDGE_BUDGET: JudgeBudget | None = None  # set per run by run_with_judge_budget()
+_JUDGE_RUN_LOCK = threading.Lock()  # the evaluator reads one global, so one budgeted run at a time
 
 def run_with_judge_budget(optimized, *, rows: int, max_trials: int, cap_usd: float, **optimize_kwargs):
     """Run one optimization with its own judge budget, sized to the run.
 
     A refused judge call scores its row 0.0 and the SDK averages that row into the
     trial, so a single refusal makes the trial ranking meaningless. Refuse to start
-    when the cap cannot cover every row of every trial, and raise if a call was
-    refused anyway.
+    when the cap cannot cover every row of every trial or another budgeted run is
+    in progress, and raise if a call was refused anyway.
     """
     global JUDGE_BUDGET
-    needed_usd = rows * max_trials * JUDGE_COST_PER_CALL_USD
-    if cap_usd + 1e-12 < needed_usd:
+    budget = JudgeBudget(cap_usd=cap_usd, per_call_usd=JUDGE_COST_PER_CALL_USD)  # validates cap and price
+    for name, value in (("rows", rows), ("max_trials", max_trials)):
+        if type(value) is not int or value <= 0:  # an int subclass can override `*`
+            raise ValueError(f"{name} must be a plain positive int, got {value!r}")
+    needed_calls = rows * max_trials
+    if needed_calls > budget.max_calls:
         raise ValueError(
-            f"judge cap ${cap_usd:.4f} does not cover {rows} rows x {max_trials} trials "
-            f"(${needed_usd:.4f}); shrink the run or raise the approved cap"
+            f"judge cap ${budget.cap} covers {budget.max_calls} judge call(s) at ${budget.per_call} each, "
+            f"but {rows} rows x {max_trials} trials need {needed_calls}; shrink the run or raise the approved cap"
         )
-    JUDGE_BUDGET = JudgeBudget(cap_usd=cap_usd, per_call_usd=JUDGE_COST_PER_CALL_USD)  # fresh per run
-    result = optimized.optimize_sync(max_trials=max_trials, **optimize_kwargs)
-    if JUDGE_BUDGET.refused:
+    if not _JUDGE_RUN_LOCK.acquire(blocking=False):
         raise RuntimeError(
-            f"{JUDGE_BUDGET.refused} judge call(s) refused (judge_budget_exhausted): "
+            "another run_with_judge_budget() is already running in this process; "
+            "judge budgets are per run, so run them one at a time"
+        )
+    try:
+        JUDGE_BUDGET = budget  # fresh per run
+        result = optimized.optimize_sync(max_trials=max_trials, **optimize_kwargs)
+    finally:
+        JUDGE_BUDGET = None  # a finished or failed run leaves no budget to spend
+        _JUDGE_RUN_LOCK.release()
+    if budget.refused:
+        raise RuntimeError(
+            f"{budget.refused} judge call(s) refused (judge_budget_exhausted): "
             "trials were scored on different rows, so do not use this ranking"
         )
     return result
@@ -321,12 +356,14 @@ def answer(question: str) -> str:
 
 ## Hybrid deterministic gate then judge
 
-Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge); on traigent <= 0.29.0 only the first is metered, fixed in 0.30.0 (see "Cost metering caveat for multi-call evaluators" above). Judge spend is capped the same way as in the LLM-judge template: start each run with `run_with_judge_budget()`, which sizes and resets the budget for that run and raises if any judge call was refused, because a refused row (`judge_budget_exhausted`, quality `0.0`) invalidates the ranking.
+Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge); on traigent <= 0.29.0 only the first is metered, fixed in 0.30.0 (see "Cost metering caveat for multi-call evaluators" above). Judge spend is capped the same way as in the LLM-judge template: start each run with `run_with_judge_budget()`, which sizes and resets the budget for that run and raises if any judge call was refused, because a refused row (`judge_budget_exhausted`, quality `0.0`) invalidates the ranking. It validates its inputs the same way too (cap and price each a plain Python `int` or `float`, finite, above zero and at most $1e15, so convert a numpy scalar with `float()`; plain positive `int` `rows` and `max_trials`; anything else raises `ValueError` before a judge call), grants exactly `floor(cap / price)` judge calls, computed from the decimal values as written, allows one budgeted run at a time per process, and clears the budget when the run ends. For a free or local judge, set `JUDGE_COST_PER_CALL_USD` to a small positive price. Write the cap as a decimal literal: `0.165` for 11 calls at $0.015, not `11 * 0.015`, which is `0.16499999999999998` and buys 10.
 
 ```python
 import json
+import math
 import threading
 import time
+from fractions import Fraction
 
 import litellm
 import traigent
@@ -341,39 +378,72 @@ class JudgeBudget:
     """Judge spend cap for ONE optimization run: refuses a call instead of overspending."""
 
     def __init__(self, cap_usd: float, per_call_usd: float) -> None:
-        self.cap, self.per_call, self.spent, self.refused = cap_usd, per_call_usd, 0.0, 0
+        # A NaN or infinite cap passes every `cap < needed` check, and a zero price never binds.
+        # Exact built-in types only: a subclass (or numpy scalar) can misreport its value.
+        # The chained compare is False for NaN and compares a huge int without overflow.
+        for name, value in (("cap_usd", cap_usd), ("per_call_usd", per_call_usd)):
+            if type(value) not in (int, float) or not 0 < value <= MAX_JUDGE_USD:
+                raise ValueError(
+                    f"JudgeBudget {name} must be a plain int or float, finite, > 0 "
+                    f"and <= {MAX_JUDGE_USD:g}, got {value!r}"
+                )
+        # Money is the decimal as written: repr() of a plain float is its shortest
+        # round-tripping literal, and every int up to the ceiling is an exact float.
+        self._cap = Fraction(repr(float(cap_usd)))
+        self._price = Fraction(repr(float(per_call_usd)))
+        # Whole calls the cap buys, computed once and exactly. Adding float prices up
+        # drifts: a $50 cap at $0.002 would grant 24,999 calls instead of 25,000.
+        self.max_calls = math.floor(self._cap / self._price)
+        self.cap, self.per_call = float(cap_usd), float(per_call_usd)
+        self.calls, self.spent, self.refused = 0, 0.0, 0
         self._lock = threading.Lock()  # custom evaluators may run in worker threads
 
     def try_spend(self) -> bool:
         with self._lock:
-            if self.spent + self.per_call > self.cap + 1e-12:
+            if self.calls >= self.max_calls:
                 self.refused += 1
                 return False
-            self.spent += self.per_call
+            self.calls += 1
+            self.spent = float(self.calls * self._price)  # for reporting; never above cap
             return True
 
+MAX_JUDGE_USD = 1e15  # below 2**53, so every int up to it is an exact float
 JUDGE_BUDGET: JudgeBudget | None = None  # set per run by run_with_judge_budget()
+_JUDGE_RUN_LOCK = threading.Lock()  # the evaluator reads one global, so one budgeted run at a time
 
 def run_with_judge_budget(optimized, *, rows: int, max_trials: int, cap_usd: float, **optimize_kwargs):
     """Run one optimization with its own judge budget, sized to the run.
 
     A refused judge call scores its row 0.0 and the SDK averages that row into the
     trial, so a single refusal makes the trial ranking meaningless. Refuse to start
-    when the cap cannot cover every row of every trial, and raise if a call was
-    refused anyway.
+    when the cap cannot cover every row of every trial or another budgeted run is
+    in progress, and raise if a call was refused anyway.
     """
     global JUDGE_BUDGET
-    needed_usd = rows * max_trials * JUDGE_COST_PER_CALL_USD
-    if cap_usd + 1e-12 < needed_usd:
+    budget = JudgeBudget(cap_usd=cap_usd, per_call_usd=JUDGE_COST_PER_CALL_USD)  # validates cap and price
+    for name, value in (("rows", rows), ("max_trials", max_trials)):
+        if type(value) is not int or value <= 0:  # an int subclass can override `*`
+            raise ValueError(f"{name} must be a plain positive int, got {value!r}")
+    needed_calls = rows * max_trials
+    if needed_calls > budget.max_calls:
         raise ValueError(
-            f"judge cap ${cap_usd:.4f} does not cover {rows} rows x {max_trials} trials "
-            f"(${needed_usd:.4f}); shrink the run or raise the approved cap"
+            f"judge cap ${budget.cap} covers {budget.max_calls} judge call(s) at ${budget.per_call} each, "
+            f"but {rows} rows x {max_trials} trials need {needed_calls}; shrink the run or raise the approved cap"
         )
-    JUDGE_BUDGET = JudgeBudget(cap_usd=cap_usd, per_call_usd=JUDGE_COST_PER_CALL_USD)  # fresh per run
-    result = optimized.optimize_sync(max_trials=max_trials, **optimize_kwargs)
-    if JUDGE_BUDGET.refused:
+    if not _JUDGE_RUN_LOCK.acquire(blocking=False):
         raise RuntimeError(
-            f"{JUDGE_BUDGET.refused} judge call(s) refused (judge_budget_exhausted): "
+            "another run_with_judge_budget() is already running in this process; "
+            "judge budgets are per run, so run them one at a time"
+        )
+    try:
+        JUDGE_BUDGET = budget  # fresh per run
+        result = optimized.optimize_sync(max_trials=max_trials, **optimize_kwargs)
+    finally:
+        JUDGE_BUDGET = None  # a finished or failed run leaves no budget to spend
+        _JUDGE_RUN_LOCK.release()
+    if budget.refused:
+        raise RuntimeError(
+            f"{budget.refused} judge call(s) refused (judge_budget_exhausted): "
             "trials were scored on different rows, so do not use this ranking"
         )
     return result
