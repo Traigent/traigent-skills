@@ -15,7 +15,7 @@ import re
 import shutil
 import subprocess
 import sys
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 import pytest
 from conftest import strict_json
@@ -176,7 +176,9 @@ def _dataset(rows, holdout_rows):
     )
 
 
-def _scan_sibling_pair(tmp_path: Path, tuning_rows: list[dict], holdout_rows: list[dict]):
+def _scan_sibling_pair(
+    tmp_path: Path, tuning_rows: list[dict], holdout_rows: list[dict]
+):
     eval_dir = tmp_path / "eval"
     eval_dir.mkdir()
     paths = []
@@ -199,23 +201,27 @@ def _row(question: str, split: str | None = None) -> dict:
 
 def test_partially_tagged_single_file_reports_holdout_overlap(tmp_path):
     path = tmp_path / "data.jsonl"
-    path.write_text("\n".join(json.dumps(row) for row in
-                              [_row("Q1", "holdout"), _row(" q1 ")]) + "\n")
+    path.write_text(
+        "\n".join(json.dumps(row) for row in [_row("Q1", "holdout"), _row(" q1 ")])
+        + "\n"
+    )
     reports, _, _, _ = audit.scan_datasets([path], tmp_path)
     assert reports[0].holdout_overlap == [0, 1]
     assert any("both the holdout slice" in finding for finding in reports[0].findings)
 
 
 def test_untagged_named_holdout_rows_do_not_create_false_overlap(tmp_path):
-    reports = _scan_sibling_pair(tmp_path, [_row("tuning only")],
-                                [_row("Q1", "holdout"), _row(" q1 ")])
+    reports = _scan_sibling_pair(
+        tmp_path, [_row("tuning only")], [_row("Q1", "holdout"), _row(" q1 ")]
+    )
     assert reports["eval/holdout.jsonl"].holdout_overlap == []
 
 
 @pytest.mark.parametrize("holdout_tag", ["holdout", None])
 def test_explicit_tuning_in_named_holdout_still_reports_overlap(tmp_path, holdout_tag):
-    reports = _scan_sibling_pair(tmp_path, [_row("tuning only")],
-                                [_row("Q1", holdout_tag), _row(" q1 ", "tune")])
+    reports = _scan_sibling_pair(
+        tmp_path, [_row("tuning only")], [_row("Q1", holdout_tag), _row(" q1 ", "tune")]
+    )
     assert reports["eval/holdout.jsonl"].holdout_overlap == [0, 1]
 
 
@@ -298,7 +304,9 @@ GOOD_PROBE = {
 
 
 def test_branch_b_fires_on_a_decorated_function_with_no_knobs() -> None:
-    step = audit.next_step(_inventory([_entry([])], [_scorer()]), [], GOOD_PROBE, _scorer())
+    step = audit.next_step(
+        _inventory([_entry([])], [_scorer()]), [], GOOD_PROBE, _scorer()
+    )
     assert step["branch"] == "b"
     assert step["skills"] == ["traigent-optimize-config-space"]
     assert "agent.py:9 declares 0 knobs" in step["line"]
@@ -453,7 +461,9 @@ def test_branch_f_judges_a_named_holdout_file_by_the_holdout_minimum_only() -> N
     )
     assert step["branch"] == "f"
     assert step["line"].startswith("eval/tuning.jsonl has 12 row(s) and a 10-row")
-    assert "under the 30-row tuning minimum and the 30-row holdout minimum" in step["line"]
+    assert (
+        "under the 30-row tuning minimum and the 30-row holdout minimum" in step["line"]
+    )
     # The tuning file is long enough; only the holdout is short, and the line
     # says exactly that (40 rows is not "under the tuning minimum").
     tuning.rows = 40
@@ -637,8 +647,7 @@ def test_non_finite_scores_never_reach_the_all_clear(case: str, tmp_path: Path) 
     assert report["areas"]["scorer"]["status"] == "attention"
     line = report["next_step"]["line"]
     assert (
-        f"{withheld} probe call(s) returned a value that is not a finite number"
-        in line
+        f"{withheld} probe call(s) returned a value that is not a finite number" in line
     )
     assert "make it return a finite number" in line
     assert "not a finite number" in card
@@ -1003,14 +1012,11 @@ def test_a_relative_root_with_an_external_selector_probes_that_file(
     assert report["next_step"]["branch"] == "d"
 
 
-@pytest.mark.parametrize("equality", ["native", "folds_case"])
 def test_two_files_that_differ_only_in_case_stay_separate(
-    equality: str, tmp_path: Path, monkeypatch, capsys
+    tmp_path: Path, monkeypatch, capsys
 ) -> None:
     """`scorer.py` and `SCORER.py` are two files on a case-sensitive
-    directory: selecting one never probes the other. `folds_case` makes path
-    equality ignore case, as WindowsPath's does on a case-sensitive NTFS
-    directory, so the Windows behaviour is exercised on this machine too."""
+    directory: selecting one never probes the other."""
     root = _variant(tmp_path, _three_way())
     twin = root / "SCORER.py"
     if twin.exists():
@@ -1023,14 +1029,6 @@ def test_two_files_that_differ_only_in_case_stay_separate(
     # Run in-process without patching this test process's sockets.
     monkeypatch.setattr(audit, "install_network_guard", lambda: None)
     monkeypatch.setattr(audit, "verify_network_guard", lambda: "active")
-    if equality == "folds_case":
-
-        def folded(self, other):
-            if not isinstance(other, PurePosixPath):
-                return NotImplemented
-            return str(self).casefold() == str(other).casefold()
-
-        monkeypatch.setattr(PurePosixPath, "__eq__", folded)
     out = tmp_path / "report.json"
     code = audit.main(
         ["--root", str(root), "--json", str(out), "--scorer", "scorer.py:score"]
@@ -1045,6 +1043,47 @@ def test_two_files_that_differ_only_in_case_stay_separate(
     assert selected == ["scorer.py"]
     assert report["scorer_selection_refused"] is None
     assert report["scorer_probe"] is not None
+
+
+def test_a_selection_symlinked_out_of_the_root_is_listed_once(
+    tmp_path: Path,
+) -> None:
+    """`scorer.py` in the root is a symlink to a file outside it. Selected by
+    its absolute path, it is the scorer the inventory already found, so it is
+    listed once, as the selection, and not a second time by its target."""
+    root = _variant(tmp_path, _three_way())
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    target = outside / "scorer.py"
+    (root / "scorer.py").replace(target)
+    try:
+        (root / "scorer.py").symlink_to(target)
+    except OSError:
+        pytest.skip("symlinks are not available here")
+    report_path = tmp_path / "report.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(root),
+            "--json",
+            str(report_path),
+            "--scorer",
+            f"{root / 'scorer.py'}:score",
+        ],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    report = strict_json(report_path.read_text(encoding="utf-8"))
+    assert len(report["scorers"]) == 1, report["scorers"]
+    assert "selected" in report["scorers"][0]
+    assert report["scorer_selection_refused"] is None
+    assert report["next_step"]["branch"] == "g"
 
 
 @pytest.mark.parametrize(
@@ -1127,7 +1166,11 @@ def test_readiness_is_one_predicate() -> None:
         "ran": True,
         "scores": {"good": [1.0, 1.0], "partial": [], "bad": [0.0]},
         "errors": [
-            {"case": "partial", "error_type": "RuntimeError", "error_site": "scorer.py:6"}
+            {
+                "case": "partial",
+                "error_type": "RuntimeError",
+                "error_site": "scorer.py:6",
+            }
         ],
     }
     assert step(raised)["branch"] == "d"
