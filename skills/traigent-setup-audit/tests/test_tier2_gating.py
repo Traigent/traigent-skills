@@ -15,7 +15,13 @@ import shutil
 from pathlib import Path
 
 import pytest
-from conftest import FIXTURES, _tier1_report, recorded_argv, run_tier2
+from conftest import (
+    FIXTURES,
+    _tier1_report,
+    healthy_variant,
+    recorded_argv,
+    run_tier2,
+)
 from tier2_fake_backend import LOCAL_SESSION_ID, RUN_ID, FakeBackend
 
 
@@ -573,3 +579,135 @@ def test_a_probe_with_no_finite_score_is_not_called_repeat_scored(
     card = _card(completed.stdout, "evaluator-quality")
     assert "repeat-scored" not in card
     assert "Tier 1 probed your scorer and it produced no finite score" in card
+
+
+@pytest.fixture(scope="module")
+def variant_tier1(tmp_path_factory):
+    """A Tier 1 report per healthy-fixture mutation, written once per module."""
+    made: dict[str, Path] = {}
+
+    def make(mutation: str) -> Path:
+        if mutation not in made:
+            base = tmp_path_factory.mktemp(mutation)
+            made[mutation] = _tier1_report(
+                healthy_variant(base, mutation), base / "tier1"
+            )
+        return made[mutation]
+
+    return make
+
+
+# Each mutation leaves one Tier 1 area reading `attention`.
+ATTENTION_AREAS = {
+    "partly_unread": "agent",
+    "space_not_inventoried": "agent",
+    "kwargs": "agent",
+    "unparsed_helper": "agent",
+    "no_gold": "dataset",
+    "holdout_leak": "dataset",
+}
+
+
+@pytest.mark.parametrize("mutation", list(ATTENTION_AREAS))
+def test_tier2_agrees_with_an_attention_tier1(
+    mutation: str, variant_tier1, healthy_tier1: Path
+) -> None:
+    """An area Tier 1 left open is local work: Tier 2 says stop, not plan."""
+    report_path = variant_tier1(mutation)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["areas"][ATTENTION_AREAS[mutation]]["status"] == "attention"
+    completed = run_tier2("--from-audit", str(report_path))
+    assert completed.returncode == 0, completed.stderr
+    out = completed.stdout
+    assert out.count("(recommended)") == 1
+    assert "APPROVAL CARD — stop-here   (recommended)" in out
+    assert "APPROVAL CARD — plan   (recommended)" not in out
+    assert report["next_step"]["branch"] != "g"
+    # Control: with every area clear, the plan is still what is offered first.
+    control = run_tier2("--from-audit", str(healthy_tier1))
+    assert control.returncode == 0, control.stderr
+    assert "APPROVAL CARD — plan   (recommended)" in control.stdout
+
+
+# The fragment of Tier 1's knob reading the plan card must carry.
+KNOB_READINGS = {
+    "kwargs": "read through a mapping",
+    "space_not_inventoried": "was not inventoried",
+    "partly_unread": "never reads 1 of them",
+}
+
+
+@pytest.mark.parametrize("mutation", list(KNOB_READINGS))
+def test_tier2_quotes_tier1s_knob_reading(mutation: str, variant_tier1) -> None:
+    """The cards quote Tier 1's own sentence; they never recount the knobs into
+    "0 knobs" or "reads none of them"."""
+    report_path = variant_tier1(mutation)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    completed = run_tier2("--from-audit", str(report_path))
+    assert completed.returncode == 0, completed.stderr
+    bounded = _card(completed.stdout, "bounded-run")
+    assert report["next_step"]["line"] in bounded
+    assert "declare 0 knobs" not in bounded
+    assert "reads none of them" not in bounded
+    plan = _card(completed.stdout, "plan")
+    assert "declare 0 knobs" not in plan
+    assert "sizes a first run from exactly" not in plan
+    assert KNOB_READINGS[mutation] in plan
+
+
+# Each way a stored all-clear can sit over area evidence that does not support
+# it, and the subjects the stop-here card must then name.
+STALE_AREAS = {
+    "agent_status": ("Agent area",),
+    "dataset_status": ("Dataset area",),
+    "no_areas": ("Agent area", "Dataset area"),
+    "edited_knob": ("Agent area",),
+    "restamped_kwargs_report": ("Agent area",),
+}
+
+
+@pytest.mark.parametrize("run_id", [None, RUN_ID], ids=["no-run-id", "run-id"])
+@pytest.mark.parametrize("how", list(STALE_AREAS))
+def test_a_stored_all_clear_over_an_attention_area_is_stale(
+    how: str, run_id: str | None, healthy_tier1: Path, variant_tier1, tmp_path: Path
+) -> None:
+    healthy = json.loads(healthy_tier1.read_text(encoding="utf-8"))
+    assert healthy["next_step"]["branch"] == "g"
+    report = json.loads(healthy_tier1.read_text(encoding="utf-8"))
+    if how == "agent_status":
+        report["areas"]["agent"]["status"] = "attention"
+    elif how == "dataset_status":
+        report["areas"]["dataset"]["status"] = "attention"
+    elif how == "no_areas":
+        del report["areas"]
+    elif how == "edited_knob":
+        # The areas still read `ok`; the stored knobs say otherwise.
+        report["entry_points"][0]["knobs"][0]["status"] = (
+            "possibly read through a config mapping"
+        )
+    else:
+        report = json.loads(variant_tier1("kwargs").read_text(encoding="utf-8"))
+        report["next_step"] = healthy["next_step"]
+    report["root"] = str(tmp_path / "my project")
+    stale = tmp_path / "stale report.json"
+    stale.write_text(json.dumps(report), encoding="utf-8")
+    completed = run_tier2(
+        "--from-audit", str(stale), *(("--run-id", run_id) if run_id else ())
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "Traceback" not in completed.stderr
+    out = completed.stdout
+    assert out.count("(recommended)") == 1
+    assert "APPROVAL CARD — stop-here   (recommended)" in out
+    card = _card(out, "stop-here")
+    assert "all-clear" in card
+    assert "written by an older audit or edited" in card
+    command = (
+        f"audit_project.py --root {shlex.quote(report['root'])} "
+        f"--json {shlex.quote(str(stale))}"
+    )
+    assert command in card
+    for subject in ("Agent area", "Dataset area", "scorer probe"):
+        assert (subject in card) == (subject in STALE_AREAS[how]), (subject, card)
+    if how in {"edited_knob", "restamped_kwargs_report"}:
+        assert "read through a mapping the parser cannot follow" in card

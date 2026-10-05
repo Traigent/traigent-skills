@@ -18,7 +18,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from conftest import strict_json
+from conftest import healthy_variant, strict_json
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 SCRIPT = SCRIPTS_DIR / "audit_project.py"
@@ -1239,3 +1239,282 @@ def test_readiness_is_one_predicate() -> None:
     assert (metrics["verdict"], metrics.get("stage")) == ("failed", "tampered-result")
     assert step(legacy)["branch"] == "e"
     assert audit.probe_metrics({**legacy, "dropped_keys": 0})["ready"] is True
+
+
+# --------------------------------------------------------------------------
+# the all-clear is reached only over three `ok` areas
+# --------------------------------------------------------------------------
+
+ATTENTION_CASES = {
+    # mutation: (area, branch, fragment of the next step)
+    "partly_unread": ("agent", "h", "never reads 1 of them (`top_k`)"),
+    "space_not_inventoried": ("agent", "h", "was not inventoried"),
+    "kwargs": ("agent", "h", "3 knob(s) of `answer_question`"),
+    "unparsed_helper": ("agent", "i", "could not be parsed by this audit's Python"),
+    "no_gold": ("dataset", "f", "70 with no gold key"),
+    "holdout_leak": ("dataset", "f", "60 row(s) that appear in both the holdout slice"),
+    "duplicate_rows": ("dataset", "f", "share a normalized input"),
+}
+
+
+def _section(card: str, title: str) -> str:
+    start = card.index(f"## {title} — ")
+    return card[start : card.index("\n## ", start + 1)]
+
+
+@pytest.mark.parametrize("case", sorted(ATTENTION_CASES))
+def test_an_attention_area_never_reaches_the_all_clear(case: str, tmp_path: Path) -> None:
+    area, branch, fragment = ATTENTION_CASES[case]
+    report, card = _run(healthy_variant(tmp_path, case), tmp_path)
+    line = report["next_step"]["line"]
+    assert report["areas"][area]["status"] == "attention"
+    assert report["next_step"]["branch"] == branch, line
+    assert "all check out" not in card
+    assert line in card
+    assert fragment in line
+
+
+def test_all_clear_if_and_only_if_agent_dataset_and_scorer_are_ok(
+    tmp_path: Path,
+) -> None:
+    """One reading per area: `g` and three `ok` areas are the same fact."""
+    clean = tmp_path / "clean" / "project"
+    shutil.copytree(FIXTURES / "healthy", clean)
+    roots = {"clean": clean}
+    roots.update({case: healthy_variant(tmp_path, case) for case in ATTENTION_CASES})
+    outcomes = {}
+    for case, root in roots.items():
+        out_dir = tmp_path / "out" / case
+        out_dir.mkdir(parents=True)
+        report, _ = _run(root, out_dir)
+        statuses = {k: report["areas"][k]["status"] for k in ("agent", "dataset", "scorer")}
+        outcomes[case] = (report["next_step"]["branch"], statuses)
+    for case, (branch, statuses) in outcomes.items():
+        all_ok = all(status == "ok" for status in statuses.values())
+        assert (branch == "g") == all_ok, (case, branch, statuses)
+    assert outcomes["clean"][0] == "g"
+
+
+def _pair_layout(root: Path) -> None:
+    """The healthy rows as a two-file layout: 40 untagged tuning rows in
+    eval/tuning.jsonl and 30 untagged holdout rows in eval/holdout.jsonl."""
+    rows = [
+        json.loads(line)
+        for line in (root / "dataset.jsonl").read_text(encoding="utf-8").splitlines()
+    ]
+    (root / "dataset.jsonl").unlink()
+    (root / "eval").mkdir()
+    for name, split in (("tuning.jsonl", "tune"), ("holdout.jsonl", "holdout")):
+        slice_rows = [
+            {k: v for k, v in row.items() if k != "metadata"}
+            for row in rows
+            if row["metadata"]["split"] == split
+        ]
+        (root / "eval" / name).write_text(
+            "".join(json.dumps(row) + "\n" for row in slice_rows), encoding="utf-8"
+        )
+
+
+def test_an_explicit_tuning_file_reads_its_sibling_holdout_like_discovery(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    _pair_layout(root)
+    runs = {
+        "discovered": (),
+        "named": ("--dataset", str(root / "eval" / "tuning.jsonl")),
+    }
+    for how, extra in runs.items():
+        out_dir = tmp_path / how
+        out_dir.mkdir()
+        report, _ = _run(root, out_dir, *extra)
+        by_file = {item["file"]: item for item in report["datasets"]}
+        assert sorted(by_file) == ["eval/holdout.jsonl", "eval/tuning.jsonl"], how
+        tuning = by_file["eval/tuning.jsonl"]
+        assert tuning["holdout_rows"] == 30, how
+        assert any(
+            "declared by sibling file eval/holdout.jsonl" in note
+            for note in tuning["notes"]
+        ), (how, tuning["notes"])
+        assert report["areas"]["dataset"]["status"] == "ok", how
+        assert report["next_step"]["branch"] == "g", (how, report["next_step"]["line"])
+
+
+UNREADABLE_DATASETS = {
+    # case: (file written, its content, whether it is named with --dataset)
+    "named_json": ("eval.json", "{not json", True),
+    "named_jsonl_all_invalid": ("eval.jsonl", "{not json\n{nor this\n", True),
+    "discovered_json": ("eval.json", "{not json", False),
+}
+
+
+@pytest.mark.parametrize("case", sorted(UNREADABLE_DATASETS))
+def test_an_unreadable_dataset_is_named_not_called_absent(
+    case: str, tmp_path: Path
+) -> None:
+    name, content, named = UNREADABLE_DATASETS[case]
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    (root / "dataset.jsonl").unlink()
+    (root / name).write_text(content, encoding="utf-8")
+    extra = ("--dataset", str(root / name)) if named else ()
+    report, card = _run(root, tmp_path, *extra)
+    line = report["next_step"]["line"]
+    assert report["next_step"]["branch"] == "f"
+    assert line.startswith(name), line
+    assert "could not be parsed" in line
+    assert not line.startswith("No evaluation dataset was found")
+    assert "found none" not in _section(card, "Dataset")
+
+
+def test_an_unreadable_holdout_sibling_is_named_not_grown(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    _pair_layout(root)
+    (root / "eval" / "holdout.jsonl").write_text(
+        "{not json\n{nor this\n", encoding="utf-8"
+    )
+    report, _ = _run(root, tmp_path, "--dataset", str(root / "eval" / "tuning.jsonl"))
+    line = report["next_step"]["line"]
+    assert report["next_step"]["branch"] == "f"
+    assert line.startswith("eval/holdout.jsonl could not be parsed"), line
+    assert "grow and split" not in line
+
+
+GOLD_TOKENS = {
+    # case: (raw JSON token for every third row's gold, kind, label)
+    "nan": ("NaN", "nan", "NaN"),
+    "null": ("null", "null", "null"),
+    "infinity": ("Infinity", "infinite", "infinite"),
+    "empty": ('""', "empty", "empty string"),
+    "overflow": ("1e999", "infinite", "infinite"),
+    # A null under the first gold key is not rescued by a later one.
+    "output_null": (None, "null", "null"),
+}
+
+
+def _unusable_gold(root: Path, case: str) -> None:
+    """Every third row (24 of 70) gets an unusable gold value."""
+    token = GOLD_TOKENS[case][0]
+    lines = []
+    for index, line in enumerate(
+        (root / "dataset.jsonl").read_text(encoding="utf-8").splitlines()
+    ):
+        row = json.loads(line)
+        if index % 3 == 0:
+            if token is None:
+                line = json.dumps({**row, "output": None})
+            else:
+                gold = json.dumps(row["expected_output"])
+                assert gold in line
+                line = line.replace(gold, token, 1)
+        elif case == "nan" and index in (1, 2):
+            # Usable control: 0 and false are real labels.
+            line = json.dumps({**row, "expected_output": 0 if index == 1 else False})
+        lines.append(line + "\n")
+    (root / "dataset.jsonl").write_text("".join(lines), encoding="utf-8")
+
+
+@pytest.mark.parametrize("case", sorted(GOLD_TOKENS))
+def test_unusable_gold_is_not_gold_coverage(case: str, tmp_path: Path) -> None:
+    _, kind, label = GOLD_TOKENS[case]
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    _unusable_gold(root, case)
+    report, _ = _run(root, tmp_path)
+    dataset = report["datasets"][0]
+    assert report["areas"]["dataset"]["status"] == "attention"
+    assert (
+        f"24 row(s) carry a gold key with no usable value (24 {label})"
+        in dataset["findings"]
+    ), dataset["findings"]
+    assert dataset["missing_gold_counts"] == {kind: 24}
+    assert dataset["gold_keys"] == {"expected_output": 46}
+    assert len(dataset["missing_gold_rows"]) == 20
+    assert report["next_step"]["branch"] == "f"
+    assert "no usable gold value" in report["next_step"]["line"]
+    if case == "nan":
+        assert any(
+            finding.startswith("24 non-standard JSON constant(s)")
+            for finding in dataset["findings"]
+        ), dataset["findings"]
+
+
+def test_a_json_config_file_does_not_block_the_all_clear(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    (root / "package.json").write_text(
+        json.dumps({"name": "x", "version": "1.0.0"}), encoding="utf-8"
+    )
+    report, _ = _run(root, tmp_path)
+    assert report["areas"]["dataset"]["status"] == "ok"
+    assert report["files"]["dataset_files_not_analysed"] == []
+    assert report["files"]["dataset_candidates"] == 2
+    assert report["next_step"]["branch"] == "g"
+
+
+ROWLESS_EVAL_ASSETS = {
+    # case: (file, content, reason named in the report)
+    "wrapped_holdout": (
+        "eval/holdout.json",
+        json.dumps({"data": [{"input": "q", "expected_output": "a"}]}),
+        "is a JSON object with a nested row list (`data`)",
+    ),
+    "wrapped_other_name": (
+        "eval/cases.json",
+        json.dumps({"data": [{"input": "q", "expected_output": "a"}]}),
+        "is a JSON object with a nested row list (`data`)",
+    ),
+    "header_only_holdout_csv": (
+        "eval/holdout.csv",
+        "input,expected_output\n",
+        "holds no rows",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(ROWLESS_EVAL_ASSETS))
+def test_a_wrapped_or_holdout_named_rowless_file_still_blocks_the_all_clear(
+    case: str, tmp_path: Path
+) -> None:
+    """Unlike a config file, these are evaluation assets the audit did not
+    read, so discovery names them instead of dropping them."""
+    name, content, reason = ROWLESS_EVAL_ASSETS[case]
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    (root / "eval").mkdir()
+    (root / name).write_text(content, encoding="utf-8")
+    report, card = _run(root, tmp_path)
+    assert report["areas"]["dataset"]["status"] == "attention"
+    assert report["next_step"]["branch"] != "g"
+    assert "all check out" not in card
+    listed = report["files"]["dataset_files_not_analysed"]
+    assert len(listed) == 1 and listed[0].startswith(f"{name} {reason}"), listed
+    assert report["next_step"]["line"].startswith(listed[0]), report["next_step"]["line"]
+
+
+def test_a_python_scan_cap_routes_to_the_inventory_step(monkeypatch) -> None:
+    inventory = _inventory([_entry([_knob("model", "read")])], [_scorer()])
+    inventory.files_total = 5
+    inventory.files_scanned = 4
+    monkeypatch.setattr(audit, "MAX_PYTHON_FILES", 4)
+    step = audit.next_step(inventory, [_dataset(80, 40)], GOOD_PROBE, _scorer())
+    assert step["branch"] == "i"
+    assert step["skills"] == []
+    assert step["line"].startswith(
+        "Only the first 4 of 5 Python file(s) were inventoried, so the entry points"
+    ), step["line"]
+
+
+def test_a_dataset_file_cap_routes_to_the_dataset_step() -> None:
+    note = "looked at the first 2 of 4 JSONL/JSON/CSV file(s); the rest were not analysed"
+    step = audit.next_step(
+        _inventory([_entry([_knob("model", "read")])], [_scorer()]),
+        [_dataset(80, 40)],
+        GOOD_PROBE,
+        _scorer(),
+        dataset_notes=[note],
+    )
+    assert step["branch"] == "f"
+    assert step["line"].startswith(note), step["line"]

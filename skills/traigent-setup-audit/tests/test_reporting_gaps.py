@@ -18,6 +18,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from conftest import healthy_variant
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 SCRIPT = SCRIPTS_DIR / "audit_project.py"
@@ -467,3 +468,46 @@ def test_a_utf8_bom_does_not_discard_the_file(tmp_path: Path) -> None:
         "data.json",
     }
     assert report["scorer_probe"] is None
+
+
+def test_an_unparsed_file_never_gets_the_all_read_meaning(tmp_path: Path) -> None:
+    """A module the audit could not parse may hold the entry point or knob
+    that matters, so the card cannot say every knob is read."""
+    report, card = _run(healthy_variant(tmp_path, "unparsed_helper"), tmp_path / "out")
+    meaning = report["areas"]["agent"]["meaning"]
+    assert report["areas"]["agent"]["status"] == "attention"
+    assert "Every declared knob is read directly" not in meaning
+    assert "may be incomplete" in meaning
+    assert "helpers.py" in card
+
+
+def _rows_with_constants(fmt: str) -> str:
+    """40 valid rows; `metadata.score` is NaN on two and Infinity on one."""
+    rows = []
+    for index in range(40):
+        score = {0: "NaN", 1: "NaN", 2: "Infinity"}.get(index, "0.5")
+        rows.append(
+            json.dumps(
+                {"input": f"question number {index} about topic {index}",
+                 "expected_output": f"answer {index}",
+                 "metadata": {"score": "SCORE"}}
+            ).replace('"SCORE"', score)
+        )
+    if fmt == "jsonl":
+        return "".join(row + "\n" for row in rows)
+    return "[" + ",\n".join(rows) + "]\n"
+
+
+@pytest.mark.parametrize("fmt", ["jsonl", "json"])
+def test_non_standard_json_constants_are_a_finding(fmt: str, tmp_path: Path) -> None:
+    path = tmp_path / f"data.{fmt}"
+    path.write_text(_rows_with_constants(fmt), encoding="utf-8")
+    report = audit.analyse_dataset(path, tmp_path, audit.load_rows(path))
+    assert (
+        "3 non-standard JSON constant(s) in the file (Infinity ×1, NaN ×2); "
+        "strict JSON readers refuse them"
+    ) in report.findings, report.findings
+    # Constants outside the gold value leave gold coverage alone.
+    assert report.expected_key_counts == {"expected_output": 40}
+    assert report.missing_expected == []
+    assert report.missing_gold_counts == {}
