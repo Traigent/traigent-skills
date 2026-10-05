@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 import pytest
 from conftest import strict_json
@@ -897,6 +898,85 @@ def test_a_relative_selector_with_dotdot_names_the_inventoried_file_once(
     skipped = {item["function"] for item in report["skipped_scorer_candidates"]}
     assert function not in skipped
     assert report["next_step"]["branch"] == "g"
+
+
+def test_a_symlink_loop_selection_is_refused_not_a_traceback(tmp_path: Path) -> None:
+    """A selected file that is a symlink loop cannot be read: it is refused
+    like any unparsable module, and the audit still finishes."""
+    root = _variant(tmp_path, _three_way())
+    try:
+        os.symlink("loop.py", root / "loop.py")
+    except (OSError, NotImplementedError) as exc:
+        pytest.skip(f"symlinks unavailable here: {exc}")
+    report_path = tmp_path / "report.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(root),
+            "--json",
+            str(report_path),
+            "--scorer",
+            "loop.py:score",
+        ],
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    assert "Traceback" not in completed.stderr, completed.stderr
+    assert completed.returncode == 0, completed.stderr
+    report = strict_json(report_path.read_text(encoding="utf-8"))
+    refusal = report["scorer_selection_refused"]
+    assert refusal.startswith("`score` at loop.py was selected"), refusal
+    assert "the module could not be parsed" in refusal
+    assert report["scorer_probe"] is None
+    assert refusal in completed.stdout
+
+
+@pytest.mark.parametrize("equality", ["native", "folds_case"])
+def test_two_files_that_differ_only_in_case_stay_separate(
+    equality: str, tmp_path: Path, monkeypatch, capsys
+) -> None:
+    """`scorer.py` and `SCORER.py` are two files on a case-sensitive
+    directory: selecting one never probes the other. `folds_case` makes path
+    equality ignore case, as WindowsPath's does on a case-sensitive NTFS
+    directory, so the Windows behaviour is exercised on this machine too."""
+    root = _variant(tmp_path, _three_way())
+    twin = root / "SCORER.py"
+    if twin.exists():
+        pytest.skip("case-insensitive filesystem: SCORER.py is scorer.py here")
+    twin.write_text(
+        "import subprocess\n\n\ndef score(output, expected):\n"
+        "    subprocess.run(['true'])\n    return 1.0\n",
+        encoding="utf-8",
+    )
+    # Run in-process without patching this test process's sockets.
+    monkeypatch.setattr(audit, "install_network_guard", lambda: None)
+    monkeypatch.setattr(audit, "verify_network_guard", lambda: "active")
+    if equality == "folds_case":
+
+        def folded(self, other):
+            if not isinstance(other, PurePosixPath):
+                return NotImplemented
+            return str(self).casefold() == str(other).casefold()
+
+        monkeypatch.setattr(PurePosixPath, "__eq__", folded)
+    out = tmp_path / "report.json"
+    code = audit.main(
+        ["--root", str(root), "--json", str(out), "--scorer", "scorer.py:score"]
+    )
+    captured = capsys.readouterr()
+    monkeypatch.undo()
+    assert code == 0, captured.err
+    report = strict_json(out.read_text(encoding="utf-8"))
+    files = sorted(entry["file"] for entry in report["scorers"])
+    assert files == ["SCORER.py", "scorer.py"], report["scorers"]
+    selected = [entry["file"] for entry in report["scorers"] if "selected" in entry]
+    assert selected == ["scorer.py"]
+    assert report["scorer_selection_refused"] is None
+    assert report["scorer_probe"] is not None
 
 
 @pytest.mark.parametrize(

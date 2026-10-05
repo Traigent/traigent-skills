@@ -472,8 +472,11 @@ def normalize_text(value: object) -> str:
 
 
 def relative(path: Path, root: Path) -> str:
+    # realpath, not Path.resolve(): on Python <= 3.12 resolve() raises
+    # RuntimeError on a symlink loop, which then crashed the whole audit.
     try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
+        real = Path(os.path.realpath(path))
+        return real.relative_to(os.path.realpath(root)).as_posix()
     except ValueError:
         return path.as_posix()
 
@@ -2895,13 +2898,23 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         file_part, _, function_part = args.scorer.rpartition(":")
         if not file_part or not function_part:
             raise ValueError("--scorer must be given as FILE.py:FUNCTION")
-        chosen_file = relative(Path(file_part), root)
-        # Matched by the file it resolves to, not by its spelling: a relative
-        # `sub/../scorer.py` from outside --root is the inventoried `scorer.py`.
-        chosen_path = (root / chosen_file).resolve()
+        # Normalised against --root as well as the working directory, so a
+        # relative `sub/../scorer.py` from outside --root is reported as
+        # `scorer.py` whether or not the inventory reached it.
+        chosen_file = relative(root / relative(Path(file_part), root), root)
 
         def is_selection(file: str, function: str) -> bool:
-            return function == function_part and (root / file).resolve() == chosen_path
+            # The same file on disk, not the same spelling: path equality
+            # folds case on Windows (two files on a case-sensitive directory
+            # merge) and does not on a case-insensitive macOS volume (one
+            # file is listed twice). Unreadable, a symlink loop say, is
+            # not a match; it is refused below as a module not parsed.
+            if function != function_part:
+                return False
+            try:
+                return os.path.samefile(root / chosen_file, root / file)
+            except (OSError, RuntimeError, ValueError):
+                return False
 
         selected = next(
             (
