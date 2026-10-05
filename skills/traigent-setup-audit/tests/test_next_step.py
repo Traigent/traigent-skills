@@ -1396,19 +1396,19 @@ GOLD_TOKENS = {
 
 def _unusable_gold(root: Path, case: str) -> None:
     """Every third row (24 of 70) gets an unusable gold value."""
-    token = GOLD_TOKENS[case][0]
+    gold_value = GOLD_TOKENS[case][0]
     lines = []
     for index, line in enumerate(
         (root / "dataset.jsonl").read_text(encoding="utf-8").splitlines()
     ):
         row = json.loads(line)
         if index % 3 == 0:
-            if token is None:
+            if gold_value is None:
                 line = json.dumps({**row, "output": None})
             else:
                 gold = json.dumps(row["expected_output"])
                 assert gold in line
-                line = line.replace(gold, token, 1)
+                line = line.replace(gold, gold_value, 1)
         elif case == "nan" and index in (1, 2):
             # Usable control: 0 and false are real labels.
             line = json.dumps({**row, "expected_output": 0 if index == 1 else False})

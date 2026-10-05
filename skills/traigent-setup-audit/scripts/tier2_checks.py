@@ -1406,7 +1406,8 @@ def run_cli(argv: list[str], executable: str, subprocesses: list[dict],
 
 
 def run_model_ids(tier1: Tier1, executable: str, subprocesses: list[dict],
-                  api_key: str, out: list[str]) -> dict:
+                  api_key: str,
+                  out: list[str]) -> dict:
     record: dict = {"check": "model-ids", "results": []}
     for model_id in tier1.model_ids:
         provider = provider_for(model_id)
@@ -1442,7 +1443,9 @@ def run_model_ids(tier1: Tier1, executable: str, subprocesses: list[dict],
 
 
 def run_plan(tier1: Tier1, args, backend_url: str, executable: str,
-             subprocesses: list[dict], api_key: str, out: list[str]) -> dict:
+             subprocesses: list[dict],
+             api_key: str,
+             out: list[str]) -> dict:
     task = args.task or default_task(tier1)
     argv = [
         "traigent", "plan",
