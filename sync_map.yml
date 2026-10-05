@@ -244,6 +244,10 @@ skills:
       - traigent/api/types.py
 
   traigent-ci-safety-gate:
+    python_version_floors:
+      # safety_constraints is accepted from 0.28.0 (below it, decoration raises
+      # NotImplementedError); the reference states the requirement in prose.
+      references/in-run-safety.md: "0.28.0"
     modules:
       - traigent.api.decorators
       - traigent.api.safety

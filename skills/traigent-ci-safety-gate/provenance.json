@@ -1,8 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "290513e3fb2be53d",
+  "doc_hash": "2afd60f6338b61b5",
   "reference_hashes": {
-    "references/gate-workflow.md": "1c682ea2f7f932aa"
+    "references/gate-workflow.md": "1c682ea2f7f932aa",
+    "references/in-run-safety.md": "6b0ff1bad7333974"
   },
   "entries": [
     {
@@ -120,6 +121,17 @@
       "doc_before_hash": "7dd1d63238843dd5",
       "doc_after_hash": "290513e3fb2be53d",
       "note": "Apply-flow pointer names traigent-boost-agent Fast Path Step 5 instead of a removed skill section; the safety_constraints note quotes the NotImplementedError without a private tracker URL; the minimal workflow declares permissions: contents: read.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "safety-constraints-floor-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "290513e3fb2be53d",
+      "doc_after_hash": "2afd60f6338b61b5",
+      "note": "In-run safety_constraints is accepted since SDK 0.28.0 (see version-matrix: safety-constraints-impl): the section is now version-conditional (0.28.0+: soft, run-level statistical halt that does not filter trials, so an unsafe config can still be best_config; below 0.28.0: do not pass a non-empty value, it raises NotImplementedError at decoration time); new references/in-run-safety.md, floored at 0.28.0, with semantics, min_samples sizing and two runnable examples (violating run halts with stop_reason safety_constraint and best_config still set; fully compliant run also halts on insufficient evidence); states that optimize() applies best_config to the decorated function, so after a safety halt that instance already runs the winner: optimize in a separate candidate process and promote only through PromotionGate; the reference scopes the missing-metric default (hallucination_rate() preset 1.0, custom MetricKeyMetric 0.0); drops the stale 0.18.x stamp.",
       "source_type": "agent"
     }
   ]
