@@ -27,6 +27,13 @@ int subclass whose ``*`` returns NaN passed the coverage check, and ``spent``
 could exceed the cap by rounding or overflow on a valid counter. Amounts are now
 exact built-in ``int`` or ``float`` up to $1e15, counts exact built-in ``int``,
 money is the decimal of the float's shortest repr, and ``spent`` is computed exactly.
+
+Review round 3: the SDK returns on an evaluator timeout while the evaluator thread
+keeps running, and the evaluators read the budget from a module global, so a
+leftover thread of one run spent the next run's budget and made a correctly sized
+run raise. The global and the one-run-per-process lock are gone: the wrapper takes
+the evaluator, binds this run's budget into the evaluator it hands the SDK, and
+refuses a ``custom_evaluator`` passed through it.
 """
 
 from __future__ import annotations
@@ -45,6 +52,12 @@ from .test_audit_327_judge_objectives_budget import (
     TEMPLATES,
     _run_template,
 )
+
+# Each template's decorated function and evaluator, as its usage example names them.
+USAGE = {
+    "judge": ("answer", "llm_judge_evaluator"),
+    "hybrid": ("extract", "hybrid_evaluator"),
+}
 
 # Labels are Python expressions, evaluated inside the driver.
 BAD_AMOUNTS = {
@@ -105,32 +118,32 @@ control = ns["JudgeBudget"](cap_usd=1.0, per_call_usd=0.002)
 granted = sum(control.try_spend() for _ in range(600))
 
 class FakeOptimized:
-    # Records each dispatch and the budget installed for it; never calls a model.
+    # Records each dispatch; scores a row only through the evaluator it is handed.
     def __init__(self, action=None):
-        self.calls, self.action = [], action
-    def optimize_sync(self, **kwargs):
-        budget = ns["JUDGE_BUDGET"]
-        self.calls.append({{"max_trials": kwargs.get("max_trials"),
-                           "budget_cap": None if budget is None else budget.cap}})
+        self.calls, self.budgets, self.action = [], [], action
+    def optimize_sync(self, custom_evaluator=None, **kwargs):
+        self.calls.append({{"max_trials": kwargs.get("max_trials"), "bound": callable(custom_evaluator)}})
+        self.budgets.append(budgets[-1])  # the budget this run built just before dispatch
         if self.action:
-            self.action(budget)
+            self.action(lambda: custom_evaluator(agent, {{}}, example), budgets[-1])
         return "optimized"
 
 PRICE = ns["JUDGE_COST_PER_CALL_USD"]
 
-def attempt(rows=50, max_trials=8, cap_usd=1.0, price=PRICE, action=None):
-    ns["JUDGE_BUDGET"] = None
+def attempt(rows=50, max_trials=8, cap_usd=1.0, price=PRICE, action=None, evaluator=evaluator, **optimize_kwargs):
     ns["JUDGE_COST_PER_CALL_USD"] = price
-    fake = FakeOptimized(action)
+    fake, first = FakeOptimized(action), len(budgets)
     try:
-        returned = ns["run_with_judge_budget"](fake, rows=rows, max_trials=max_trials, cap_usd=cap_usd)
+        returned = ns["run_with_judge_budget"](
+            fake, evaluator, rows=rows, max_trials=max_trials, cap_usd=cap_usd, **optimize_kwargs)
         raised = None
     except Exception as exc:
         returned, raised = None, f"{{type(exc).__name__}}: {{exc}}"
     finally:
         ns["JUDGE_COST_PER_CALL_USD"] = PRICE
     return {{"raised": raised, "returned": returned, "calls": fake.calls,
-            "budget_cleared": ns["JUDGE_BUDGET"] is None}}
+            "built": len(budgets) - first,
+            "budgets": [[b.cap, b.calls, b.refused] for b in fake.budgets]}}
 
 wrapper = {{
     "cap_usd": {{label: attempt(cap_usd=eval(label)) for label in BAD_AMOUNTS["cap_usd"]}},
@@ -148,15 +161,19 @@ wrapper = {{
 }}
 wrapper_control = attempt(rows=50, max_trials=8, cap_usd=1.0)
 
-def boom(budget):
+def boom(evaluate, budget):
     raise KeyError("optimizer failed")
 
-def overspend(budget):
-    for _ in range(3):
-        budget.try_spend()
+def scores(times):
+    def action(evaluate, budget):
+        for _ in range(times):
+            evaluate()
+    return action
+
+overspend = scores(3)
 
 lifecycle = {{
-    "success": attempt(rows=1, max_trials=1, cap_usd=PRICE),
+    "success": attempt(rows=1, max_trials=1, cap_usd=PRICE, action=scores(1)),
     "optimizer_raises": attempt(rows=1, max_trials=1, cap_usd=PRICE, action=boom),
     "judge_call_refused": attempt(rows=1, max_trials=1, cap_usd=PRICE, action=overspend),
 }}
@@ -173,7 +190,7 @@ def grants(cap, price, tries):
     return [sum(budget.try_spend() for _ in range(tries)), budget.refused]
 
 def spend(times):
-    def action(budget):
+    def action(evaluate, budget):
         for _ in range(times):
             budget.try_spend()
     return action
@@ -208,19 +225,13 @@ hostile = {{
 import threading
 
 def overlapping(record, start):
-    # Starts a second budgeted run while the first one is inside optimize_sync().
-    def action(outer_budget):
-        inner = FakeOptimized()
+    # A second budgeted run starts and scores while the first is inside optimize_sync().
+    def action(evaluate, outer_budget):
+        evaluate()
         def second_run():
-            try:
-                ns["run_with_judge_budget"](inner, rows=1, max_trials=1, cap_usd=PRICE)
-                record["raised"] = None
-            except Exception as exc:
-                record["raised"] = f"{{type(exc).__name__}}: {{exc}}"
+            record["second"] = attempt(rows=2, max_trials=1, cap_usd=2 * PRICE, action=scores(2))
         start(second_run)
-        record["inner_calls"] = inner.calls
-        record["outer_still_installed"] = ns["JUDGE_BUDGET"] is outer_budget
-        record["outer_spends"] = outer_budget.try_spend()
+        evaluate()  # the first run's second row, after the second run spent all of its budget
     return action
 
 def same_thread(run):
@@ -231,16 +242,17 @@ def other_thread(run):
     thread.start()
     thread.join()
 
-run_lock = {{}}
+overlap = {{}}
 for name, start in (("nested", same_thread), ("other_thread", other_thread)):
     record = {{}}
-    run_lock[name] = {{"outer": attempt(rows=1, max_trials=1, cap_usd=PRICE, action=overlapping(record, start)),
-                      "second": record,
-                      "next_run": attempt(rows=1, max_trials=1, cap_usd=PRICE)}}
-for name, first in (("value_error", attempt(rows=0)),
-                    ("optimizer_raises", attempt(rows=1, max_trials=1, cap_usd=PRICE, action=boom)),
-                    ("judge_call_refused", attempt(rows=1, max_trials=1, cap_usd=PRICE, action=overspend))):
-    run_lock[f"after_{{name}}"] = {{"first": first, "next_run": attempt(rows=1, max_trials=1, cap_usd=PRICE)}}
+    record["first"] = attempt(rows=2, max_trials=1, cap_usd=2 * PRICE, action=overlapping(record, start))
+    overlap[name] = record
+
+bypass = {{
+    "custom_evaluator": attempt(rows=1, max_trials=1, cap_usd=PRICE, custom_evaluator=evaluator),
+    "evaluator None": attempt(rows=1, max_trials=1, cap_usd=PRICE, evaluator=None),
+    "evaluator name": attempt(rows=1, max_trials=1, cap_usd=PRICE, evaluator="llm_judge_evaluator"),
+}}
 
 import math
 from fractions import Fraction
@@ -312,7 +324,7 @@ def spent_at_huge_count():
 
 emit({{"constructor": constructor, "granted": granted, "refused": control.refused,
        "wrapper": wrapper, "wrapper_control": wrapper_control, "lifecycle": lifecycle,
-       "exact": exact, "hostile": hostile, "run_lock": run_lock, "division": division,
+       "exact": exact, "hostile": hostile, "overlap": overlap, "bypass": bypass, "division": division,
        "subclasses": subclasses, "ceiling": ceiling, "numpy_scalars": numpy_scalars,
        "huge_count": probe(spent_at_huge_count)}})
 """
@@ -335,6 +347,83 @@ def _names(message: str | None, name: str) -> bool:
         and message.startswith("ValueError")
         and bool(re.search(rf"\b{re.escape(name)}\b", message))
     )
+
+
+# Run A's evaluator thread outlives run A, as on an SDK evaluator timeout, and
+# scores while run B is running. Run B is sized for exactly its own rows.
+STALE_WORKER_BODY = """
+import inspect
+import threading
+
+PRICE = ns["JUDGE_COST_PER_CALL_USD"]
+release, entered, stale, b_rows = threading.Event(), threading.Event(), {}, []
+
+def scorer(custom_evaluator):
+    # The SDK's choice: an optimize()-time custom_evaluator, else the decorator's.
+    return custom_evaluator or evaluator
+
+def blocking_agent(**kwargs):
+    entered.set()
+    release.wait(60)
+    return agent(**kwargs)
+
+class TimedOutRun:
+    # Gives up on a row and raises while its evaluator thread lives on.
+    def optimize_sync(self, custom_evaluator=None, **kwargs):
+        score = scorer(custom_evaluator)
+        def worker():
+            if stage == "queued":  # not yet inside the evaluator when the run gives up
+                release.wait(60)
+            try:
+                stale["error_message"] = score(blocking_agent, {}, example).error_message
+            except Exception as exc:
+                stale["raised"] = f"{type(exc).__name__}: {exc}"
+        self.worker = threading.Thread(target=worker, daemon=True)
+        self.worker.start()
+        if stage == "in_agent":
+            entered.wait(60)
+        raise TimeoutError("evaluator timed out")
+
+class NextRun:
+    def optimize_sync(self, custom_evaluator=None, **kwargs):
+        score = scorer(custom_evaluator)
+        release.set()
+        timed_out.worker.join(60)  # run A's thread finishes while run B is in progress
+        b_rows.extend(score(agent, {}, example).error_message for _ in range(2))
+        return "optimized"
+
+takes_evaluator = "evaluator" in inspect.signature(ns["run_with_judge_budget"]).parameters
+
+def start(optimized, **kwargs):
+    args = (evaluator,) if takes_evaluator else ()
+    try:
+        return {"returned": ns["run_with_judge_budget"](optimized, *args, **kwargs), "raised": None}
+    except Exception as exc:
+        return {"returned": None, "raised": f"{type(exc).__name__}: {exc}"}
+
+timed_out, first = TimedOutRun(), len(budgets)
+run_a = start(timed_out, rows=1, max_trials=1, cap_usd=PRICE)
+run_b = start(NextRun(), rows=2, max_trials=1, cap_usd=2 * PRICE)
+emit({"a": run_a, "b": run_b, "stale": stale, "b_rows": b_rows,
+      "worker_alive": timed_out.worker.is_alive(),
+      "budgets": [[b.calls, b.refused] for b in budgets[first:]]})
+"""
+
+
+@pytest.mark.parametrize("stage", ["queued", "in_agent"])
+@pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))
+def test_a_leftover_evaluator_thread_spends_only_its_own_runs_budget(
+    case: str, stage: str, tmp_path: Path
+) -> None:
+    """A timed-out run's evaluator thread read the next run's budget, so that run raised."""
+    result = _run_template(tmp_path, case, f"stage = {stage!r}\n" + STALE_WORKER_BODY)
+    assert result["a"]["raised"] == "TimeoutError: evaluator timed out", result
+    assert result["worker_alive"] is False, result
+    assert result["stale"] == {"error_message": None}, result
+    assert result["b"] == {"returned": "optimized", "raised": None}, result
+    assert result["b_rows"] == [None, None], result
+    # Run A's budget paid for its own row; run B kept its full allowance.
+    assert result["budgets"] == [[1, 0], [2, 0]], result
 
 
 @pytest.mark.parametrize("cap", ['float("nan")', 'float("inf")'])
@@ -370,30 +459,29 @@ def test_run_rejects_bad_inputs_before_dispatch(matrix: dict) -> None:
             is_value_error = bool(run["raised"]) and run["raised"].startswith(
                 "ValueError"
             )
-            if (
-                not (named and is_value_error)
-                or run["calls"]
-                or not run["budget_cleared"]
-            ):
+            if not (named and is_value_error) or run["calls"]:
                 wrong[f"{name}={label}"] = run
     assert wrong == {}, wrong
     control = matrix["wrapper_control"]
     assert control["raised"] is None, control
     assert control["returned"] == "optimized", control
-    assert control["calls"] == [{"max_trials": 8, "budget_cap": 1.0}], control
-    assert control["budget_cleared"], control
+    assert control["calls"] == [{"max_trials": 8, "bound": True}], control
+    assert control["budgets"] == [[1.0, 0, 0]], control
 
 
-def test_budget_is_cleared_when_the_run_ends(matrix: dict) -> None:
+def test_the_sdk_scores_with_the_evaluator_bound_to_the_run(matrix: dict) -> None:
+    """The evaluator handed to optimize_sync() spends this run's budget, however the run ends."""
     lifecycle = matrix["lifecycle"]
+    price = 0.002
     assert lifecycle["success"]["raised"] is None, lifecycle
+    assert lifecycle["success"]["budgets"] == [[price, 1, 0]], lifecycle
     assert lifecycle["optimizer_raises"]["raised"].startswith("KeyError"), lifecycle
     refused = lifecycle["judge_call_refused"]["raised"]
     assert refused and refused.startswith("RuntimeError"), lifecycle
     assert "2 judge call(s) refused" in refused, lifecycle
+    assert lifecycle["judge_call_refused"]["budgets"] == [[price, 1, 2]], lifecycle
     for name, run in lifecycle.items():
-        assert len(run["calls"]) == 1, (name, run)
-        assert run["budget_cleared"], (name, run)
+        assert run["calls"] == [{"max_trials": 1, "bound": True}], (name, run)
 
 
 def _coverage_refusal(message: str | None) -> bool:
@@ -427,8 +515,7 @@ def test_allowance_is_exact_for_realistic_caps(matrix: dict) -> None:
     run = exact["500 rows x 50 trials at cap 50.0"]
     assert run["raised"] is None, run
     assert run["returned"] == "optimized", run
-    assert len(run["calls"]) == 1, run
-    assert run["budget_cleared"], run
+    assert run["budgets"] == [[50.0, 25_000, 0]], run
 
 
 def test_accepted_hostile_amounts_still_bind(matrix: dict) -> None:
@@ -456,35 +543,36 @@ def test_accepted_hostile_amounts_still_bind(matrix: dict) -> None:
 
 
 @pytest.mark.parametrize("overlap", ["nested", "other_thread"])
-def test_overlapping_run_is_refused_and_leaves_the_first_intact(
+def test_overlapping_runs_each_spend_only_their_own_budget(
     matrix: dict, overlap: str
 ) -> None:
-    """The evaluator reads one global, so a second run spent from and cleared the first's budget."""
-    result = matrix["run_lock"][overlap]
-    second = result["second"]
-    assert second["raised"] and second["raised"].startswith("RuntimeError"), result
-    assert "already running" in second["raised"], result
-    assert second["inner_calls"] == [], result
-    assert second["outer_still_installed"] is True, result
-    assert second["outer_spends"] is True, result
-    outer = result["outer"]
-    assert outer["raised"] is None and outer["returned"] == "optimized", result
-    assert outer["budget_cleared"], result
-    next_run = result["next_run"]
-    assert next_run["raised"] is None and len(next_run["calls"]) == 1, result
-    assert next_run["budget_cleared"], result
+    """Each run is sized for exactly its own rows, so any cross-spend refuses a call."""
+    price = 0.002
+    first, second = (
+        matrix["overlap"][overlap]["first"],
+        matrix["overlap"][overlap]["second"],
+    )
+    for run in (first, second):
+        assert run["raised"] is None and run["returned"] == "optimized", (first, second)
+        assert run["calls"] == [{"max_trials": 1, "bound": True}], (first, second)
+        assert run["budgets"] == [[2 * price, 2, 0]], (first, second)
 
 
 @pytest.mark.parametrize(
-    "first", ["after_value_error", "after_optimizer_raises", "after_judge_call_refused"]
+    ("label", "name"),
+    [
+        ("custom_evaluator", "custom_evaluator"),
+        ("evaluator None", "evaluator"),
+        ("evaluator name", "evaluator"),
+    ],
 )
-def test_run_lock_is_released_however_a_run_ends(matrix: dict, first: str) -> None:
-    result = matrix["run_lock"][first]
-    assert result["first"]["raised"], result
-    next_run = result["next_run"]
-    assert next_run["raised"] is None, result
-    assert next_run["returned"] == "optimized" and len(next_run["calls"]) == 1, result
-    assert next_run["budget_cleared"], result
+def test_run_refuses_an_evaluator_that_would_bypass_the_budget(
+    matrix: dict, label: str, name: str
+) -> None:
+    """A custom_evaluator in the optimize kwargs would replace the budgeted evaluator."""
+    run = matrix["bypass"][label]
+    assert _names(run["raised"], name), run
+    assert run["calls"] == [] and run["built"] == 0, run
 
 
 def test_allowance_is_the_exact_quotient_of_the_decimals(matrix: dict) -> None:
@@ -506,7 +594,7 @@ def test_numeric_subclasses_are_rejected(matrix: dict) -> None:
         assert outcome["max_calls"] is None, (label, outcome)
     rows = subclasses["rows"]
     assert _names(rows["raised"], "rows"), rows
-    assert rows["calls"] == [] and rows["budget_cleared"], rows
+    assert rows["calls"] == [], rows
 
 
 def test_amounts_above_the_ceiling_are_rejected(matrix: dict) -> None:
@@ -532,7 +620,7 @@ def test_numpy_scalars_are_rejected(matrix: dict) -> None:
         pytest.skip("numpy is not installed in this SDK environment")
     for name, run in scalars.items():
         assert _names(run["raised"], name), (name, run)
-        assert run["calls"] == [] and run["budget_cleared"], (name, run)
+        assert run["calls"] == [], (name, run)
 
 
 def test_spent_never_overflows_on_a_valid_counter(matrix: dict) -> None:
@@ -546,8 +634,21 @@ def test_spent_never_overflows_on_a_valid_counter(matrix: dict) -> None:
 def test_prose_does_not_size_the_cap_as_a_float_product() -> None:
     """11 * 0.015 is 0.16499999999999998, which buys 10 calls, not 11."""
     text = TEMPLATES.read_text(encoding="utf-8")
-    assert "size the cap as calls" not in text
+    assert repr(11 * 0.015) == "0.16499999999999998"
     assert text.count("Write the cap as a decimal literal") == 2
+    assert text.count("`11 * 0.015`, which is `0.16499999999999998` and buys 10") == 2
+    # The cost caveat tells users to multiply calls by price; it must point the
+    # judge cap at the decimal-literal rule instead of at that float product.
+    caveat = text.split("## Cost metering caveat", 1)[1].split("\n## ", 1)[0]
+    assert "calls_per_row" in caveat and "decimal literal" in caveat, caveat
+
+
+def test_prose_bounds_the_exact_allowance_to_fifteen_digits() -> None:
+    """Python rounds a longer float literal before the template sees it."""
+    text = TEMPLATES.read_text(encoding="utf-8")
+    assert float("999999999999999.99") == 1e15
+    assert "decimal values as written" not in text
+    assert text.count("up to 15 significant digits") == 2
 
 
 def _shared_budget_code(block: str) -> str:
@@ -561,8 +662,19 @@ def _shared_budget_code(block: str) -> str:
 def test_both_templates_carry_the_same_budget_code() -> None:
     judge = _python_block(TEMPLATES, JUDGE_MARKER)
     hybrid = _python_block(TEMPLATES, HYBRID_MARKER)
-    for block in (judge, hybrid):
+    for case, block in (("judge", judge), ("hybrid", hybrid)):
         assert re.search(r"^import math$", block, re.M), block[:200]
         assert re.search(r"^from fractions import Fraction$", block, re.M), block[:200]
-        assert "_JUDGE_RUN_LOCK.release()" in _shared_budget_code(block), block[:200]
+        shared = _shared_budget_code(block)
+        assert "custom_evaluator=budgeted_evaluator" in shared, shared
+        # No module-level budget: a leftover evaluator thread must not see another run's.
+        assert "JUDGE_BUDGET" not in block and "global " not in block, case
+        fn, evaluator = USAGE[case]
+        assert f"# results = run_with_judge_budget({fn}, {evaluator}, rows=" in block, (
+            case
+        )
+        assert (
+            f"def {evaluator}(func, config, example, budget: JudgeBudget | None = None)"
+            in block
+        )
     assert _shared_budget_code(judge) == _shared_budget_code(hybrid)
