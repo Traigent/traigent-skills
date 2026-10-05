@@ -315,9 +315,6 @@ def _read_trial_file_with_counts(
             config = record.get("config")
             if not isinstance(config, dict):
                 raise ValueError(f"{path}:{line_number}: missing object field 'config'")
-            text_error = invalid_text_error(config, "config")
-            if text_error is not None:
-                raise ValueError(f"{path}:{line_number}: {text_error}")
             status = record.get("status")
             if isinstance(status, str) and status.lower() != "completed":
                 skipped_non_completed += 1
@@ -330,6 +327,11 @@ def _read_trial_file_with_counts(
             if metric is None:
                 skipped_missing_objective += 1
                 continue
+            # Only a measured row's config reaches a report; a skipped row
+            # (failed, or no objective value) is counted and never encoded.
+            text_error = invalid_text_error(config, "config")
+            if text_error is not None:
+                raise ValueError(f"{path}:{line_number}: {text_error}")
             trials.append(
                 Trial(
                     objective=metric,

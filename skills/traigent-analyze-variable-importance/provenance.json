@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d3ca6b370b7f3526",
+  "doc_hash": "3e0d039cad94061b",
   "entries": [
     {
       "edit_id": "genesis",
@@ -172,6 +172,17 @@
       "doc_before_hash": "8aef89e33971f9ef",
       "doc_after_hash": "d3ca6b370b7f3526",
       "note": "#390: rows without the objective are skipped and counted as skipped_missing_objective (new paragraph; --trials input line no longer requires the objective), n_trials is the number of measured trials, video_card.json key list adds skipped_missing_objective, empty-ranking card caption and SVG footer, and empty-ranking small-run guidance. #393: non-finite knob values are kept as their own value and written as strings wherever they appear in JSON outputs; all JSON outputs are strict JSON; every JSON output is checked before any file is written, so a non-finite derived value names the artifact and field and writes no file, while statistics overflow stops with OverflowError; SDK cross-check output is validated and an invalid field is named in the note; knob names and string values in trials and --config-space must be valid Unicode text, and a lone surrogate escape is rejected with file, row and path before any file is written; version 1.2.1.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-390-393-skipped-row-text-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T12:00:00Z",
+      "doc_before_hash": "d3ca6b370b7f3526",
+      "doc_after_hash": "3e0d039cad94061b",
+      "note": "Valid-Unicode check on knob names and string values now applies to measured trials only: a row the ranking skips (not completed, or no objective value) is counted and never encoded, so a lone surrogate there no longer stops a run that main completed.",
       "source_type": "agent"
     }
   ]

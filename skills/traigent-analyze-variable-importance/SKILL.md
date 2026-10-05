@@ -82,9 +82,10 @@ written as the string `"NaN"`, `"Infinity"` or `"-Infinity"`; stdout and `insigh
 many measured trials carry one and on which knobs, and name any knob where a number and a string
 share a spelling. If `NaN` marks a knob that does not apply to a trial, leave the key out
 instead: each knob is ranked over the trials that carry it. `--config-space` contributes knob
-names only. Knob names and string values, in trials and in `--config-space`, must be valid
-Unicode text: a lone surrogate escape such as `"\ud800"` is rejected with the file, the row (for
-trials) and the path.
+names only. Knob names and string values, in measured trials and in `--config-space`, must be
+valid Unicode text: a lone surrogate escape such as `"\ud800"` is rejected with the file, the row
+(for trials) and the path. Rows the ranking skips (not completed, or no objective value) are
+counted, not checked.
 
 An SDK result saved with `save_to=` (for example `traigent-runs/optimized-results.json` after the
 guided first run) is one JSON object whose `trials[]` already carry `config` and `metrics` (the

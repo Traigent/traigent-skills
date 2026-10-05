@@ -1234,6 +1234,42 @@ def test_failed_rows_with_nonfinite_knob_values_do_not_stop_the_run(tmp_path: Pa
 
 
 @pytest.mark.parametrize(
+    ("skipped_row", "counter"),
+    [
+        ({"status": "failed", "accuracy": 0.0}, "skipped_non_completed"),
+        ({"status": "completed"}, "skipped_missing_objective"),
+    ],
+    ids=["failed", "no-objective"],
+)
+def test_a_skipped_row_with_text_that_is_not_unicode_does_not_stop_the_run(
+    tmp_path: Path, skipped_row: dict, counter: str
+) -> None:
+    """A row the ranking skips never reaches a report, so its config is not checked."""
+    trials_path = tmp_path / "trials.jsonl"
+    rows = [
+        {
+            "status": "completed",
+            "config": {"model": ["a", "b"][i % 2]},
+            "accuracy": 0.5 + 0.1 * (i % 2) + 0.01 * (i % 5),
+        }
+        for i in range(40)
+    ]
+    skipped = json.dumps({**skipped_row, "config": {"model": "PLACEHOLDER"}})
+    trials_path.write_text(
+        "".join(json.dumps(row) + "\n" for row in rows)
+        + skipped.replace("PLACEHOLDER", "\\ud800")
+        + "\n",
+        encoding="utf-8",
+    )
+    output_dir = tmp_path / "out"
+    run_cli(trials_path, output_dir, "--bootstrap-draws", "200")
+
+    card = strict_json_loads((output_dir / "video_card.json").read_text(encoding="utf-8"))
+    assert card["n_trials"] == 40
+    assert card[counter] == 1
+
+
+@pytest.mark.parametrize(
     ("case", "json_path"),
     [
         ("cost", 'video_card.json["top_variables"][0]["cost_delta_pct"]'),
