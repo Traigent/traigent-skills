@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4453c2e301a0afeb",
+  "doc_hash": "de9bb2275159d7ea",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/environment-variables.md": "84bbd07054919956",
-    "references/first-value-fallback.md": "59d8086c0067c204",
+    "references/first-value-fallback.md": "60b459fb82958bf7",
     "references/installation-extras.md": "1f85f18cdd0be60e",
     "references/run-cost-and-limits.md": "8579f950b7e78af6"
   },
@@ -330,6 +330,17 @@
       "doc_before_hash": "dd1443edc4120c57",
       "doc_after_hash": "4453c2e301a0afeb",
       "note": "Make the directory-owned ignore rule precede key writes, retain tracked-file refusal and private file mode, and use one documentation home.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "env-comment-wording-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "4453c2e301a0afeb",
+      "doc_after_hash": "de9bb2275159d7ea",
+      "note": "Describe key storage as prose comments rather than assignment-like labels.",
       "source_type": "agent"
     }
   ]

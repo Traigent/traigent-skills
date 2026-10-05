@@ -313,7 +313,7 @@ For a run the user approved *as* managed optimization, set `TRAIGENT_REQUIRE_CLO
 > Portal-issued API keys use the `uk_...` prefix.
 >
 > ```bash
-> # TRAIGENT_API_KEY: put it in .env via "Using a .env File" below, not in an export here
+> # Store TRAIGENT_API_KEY in .env via "Using a .env File" below, not in an export here
 > export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"     # optional: cloud is already the default
 > ```
 

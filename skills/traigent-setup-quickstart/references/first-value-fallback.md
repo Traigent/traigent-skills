@@ -146,9 +146,9 @@ Only after the user has seen the mock result and explicitly approved spend. A re
 Keys go in `.env` via "`.env` File Support" in `environment-variables.md` in this folder (its checks run before any key is written). The demo script above does not read `.env`: add `from dotenv import load_dotenv; load_dotenv()` at its top, before the provider client is created. Never type a key into an `export` at a shell prompt. A CLI command that needs a key (such as `traigent plan`) does not read `.env` either: load it into that shell with `set -a; . ./.env; set +a`, which types no key, so none lands in shell history. It runs `.env` as shell code, so use it only for a `.env` written as plain `KEY=value` lines.
 
 ```bash
-# TRAIGENT_API_KEY: in .env (portal-issued key), not exported here
+# Store TRAIGENT_API_KEY in .env (portal-issued key), not exported here
 export TRAIGENT_BACKEND_URL="https://portal.traigent.ai"   # optional: cloud is already the default
-# OPENAI_API_KEY: in .env too (the provider this project uses)
+# Store OPENAI_API_KEY in .env too (the provider this project uses)
 export TRAIGENT_COST_APPROVED=true                      # only in this run's shell, after the user's yes to the stated ceiling
 ```
 
