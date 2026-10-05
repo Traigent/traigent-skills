@@ -72,7 +72,8 @@ pytest tests/
 ### Production with Cost Controls
 
 ```bash
-export OPENAI_API_KEY=sk-...
+# OPENAI_API_KEY comes from the deployment's environment or secret store; locally, from
+# .env via ".env File Support" below (load_dotenv() before the provider client is created).
 export TRAIGENT_RUN_COST_LIMIT=5.0        # the figure the user approved for this run
 export TRAIGENT_STRICT_COST_ACCOUNTING=true
 export TRAIGENT_LOG_LEVEL=WARNING
@@ -93,7 +94,9 @@ python my_optimization.py
 
 The SDK does not load your project's `.env`: at import it looks only for a `.env` beside its own installed package. `python-dotenv` ships with `litellm` (a core dependency), so load the file yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` — rather than relying on `litellm`'s own import-time lookup, which searches upward from wherever the venv sits.
 
-Example `.env` file:
+Before writing any key into `.env`, run the block under [Using a .env File](../SKILL.md#using-a-env-file) from the directory that will hold it and continue only if it exits 0. It adds the adjacent `.gitignore` rule, refuses an already tracked `.env`, and leaves the file at mode 0600. Never type a key into an `export` at a shell prompt.
+
+Then fill the `.env` file in your editor:
 
 ```
 TRAIGENT_API_KEY=sk_...
