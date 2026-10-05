@@ -1,6 +1,6 @@
 {
   "generated_from": {
-    "commit_sha": "eae60d7ebc4cf98ad356f25f125f6e3d3b43fa67",
+    "commit_sha": "1e0b837d648dba444b8bfb67c7e9d7246af7c9f4",
     "ref": "HEAD",
     "repo": "Traigent/TraigentBackend"
   },
@@ -932,6 +932,12 @@
     {
       "blueprint": "director",
       "method": "GET",
+      "path_template": "/api/v1/director/sessions/<session_id>/instructions/<instruction_id>/check-examples",
+      "source_file": "src/routes/director_routes.py"
+    },
+    {
+      "blueprint": "director",
+      "method": "GET",
       "path_template": "/api/v1/director/sessions/<session_id>/state",
       "source_file": "src/routes/director_routes.py"
     },
@@ -1102,6 +1108,12 @@
       "method": "GET",
       "path_template": "/api/v1/hybrid/sessions/<session_id>/status",
       "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "scoring_admin",
+      "method": "GET",
+      "path_template": "/api/v1/internal/scoring/status",
+      "source_file": "src/routes/scoring_admin_routes.py"
     },
     {
       "blueprint": "api_keys",
@@ -1386,6 +1398,24 @@
       "source_file": "src/routes/traigent_session_routes.py"
     },
     {
+      "blueprint": "teams",
+      "method": "GET",
+      "path_template": "/api/v1/teams",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
+      "blueprint": "teams",
+      "method": "GET",
+      "path_template": "/api/v1/teams/<string:team_id>",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
+      "blueprint": "teams",
+      "method": "GET",
+      "path_template": "/api/v1/teams/<string:team_id>/members",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
       "blueprint": "trace",
       "method": "GET",
       "path_template": "/api/v1/traces/<trace_id>",
@@ -1638,6 +1668,12 @@
       "source_file": "src/routes/evaluation_routes.py"
     },
     {
+      "blueprint": "experiment_context",
+      "method": "GET",
+      "path_template": "/api/v1beta/experiments/<experiment_id>/context",
+      "source_file": "src/routes/experiment_context_routes.py"
+    },
+    {
       "blueprint": "observability",
       "method": "GET",
       "path_template": "/api/v1beta/observability/analysis/insights",
@@ -1683,6 +1719,12 @@
       "blueprint": "observability",
       "method": "GET",
       "path_template": "/api/v1beta/observability/sessions/<session_id>/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/sessions/by-raw-id",
       "source_file": "src/routes/observability_routes.py"
     },
     {
@@ -1797,6 +1839,12 @@
       "blueprint": "agent_readiness",
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/<path:agent_id>",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/<path:agent_id>/lifecycle-history",
       "source_file": "src/routes/agent_readiness_routes.py"
     },
     {
@@ -2246,6 +2294,12 @@
     {
       "blueprint": "observability",
       "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions/by-raw-id",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions/stream",
       "source_file": "src/routes/observability_routes.py"
     },
@@ -2418,6 +2472,12 @@
       "source_file": "src/routes/evaluation_routes.py"
     },
     {
+      "blueprint": "team_ownership",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/team-ownership/unassigned",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
       "blueprint": "trial",
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/trials/<trial_id>",
@@ -2554,6 +2614,12 @@
       "method": "PATCH",
       "path_template": "/api/v1/experiments/<experiment_id>",
       "source_file": "src/routes/experiment_routes.py"
+    },
+    {
+      "blueprint": "teams",
+      "method": "PATCH",
+      "path_template": "/api/v1/teams/<string:team_id>",
+      "source_file": "src/routes/team_routes.py"
     },
     {
       "blueprint": "enterprise_admin",
@@ -3300,6 +3366,12 @@
       "source_file": "src/routes/hybrid_routes.py"
     },
     {
+      "blueprint": "scoring_admin",
+      "method": "POST",
+      "path_template": "/api/v1/internal/scoring/reaper/run",
+      "source_file": "src/routes/scoring_admin_routes.py"
+    },
+    {
       "blueprint": "api_keys",
       "method": "POST",
       "path_template": "/api/v1/keys",
@@ -3552,6 +3624,18 @@
       "source_file": "src/routes/traigent_session_routes.py"
     },
     {
+      "blueprint": "teams",
+      "method": "POST",
+      "path_template": "/api/v1/teams",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
+      "blueprint": "teams",
+      "method": "POST",
+      "path_template": "/api/v1/teams/<string:team_id>/membership-events",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
       "blueprint": "trace",
       "method": "POST",
       "path_template": "/api/v1/traces/ingest",
@@ -3646,6 +3730,12 @@
       "method": "POST",
       "path_template": "/api/v1beta/observability/ingest",
       "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability_otlp",
+      "method": "POST",
+      "path_template": "/api/v1beta/observability/otlp/v1/traces",
+      "source_file": "src/routes/observability_otlp_routes.py"
     },
     {
       "blueprint": "observability",
@@ -3940,6 +4030,12 @@
       "method": "POST",
       "path_template": "/api/v1beta/projects/<string:project_id>/scores",
       "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "team_ownership",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/team-ownership",
+      "source_file": "src/routes/team_routes.py"
     },
     {
       "blueprint": "trial",

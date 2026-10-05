@@ -76,11 +76,11 @@
   "exceptions": [
     "AgentExecutionError",
     "AuthenticationError",
-    "CandidateIsolationError",
     "ClientError",
     "ConfigAccessWarning",
     "ConfigurationError",
     "ConfigurationSpaceError",
+    "ContentDisabledError",
     "CostLimitExceeded",
     "DTOSerializationError",
     "DataIntegrityError",
@@ -140,7 +140,7 @@
     "winner_stability_reps"
   ],
   "generated_from": {
-    "commit_sha": "26ec9ad3f0fcda056f1324e8b8cb1e446479a099",
+    "commit_sha": "747ac28ddbf2c682d36ec98d9ac1d73b9eceec88",
     "ref": "HEAD",
     "repo": "Traigent/Traigent"
   },
@@ -200,8 +200,6 @@
     "metric_limit",
     "metric_name",
     "minimal_logging",
-    "mock",
-    "mock_mode_config",
     "objectives",
     "offline",
     "parallel_config",
