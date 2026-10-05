@@ -94,45 +94,9 @@ python my_optimization.py
 
 The SDK does not load your project's `.env`: at import it looks only for a `.env` beside its own installed package. `python-dotenv` ships with `litellm` (a core dependency), so load the file yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` — rather than relying on `litellm`'s own import-time lookup, which searches upward from wherever the venv sits.
 
-Keys go into `.env` only after the check below passes: `.env` is absent or a regular file; inside Git it is untracked and ignored by the repository's own rules (a global excludes file does not count); outside Git, `./.gitignore` already lists it; then it is set to mode 0600. Run this from the project root before any key is written:
+Before writing any key into `.env`, run the block under [Using a .env File](../SKILL.md#using-a-env-file) from the directory that will hold it and continue only if it exits 0. It adds the adjacent `.gitignore` rule, refuses an already tracked `.env`, and leaves the file at mode 0600. Never type a key into an `export` at a shell prompt.
 
-```bash
-(
-  if [ -n "${GIT_DIR-}" ] || [ -n "${GIT_WORK_TREE-}" ]; then
-    echo "STOP: GIT_DIR or GIT_WORK_TREE is set; unset them and rerun" >&2; exit 1
-  fi
-  in_git=no; d=$(pwd -P)
-  while :; do
-    if [ -e "$d/.git" ]; then in_git=yes; break; fi
-    [ -n "$d" ] || break
-    d=${d%/*}
-  done
-  if [ "$in_git" = yes ] && [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]; then
-    echo "STOP: could not confirm the Git state; is git installed, and is this repo owned by you?" >&2; exit 1
-  fi
-  if [ -L .env ] || { [ -e .env ] && [ ! -f .env ]; }; then
-    echo "STOP: .env is a symlink or not a regular file; replace it with a plain file" >&2; exit 1
-  fi
-  if [ "$in_git" = yes ]; then
-    rc=0; git ls-files --error-unmatch -- .env >/dev/null 2>&1 || rc=$?
-    case $rc in
-      1) ;;  # untracked: the only safe answer
-      0) echo "STOP: .env is tracked by Git; untrack it before adding keys" >&2; exit 1 ;;
-      *) echo "STOP: could not check whether .env is tracked" >&2; exit 1 ;;
-    esac
-    git -c core.excludesFile=/dev/null check-ignore -q -- .env || {
-      echo "STOP: this repo's own rules do not ignore .env; add /.env to the .gitignore next to it" >&2; exit 1; }
-  elif ! grep -Eq '^[[:space:]]*/?\.env[[:space:]]*$' .gitignore 2>/dev/null; then
-    echo "STOP: not in a Git repo and ./.gitignore has no .env line; add /.env to .gitignore" >&2; exit 1
-  fi
-  umask 077
-  touch .env && chmod 600 .env
-)
-```
-
-Continue only if it exits 0. If it stops, follow its message — usually add a `/.env` line to the `.gitignore` in the folder that holds `.env` (or untrack the file) — and rerun. Outside a Git repository it runs no Git command but requires `./.gitignore` to already list `.env` (a `.env` or `/.env` line), so a later `git init && git add -A` cannot stage the key; it reads that file and never edits it. It also stops, instead of guessing, when `GIT_DIR` or `GIT_WORK_TREE` is set, when a `.git` exists here or in a parent folder but Git cannot confirm the repository (git not installed, or a repository owned by another user), and when `.env` is a symlink or not a regular file.
-
-Example `.env` file (only after the checks pass; have the user type values in their editor — never print, echo or read back a key; never commit it):
+Then fill the `.env` file in your editor:
 
 ```
 TRAIGENT_API_KEY=sk_...

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.28"
+  version: "1.0.29"
 ---
 
 # Traigent Quickstart
@@ -362,43 +362,20 @@ e.g. from a pytest fixture/conftest, for new setups.
 
 ### Using a .env File
 
-Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). The SDK does **not** read your project's `.env` (it only looks beside its own installed package); whether `litellm`'s import happens to find yours depends on where the venv sits. Before any key goes into `.env`, run this from the project root. It writes nothing unless `.env` is absent or a regular file and, inside Git, untracked and ignored by the repository's own rules (a global excludes file does not count) or, outside Git, already listed in `./.gitignore`; then it leaves `.env` at mode 0600:
+Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). The SDK does **not** read your project's `.env` (it only looks beside its own installed package); whether `litellm`'s import happens to find yours depends on where the venv sits.
+
+Before writing any key, run this in the directory that will hold `.env`:
 
 ```bash
 (
-  if [ -n "${GIT_DIR-}" ] || [ -n "${GIT_WORK_TREE-}" ]; then
-    echo "STOP: GIT_DIR or GIT_WORK_TREE is set; unset them and rerun" >&2; exit 1
-  fi
-  in_git=no; d=$(pwd -P)
-  while :; do
-    if [ -e "$d/.git" ]; then in_git=yes; break; fi
-    [ -n "$d" ] || break
-    d=${d%/*}
-  done
-  if [ "$in_git" = yes ] && [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]; then
-    echo "STOP: could not confirm the Git state; is git installed, and is this repo owned by you?" >&2; exit 1
-  fi
-  if [ -L .env ] || { [ -e .env ] && [ ! -f .env ]; }; then
-    echo "STOP: .env is a symlink or not a regular file; replace it with a plain file" >&2; exit 1
-  fi
-  if [ "$in_git" = yes ]; then
-    rc=0; git ls-files --error-unmatch -- .env >/dev/null 2>&1 || rc=$?
-    case $rc in
-      1) ;;  # untracked: the only safe answer
-      0) echo "STOP: .env is tracked by Git; untrack it before adding keys" >&2; exit 1 ;;
-      *) echo "STOP: could not check whether .env is tracked" >&2; exit 1 ;;
-    esac
-    git -c core.excludesFile=/dev/null check-ignore -q -- .env || {
-      echo "STOP: this repo's own rules do not ignore .env; add /.env to the .gitignore next to it" >&2; exit 1; }
-  elif ! grep -Eq '^[[:space:]]*/?\.env[[:space:]]*$' .gitignore 2>/dev/null; then
-    echo "STOP: not in a Git repo and ./.gitignore has no .env line; add /.env to .gitignore" >&2; exit 1
-  fi
-  umask 077
-  touch .env && chmod 600 .env
+  for file in .gitignore .env; do [ ! -L "$file" ] && { [ ! -e "$file" ] || [ -f "$file" ]; } || { printf 'STOP: %s must be a plain file\n' "$file" >&2; exit 1; }; done
+  if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git ls-files --error-unmatch -- .env >/dev/null 2>&1; then printf '%s\n' 'STOP: .env is tracked; run git rm --cached .env before adding keys' >&2; exit 1; fi
+  [ "$(tail -n 1 .gitignore 2>/dev/null)" = .env ] || printf '\n.env\n' >> .gitignore || exit 1
+  umask 077; touch .env && chmod 600 .env
 )
 ```
 
-Continue only if it exits 0. If it stops, follow its message — usually add a `/.env` line to the `.gitignore` in the folder that holds `.env` (or untrack the file) — and rerun. Outside a Git repository it runs no Git command but requires `./.gitignore` to already list `.env` (a `.env` or `/.env` line), so a later `git init && git add -A` cannot stage the key; it reads that file and never edits it. It also stops, instead of guessing, when `GIT_DIR` or `GIT_WORK_TREE` is set, when a `.git` exists here or in a parent folder but Git cannot confirm the repository (git not installed, or a repository owned by another user), and when `.env` is a symlink or not a regular file.
+Continue only if it exits 0. It ensures the `.gitignore` in this same directory ends with a `.env` rule, then creates or preserves `.env` at mode 0600 without printing its contents. Placing the rule last also protects it from an earlier negation. That directory's own rule applies in a current repository and in any repository that later contains it, including after `git init`; it does not depend on global excludes or finding a parent repository. Inside a Git work tree, an already tracked `.env` is refused with `git rm --cached .env` as the remedy: ignoring never untracks a file. Both paths must be absent or plain files. If you later remove or override the `.env` rule, the protection is lost.
 
 Then the `.env` file in your project root (only after the checks pass):
 
@@ -420,7 +397,7 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
 1. **Check first, then fill the file.** Before writing anything, run the check block in
    [Using a .env File](#using-a-env-file) from the project root and continue only if it
    exits 0; a key pasted into a tracked or un-ignored file is already the state that block
-   exists to prevent. On success `.env` exists as a plain file at mode 0600. If it is still
+   exists to prevent. On success `.env` exists as a plain file at mode 0600, with its adjacent ignore rule in place. If it is still
    empty (`[ ! -s .env ]`), write the project template into it if one exists
    (`cat .env.example > .env` — a redirect into the existing file keeps mode 0600), otherwise
    write a minimal template with key *names* pre-filled and values blank, so the
