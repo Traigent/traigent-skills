@@ -860,6 +860,45 @@ def test_explicit_selection(case: str, tmp_path: Path) -> None:
         assert "while loading, so it never ran" in card
 
 
+@pytest.mark.parametrize("function", ["score", "_score"])
+def test_a_relative_selector_with_dotdot_names_the_inventoried_file_once(
+    function: str, tmp_path: Path
+) -> None:
+    """`sub/../scorer.py`, from a working directory outside --root, is the same
+    file as the inventoried `scorer.py`: one entry, and no skipped twin."""
+    source = _three_way().replace("def score(", f"def {function}(")
+    root = _variant(tmp_path, source)
+    (root / "sub").mkdir()
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    report_path = tmp_path / "report.json"
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPT),
+            "--root",
+            str(root),
+            "--json",
+            str(report_path),
+            "--scorer",
+            f"sub/../scorer.py:{function}",
+        ],
+        cwd=elsewhere,
+        capture_output=True,
+        text=True,
+        timeout=300,
+        check=False,
+    )
+    assert completed.returncode == 0, completed.stderr
+    report = strict_json(report_path.read_text(encoding="utf-8"))
+    named = [entry for entry in report["scorers"] if entry["function"] == function]
+    assert len(named) == 1, report["scorers"]
+    assert named[0]["selected"] is True
+    skipped = {item["function"] for item in report["skipped_scorer_candidates"]}
+    assert function not in skipped
+    assert report["next_step"]["branch"] == "g"
+
+
 @pytest.mark.parametrize(
     "literal",
     ["[0.0, 1e999]", "Choices(0.0, 1e999)", '[0.0, {"t": 1e999}]'],

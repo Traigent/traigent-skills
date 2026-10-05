@@ -2896,12 +2896,18 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         if not file_part or not function_part:
             raise ValueError("--scorer must be given as FILE.py:FUNCTION")
         chosen_file = relative(Path(file_part), root)
+        # Matched by the file it resolves to, not by its spelling: a relative
+        # `sub/../scorer.py` from outside --root is the inventoried `scorer.py`.
+        chosen_path = (root / chosen_file).resolve()
+
+        def is_selection(file: str, function: str) -> bool:
+            return function == function_part and (root / file).resolve() == chosen_path
+
         selected = next(
             (
                 candidate
                 for candidate in inventory.scorers
-                if candidate.file == chosen_file
-                and candidate.function == function_part
+                if is_selection(candidate.file, candidate.function)
             ),
             None,
         )
@@ -2925,7 +2931,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
                 inventory.skipped_scorers = [
                     item
                     for item in inventory.skipped_scorers
-                    if (item.file, item.function) != (chosen_file, function_part)
+                    if not is_selection(item.file, item.function)
                 ]
         # An explicit selection is not permission to run arbitrary code: a
         # judge calls a provider and an executing scorer runs code, and this

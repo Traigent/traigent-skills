@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "5a71eae118abc581",
+  "doc_hash": "d27f41b9e55b20ef",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b"
   },
@@ -231,6 +231,17 @@
       "doc_before_hash": "2f511fc29f60e5aa",
       "doc_after_hash": "5a71eae118abc581",
       "note": "Ladder rows d and e, the --scorer bullet, the exit-code line, the Tier 2 recommendation paragraph and the safety bullet describe a non-finite or partly failing probe and an explicitly selected scorer.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-10-05-370-scorer-load-clause",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "5a71eae118abc581",
+      "doc_after_hash": "d27f41b9e55b20ef",
+      "note": "The --scorer bullet no longer says a function the probe cannot load is not counted: one found by name is listed with selected: true and routed to the scorer step.",
       "source_type": "agent"
     }
   ]

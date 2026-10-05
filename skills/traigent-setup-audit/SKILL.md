@@ -91,8 +91,8 @@ python3 <skill-dir>/scripts/audit_project.py \
   probes a scorer only when exactly one deterministic candidate was found. A
   function named this way counts as a found scorer even when its name or
   signature is outside the search, and its `scorers` entry carries
-  `selected: true`; one the audit cannot find by name, or the probe cannot
-  load by that name, is not counted, as before.
+  `selected: true`; one the audit cannot find by name is not counted, as
+  before.
 - `--repeats` is how many times the same pair is re-scored (default 5).
 
 Exit code is `0` whenever the audit ran, whatever it found, and `2` on a usage
