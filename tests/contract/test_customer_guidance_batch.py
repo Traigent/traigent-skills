@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from .test_audit_324_ci_gate_hygiene import _digest, _shipped_files
+from .test_audit_324_ci_gate_hygiene import _digest, _forbidden_in, _shipped_files
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -98,3 +98,9 @@ def test_choose_metric_judge_warning_has_the_same_capture_boundary() -> None:
     for concept in ("0.28.0+", "cost-limit ledger", "unintercepted provider-SDK/HTTP", "pre-run estimator", "evaluation_cost"):
         assert concept in text
     assert "does not see judge calls made inside a metric function" not in text
+
+
+@pytest.mark.parametrize("suffix", ["coding-agents", "spine"])
+def test_removed_plugin_identifiers_cannot_return(suffix: str) -> None:
+    private_identifier = "-".join(("traigent", suffix))
+    assert _forbidden_in(private_identifier) == [private_identifier]
