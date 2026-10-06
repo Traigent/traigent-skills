@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.2.0"
+  version: "1.2.1"
 ---
 
 # Show Significant Tuned Variables
@@ -41,7 +41,7 @@ corrupt the ranking.
 
 The script accepts:
 
-- `--trials`: required JSONL, one trial per line. Each row must contain `config` and a numeric objective such as `accuracy`.
+- `--trials`: required JSONL, one trial per line. Each row must contain `config`; its numeric objective (such as `accuracy`) is what gets ranked, and rows without one are skipped and counted (see below).
 - `--config-space`: optional JSON object `{knob: [values...]}`. If absent, the script infers knobs and values observed in trials.
 - `--heldout`: optional heldout report JSON with `baseline`, `optimized`, and `delta`. When present, the video card uses the heldout optimized-vs-baseline accuracy and cost deltas for context.
 - `--objective`: objective field to maximize. This must exactly match the metric key present in each
@@ -74,6 +74,19 @@ so tiny-scale objectives and large-offset ones (token counts, latency in ms) bot
 true ties. Numbers in a `--heldout` report follow the same finite-number rule, and costs there
 must be nonnegative.
 
+A knob value may be any JSON value, including a non-finite number (`NaN`, `Infinity`,
+`-Infinity`, or an overflowing literal such as `1e400`, which reads as infinity), for example a
+"no limit" choice. The ranking treats it as its own value (every `NaN` is one value), separate
+from a string with the same spelling. Wherever such a value appears in JSON outputs, it is
+written as the string `"NaN"`, `"Infinity"` or `"-Infinity"`; stdout and `insights.md` say how
+many measured trials carry one and on which knobs, and name any knob where a number and a string
+share a spelling. If `NaN` marks a knob that does not apply to a trial, leave the key out
+instead: each knob is ranked over the trials that carry it. `--config-space` contributes knob
+names only. Knob names and string values, in measured trials and in `--config-space`, must be
+valid Unicode text: a lone surrogate escape such as `"\ud800"` is rejected with the file, the row
+(for trials) and the path. Rows the ranking skips (not completed, or no objective value) are
+counted, not checked.
+
 An SDK result saved with `save_to=` (for example `traigent-runs/optimized-results.json` after the
 guided first run) is one JSON object whose `trials[]` already carry `config` and `metrics` (the
 script reads the objective from either the top level or `metrics`); write it out one trial per
@@ -87,7 +100,11 @@ python3 -c 'import json,sys; [print(json.dumps(t)) for t in json.load(open(sys.a
 Failed or pruned trials are skipped automatically (their `status` is not `completed`; a failed
 trial still carries a `0.0` score that is not a measurement); the script prints how many and
 records the count as `skipped_non_completed` in `video_card.json`. Rows without a `status` field
-are read as measured.
+are read as measured. A completed or status-unspecified row with no value for `--objective`
+(missing or `null`) is skipped too and counted separately as `skipped_missing_objective`, printed
+on stdout and in `insights.md` when non-zero. Such rows are rarely random (a metric that failed to
+compute), so check that count before trusting the ranking. `n_trials` is the number of measured
+trials the ranking rests on.
 
 Expected trial shape:
 
@@ -107,9 +124,21 @@ The script writes these files into `--output-dir`:
 - `insights.md`: short human-readable summary using honest claim language.
 - `video_card.json`: compact payload: `top_variables` (each with the knob's own effect,
   raw/adjusted p-values, family size, and inference status), `n_trials`, `skipped_non_completed`,
-  `alpha`, `objective`, run-level `heldout_accuracy_pp`/`heldout_cost_delta_pct`, and `caption`.
+  `skipped_missing_objective`, `alpha`, `objective`, run-level
+  `heldout_accuracy_pp`/`heldout_cost_delta_pct`, and `caption`. When no knob had two observed
+  values, `top_variables` is empty and the caption (and the SVG footer) says no tuned variable
+  could be ranked, rather than giving a confidence label.
 - `sdk_cross_check.json`: the SDK variance-based cross-check (`computed`, `note`, `results`);
-  `results` is empty when the SDK analyzer was unavailable or returned nothing.
+  `results` is empty when the SDK analyzer was unavailable, returned nothing, or returned output
+  that failed validation.
+
+All JSON outputs, including the card printed on stdout, are strict JSON: no `NaN` or `Infinity`.
+Every JSON output is checked before the first file is written: if a number derived from the
+inputs is not finite there (for example a cost percentage when costs span 1e-300 to 1e300), the
+script stops, names the artifact and field, and writes or replaces no file in `--output-dir`.
+Objectives so large that the statistics themselves overflow (for example `1e200` and `-1e200`)
+stop the run earlier with Python's `OverflowError`, which names no field; no file is written then
+either.
 
 <!-- PROTECTED -->
 ## Honesty Rule
@@ -136,10 +165,12 @@ Never overclaim significance:
 <!-- /PROTECTED -->
 
 **Fewer than 20 trials — a first small run, such as the guided first run's 12-trial search.**
-Every row will read `directional`. Present the card as *which knobs to test next*, never
-as a ranking that holds: say "n=<trials> — directional; a knob showing no spread was mostly not
-sampled enough to show one". Do not rerun the search to reach 20; the run size that can support the
-ranking comes from the service plan (`traigent-analyze-guidance`, Mode A), not from this skill.
+If the ranking is empty (no knob had two observed values), say that no tuned variable could be
+ranked and stop there. Otherwise every row will read `directional`. Present the card as *which
+knobs to test next*, never as a ranking that holds: say "n=<trials> — directional; a knob showing
+no spread was mostly not sampled enough to show one". Do not rerun the search to reach 20; the run
+size that can support the ranking comes from the service plan (`traigent-analyze-guidance`, Mode
+A), not from this skill.
 Pass `--heldout` only when baseline **and** optimized were scored on the same held-out rows; a
 held-out score of one selected configuration — what the guided first run reports — is not a
 baseline-vs-optimized delta, so leave `--heldout` off and say the held-out check covers the
@@ -192,7 +223,7 @@ choices depend on earlier outcomes; time trends and sampler choices can then loo
 Use `adaptive` or the default `unknown` in those cases. Their effect sizes and p-values remain
 exploratory and never receive a statistically significant label.
 
-The script also attempts to adapt trials to `traigent.utils.importance.ParameterImportanceAnalyzer` for a variance-based SDK cross-check. When it returns output, the numbers are written to `sdk_cross_check.json` and to an "SDK cross-check" table in `insights.md`; they never change the ranking or labels. If that adaptation is unavailable or returns no output, it skips gracefully and states that the skill's own variance/bootstrap method was used, inspired by the SDK analyzer. Do not fabricate SDK analyzer output.
+The script also attempts to adapt trials to `traigent.utils.importance.ParameterImportanceAnalyzer` for a variance-based SDK cross-check. When it returns output, the numbers are written to `sdk_cross_check.json` and to an "SDK cross-check" table in `insights.md`; they never change the ranking or labels. If that adaptation is unavailable or returns no output, it skips gracefully and states that the skill's own variance/bootstrap method was used, inspired by the SDK analyzer. SDK scores and both interval endpoints must be finite numbers, `method` a string, `sample_size` a nonnegative integer, and knob names strings; otherwise the cross-check is not reported, `sdk_cross_check.json` records `computed: false`, and its `note` names the invalid field. Do not fabricate SDK analyzer output.
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->
