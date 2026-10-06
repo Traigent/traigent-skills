@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6349d046ca542216",
+  "doc_hash": "f1162b83919ee336",
   "entries": [
     {
       "edit_id": "genesis",
@@ -61,7 +61,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "04a4cfc25a7ece77",
       "doc_after_hash": "ddb6a2707bdafd8e",
-      "note": "judge-budget step notes the SDK cost limit does not see judge calls made inside a metric function; See Also points at traigent-boost-agent (the bare traigent skill was merged).",
+      "note": "historical SDK <= 0.27.x judge-budget warning (fixed in 0.28.0): the SDK cost limit does not see judge calls made inside a metric function; See Also points at traigent-boost-agent (the bare traigent skill was merged).",
       "source_type": "agent"
     },
     {
@@ -129,6 +129,16 @@
       "doc_after_hash": "6349d046ca542216",
       "note": "Declare valid_schema's orientation with ObjectiveSchema and state that plain objective lists are for built-in names only; newer SDK builds refuse an undeclared custom name.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "customer-guidance-2026-10-06-235adf7390859087",
+      "op": "manual_edit",
+      "status": "accepted",
+      "source_type": "agent",
+      "timestamp": "2026-10-06T00:00:00Z",
+      "doc_before_hash": "6349d046ca542216",
+      "doc_after_hash": "f1162b83919ee336",
+      "note": "Scope the no-gold track judge ledger warning to uncaptured calls and older SDKs; captured metric-function judges are metered from 0.28.0."
     }
   ]
 }

@@ -6,14 +6,14 @@ it references). It is not the prompt currently served at
 **<https://traigent.ai/agent-setup/prompt.md>**; that route deliberately serves the shorter
 "Guided First Run" prompt described below.
 
-## Current canonical consumer
+## Current canonical consumer (public reuse contract)
 
-The **Traigent portal** (`TraigentFrontend`) vendors this canonical text in
+The **Traigent portal** vendors this canonical text in
 `src/components/onboarding/agentSetupPrompt.ts`. Its "Connect your agent" flow injects the freshly
 issued API key into the "Add your Traigent API key" section before copying the prompt for Claude
 Code, Codex, Cursor, Copilot, or another coding agent.
 
-The marketing site (`traigent-web`) is not a consumer of this canonical prompt. As of commit
+The public marketing site is not a consumer of this canonical prompt. As of commit
 `e52a89e7` (2026-08-20), its `public/agent-setup/prompt.md` intentionally contains the distinct
 "Guided First Run" prompt.
 
@@ -26,10 +26,16 @@ end-to-end with the keyless mock quickstart from the
 [`traigent-setup-quickstart`](../../skills/traigent-setup-quickstart/) skill — finishing with a
 ranked results table and a success box.
 
-## Editing
+## Maintainer synchronization instructions
+
+The source paths and revision pins below identify downstream copies for maintainers.
+Private consumer access is not required to install or reuse this public prompt.
+The skills repository owns the canonical body; each consumer owner reviews its adaptation.
+
+### Editing
 
 Edit `prompt.md` here; the Traigent portal's vendored copy above is a downstream copy (the
-traigent-web copy is not, see above). When you change a command, verify it against the repo
+marketing-site copy is not, see above). When you change a command, verify it against the repo
 [`README.md`](../../README.md) (skill install commands) and the `traigent-setup-quickstart`
 SKILL.md (the mock quickstart), and update the vendored portal copy so the two do not drift.
 Automating that sync (e.g. the portal fetching this file at build time) is a follow-up.
@@ -56,26 +62,26 @@ the helper script) point back here instead of repeating it:
 3. Run `pytest tests/contract/test_agent_setup_prompt_sync.py` to confirm the checksum is green.
 4. Re-sync each current downstream copy in a separate PR, with the same content adapted to its
    format. The current list is:
-   - **`TraigentFrontend`** `src/components/onboarding/agentSetupPrompt.ts` — hand-synced to this
+   - **Traigent portal** `src/components/onboarding/agentSetupPrompt.ts` — hand-synced to this
      file as of the latest issue #363 entry in `provenance.json` (the re-sync made in the
-     companion Frontend change). This repo cannot verify that copy directly
+     companion portal change). This repo cannot verify that copy directly
      (an exact byte match isn't achievable there either: the portal's copy is split across several
      template pieces with a freshly issued API key injected into one, not one flat file). The
-     companion Frontend guard is `npm run check:agent-setup-prompt-drift`: it resolves this
+     companion portal guard is `npm run check:agent-setup-prompt-drift`: it resolves this
      repository's live `main` SHA, fetches the prompt at that exact commit, and compares its
      SHA-256 with the reviewed upstream hash, alongside a hash of the local template source.
      It detects changed bytes since review, not whether the adaptation is faithful. An unrelated
      upstream commit with unchanged prompt bytes is not drift. Review both diffs before updating
      the pins; preserve the SDK-only wording differences and never use a key-expanded prompt.
      The companion workflow checks relevant PRs and supports manual dispatch. Its weekly schedule
-     becomes active only after that Frontend change reaches the default branch (`main`). Until
+     becomes active only after that portal change reaches the default branch (`main`). Until
      the guard is installed there, continue the manual synchronization step above.
 
-     These companion instructions describe the Frontend source reviewed on 2026-09-20 at
+     These companion instructions describe the portal source reviewed on 2026-09-20 at
      commit `5909cf6af219edfa7b76dd064885315e4aa8ef1e`; they do not establish its current
      installation, scheduled execution, or deployed state.
 
-Do not re-sync `traigent-web` on the strength of this document: its public route intentionally
+Do not re-sync the marketing site on the strength of this document: its public route intentionally
 serves a different prompt. Check that repo's current history before treating it as a consumer.
 
 This repo's guard only pins *this* copy, and only forces the checklist above to run — it cannot

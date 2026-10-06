@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.24"
+  version: "1.0.25"
 ---
 
 # Running Traigent Optimization
@@ -162,7 +162,7 @@ results = asyncio.run(main())
 | `callbacks` | `list[Callable] \| None` | Progress tracking callbacks. |
 | `configuration_space` | `dict \| None` | Override config space for this run. |
 | `objectives` | `list[str] \| ObjectiveSchema \| None` | Override objectives for this run. |
-| `cost_limit` | `float \| None` | Per-run cost cap in USD. Overrides `TRAIGENT_RUN_COST_LIMIT` for this call. A pre-run estimate over the limit raises `OptimizationError`; a mid-run budget hit returns partial results with `stop_reason="cost_limit"` (see cost handling below). |
+| `cost_limit` | `float \| None` | Per-run cost cap in USD. Overrides `TRAIGENT_RUN_COST_LIMIT` for this call. An over-limit pre-run estimate refused in non-TTY mode or declined in a TTY raises `OptimizationError`; a mid-run budget hit returns partial results with `stop_reason="cost_limit"` (see cost handling below). |
 | `budget` | `ExecutionBudget \| None` | Experimental (SDK 0.26.0+): one cumulative cost / examples / deadline cap shared by every `optimize()` call it is passed to (see "Setting a Cost Limit"). |
 | `**algorithm_kwargs` | `Any` | Algorithm-specific parameters (e.g., `parameter_order` for grid). |
 
@@ -282,8 +282,10 @@ Results sync to the portal for every non-offline run, including `grid` and `rand
 <!-- PROTECTED -->
 ## Cost Controls
 
-Traigent tracks the cost of the model calls it can see and stops a run at the cap. `cost_limit`
-bounds only that measured spend: calls Traigent cannot see (streaming, async LangChain, raw
+Traigent tracks the cost of the model calls it can see and checks `cost_limit` at trial
+admission, then reconciles actual cost after the trial. An admitted trial and parallel
+in-flight work can overshoot the approved limit before the next admission is denied.
+The limit applies only to measured spend: calls Traigent cannot see (streaming, async LangChain, raw
 provider SDKs, plain HTTP — the list is in `references/run-cost-and-limits.md`) are still billed
 by the provider but show as `$0` or `None`, so the cap cannot stop them.
 <!-- /PROTECTED -->
@@ -327,16 +329,29 @@ Set `TRAIGENT_STRICT_COST_ACCOUNTING=true` when an unpriced model should fail lo
 Set the `TRAIGENT_RUN_COST_LIMIT` environment variable (in USD):
 
 ```bash
-export TRAIGENT_RUN_COST_LIMIT=5.00  # $5 max per optimization run
+export TRAIGENT_RUN_COST_LIMIT=5.00  # $5 trial-admission budget; actual spend can overshoot
 ```
 
-The default limit is $2.00 per run.
+The default limit is $2.00 per run. This is an SDK admission budget, not a hard billing ceiling.
+An over-limit pre-run estimate without prior approval is refused when stdin is non-TTY;
+in a TTY it prompts to abort, approve at the current limit, or raise the limit. Assistant-launched
+processes may be either kind. Get the user's approval for the reviewed dollars and run size;
+never silently raise the limit or set `TRAIGENT_COST_APPROVED=true` to bypass a decline.
+For a requested hard billing guarantee, independently verify the chosen provider's enforcement
+semantics and residual concurrent/in-flight exposure. Advisory budgets/notifications are not
+hard admission caps; if the provider cannot enforce the requested ceiling, say so.
 
 Several paid phases under one approved total (a baseline, then the search, then holdout scoring)
 can share one cumulative cap on SDK 0.26.0+ — see
 [`references/execution-budget.md`](references/execution-budget.md). Per-run `cost_limit` still
 applies inside each call; the shared cap is the binding one, and a run it stops reports
-`stop_reason="execution_budget"`. Neither cap sees calls your evaluator or a judge places directly.
+`stop_reason="execution_budget"`. On SDK 0.28.0+, metric-function judge calls through intercepted clients
+(non-streaming LiteLLM or synchronous LangChain `.invoke`) with usable usage and pricing are
+folded into trial cost and the cost-limit ledger, with a separate `evaluation_cost` metric.
+That breakdown can be dropped at the metric-key ceiling; folded cost remains counted.
+SDK <= 0.27.x, unintercepted provider-SDK/HTTP judges and uncaptured streams are outside this fold.
+The pre-run estimator does not include judge calls: keep judge cost as a separate
+budget line (calls per scored row × price × rows × trials).
 
 ### Handling a Cost Limit
 
@@ -344,7 +359,7 @@ applies inside each call; the shared cap is the binding one, and a run it stops 
 
 | Surface | When it happens | How to handle |
 |---|---|---|
-| `CostLimitExceeded` (**raised, pre-run**) | the *estimated* cost already exceeds the limit and the run wasn't pre-approved — raised **before any trial runs** | `except CostLimitExceeded` (an `OptimizationError` subclass) — raise the limit, shrink the run, or set `TRAIGENT_COST_APPROVED=true` |
+| `CostLimitExceeded` (**raised, pre-run**) | the estimated cost exceeds the limit without prior approval, and stdin is non-TTY or TTY approval is declined - raised before any trial runs | `except CostLimitExceeded` (an `OptimizationError` subclass) — shrink the run or seek explicit approval for a reviewed limit; pre-approve only after that review |
 | `results.stop_reason == "cost_limit"` (**returned**) | the run hits the budget **mid-run**, stops, and **returns** partial results (no exception) | check `stop_reason` after a normal return |
 | `OptimizationError` (**fallback**) | a catch-all for optimization-time errors (include pre-run cost decline) | `except OptimizationError` will catch pre-run cost limits as a subclass, and other optimization errors |
 

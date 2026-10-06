@@ -1,12 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "de9bb2275159d7ea",
+  "doc_hash": "684da7e2f84bb2b8",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/environment-variables.md": "84bbd07054919956",
     "references/first-value-fallback.md": "60b459fb82958bf7",
     "references/installation-extras.md": "1f85f18cdd0be60e",
-    "references/run-cost-and-limits.md": "8579f950b7e78af6"
+    "references/run-cost-and-limits.md": "f209e1064ae944b2"
   },
   "entries": [
     {
@@ -46,7 +46,7 @@
       "timestamp": "2026-07-05T00:00:00Z",
       "doc_before_hash": "87a9b49b4e8895d3",
       "doc_after_hash": "25de722ba6a3f7e8",
-      "note": "sharpen key-hygiene intro: leaks observed across multiple coding-agent CLI families (Codex, Claude, Gemini), not one tool's quirk (round 2 of sim-testbed findings, 20-cell wave)",
+      "note": "sharpen key-hygiene intro: leaks observed across multiple coding-agent CLI families (Codex, Claude, Gemini), not one tool's quirk (round 2 of isolated testbed findings, 20-cell wave)",
       "source_type": "human"
     },
     {
@@ -68,7 +68,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "037e101120aa673d",
       "doc_after_hash": "d21842f3174c05d5",
-      "note": "add a Tips-for-Good-Datasets bullet: reserve a holdout slice before tuning; never tune and validate on the same rows (Traigent/traigent-smartopt#88, #89)",
+      "note": "add a Tips-for-Good-Datasets bullet: reserve a holdout slice before tuning; never tune and validate on the same rows (the optimizer implementation#88, #89)",
       "source_type": "human"
     },
     {
@@ -122,7 +122,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "3a19554c5624fb4f",
       "doc_after_hash": "d1fcc507af83c0ee",
-      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: characterize value and propose a bounded first experiment. WI-A of the economics model; Spine-Trail st_6443b96904d7",
+      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: characterize value and propose a bounded first experiment. economics revision of the economics model; review trail opaque-review-id",
       "source_type": "human"
     },
     {
@@ -133,7 +133,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "d1fcc507af83c0ee",
       "doc_after_hash": "1bceeccc65431713",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the economics revision economics wiring after review (independent review findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. economics revision review repair of the economics model; governed change session opaque-review-id; review trail opaque-review-id",
       "source_type": "human"
     },
     {
@@ -144,7 +144,7 @@
       "timestamp": "2026-07-18T00:00:00Z",
       "doc_before_hash": "1bceeccc65431713",
       "doc_after_hash": "42a10c8a1146dacd",
-      "note": "Sol NO-GO remediation (WI-A): make 'characterize, never compute a budget locally' the economics-section boundary in this skill (the service authors the budget; no local arithmetic; when no service result, say so and give no number), matching the budget lint now extended across all eight economics skills. The shared reference was realigned to the canonical TraigentSchema economics vocabulary (value_channel/daily_volume_band/error_cost_band/lifecycle_stage/human_cycle_hours_band enums exactly), the Track R2 finding was scoped to a single unvalidated pilot, and followable budget arithmetic was removed from the reference pending the WI-C backend calculator. Spine-Trail st_6443b96904d7",
+      "note": "independent review remediation (economics revision): make 'characterize, never compute a budget locally' the economics-section boundary in this skill (the service authors the budget; no local arithmetic; when no service result, say so and give no number), matching the budget lint now extended across all eight economics skills. The shared reference was realigned to the canonical TraigentSchema economics vocabulary (value_channel/daily_volume_band/error_cost_band/lifecycle_stage/human_cycle_hours_band enums exactly), the Track R2 finding was scoped to a single unvalidated pilot, and followable budget arithmetic was removed from the reference pending the holdout revision backend calculator. review trail opaque-review-id",
       "source_type": "human"
     },
     {
@@ -155,7 +155,7 @@
       "timestamp": "2026-07-18T00:00:00Z",
       "doc_before_hash": "42a10c8a1146dacd",
       "doc_after_hash": "9507b334906bf46b",
-      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics economics revision edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
       "source_type": "human"
     },
     {
@@ -342,6 +342,16 @@
       "doc_after_hash": "de9bb2275159d7ea",
       "note": "Describe key storage as prose comments rather than assignment-like labels.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "customer-guidance-2026-10-06-684da7e2f84bb2b8",
+      "op": "manual_edit",
+      "status": "accepted",
+      "source_type": "agent",
+      "timestamp": "2026-10-06T00:00:00Z",
+      "doc_before_hash": "de9bb2275159d7ea",
+      "doc_after_hash": "684da7e2f84bb2b8",
+      "note": "Require intended editor-window confirmation, headless-aware launch and manual fallback; refresh Anthropic preflight illustration."
     }
   ]
 }

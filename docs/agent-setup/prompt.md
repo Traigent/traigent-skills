@@ -115,8 +115,17 @@ this protection.
      open it in a **standalone, detached** editor — Linux: `setsid -f gnome-text-editor "$ENV"` (or
      the first of `kate`/`gedit`/`xed`/`mousepad` that exists; last resort `xdg-open "$ENV"`);
      macOS: `open -t "$ENV"`; Windows: `start "" notepad "<that absolute path>"`. Do **not** open it through the
-     user's IDE (`code`/`cursor` can hijack or crash a window); if no window appears, have the user
-     open the printed path themselves.
+     user's IDE (`code`/`cursor` can hijack or crash a window).
+
+     On Linux, skip GUI launch in a known headless session (neither `DISPLAY` nor
+     `WAYLAND_DISPLAY` is set). A display variable only permits an attempt; it does not prove
+     a working window. SSH alone is not a reason to skip: forwarded/remote GUI may work.
+     Launcher exit status and process matches cannot verify the intended file opened:
+     full-command searches such as `pgrep -f` can match the invoking shell. Ask the user to
+     confirm the intended `.env` window and absolute path. A single-instance editor may reuse
+     an existing window; if its buffer is stale, ask the user to preserve unsaved changes and
+     reload the file. Do not overwrite buffers or automatically relaunch it. If opening is
+     uncertain or fails, have the user open the printed absolute path manually.
   2. Tell the user: to create a key, register at <https://portal.traigent.ai/register> (or log in
      if already registered), open the **account (avatar) menu → API Keys**, click **Create API
      Key**, and choose the **Full access** (read + write) preset — the default **Read-only** preset

@@ -1,13 +1,13 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a06083cedbdba4b4",
+  "doc_hash": "54e4a960b06c3674",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "78e06cc7540bd5ab",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/execution-budget.md": "23d17308f849017b",
+    "references/execution-budget.md": "fe5938146487558d",
     "references/parallel-config.md": "11c81d1d28d3e97f",
-    "references/run-cost-and-limits.md": "8579f950b7e78af6"
+    "references/run-cost-and-limits.md": "f209e1064ae944b2"
   },
   "entries": [
     {
@@ -47,7 +47,7 @@
       "timestamp": "2026-07-05T00:00:00Z",
       "doc_before_hash": "70e6157794404a2f",
       "doc_after_hash": "aecaeb37a7a929f5",
-      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) — 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
+      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) — 7/20 isolated testbed cells drifted into mock/offline for what was meant to be the real paid run",
       "source_type": "human"
     },
     {
@@ -69,7 +69,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "8919917184a31663",
       "doc_after_hash": "2455d55a5f7ca49c",
-      "note": "note that applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (Traigent/traigent-smartopt#88, #89)",
+      "note": "note that applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (the optimizer implementation#88, #89)",
       "source_type": "human"
     },
     {
@@ -124,7 +124,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "ad8b4d5c3c32a975",
       "doc_after_hash": "738713d34a109be3",
-      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: enforce the calculated cap, receipt, and stop rule. WI-A of the economics model; Spine-Trail st_6443b96904d7",
+      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: enforce the calculated cap, receipt, and stop rule. economics revision of the economics model; review trail opaque-review-id",
       "source_type": "human"
     },
     {
@@ -135,7 +135,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "738713d34a109be3",
       "doc_after_hash": "6fdd53351932dcb7",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the economics revision economics wiring after review (independent review findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. economics revision review repair of the economics model; governed change session opaque-review-id; review trail opaque-review-id",
       "source_type": "human"
     },
     {
@@ -146,7 +146,7 @@
       "timestamp": "2026-07-18T00:00:00Z",
       "doc_before_hash": "6fdd53351932dcb7",
       "doc_after_hash": "f7aa1f2ae1997601",
-      "note": "Sol NO-GO remediation (WI-A): make 'characterize, never compute a budget locally' the economics-section boundary in this skill (the service authors the budget; no local arithmetic; when no service result, say so and give no number), matching the budget lint now extended across all eight economics skills. The shared reference was realigned to the canonical TraigentSchema economics vocabulary (value_channel/daily_volume_band/error_cost_band/lifecycle_stage/human_cycle_hours_band enums exactly), the Track R2 finding was scoped to a single unvalidated pilot, and followable budget arithmetic was removed from the reference pending the WI-C backend calculator. Spine-Trail st_6443b96904d7",
+      "note": "independent review remediation (economics revision): make 'characterize, never compute a budget locally' the economics-section boundary in this skill (the service authors the budget; no local arithmetic; when no service result, say so and give no number), matching the budget lint now extended across all eight economics skills. The shared reference was realigned to the canonical TraigentSchema economics vocabulary (value_channel/daily_volume_band/error_cost_band/lifecycle_stage/human_cycle_hours_band enums exactly), the Track R2 finding was scoped to a single unvalidated pilot, and followable budget arithmetic was removed from the reference pending the holdout revision backend calculator. review trail opaque-review-id",
       "source_type": "human"
     },
     {
@@ -157,7 +157,7 @@
       "timestamp": "2026-07-18T00:00:00Z",
       "doc_before_hash": "f7aa1f2ae1997601",
       "doc_after_hash": "c578e36da860899e",
-      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics economics revision edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
       "source_type": "human"
     },
     {
@@ -346,6 +346,16 @@
       "doc_after_hash": "a06083cedbdba4b4",
       "note": "Stop Conditions table: add the safety_constraint row (since 0.28.0, see version-matrix: safety-constraints-impl): an in-run safety_constraints halt that also fires on too little evidence; not a trial filter or a safety verdict, best_config may be unsafe; promote only through traigent-ci-safety-gate.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "customer-guidance-2026-10-06-f28cac41d6526e54",
+      "op": "manual_edit",
+      "status": "accepted",
+      "source_type": "agent",
+      "timestamp": "2026-10-06T00:00:00Z",
+      "doc_before_hash": "a06083cedbdba4b4",
+      "doc_after_hash": "54e4a960b06c3674",
+      "note": "Disclose trial-granular cost overshoot and stdin-dependent approval; correct captured metric-function judge accounting."
     }
   ]
 }
