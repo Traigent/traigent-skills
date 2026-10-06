@@ -6,7 +6,7 @@ directions:
 
 - **Reactive (in this repo):** a skill that teaches a non-existent SDK symbol, MCP tool, JS export,
   or backend route fails CI. Covered by the contract harness (`tests/contract/`) + the MCP contract
-  in `internal-skill-source` + the weekly drift jobs.
+  in the separately maintained internal skills + the weekly drift jobs.
 - **Proactive (upstream):** a PR that changes an interface gets an **in-PR signal of which skills it
   would break** — caught at the source, not nightly. This page sets that up.
 

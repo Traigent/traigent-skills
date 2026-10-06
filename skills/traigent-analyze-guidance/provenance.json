@@ -27,7 +27,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "902bcf60a89bab6e",
       "doc_after_hash": "7b9256ff96ffba2d",
-      "note": "require confirming a reserved, disjoint holdout slice in Mode A pre-run gathering and make search-vs-promotion evidence explicit in Mode B presentation rules (the optimizer implementation#88, #89)",
+      "note": "require confirming a reserved, disjoint holdout slice in Mode A pre-run gathering and make search-vs-promotion evidence explicit in Mode B presentation rules (optimizer implementation review, #89)",
       "source_type": "human"
     },
     {
@@ -170,7 +170,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "51a8c8aea0c8cf0f",
       "doc_after_hash": "368bf51ad808152b",
-      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: weigh next-run cost against conservative value and the value of further information, without overriding the service decision. economics revision of the economics model; review trail opaque-review-id",
+      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: weigh next-run cost against conservative value and the value of further information, without overriding the service decision. economics revision of the economics model; independent review record",
       "source_type": "human"
     },
     {
@@ -181,7 +181,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "368bf51ad808152b",
       "doc_after_hash": "59464aba14a2deb3",
-      "note": "repair the economics revision economics wiring after review (independent review findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. economics revision review repair of the economics model; governed change session opaque-review-id; review trail opaque-review-id Additionally, restore this skill's thin-client boundary: it collects and relays the characterization and presents ONLY a service-authored budget — it does not compute, adjust, or recommend a budget locally, and when the service returns no economics result it says so and stops or falls back with no budget number rather than inventing one (regression-linted in tests/contract/test_economics_reference.py).",
+      "note": "repair the economics-reference wiring after review (independent review findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. Independent review repaired the economics model Additionally, restore this skill's thin-client boundary: it collects and relays the characterization and presents ONLY a service-authored budget — it does not compute, adjust, or recommend a budget locally, and when the service returns no economics result it says so and stops or falls back with no budget number rather than inventing one (regression-linted in tests/contract/test_economics_reference.py).",
       "source_type": "human"
     },
     {

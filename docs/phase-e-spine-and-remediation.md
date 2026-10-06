@@ -16,7 +16,7 @@ proper governed path for each.
 skill drift in the spine dashboard/posture, not just CI.
 
 **Why a spec, not an edit here:** `ops/_validation/catalog/artifacts.yaml` and `impact.py` are the
-spine governance core; per the workspace rules a change to them is a governed governed change session,
+spine governance core; per the workspace rules a change to them is a governed change session,
 not an ad-hoc edit. Implement via `/spine:change`.
 
 **Reuse:** `validation_spine.artifact_registry.dependency_staleness()` already implements
