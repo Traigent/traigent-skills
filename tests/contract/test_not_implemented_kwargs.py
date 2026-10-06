@@ -2,10 +2,13 @@
 plain signature check in ``test_python_contracts.py``) but whose VALUE the
 SDK's own docstring documents as raising ``NotImplementedError``.
 
-Case in point: traigent-ci-safety-gate taught ``safety_constraints=[...]`` on
-``@traigent.optimize`` as runnable. The kwarg name is real, but the SDK
-docstring says "Not yet implemented - raises ``NotImplementedError``" and the
-decorator raises it at decoration time for any non-empty value.
+Case in point (historical for SDKs below 0.28.0): traigent-ci-safety-gate
+taught ``safety_constraints=[...]`` on ``@traigent.optimize`` as runnable. The
+kwarg name is real, but on those SDKs the docstring says "Not yet implemented -
+raises ``NotImplementedError``" and the decorator raises it at decoration time
+for any non-empty value. On 0.28.0+ the kwarg is real and its runnable recipe
+sits in a reference floored at 0.28.0 (traigent-skills#385), so this guard
+keeps firing on the 0.24.0/0.27.0 buckets if an unfloored file ever teaches it.
 """
 
 from __future__ import annotations

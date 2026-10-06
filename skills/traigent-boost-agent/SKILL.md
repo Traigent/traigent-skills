@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.14"
+  version: "2.1.16"
 ---
 
 # Traigent Boost Agent
@@ -515,8 +515,10 @@ CONFIGURATION_SPACE = {
    - DELEGATE (required): `traigent-analyze-guidance` owns post-run next-action selection.
 
 12. COMPLETE: recommend the safety gate and CI checks.
-   - In-run `safety_constraints` is planned but not yet implemented (raises `NotImplementedError` at decoration time — see `traigent-ci-safety-gate`); do not teach it as usable today.
-   - Use `PromotionGate` for candidate-vs-incumbent decisions on the same holdout — the working gating mechanism today.
+   - SDK 0.28.0+: in-run `safety_constraints` is accepted since 0.28.0
+     (see version-matrix: safety-constraints-impl). It is a run-level statistical halt that does not filter trials — an unsafe config can still win; see `traigent-ci-safety-gate`.
+   - SDKs below 0.28.0: do not pass a non-empty `safety_constraints` value — it raises `NotImplementedError` at decoration time.
+   - Use `PromotionGate` for candidate-vs-incumbent decisions on the same holdout. `PromotionGate` on a holdout is the safety gate on every SDK version; in-run constraints only end a run early and never certify a config.
    - Recommend SAFETY and EFFICIENCY CI jobs before promotion: holdout regression for safety, plus cost and latency budget checks for efficiency.
    - DELEGATE (required): `traigent-ci-safety-gate` owns safety constraints, promotion gates, and CI recipes.
 
