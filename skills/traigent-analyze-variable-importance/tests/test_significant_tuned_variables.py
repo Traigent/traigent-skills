@@ -1726,3 +1726,41 @@ def test_valid_sdk_output_is_still_reported_as_a_cross_check(
     }
     insights = (output_dir / "insights.md").read_text(encoding="utf-8")
     assert "| `dominant_knob` | 0.75 | [0.5, 0.9] | 80 |" in insights
+
+
+@pytest.mark.parametrize("flag", ["--slice-label", "--objective"])
+def test_invalid_cli_text_preserves_all_existing_reports(tmp_path: Path, flag: str) -> None:
+    # POSIX argv decodes an invalid UTF-8 byte through surrogateescape.
+    trials = '{"config":{"k":0},"metrics":{"accuracy":0.8,"\\udc80":0.8}}\n'
+    completed, output = _run_into_previous_reports(tmp_path, trials, flag, "\udc80")
+    assert completed.returncode != 0
+    assert "valid Unicode text" in completed.stderr
+    assert "Traceback" not in completed.stderr
+    for name in REPORT_NAMES:
+        assert (output / name).read_bytes() == f"previous run: {name}\n".encode()
+
+
+@pytest.mark.parametrize("depth", [150, 1500])
+def test_deep_knob_input_has_readable_refusal_and_preserves_reports(
+    tmp_path: Path, depth: int
+) -> None:
+    nested = "[" * depth + "0" + "]" * depth
+    trials = '{"config":{"k":' + nested + '},"metrics":{"accuracy":0.8}}\n'
+    completed, output = _run_into_previous_reports(tmp_path, trials)
+    assert completed.returncode != 0
+    assert "nesting" in completed.stderr
+    assert "Traceback" not in completed.stderr
+    for name in REPORT_NAMES:
+        assert (output / name).read_bytes() == f"previous run: {name}\n".encode()
+
+
+def test_json_output_refuses_invalid_text_before_opening_file(tmp_path: Path) -> None:
+    module = _load_module()
+    output = tmp_path / "sdk_cross_check.json"
+    output.write_text("previous report\n")
+    output.chmod(0o600)
+    with pytest.raises(ValueError, match="valid Unicode text"):
+        module.write_sdk_cross_check_json(output, "\ud800", {})
+    assert output.read_text() == "previous report\n"
+    assert output.stat().st_mode & 0o777 == 0o600
+
