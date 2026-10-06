@@ -13,6 +13,11 @@ budget exhaustion silently biased the ranking, and the budget was process-global
 The budget is now built fresh per run by ``run_with_judge_budget``, which refuses
 to start when the cap cannot cover rows x trials and raises when any call was
 refused; an unset budget raises instead of scoring 0.0.
+
+Review round 4: an evaluator thread the SDK leaves running after a timeout read
+the next run's budget from a module global. The wrapper now passes the SDK an
+evaluator bound to its own run's budget, so each run here records the budget it
+built and must show the SDK spent exactly that one.
 """
 
 from __future__ import annotations
@@ -100,22 +105,42 @@ install_replies(reply)
 write_rows({dataset!r}, [{{"input": {{k: v.format(i=i) for k, v in {row_input!r}.items()}}, "output": "Paris"}} for i in range(4)])
 ns = load_block(sys.argv[1])
 fn = ns[{fn_name!r}]
+evaluator = ns[{evaluator!r}]
 price = ns["JUDGE_COST_PER_CALL_USD"]
+from types import SimpleNamespace
+example = SimpleNamespace(input_data={{k: v.format(i=0) for k, v in {row_input!r}.items()}},
+                          expected_output="Paris", metadata={{"id": "row-0"}})
+agent = lambda **kwargs: {agent_reply!r}
+
+budgets = []
+class RecordedBudget(ns["JudgeBudget"]):
+    # Records every budget a run builds, so a test can show which one was spent.
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        budgets.append(self)
+ns["JudgeBudget"] = RecordedBudget
+
 def run(**kwargs):
-    before = len(judge_calls)
+    before, first = len(judge_calls), len(budgets)
     try:
-        result = ns["run_with_judge_budget"](fn, algorithm="grid", **kwargs)
-        return {{"raised": None, "judge_calls": len(judge_calls) - before,
-                "quality": [t.metrics.get("quality") for t in result.trials]}}
+        result = ns["run_with_judge_budget"](fn, evaluator, algorithm="grid", **kwargs)
+        outcome = {{"raised": None, "quality": [t.metrics.get("quality") for t in result.trials]}}
     except Exception as exc:
-        return {{"raised": f"{{type(exc).__name__}}: {{exc}}", "judge_calls": len(judge_calls) - before}}
+        outcome = {{"raised": f"{{type(exc).__name__}}: {{exc}}"}}
+    outcome["judge_calls"] = len(judge_calls) - before
+    outcome["budgets"] = [[b.calls, b.refused] for b in budgets[first:]]
+    return outcome
 """
 
 
 def _run_template(tmp_path: Path, case: str, body: str) -> dict:
     marker, fn_name, dataset, row_input, agent_reply = TEMPLATE_CASES[case]
     prelude = RUN_PRELUDE.format(
-        agent_reply=agent_reply, dataset=dataset, row_input=row_input, fn_name=fn_name
+        agent_reply=agent_reply,
+        dataset=dataset,
+        row_input=row_input,
+        fn_name=fn_name,
+        evaluator=marker.removeprefix("def "),
     )
     return _run_driver(
         tmp_path, _python_block(TEMPLATES, marker), prelude + textwrap.dedent(body)
@@ -132,6 +157,7 @@ def test_budget_too_small_for_the_run_is_refused_before_spending(
     )
     assert result["raised"] and result["raised"].startswith("ValueError"), result
     assert result["judge_calls"] == 0, result
+    assert result["budgets"] == [[0, 0]], result
 
 
 @pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))
@@ -145,11 +171,17 @@ def test_exhaustion_mid_run_raises_instead_of_ranking(
     assert result["judge_calls"] == 4, result  # the cap still holds: 4 of 8 calls
     assert result["raised"] and result["raised"].startswith("RuntimeError"), result
     assert "4 judge call(s) refused" in result["raised"], result
+    # The SDK scored with the evaluator bound to this run's budget.
+    assert result["budgets"] == [[4, 4]], result
 
 
 @pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))
 def test_budget_is_fresh_for_every_run(case: str, tmp_path: Path) -> None:
-    """A second run in the same process starts with a full budget, and identical trials tie."""
+    """A second run in the same process starts with a full budget, and identical trials tie.
+
+    Each run's own budget records all 8 calls: the SDK scored with the evaluator
+    the wrapper bound to that run, not the decorator's unbudgeted one.
+    """
     body = """
     first = run(rows=4, max_trials=2, cap_usd=4 * 2 * price)
     second = run(rows=4, max_trials=2, cap_usd=4 * 2 * price)
@@ -161,6 +193,7 @@ def test_budget_is_fresh_for_every_run(case: str, tmp_path: Path) -> None:
         assert run_result["raised"] is None, result
         assert run_result["judge_calls"] == 8, result
         assert run_result["quality"] == [1.0, 1.0], result
+        assert run_result["budgets"] == [[8, 0]], result
 
 
 @pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))
@@ -181,6 +214,27 @@ def test_unset_budget_raises_instead_of_scoring_zero(case: str, tmp_path: Path) 
     assert result["raised"] and "run_with_judge_budget" in result["raised"], result
 
 
+@pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))
+def test_direct_optimize_sync_fails_every_trial(case: str, tmp_path: Path) -> None:
+    """Without the wrapper the SDK runs the decorator's evaluator with no budget."""
+    body = """
+    before = len(judge_calls)
+    try:
+        result = fn.optimize_sync(algorithm="grid", max_trials=2)
+        outcome = {"raised": None, "status": [str(t.status) for t in result.trials],
+                   "quality": [t.metrics.get("quality") for t in result.trials]}
+    except Exception as exc:
+        outcome = {"raised": f"{type(exc).__name__}: {exc}"}
+    outcome["judge_calls"] = len(judge_calls) - before
+    emit(outcome)
+    """
+    result = _run_template(tmp_path, case, body)
+    assert result["judge_calls"] == 0, result
+    assert result["raised"] is None, result
+    statuses = [status.lower().rsplit(".", 1)[-1] for status in result["status"]]
+    assert statuses == ["failed", "failed"], result
+
+
 def test_judge_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     body = """
     from types import SimpleNamespace
@@ -190,14 +244,14 @@ def test_judge_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     example = SimpleNamespace(input_data={"question": "q"}, expected_output="Paris", metadata={"id": "row-1"})
     agent = lambda question: "Paris"
     install_replies(lambda model, messages: "not json at all")
-    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=1.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
-    parse_fail = ns["llm_judge_evaluator"](agent, {}, example)
-    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
-    refused = ns["llm_judge_evaluator"](agent, {}, example)
+    budget = ns["JudgeBudget"](cap_usd=1.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
+    parse_fail = ns["llm_judge_evaluator"](agent, {}, example, budget=budget)
+    budget = ns["JudgeBudget"](cap_usd=ns["JUDGE_COST_PER_CALL_USD"] / 2, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
+    refused = ns["llm_judge_evaluator"](agent, {}, example, budget=budget)
     emit({
         "parse_fail": [parse_fail.success, parse_fail.metrics["quality"], parse_fail.error_message],
         "refused": [refused.success, refused.metrics["quality"], refused.error_message],
-        "refused_count": ns["JUDGE_BUDGET"].refused,
+        "refused_count": budget.refused,
     })
     """
     result = _run_driver(tmp_path, _python_block(TEMPLATES, JUDGE_MARKER), body)
@@ -214,10 +268,10 @@ def test_hybrid_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     ns = load_block(sys.argv[1])
     example = SimpleNamespace(input_data={"text": "t"}, expected_output={"label": "a"}, metadata={"id": "row-1"})
     agent = lambda text: '{"label": "a"}'
-    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=1.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
-    parse_fail = ns["hybrid_evaluator"](agent, {}, example)
-    ns["JUDGE_BUDGET"] = ns["JudgeBudget"](cap_usd=0.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
-    refused = ns["hybrid_evaluator"](agent, {}, example)
+    budget = ns["JudgeBudget"](cap_usd=1.0, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
+    parse_fail = ns["hybrid_evaluator"](agent, {}, example, budget=budget)
+    budget = ns["JudgeBudget"](cap_usd=ns["JUDGE_COST_PER_CALL_USD"] / 2, per_call_usd=ns["JUDGE_COST_PER_CALL_USD"])
+    refused = ns["hybrid_evaluator"](agent, {}, example, budget=budget)
     emit({
         "parse_fail": [parse_fail.success, parse_fail.metrics["quality"], parse_fail.error_message],
         "refused": [refused.success, refused.metrics["quality"], refused.error_message,
@@ -252,7 +306,7 @@ unlocked_writes = []
 class CheckedBudget(Budget):
     def __setattr__(self, name, value):
         lock = self.__dict__.get("_lock")
-        if name in ("spent", "refused") and isinstance(lock, HeldLock) and not lock.held:
+        if name in ("calls", "spent", "refused") and isinstance(lock, HeldLock) and not lock.held:
             unlocked_writes.append(name)
         super().__setattr__(name, value)
 

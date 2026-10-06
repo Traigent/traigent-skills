@@ -255,9 +255,9 @@ except Exception:  # pragma: no cover - SDK shape/availability guard
 
 # Fields of the INSTALLED EvaluationOptions (extra="forbid" -> any other kwarg is invalid).
 # Twin of the ExecutionOptions guard above -- added after #274 shipped
-# `EvaluationOptions(task_type=...)`, a kwarg the released SDK rejects, in prose and a
-# markdown table row that neither this fenced-python scan nor the fact-extraction contract
-# ever read.
+# `EvaluationOptions(task_type=...)`, a kwarg the then-current released SDK (0.27.0)
+# rejected, in prose and a markdown table row that neither this fenced-python scan nor the
+# fact-extraction contract ever read.
 try:
     from traigent.api.decorators import EvaluationOptions as _EvaluationOptions
 
@@ -1448,9 +1448,9 @@ def test_evaluationoptions_and_injectionoptions_kwargs_lints_have_teeth(
     """Fenced-python twins of test_executionoptions_kwargs_are_real_fields (#274).
 
     Uses a kwarg name that exists on NO SDK version (``definitely_not_an_option_field_zz``),
-    not the historical ``task_type=`` -- ``task_type`` became a real ``EvaluationOptions``
-    field on SDK develop (the 0.28 feature #274 was about), so planting it here proved
-    nothing under ``--sdk-version=develop`` and failed the develop-contracts lane."""
+    not the historical ``task_type=`` -- ``task_type`` is a real ``EvaluationOptions``
+    field on SDK >= 0.28.0 (the feature #274 was about; released buckets and develop),
+    so planting it here proved nothing there and failed those lanes."""
     bad = tmp_path / "skills" / "bad" / "SKILL.md"
     bad.parent.mkdir(parents=True)
     bad.write_text(
@@ -1504,9 +1504,9 @@ def test_option_prose_kwargs_lint_has_teeth(tmp_path: Path) -> None:
     """The actual #274 gap: a bad kwarg taught in prose, not fenced code.
 
     Uses ``definitely_not_an_option_field_zz``, a name that exists on NO SDK
-    version -- not the historical ``task_type=``, which the develop-contracts
-    lane installs as a real ``EvaluationOptions`` field (SDK develop, the 0.28
-    feature #274 was about), so planting it here proved nothing there."""
+    version -- not the historical ``task_type=``, a real ``EvaluationOptions``
+    field on SDK >= 0.28.0 (the feature #274 was about; released buckets and
+    develop), so planting it here proved nothing there."""
     bad = tmp_path / "skills" / "bad" / "SKILL.md"
     bad.parent.mkdir(parents=True)
     bad.write_text(
@@ -1522,10 +1522,11 @@ def test_option_prose_kwargs_lint_has_teeth(tmp_path: Path) -> None:
         )
         assert "definitely_not_an_option_field_zz" in violations[0] and ":3" in violations[0]
 
-    # Same bad kwarg, but documented as failing -- must NOT be flagged. This is
-    # the historical #274 shape (traigent-eval-audit/SKILL.md and
-    # traigent-setup-decorator/SKILL.md say exactly this about `task_type` today)
-    # kept with the real `task_type` name deliberately: the absence markers
+    # Same bad kwarg, but documented as failing -- must NOT be flagged. This
+    # fixture preserves the pre-0.28.0 warning shape that
+    # traigent-eval-audit/SKILL.md and traigent-setup-decorator/SKILL.md keep
+    # for older SDKs (the historical #274 shape), kept with the real
+    # `task_type` name deliberately: the absence markers
     # ("forbids", "raises", "do not pass") make this a false-positive check, not
     # a violation check, so it must stay green regardless of whether `task_type`
     # is real on the SDK bucket under test.
@@ -1561,9 +1562,9 @@ def test_option_field_table_lint_has_teeth(tmp_path: Path) -> None:
     be flagged even when their header also says "Field".
 
     Uses ``definitely_not_an_option_field_zz``, a name that exists on NO SDK
-    version -- not the historical ``task_type``, which SDK develop ships as a
-    real ``EvaluationOptions`` field, so planting it here proved nothing under
-    the develop-contracts lane."""
+    version -- not the historical ``task_type``, a real ``EvaluationOptions``
+    field on SDK >= 0.28.0 (released buckets and develop), so planting it here
+    proved nothing there."""
     bad = tmp_path / "skills" / "bad" / "SKILL.md"
     bad.parent.mkdir(parents=True)
     bad.write_text(

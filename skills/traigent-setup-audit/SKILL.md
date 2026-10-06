@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: experimental
   author: Nimrod
-  version: "0.2.4"
+  version: "0.2.5"
 ---
 
 # Traigent Setup Audit
@@ -86,25 +86,46 @@ python3 <skill-dir>/scripts/audit_project.py \
 ```
 
 - `--json` writes the same report as machine-readable JSON.
-- `--dataset` audits one file instead of searching the tree.
+- `--dataset` audits that file instead of searching the tree, together with any
+  holdout-named sibling in the same directory, which is read as its declared
+  holdout slice exactly as discovery reads it. A named file the audit cannot
+  read is reported as unreadable, never as absent. Naming the holdout file
+  itself does not pull in its tuning sibling.
+  The file-count cap includes the named file and its holdout siblings; omitted
+  siblings are reported as incomplete evidence, so the Dataset area needs attention.
 - `--scorer FILE.py:FUNCTION` picks which scorer to probe. Without it the audit
-  probes a scorer only when exactly one deterministic candidate was found.
+  probes a scorer only when exactly one deterministic candidate was found. A
+  function named this way counts as a found scorer even when its name or
+  signature is outside the search, and its `scorers` entry carries
+  `selected: true`; one the audit cannot find by name is not counted, as
+  before.
 - `--repeats` is how many times the same pair is re-scored (default 5).
 
 Exit code is `0` whenever the audit ran, whatever it found, and `2` on a usage
-error. A finding is not a failure.
+error or when the report cannot be written as strict JSON (then nothing is
+written). A finding is not a failure.
 
 ## What it checks
 
 | Area | What is read | What is reported |
 |---|---|---|
 | Agent | `@traigent.optimize` decorators, parsed with `ast` | entry points with `file:line`; each declared knob marked read, never read, or possibly read through a mapping |
-| Dataset | JSONL / JSON arrays / CSV whose rows carry an input-like key (`input`, `input_data`, `question`, `prompt`, `query`, `messages`) | the count of rows with no `input`/`input_data` key (keyed `question`/`prompt`/`query`/`messages`, or with no input-like key at all), since `eval_dataset` loads only those two keys and refuses the whole file on the first such row; row count against the `traigent-dataset-curate` minimums; rows with no gold key; exact and near-duplicate inputs; whether a holdout slice exists, how large it is, and whether it overlaps another slice; label balance where the gold values are few and repeated |
+| Dataset | JSONL / JSON arrays / CSV whose rows carry an input-like key (`input`, `input_data`, `question`, `prompt`, `query`, `messages`) | the count of rows with no `input`/`input_data` key (keyed `question`/`prompt`/`query`/`messages`, or with no input-like key at all), since `eval_dataset` loads only those two keys and refuses the whole file on the first such row; row count against the `traigent-dataset-curate` minimums; rows with no usable gold value — no gold key, or a value that is `null`, `NaN`, infinite or an empty string, counted per kind in `missing_gold_counts` (the first gold key present decides; a later key does not stand in for it); non-standard JSON constants (`NaN`, `Infinity`) anywhere in the file, which strict JSON readers refuse; exact and near-duplicate inputs; whether a holdout slice exists, how large it is, and whether it overlaps another slice; label balance where the gold values are few and repeated |
 | Scorer | functions named `score*`/`evaluate*`/`grade*`/`metric*`, or taking `expected` second | classification (deterministic / LLM judge / code-executing / hybrid); for a deterministic one, repeat-scoring plus a known-good, partial and known-bad probe |
 | Setup | the project interpreter, the environment, `.env*` files, `git check-ignore` | installed SDK version; which key **names** are set; whether `.env` is git-ignored; which model ids the configuration space declares |
 
 Row minimums come from `traigent-dataset-curate`: 10-20 for a smoke check, 30-100
 for a first tuning slice, 30+ for a holdout slice, 100+ for a high-variance task.
+
+In discovery, a file that parses but holds no rows — a `.json` that is not an
+array of rows (a `package.json`, for example), an empty array, a header-only
+CSV — is not read as a dataset, the same as a JSONL file whose rows carry no
+input-like key. Two exceptions stay listed as not analysed, with the reason: a
+holdout-named file, and a JSON object holding a nested list of rows
+(`{"data": [...]}`), because each looks like an evaluation asset the audit did
+not read. A file that cannot be parsed at all is listed as not analysed, because
+the audit cannot tell it from a damaged dataset; naming the dataset with
+`--dataset` stops other files from being scanned.
 
 An LLM-judge or code-executing scorer is **never run**. The audit groups those by
 reason and prints one counted line per reason — not one line per file — and
@@ -122,7 +143,7 @@ dataset file in the same directory (`eval`/`test` in a file name usually mean th
 and are not read as a holdout) is read as a declared holdout slice: its rows are the holdout
 count for both files, the holdout file is judged against the holdout minimum only, and the
 overlap check runs across the pair by normalized input; per-row split markers, when present,
-win.
+win. The same reading applies when the tuning file is named with `--dataset`.
 The SDK version is read from installed package metadata in `.venv`, then
 `.venv-traigent`, then the audit's own interpreter, without starting the project's
 interpreter, and the card says which one it is installed in. For a venv created
@@ -165,12 +186,18 @@ would be measured with is still unreliable:
 | no `@traigent.optimize` anywhere | `traigent-setup-quickstart`, then `traigent-setup-decorator` |
 | a decorated function with no knobs, or no knob its body reads | `traigent-optimize-config-space` |
 | no scorer found | `traigent-eval-build` |
-| the probed scorer is not repeatable, or ranks a known-bad answer above a known-good one | `traigent-eval-build`, then `traigent-eval-audit` |
-| a scorer exists but none could be measured here | `traigent-eval-audit` |
+| the probed scorer is not repeatable, ranks a known-bad answer above a known-good one, had some probe calls raise while others scored, or returned a non-finite number | `traigent-eval-build`, then `traigent-eval-audit` |
+| a scorer exists but none could be measured here (including one that raised on every probe call or returned something that is not a number) | `traigent-eval-audit` |
+| no dataset could be analysed because a file could not be read, or the file named with `--dataset` (or its holdout sibling) could not be read | `traigent-dataset-curate` |
 | no evaluation dataset found | `traigent-dataset-curate` |
 | a dataset with any row that has no `input`/`input_data` key | `traigent-dataset-curate` |
+| rows with no usable gold value (no gold key, or `null`, `NaN`, infinite or empty) | `traigent-dataset-curate` |
+| a holdout slice that shares rows with another slice | `traigent-dataset-curate` |
 | a dataset under the tuning or holdout minimum | `traigent-dataset-curate` |
-| nothing above fires | `traigent-optimize-run`, mock dry-run first |
+| some declared knobs the body never reads, a configuration space the audit could not read, or knobs read through a mapping it cannot follow | `traigent-optimize-config-space` (confirm by hand) |
+| Python files the audit could not parse, or more than it scans | fix or exclude them, then re-run the audit |
+| any other dataset finding (duplicates, label imbalance, unparsed lines, non-standard JSON constants, a file it could not read) | `traigent-dataset-curate` |
+| nothing above fires, so the Agent, Dataset and Scorer areas all read `ok` | `traigent-optimize-run`, mock dry-run first |
 
 Stopping after the free audit is always a valid outcome, and the card says so.
 Repeat it rather than pushing the next step.
@@ -245,8 +272,11 @@ python3 <skill-dir>/scripts/tier2_checks.py \
 
 Exit code is `0` whenever the approved checks ran, whatever they returned, and
 `2` on a usage error — an unknown check id, a run-dependent check with no
-`--run-id`, `plan` with no `--cost-limit`, a missing key, or a plaintext backend
-URL. Nothing is attempted before those refusals.
+`--run-id`, `plan` with no `--cost-limit`, a `--cost-limit` or `--timeout` that
+is not a finite number above zero, a `--max-trials` below 1, a missing key, a
+backend check with no `traigent` distribution installed, `model-ids` or `plan`
+with no `traigent` executable on PATH, or a plaintext backend URL. Nothing is
+attempted before those refusals.
 
 ### The approval card
 
@@ -271,7 +301,12 @@ uses: with a run in hand, an unreliable scorer is read about before a dataset is
 grown, because the dataset would otherwise be measured with that scorer. With no
 run in hand and a local fix still open, **the recommended card is `stop-here`** —
 recommending a reader then would be recommending a paid run whose only purpose is
-to make an analysis service answer, and it may still abstain. **Stopping after
+to make an analysis service answer, and it may still abstain. A stored all-clear
+that the report's own evidence does not support — an Agent or Dataset area that
+does not read `ok`, declared knobs that are not all read, or a scorer probe that
+is not repeatable (for example, a report written by an older audit) — also gets
+`stop-here`, with the command to re-run the audit.
+**Stopping after
 Tier 1 is always a valid option and the offer says so. Silence is not approval** —
 nothing runs until `--approve` names it.
 
@@ -279,8 +314,8 @@ nothing runs until `--approve` names it.
 
 | id | Open question it answers | What runs | Needs | Cost |
 |---|---|---|---|---|
-| `model-ids` | are my declared model ids real? | `traigent models --provider <provider> --check <model-id> --json`, once per declared id (provider inferred from the id prefix; an id that matches none is skipped with a line, never guessed) | a provider key | $0; egress goes to the provider, not to Traigent |
-| `plan` | what should my first run be? | `traigent plan --backend-url <url> --task-description <text> --dataset-size <n> --has-holdout/--no-holdout --objective <objective> --max-trials <n> --cost-limit <usd> --json` | a key and `--cost-limit` | $0 read |
+| `model-ids` | are my declared model ids real? | `traigent models --provider <provider> --check <model-id> --json`, once per declared id (provider inferred from the id prefix; an id that matches none is skipped with a line, never guessed) | a provider key, and the `traigent` CLI on PATH | $0; egress goes to the provider, not to Traigent |
+| `plan` | what should my first run be? | `traigent plan --backend-url <url> --task-description <text> --dataset-size <n> --has-holdout/--no-holdout --objective <objective> --max-trials <n> --cost-limit <usd> --json` | a key, the `traigent` CLI on PATH, and a finite `--cost-limit` above zero | $0 read |
 | `evaluator-quality` | is my scorer reliable on real model output? | `GET /api/v1/analytics/runs/{run_id}/evaluator-quality` | `--run-id` | $0 read |
 | `example-insights` | which rows are mislabelled, redundant or too hard? | `GET /api/v1/analytics/runs/{run_id}/example-insights` | `--run-id` | $0 read |
 | `example-scoring` | has per-example scoring already been computed? | `GET /api/v1/analytics/example-scoring/{run_id}/summary`, and `GET /api/v1/analytics/example-scoring/{run_id}/dataset-quality` **only if** the summary says `computed: true` | `--run-id` | $0 read; no compute is requested |
@@ -316,8 +351,10 @@ one's. `stop-here` cannot be approved either — it is the option of doing nothi
 further here, and it is a complete outcome.
 
 `model-ids` is offered only when the configuration space actually declared model
-ids. `bounded-run`'s card says "define a configuration space first" when no knob
-was found, because there is nothing for a run to search yet.
+ids. `bounded-run`'s card quotes Tier 1's own reading of the knobs whenever it is
+not "every knob read": no configuration space, knobs the body never reads, a
+space the audit could not inventory (never reported as zero knobs), or knobs
+possibly read through a mapping (never reported as unread).
 
 ### Finding the portal run id
 
@@ -527,7 +564,10 @@ that its zero-network property stays provable rather than inherited.
   says so.
 - A failure inside your scorer is reported as the exception TYPE and a
   `file:line`. Its message and the process's stderr are never relayed, because
-  both have been observed carrying an API key.
+  both have been observed carrying an API key. A type name the report cannot
+  carry is shown as "an error" with its location. When some probe calls score
+  and others raise, the next step names the probe's own conditions before the
+  scorer, without claiming which caused it.
 - A key value is never read, shown or stored — only whether a known key **name**
   is set, and in which file it is declared.
 - The scorer probe runs with only an allowlisted environment: `PATH`, `HOME`,
@@ -536,6 +576,11 @@ that its zero-network property stays provable rather than inherited.
   the probe and is reported by type and location. This is not a filesystem
   boundary: files under your home directory and the project, a `.env` included,
   stay readable to the scorer.
+- The probe loads the scorer's file on its own (`runpy.run_path`, with that
+  file's directory on `sys.path`), so a package-relative import (`from . import
+  x`) fails there. It runs in the directory the audit was started from, not the
+  project's. Under `isolated (bwrap)` the filesystem is read-only apart from an
+  empty `/tmp` (a project under `/tmp` is bound back in, read-only).
 - Anything in the second tier — every paid call and every byte that leaves the
   machine — waits for an explicit approval. Silence is not approval. Offer mode
   runs under the same network guard as Tier 1 and reports the level it had, so
