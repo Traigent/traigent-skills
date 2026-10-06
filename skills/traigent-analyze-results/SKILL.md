@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.25"
+  version: "1.1.26"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -722,6 +722,7 @@ The `stop_reason` field tells you why optimization ended. This is critical for d
 | `"cost_limit"` | Hit the per-run cost budget — or, if the stop message says `per-trial cost unknown: fallback trial limit`, a trial-count stop because cost was not measured (warning `COST_UNMEASURED_TRIAL_LIMIT_REACHED`; see `traigent-debugging`) | Report the best completed configuration as a result, never as a failure — the paid trials are kept; a larger run needs a new approval, and the decision is `traigent-analyze-guidance`'s |
 | `"execution_budget"` | Shared cumulative `ExecutionBudget` exhausted — cost, examples, or deadline (SDK >= 0.26.0); reported instead of `"cost_limit"` | Report the best completed configuration as the result; `results.metadata["execution_budget"]` says which limit hit |
 | `"metric_limit"` | A soft cumulative metric limit was hit | Results are valid; report them |
+| `"safety_constraint"` | Since 0.28.0 (see version-matrix: safety-constraints-impl): an in-run `safety_constraints` halt, which also fires when there is too little evidence | It is not a trial filter or a safety verdict; `best_config` may be unsafe. Promote only through the `traigent-ci-safety-gate` skill |
 | `"optimizer"` | Optimizer decided to stop (search space exhausted) | Config space fully explored; results are final |
 | `"plateau"` | No improvement detected | Results have converged; more trials unlikely to help |
 | `"convergence"` | Built-in convergence condition triggered | Converged for this space; results are final |

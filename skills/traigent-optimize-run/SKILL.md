@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.23"
+  version: "1.0.24"
 ---
 
 # Running Traigent Optimization
@@ -431,6 +431,7 @@ Optimization can stop for several reasons. Check `results.stop_reason`:
 | `"cost_limit"` | Hit the `cost_limit` / `TRAIGENT_RUN_COST_LIMIT` cap — or, when the stop message says `per-trial cost unknown: fallback trial limit`, a trial-count stop because cost was not measured (warning `COST_UNMEASURED_TRIAL_LIMIT_REACHED`; raising `cost_limit` does not help; see `traigent-debugging`). |
 | `"execution_budget"` | A shared `ExecutionBudget` (cost, examples, or deadline) was exhausted (SDK 0.26.0+); reported instead of `"cost_limit"`, detail in `results.metadata["execution_budget"]`. |
 | `"metric_limit"` | A soft cumulative metric limit was hit; report the completed results. |
+| `"safety_constraint"` | Since 0.28.0 (see version-matrix: safety-constraints-impl): an in-run `safety_constraints` halt, which also fires when there is too little evidence. It is not a trial filter or a safety verdict; `best_config` may be unsafe. Promote only through the `traigent-ci-safety-gate` skill. |
 | `"vendor_error"` | A provider-side error (401/402/403/429, `insufficient_quota`) ended the run; the SDK does not retry by default. When every call fails before any example is scored the run instead raises `OptimizationError`, so catch that too. |
 | `"optimizer"` | Algorithm exhausted the search space (e.g., grid search finished). |
 | `"plateau"` | No improvement detected over recent trials. |
