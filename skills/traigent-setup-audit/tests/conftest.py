@@ -31,6 +31,22 @@ if str(SCRIPTS_DIR) not in sys.path:
 from tier2_fake_backend import SENTINEL_KEY  # noqa: E402
 
 
+def _refuse_constant(name: str) -> float:
+    raise ValueError(f"{name} is not a JSON number")
+
+
+def strict_json(text: str) -> object:
+    """Parse as standard JSON: `NaN`, `Infinity` and `-Infinity` are refused.
+
+    Python's own `json.loads` accepts them, so a report carrying one would
+    parse here and break the first strict reader downstream.
+    """
+    try:
+        return json.loads(text, parse_constant=_refuse_constant)
+    except ValueError as exc:
+        raise AssertionError(f"not strict JSON: {exc}") from exc
+
+
 def _tier1_report(project: Path, out_dir: Path) -> Path:
     out_dir.mkdir(parents=True, exist_ok=True)
     report_path = out_dir / f"{project.name}.json"

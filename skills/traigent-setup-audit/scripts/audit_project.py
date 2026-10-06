@@ -28,6 +28,7 @@ import ast
 import csv
 import importlib.metadata as md
 import json
+import math
 import os
 import re
 import subprocess
@@ -471,8 +472,11 @@ def normalize_text(value: object) -> str:
 
 
 def relative(path: Path, root: Path) -> str:
+    # realpath, not Path.resolve(): on Python <= 3.12 resolve() raises
+    # RuntimeError on a symlink loop, which then crashed the whole audit.
     try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
+        real = Path(os.path.realpath(path))
+        return real.relative_to(os.path.realpath(root)).as_posix()
     except ValueError:
         return path.as_posix()
 
@@ -630,11 +634,24 @@ def resolve_config_space(
     return None, None
 
 
+def _non_finite(value: object) -> bool:
+    """Whether a literal holds ``inf`` or ``nan`` anywhere (``1e999`` parses to
+    ``inf``), which strict JSON cannot carry."""
+    if isinstance(value, float):
+        return not math.isfinite(value)
+    if isinstance(value, dict):
+        value = [*value.keys(), *value.values()]
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return any(_non_finite(item) for item in value)
+    return False
+
+
 def knob_values(node: ast.expr) -> tuple[list[object], bool]:
     """``(values, readable)``. Understands a literal list plus the
-    ``Choices(...)`` / ``Choices.model(...)`` factories."""
+    ``Choices(...)`` / ``Choices.model(...)`` factories. Values holding a
+    non-finite number count as unreadable, so the report stays strict JSON."""
     literal = _literal(node)
-    if isinstance(literal, (list, tuple, set)):
+    if isinstance(literal, (list, tuple, set)) and not _non_finite(literal):
         return list(literal), True
     if isinstance(node, ast.Call):
         callee = node.func
@@ -645,7 +662,11 @@ def knob_values(node: ast.expr) -> tuple[list[object], bool]:
             name = callee.value.id
         if name in CHOICES_FACTORIES:
             values = [_literal(arg) for arg in node.args]
-            if values and all(value is not None for value in values):
+            if (
+                values
+                and all(value is not None for value in values)
+                and not _non_finite(values)
+            ):
                 return values, True
     return [], False
 
@@ -954,20 +975,25 @@ def classify_scorer(tree: ast.AST, node: ast.AST) -> tuple[str, list[str]]:
     return "deterministic", signals
 
 
-def classify_module_function(path: Path, function: str) -> tuple[str, list[str]]:
+def classify_module_function(path: Path, function: str) -> tuple[str, list[str], int]:
     """Classify a scorer chosen with ``--scorer`` that the inventory did not
-    reach. Never assume deterministic: an unreadable module is `executing`."""
+    reach. Never assume deterministic: an unreadable module is `executing`.
+    The line is 0 when the function is not found by name."""
     try:
         tree = ast.parse(path.read_text(encoding="utf-8-sig", errors="replace"))
     except (OSError, SyntaxError, ValueError):
-        return "executing", ["the module could not be parsed, so it is not run"]
+        return "executing", ["the module could not be parsed, so it is not run"], 0
     for node in ast.walk(tree):
         if (
             isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             and node.name == function
         ):
-            return classify_scorer(tree, node)
-    return "executing", ["the function was not found in the module, so it is not run"]
+            return (*classify_scorer(tree, node), node.lineno)
+    return (
+        "executing",
+        ["the function was not found in the module, so it is not run"],
+        0,
+    )
 
 
 def scan_python(files: list[Path], root: Path) -> PythonInventory:
@@ -1611,7 +1637,13 @@ def _numbers(value: object) -> list[float] | None:
     for item in value:
         if isinstance(item, bool) or not isinstance(item, (int, float)):
             return None
-        out.append(float(item))
+        try:
+            number = float(item)
+        except OverflowError:
+            return None
+        if not math.isfinite(number):
+            return None
+        out.append(number)
     return out
 
 
@@ -1622,17 +1654,21 @@ def _clean_error(value: object) -> dict | None:
     site = value.get("error_site")
     case = value.get("case")
     cleaned: dict = {}
-    if not (isinstance(kind, str) and ERROR_TYPE_RE.match(kind)):
-        return None
-    cleaned["error_type"] = kind
+    # A type name the report cannot carry is dropped, not the record: the
+    # failure still happened, and is then shown as "an error".
+    cleaned["error_type"] = (
+        kind if isinstance(kind, str) and ERROR_TYPE_RE.match(kind) else None
+    )
     if site is None:
         cleaned["error_site"] = None
     elif isinstance(site, str) and ERROR_SITE_RE.match(site):
         cleaned["error_site"] = site
     else:
         cleaned["error_site"] = None
-    if case in SCORE_CASES:
+    if isinstance(case, str) and case in SCORE_CASES:
         cleaned["case"] = case
+    if value.get("non_finite") is True:
+        cleaned["non_finite"] = True
     return cleaned
 
 
@@ -1657,24 +1693,24 @@ def validate_probe_payload(payload: object) -> tuple[dict, int]:
     if isinstance(payload.get("network_blocked"), bool):
         clean["network_blocked"] = payload["network_blocked"]
         known += 1
-    if payload.get("network_guard") in GUARD_STATES:
+    if isinstance(payload.get("network_guard"), str) and payload["network_guard"] in GUARD_STATES:
         clean["network_guard"] = payload["network_guard"]
         known += 1
-    if payload.get("stage") in PROBE_STAGES:
+    if isinstance(payload.get("stage"), str) and payload["stage"] in PROBE_STAGES:
         clean["stage"] = payload["stage"]
         known += 1
-    if isinstance(payload.get("repeats"), int) and not isinstance(
-        payload.get("repeats"), bool
-    ):
-        clean["repeats"] = payload["repeats"]
-        known += 1
 
-    scores = payload.get("scores")
-    if isinstance(scores, dict) and set(scores) <= SCORE_CASES:
-        converted = {name: _numbers(value) for name, value in scores.items()}
-        if all(value is not None for value in converted.values()):
-            clean["scores"] = converted
-            known += 1
+    if "scores" in payload:
+        scores = payload["scores"]
+        converted = None
+        if isinstance(scores, dict) and set(scores) <= SCORE_CASES:
+            converted = {name: _numbers(value) for name, value in scores.items()}
+        # Scores the parent cannot hold as finite numbers are not the child's
+        # honest output: the child withholds a non-finite value itself.
+        if converted is None or any(value is None for value in converted.values()):
+            return {"ran": False, "stage": "tampered-result"}, len(payload)
+        clean["scores"] = converted
+        known += 1
 
     errors = payload.get("errors")
     if isinstance(errors, list) and len(errors) <= 100:
@@ -1692,6 +1728,65 @@ def validate_probe_payload(payload: object) -> tuple[dict, int]:
     if "ran" not in clean:
         return {"ran": False, "stage": "tampered-result"}, len(payload)
     return clean, max(0, len(payload) - known)
+
+
+def validate_probe_evidence(payload: object, repeats: int | None = None) -> tuple[dict, int]:
+    """Validate measurements before either tier can use them as evidence.
+
+    The requested count is parent-owned. Older stored reports lack it, so their
+    types and completeness are checked without inventing a historical count.
+    Error-bearing results retain their existing repair-versus-not-run reading.
+    """
+    if not isinstance(payload, dict) or type(payload.get("ran")) is not bool:
+        raise ValueError("probe ran must be a boolean")
+    if repeats is not None and (type(repeats) is not int or repeats < 1):
+        raise ValueError("requested repeats must be a positive integer")
+    clean, dropped = validate_probe_payload(payload)
+    if payload["ran"]:
+        scores = clean.get("scores")
+        errors = clean.get("errors")
+        if not isinstance(scores, dict) or set(scores) != SCORE_CASES or errors is None:
+            raise ValueError("probe measurements are malformed")
+        if not errors:
+            good_count = len(scores["good"])
+            if (good_count != repeats if repeats is not None else good_count < 1):
+                raise ValueError("probe good count differs from requested repeats")
+            if len(scores["partial"]) != 1 or len(scores["bad"]) != 1:
+                raise ValueError("probe comparison cases are incomplete")
+    return clean, dropped
+
+
+def _unique_members(pairs: list[tuple[str, object]]) -> dict:
+    """Do not allow a later JSON member to erase earlier evidence."""
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate member in the probe result")
+        result[name] = value
+    return result
+
+
+def _refuse_constant(name: str) -> float:
+    raise ValueError(f"non-finite constant {name} in the probe result")
+
+
+def _strict_float(text: str) -> float:
+    """``1e999`` is valid JSON that decodes to inf: refused like ``Infinity``."""
+    value = float(text)
+    if not math.isfinite(value):
+        raise ValueError("non-finite number in the probe result")
+    return value
+
+
+def _strict_int(text: str) -> int:
+    """An int too large for a float is refused while decoding, before a
+    duplicated key could discard it."""
+    value = int(text)
+    try:
+        float(value)
+    except OverflowError:
+        raise ValueError("unconvertible number in the probe result") from None
+    return value
 
 
 def _framed_lines(stdout: str) -> list[str]:
@@ -1769,8 +1864,16 @@ def run_scorer_probe(
             "framed_result_lines": len(framed),
             "payload_source": source,
         }
+    parsed = None
     try:
-        parsed = json.loads(framed[0])
+        parsed = json.loads(
+            framed[0],
+            parse_constant=_refuse_constant,
+            parse_float=_strict_float,
+            parse_int=_strict_int,
+            object_pairs_hook=_unique_members,
+        )
+        result, dropped = validate_probe_evidence(parsed, repeats)
     except ValueError:
         return {
             "ran": False,
@@ -1778,8 +1881,9 @@ def run_scorer_probe(
             "stderr_bytes": stderr_bytes,
             "framed_result_lines": 1,
             "payload_source": source,
+            "dropped_keys": validate_probe_payload(parsed)[1] if isinstance(parsed, dict) else 0,
         }
-    result, dropped = validate_probe_payload(parsed)
+    result["requested_repeats"] = repeats
     result["payload_source"] = source
     result["stderr_bytes"] = stderr_bytes
     result["framed_result_lines"] = 1
@@ -1820,6 +1924,21 @@ PROBE_FAILURE_SENTENCE = {
 }
 
 
+def _error_summary(errors: list[dict]) -> str:
+    """What the failed probe calls did, by exception TYPE and location only."""
+    raised = [error for error in errors if not error.get("non_finite")]
+    non_finite = len(errors) - len(raised)
+    parts = []
+    if raised:
+        faults = ", ".join(sorted({_fault_phrase(error) for error in raised}))
+        parts.append(f"{len(raised)} probe call(s) raised {faults}")
+    if non_finite:
+        parts.append(
+            f"{non_finite} probe call(s) returned a value that is not a finite number"
+        )
+    return "; ".join(parts)
+
+
 def probe_metrics(result: dict | None) -> dict:
     """One reading of a probe result, shared by the card and the next step."""
     if result is None:
@@ -1840,7 +1959,25 @@ def probe_metrics(result: dict | None) -> dict:
     partial = list(scores.get("partial") or [])
     bad = list(scores.get("bad") or [])
     errors = list(result.get("errors") or [])
-    if not good:
+    # The child records an error for every case it could not score, so missing
+    # scores with no error to account for them are not its honest output. A key
+    # the parent dropped may have been that error (an older parent dropped error
+    # records it could not name), so the evidence is incomplete then too.
+    complete = (
+        bool(good)
+        and len(partial) == 1
+        and len(bad) == 1
+        and not result.get("dropped_keys")
+    )
+    if not errors and not complete:
+        return {
+            "verdict": "failed",
+            "stage": "tampered-result",
+            "sentence": PROBE_FAILURE_SENTENCE["tampered-result"],
+        }
+    if not (good or partial or bad) and not any(
+        error.get("non_finite") for error in errors
+    ):
         fault = _fault_phrase(errors[0] if errors else {})
         return {
             "verdict": "failed",
@@ -1850,6 +1987,10 @@ def probe_metrics(result: dict | None) -> dict:
     ordered = bool(good and bad) and good[0] > bad[0]
     if partial:
         ordered = ordered and good[0] >= partial[0] >= bad[0]
+    # A report written before the parent refused non-finite scores can still
+    # hold them, and inf > 0 would otherwise read as ordered.
+    finite = all(math.isfinite(score) for score in good + partial + bad)
+    stable = len(set(good)) == 1
     return {
         "verdict": "ran",
         "good": good,
@@ -1857,11 +1998,25 @@ def probe_metrics(result: dict | None) -> dict:
         "bad": bad,
         "repeats": len(good),
         "distinct": len(set(good)),
-        "stable": len(set(good)) == 1,
+        "stable": stable,
         "ordered": ordered,
         "errors": errors,
+        "finite": finite,
+        # The one readiness rule: the card, the next step and Tier 2 all read it.
+        "ready": finite and stable and ordered and not errors,
     }
 
+
+# A call that raised while others scored may have failed on the probe's own
+# conditions, so those are named before the scorer, without claiming which one
+# it was. Only the return types are a fixed fact of ``call_scorer``; how the
+# probe process runs is documented in one place, the skill's Safety section.
+PROBE_CONDITIONS_REMEDY = (
+    "rule out the probe's own conditions first (it reads a return value only as "
+    "an int, float, bool or a dict with a numeric score, value or result key, "
+    "and runs the scorer in a separate restricted process described under "
+    "Safety in the traigent-setup-audit skill), then fix the scorer"
+)
 
 UNMEASURED_MEANING = (
     "The scorer could not be run, so its repeatability is unmeasured — a score "
@@ -1879,6 +2034,14 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
     if metrics["verdict"] == "failed":
         return "failed", [metrics["sentence"]]
 
+    errors = metrics["errors"]
+    order = ""
+    if not errors and metrics["finite"]:
+        order = (
+            " (ordered as expected)"
+            if metrics["ordered"]
+            else " (not ordered as expected)"
+        )
     evidence = [
         f"repeat-scoring the same pair {metrics['repeats']} times returned "
         + (
@@ -1888,32 +2051,31 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
         ),
         "known-good / partial / known-bad probes scored "
         f"{_show(metrics['good'])} / {_show(metrics['partial'])} / "
-        f"{_show(metrics['bad'])}"
-        + (
-            " (ordered as expected)"
-            if metrics["ordered"]
-            else " (not ordered as expected)"
-        ),
+        f"{_show(metrics['bad'])}{order}",
     ]
-    if metrics["errors"]:
-        faults = ", ".join(
-            sorted({_fault_phrase(error) for error in metrics["errors"]})
-        )
-        evidence.append(f"{len(metrics['errors'])} probe call(s) raised {faults}")
-    status = (
-        "ok"
-        if metrics["stable"] and metrics["ordered"] and not metrics["errors"]
-        else "attention"
-    )
-    return status, evidence
+    # A repeat count cut short by an error is not a repeatability reading.
+    if not metrics["good"] or any(error.get("case") == "good" for error in errors):
+        evidence.pop(0)
+    if errors:
+        evidence.append(_error_summary(errors))
+    return ("ok" if metrics["ready"] else "attention"), evidence
 
 
 def probe_symptom(metrics: dict) -> str:
     """Why a probe that ran is not reliable, in the probe's own numbers.
 
     Only meaningful for a ``probe_metrics`` result with verdict ``ran`` that is
-    not both stable and ordered; shared by the next step and the Tier 2 cards.
+    not ``ready``; shared by the next step and the Tier 2 cards. Failed calls
+    are stated as observed, without a claim about what caused them.
     """
+    errors = metrics["errors"]
+    if errors:
+        scored = metrics["good"] or metrics["partial"] or metrics["bad"]
+        return (
+            "scored some probe calls and " if scored else "produced no finite score: "
+        ) + _error_summary(errors)
+    if not metrics["finite"]:
+        return "returned a score that is not a finite number"
     if not metrics["stable"]:
         return (
             f"returned {metrics['distinct']} different scores for the same "
@@ -1932,9 +2094,27 @@ def probe_remedy(metrics: dict) -> str:
     known-bad answer at or above a known-good one IS repeatable, and what it
     measures is what needs fixing.
     """
+    errors = metrics["errors"]
+    if any(not error.get("non_finite") for error in errors):
+        return PROBE_CONDITIONS_REMEDY
+    if errors or not metrics["finite"]:
+        return "make it return a finite number"
     if not metrics["stable"]:
         return "make it repeatable"
     return "fix what it measures"
+
+
+# The one consequence that judges the scorer itself: every call scored, finitely.
+SCORER_MEASURED = "a configuration comparison would be measuring the scorer"
+
+
+def probe_consequence(metrics: dict) -> str:
+    """What the ``probe_symptom`` finding means for a configuration comparison."""
+    if metrics["errors"] or not metrics["finite"]:
+        return (
+            "it is not established that a run would get a usable score for every row"
+        )
+    return SCORER_MEASURED
 
 
 # --------------------------------------------------------------------------
@@ -2416,6 +2596,11 @@ def scorer_area(
             "known-good answer from a known-bad one, so a score movement is at "
             "least not scorer variation."
         )
+    elif probe_metrics(probe)["errors"]:
+        meaning = (
+            "Not every probe call produced a finite score, so whether a run would "
+            "get a usable score for every row is not established."
+        )
     else:
         meaning = (
             "A scorer that returns different numbers for the same pair makes a "
@@ -2558,17 +2743,16 @@ def next_step(
             ),
         }
 
-    if metrics["verdict"] == "ran" and not (metrics["stable"] and metrics["ordered"]):
+    if metrics["verdict"] == "ran" and not metrics["ready"]:
         symptom = probe_symptom(metrics)
         remedy = probe_remedy(metrics)
         return {
             "branch": "d",
             "skills": ["traigent-eval-build", "traigent-eval-audit"],
             "line": (
-                f"`{probed.function}` at {probed.file}:{probed.line} {symptom}, so a "
-                f"configuration comparison would be measuring the scorer — {remedy} "
-                "with `traigent-eval-build`, then assess it with "
-                "`traigent-eval-audit`."
+                f"`{probed.function}` at {probed.file}:{probed.line} {symptom}, so "
+                f"{probe_consequence(metrics)} — {remedy} with `traigent-eval-build`, "
+                "then assess it with `traigent-eval-audit`."
             ),
         }
 
@@ -2749,30 +2933,55 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
 
     probed: ScorerCandidate | None = None
     refusal: str | None = None
+    selected: ScorerCandidate | None = None
     if args.scorer:
         file_part, _, function_part = args.scorer.rpartition(":")
         if not file_part or not function_part:
             raise ValueError("--scorer must be given as FILE.py:FUNCTION")
-        chosen_file = relative(Path(file_part), root)
+        # A relative selector is read against the working directory when that
+        # lands inside --root, else against --root: joined to the root once.
+        # Every read of the selected file uses this one resolved path.
+        sel_abs = os.path.realpath(root / relative(Path(file_part), root))
+        chosen_file = relative(Path(sel_abs), root)
+
+        def is_selection(file: str, function: str) -> bool:
+            # Same resolved path, not same spelling or inode. Known limit: on a
+            # case-insensitive volume a differently-cased selection lists twice.
+            return (
+                function == function_part
+                and os.path.realpath(root / file) == sel_abs
+            )
+
         selected = next(
             (
                 candidate
                 for candidate in inventory.scorers
-                if candidate.file == chosen_file
-                and candidate.function == function_part
+                if is_selection(candidate.file, candidate.function)
             ),
             None,
         )
         if selected is None:
-            kind, signals = classify_module_function(root / chosen_file, function_part)
+            kind, signals, line = classify_module_function(
+                Path(sel_abs), function_part
+            )
             selected = ScorerCandidate(
                 function=function_part,
                 file=chosen_file,
-                line=0,
+                line=line,
                 kind=kind,
                 signals=signals,
                 parameters=[],
             )
+            # A selected function found by name IS a scorer, whatever its name
+            # and whether it is probed or refused: listing it keeps the scorer
+            # area, the next step and Tier 2 on one fact.
+            if line:
+                inventory.scorers.append(selected)
+                inventory.skipped_scorers = [
+                    item
+                    for item in inventory.skipped_scorers
+                    if not is_selection(item.file, item.function)
+                ]
         # An explicit selection is not permission to run arbitrary code: a
         # judge calls a provider and an executing scorer runs code, and this
         # audit does neither, whichever way the scorer was chosen.
@@ -2909,6 +3118,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
                 "line": candidate.line,
                 "kind": candidate.kind,
                 "signals": candidate.signals,
+                **({"selected": True} if candidate is selected else {}),
             }
             for candidate in inventory.scorers
         ],
@@ -3051,16 +3261,21 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         report = build_report(root, args, guard)
+        # Strict JSON, built before anything is written: a non-finite number
+        # refuses the whole report rather than writing `Infinity`.
+        text = (
+            json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n"
+            if args.json_out
+            else None
+        )
     except ValueError as exc:
         print(f"audit_project.py: {exc}", file=sys.stderr)
         return 2
 
-    if args.json_out:
+    if text is not None:
         out_path = Path(args.json_out)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(
-            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        out_path.write_text(text, encoding="utf-8")
     print(render_card(report))
     return 0
 

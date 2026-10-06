@@ -254,6 +254,7 @@ def test_an_unparsable_module_named_with_scorer_is_not_assumed_safe(
 ) -> None:
     broken = tmp_path / "broken.py"
     broken.write_text("def score(output, expected)\n    return 1\n", encoding="utf-8")
-    kind, signals = audit.classify_module_function(broken, "score")
+    kind, signals, line = audit.classify_module_function(broken, "score")
     assert kind == "executing"
     assert signals
+    assert line == 0

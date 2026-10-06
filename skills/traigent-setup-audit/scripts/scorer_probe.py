@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import os
 import sys
 
@@ -187,7 +188,7 @@ def probe(request: dict) -> dict:
         collected: list[float] = []
         for _ in range(times):
             try:
-                collected.append(call_scorer(target, output_value, expected_value))
+                value = call_scorer(target, output_value, expected_value)
             except BaseException as exc:  # noqa: BLE001
                 if is_guard_refusal(exc):
                     return {
@@ -198,6 +199,19 @@ def probe(request: dict) -> dict:
                     }
                 errors.append({"case": name, **fault(exc, root)})
                 break
+            if not math.isfinite(value):
+                # The value is withheld. Nothing was raised, so there is no
+                # exception type or site to report.
+                errors.append(
+                    {
+                        "case": name,
+                        "error_type": None,
+                        "error_site": None,
+                        "non_finite": True,
+                    }
+                )
+                break
+            collected.append(value)
         scores[name] = collected
     return {
         "ran": True,
