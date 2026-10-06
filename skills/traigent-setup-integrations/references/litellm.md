@@ -33,7 +33,7 @@ LiteLLM uses model name prefixes to route to the correct provider. Common provid
 | Provider | Model Prefix | Example |
 |---|---|---|
 | OpenAI | (none) | `gpt-4o-mini`, `gpt-4o` |
-| Anthropic | `anthropic/` or none | `claude-3-haiku-20240307`, `claude-3-5-sonnet-20241022` |
+| Anthropic | `anthropic/` or none | `claude-haiku-4-5-20251001`, `claude-sonnet-4-5-20250929` |
 | Google Gemini | `gemini/` | `gemini/gemini-3-flash`, `gemini/gemini-3.1-pro` |
 | Mistral | `mistral/` | `mistral/mistral-small-latest` |
 | Cohere | `command-r` | `command-r`, `command-r-plus` |
@@ -41,10 +41,13 @@ LiteLLM uses model name prefixes to route to the correct provider. Common provid
 | Azure OpenAI | `azure/` | `azure/my-deployment` |
 | Together AI | `together_ai/` | `together_ai/meta-llama/Llama-3-70b-chat-hf` |
 | Groq | `groq/` | `groq/llama3-70b-8192` |
-| OpenRouter | `openrouter/` | `openrouter/openai/gpt-4o-mini`, `openrouter/anthropic/claude-3-haiku`, `openrouter/google/gemini-2.5-flash-lite` |
+| OpenRouter | `openrouter/` | `openrouter/openai/gpt-4o-mini`, `openrouter/anthropic/claude-haiku-4.5`, `openrouter/google/gemini-2.5-flash-lite` |
 
-The example IDs above were live when written; **re-verify them** before use (see the next
-section). Prefer a specific versioned ID (e.g. `claude-3-haiku-20240307`) over a moving
+The refreshed OpenRouter Haiku illustration was listed in the public catalog on 2026-10-06.
+The direct Anthropic Haiku 4.5 and Sonnet 4.5 IDs are documented by Anthropic and price-recognized
+by the checked LiteLLM map; no authenticated direct-provider request was made. Catalog listing,
+pricing recognition and suitability for your task are separate checks. The example IDs above were live when written; **re-verify them** before use (see the next
+section). Prefer a specific versioned ID (e.g. `claude-haiku-4-5-20251001`) over a moving
 `-latest` alias — pinned versions price reliably, whereas an alias can resolve to a model
 whose pricing isn't in the table yet (unpriced `$0.00` cost). See the LiteLLM documentation
 for the full provider list.
@@ -68,7 +71,7 @@ delisting, so treat it as a first pass, not proof the ID is still served:
 ```bash
 # List a provider's known model IDs, or validate a specific one (valid: true/false)
 traigent models --provider openai
-traigent models --provider anthropic --check claude-3-haiku-20240307
+traigent models --provider anthropic --check claude-haiku-4-5-20251001
 traigent models --provider gemini --check gemini-3-flash --json
 ```
 
@@ -103,8 +106,8 @@ import litellm
         "model": [
             "gpt-4o-mini",
             "gpt-4o",
-            "claude-3-haiku-20240307",
-            "claude-3-5-sonnet-20241022",
+            "claude-haiku-4-5-20251001",
+            "claude-sonnet-4-5-20250929",
             "gemini/gemini-3-flash",
         ],
         "temperature": [0.0, 0.3, 0.7],
@@ -189,8 +192,8 @@ import litellm
         "model": [
             "gpt-4o-mini",
             "gpt-4o",
-            "claude-3-haiku-20240307",
-            "claude-3-5-sonnet-20241022",
+            "claude-haiku-4-5-20251001",
+            "claude-sonnet-4-5-20250929",
             "gemini/gemini-3-flash",
             "gemini/gemini-3.1-pro",
         ],

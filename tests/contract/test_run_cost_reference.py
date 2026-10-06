@@ -157,7 +157,7 @@ def test_card_states_the_cost_drivers_and_the_measured_only_cap() -> None:
         "trials × examples × model calls per example",
         "LLM judge",
         "illustrative — use your model's real price",
-        "`cost_limit` only bounds the cost Traigent measures",
+        "`cost_limit` applies only to the cost Traigent measures",
         "`max_total_examples`",
         "`enable_mock_mode_for_quickstart()`",
         "`offline=True`",

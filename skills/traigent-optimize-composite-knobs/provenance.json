@@ -66,7 +66,7 @@
       "timestamp": "2026-07-18T00:00:00Z",
       "doc_before_hash": "670fcc40721ccda4",
       "doc_after_hash": "31680229368b35c3",
-      "note": "move the useful fitness, comparator, headroom, economics, calibration, and historical evidence guidance from the retired agents-skills traigent-router prototype into the owning public composite-knobs skill; distinguish current pre-dispatch router semantics from post-output cascades and incorporate Traigent/agents-skills#118 claim disambiguation",
+      "note": "move the useful fitness, comparator, headroom, economics, calibration, and historical evidence guidance from the retired internal-skill-source traigent-router prototype into the owning public composite-knobs skill; distinguish current pre-dispatch router semantics from post-output cascades and incorporate Traigent/internal-skill-source#118 claim disambiguation",
       "source_type": "owner_intent"
     },
     {
