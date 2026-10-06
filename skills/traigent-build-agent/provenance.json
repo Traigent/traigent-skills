@@ -1,0 +1,17 @@
+{
+  "schema": "skill-provenance/v1",
+  "doc_hash": "b9ca777eaf50ef19",
+  "entries": [
+    {
+      "edit_id": "ground-zero-entry-2026-10-06",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-06T00:00:00Z",
+      "doc_before_hash": "e3b0c44298fc1c14",
+      "doc_after_hash": "b9ca777eaf50ef19",
+      "note": "Create eight-stage customer-owned build entry and read-only decision verification.",
+      "source_type": "human"
+    }
+  ]
+}
