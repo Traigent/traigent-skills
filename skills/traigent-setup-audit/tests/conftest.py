@@ -11,8 +11,11 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import shutil
 import subprocess
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -45,6 +48,134 @@ def strict_json(text: str) -> object:
         return json.loads(text, parse_constant=_refuse_constant)
     except ValueError as exc:
         raise AssertionError(f"not strict JSON: {exc}") from exc
+
+
+# --------------------------------------------------------------------------
+# one-change variants of the healthy fixture
+# --------------------------------------------------------------------------
+
+HEALTHY_SIGNATURE = "def answer_question(question, model, temperature, top_k):"
+HEALTHY_BODY = '    prefix = f"[{model}/{temperature}/{top_k}]"\n    return f"{prefix} {question}"'
+
+
+def _replace_once(path: Path, old: str, new: str) -> None:
+    """Edit the copy, failing loudly if the fixture no longer holds `old`: a
+    silent no-op would leave a healthy project under a mutation's name."""
+    text = path.read_text(encoding="utf-8")
+    if old not in text:
+        raise AssertionError(f"{path.name} no longer contains {old!r}")
+    path.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+
+def _rows(root: Path) -> list[dict]:
+    text = (root / "dataset.jsonl").read_text(encoding="utf-8")
+    return [json.loads(line) for line in text.splitlines() if line.strip()]
+
+
+def _write_rows(root: Path, rows: list[dict]) -> None:
+    (root / "dataset.jsonl").write_text(
+        "".join(json.dumps(row) + "\n" for row in rows), encoding="utf-8"
+    )
+
+
+def _partly_unread(root: Path) -> None:
+    agent = root / "agent.py"
+    _replace_once(
+        agent, HEALTHY_SIGNATURE, "def answer_question(question, model, temperature):"
+    )
+    _replace_once(
+        agent,
+        'prefix = f"[{model}/{temperature}/{top_k}]"',
+        'prefix = f"[{model}/{temperature}]"',
+    )
+
+
+def _space_not_inventoried(root: Path) -> None:
+    agent = root / "agent.py"
+    text = agent.read_text(encoding="utf-8")
+    changed, count = re.subn(
+        r"configuration_space=\{.*?\n    \}",
+        "configuration_space=build_space()",
+        text,
+        flags=re.S,
+    )
+    if count != 1:
+        raise AssertionError("agent.py no longer holds one configuration_space dict")
+    agent.write_text(changed, encoding="utf-8")
+    _replace_once(
+        agent, "import traigent\n", "import traigent\n\n\ndef build_space():\n    return {}\n"
+    )
+
+
+def _kwargs(root: Path) -> None:
+    agent = root / "agent.py"
+    _replace_once(agent, HEALTHY_SIGNATURE, "def answer_question(question, **kwargs):")
+    _replace_once(agent, HEALTHY_BODY, "    return call_model(question, **kwargs)")
+
+
+def _unparsed_helper(root: Path) -> None:
+    (root / "helpers.py").write_text("def broken(:\n    pass\n", encoding="utf-8")
+
+
+def _no_gold(root: Path) -> None:
+    rows = _rows(root)
+    if not all("expected_output" in row for row in rows):
+        raise AssertionError("dataset.jsonl no longer carries expected_output on every row")
+    _write_rows(
+        root, [{k: v for k, v in row.items() if k != "expected_output"} for row in rows]
+    )
+
+
+def _holdout_leak(root: Path) -> None:
+    rows = _rows(root)
+    tuning = [row for row in rows if row["metadata"]["split"] != "holdout"]
+    leaked = []
+    j = 0
+    for row in rows:
+        if row["metadata"]["split"] == "holdout":
+            source = tuning[j % 40]
+            j += 1
+            row = {
+                **row,
+                "input": source["input"],
+                "expected_output": source["expected_output"],
+            }
+        leaked.append(row)
+    if j == 0:
+        raise AssertionError("dataset.jsonl no longer has a holdout slice")
+    _write_rows(root, leaked)
+
+
+def _duplicate_rows(root: Path) -> None:
+    rows = _rows(root)
+    rows[1] = {**rows[1], "input": rows[0]["input"]}
+    _write_rows(root, rows)
+
+
+HEALTHY_MUTATIONS: dict[str, Callable[[Path], None]] = {
+    # `top_k` dropped from the signature and the body; still declared.
+    "partly_unread": _partly_unread,
+    # The space comes from a call the static reader cannot follow.
+    "space_not_inventoried": _space_not_inventoried,
+    # Every knob reaches the body only through `**kwargs`.
+    "kwargs": _kwargs,
+    # A second module with a syntax error, so the inventory is incomplete.
+    "unparsed_helper": _unparsed_helper,
+    # `expected_output` removed from every row.
+    "no_gold": _no_gold,
+    # Every holdout row repeats the input and gold of tuning row `j % 40`.
+    "holdout_leak": _holdout_leak,
+    # Row 1 takes row 0's input.
+    "duplicate_rows": _duplicate_rows,
+}
+
+
+def healthy_variant(tmp_path: Path, mutation: str) -> Path:
+    """Copy tests/fixtures/healthy to tmp_path/<mutation>/project and apply one mutation."""
+    root = tmp_path / mutation / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    HEALTHY_MUTATIONS[mutation](root)
+    return root
 
 
 def _tier1_report(project: Path, out_dir: Path) -> Path:
