@@ -2,16 +2,17 @@
 
 import asyncio
 import copy
-import importlib.util
+import sys
 import json
 from pathlib import Path
 
 import pytest
 
-PATH = Path(__file__).parents[1] / "scripts" / "read_decision_brief.py"
-spec = importlib.util.spec_from_file_location("decision_read", PATH)
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
+sys.path.insert(0, str(Path(__file__).parents[1] / "scripts"))
+try:
+    import read_decision_brief as module
+finally:
+    sys.path.pop(0)
 
 
 def brief():
@@ -96,3 +97,16 @@ def test_invalid_configuration_identity_is_refused(config_id):
     payload["recommended_action"]["config_id"] = config_id
     with pytest.raises(ValueError, match="configuration identity"):
         asyncio.run(module.read_decision_brief("project", "run", "iterate", Client(payload)))
+
+
+def test_cli_requires_explicit_project_identity(monkeypatch):
+    monkeypatch.setenv("TRAIGENT_PROJECT_ID", "environment-project")
+    called = []
+    async def forbidden(args):
+        called.append(args.project_id)
+        return "unexpected"
+    monkeypatch.setattr(module, "_read", forbidden)
+    with pytest.raises(SystemExit) as exc:
+        module.main(["--run-id", "run"])
+    assert exc.value.code == 2
+    assert called == []

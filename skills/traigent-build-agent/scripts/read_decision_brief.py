@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-import os
 import re
 import sys
 
@@ -64,7 +63,7 @@ async def _read(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-id", required=True)
-    parser.add_argument("--project-id", default=os.environ.get("TRAIGENT_PROJECT_ID"))
+    parser.add_argument("--project-id", required=True)
     parser.add_argument("--intent", choices=("iterate", "deploy", "debug", "report"), default="iterate")
     args = parser.parse_args(argv)
     if not args.project_id or not args.project_id.strip() or not args.run_id.strip():

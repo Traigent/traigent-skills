@@ -42,7 +42,7 @@ claimed, fetch fresh evidence using `analytics_get_run_decision_brief` with the
 explicit project and run IDs, or the read-only helper shipped here:
 
 ```bash
-python <installed-skill>/scripts/read_decision_brief.py --run-id <recorded-run-id>
+python <installed-skill>/scripts/read_decision_brief.py --project-id <recorded-project-id> --run-id <recorded-run-id>
 ```
 
 The helper uses the SDK's credential and project-scoped read path, verifies the
