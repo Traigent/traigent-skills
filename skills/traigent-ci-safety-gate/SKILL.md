@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.6"
+  version: "1.0.8"
 ---
 
 # CI Safety Gate
@@ -31,11 +31,36 @@ The reference gate rejects non-finite or negative cost and latency limits, malfo
 non-finite measurements, negative latency, and accuracy outside `[0, 1]`. Boolean values are
 not measurements. The holdout adapter validates each call's cost before accumulating it.
 
-## In-Run Safety Constraints (Not Yet Available)
+## In-Run Safety Constraints
 
-`safety_constraints=[...]` on `@traigent.optimize` is planned to filter unsafe trial results during optimization, but the installed SDK does not implement it yet. Passing any non-empty value raises `NotImplementedError: safety_constraints are not yet implemented` **at decoration time** (verified against SDK 0.18.x); statistical chance-constraints are on the roadmap. The `SafetyConstraint`, `CompoundSafetyConstraint`, `MetricKeyMetric`, `CallableMetric`, and `SafetyThreshold` classes exist and import cleanly, but do not pass any of them via `safety_constraints=` today.
+`safety_constraints` is accepted since 0.28.0
+(see version-matrix: safety-constraints-impl). On 0.28.0 and later,
+`@traigent.optimize(safety_constraints=[...])` is a soft, run-level statistical
+halt, not a trial filter: it does not filter trials, so an unsafe configuration
+can still be `best_config`. One sample is one completed trial. Below
+`min_samples` completed trials (default 30) it never halts; at or after that
+floor the run stops with `stop_reason == "safety_constraint"` when the
+confidence lower bound on per-trial compliance is below the required rate —
+including when every trial complied but there is not yet enough evidence. The
+check runs after the `max_trials` check, so a failing constraint on the trial
+that reaches `max_trials` (or on a run that ends below `min_samples`) leaves a
+non-safety `stop_reason` such as `"max_trials_reached"`; that is not a pass,
+the SDK reports no separate safety verdict, so keep `min_samples` below
+`max_trials` without raising `max_trials` just to reach it. Read
+`stop_reason` before using `best_config`, and do not promote from it without
+the `PromotionGate` holdout check below. `optimize()` / `optimize_sync()`
+applies `best_config` to the decorated function as for any run, so after a
+safety halt that instance already runs the winner, which may be unsafe: run
+optimization in a separate candidate process and promote only through
+`PromotionGate` (the `traigent-analyze-results` skill teaches the separate
+candidate process pattern). Semantics, sizing and a runnable example:
+`references/in-run-safety.md`.
 
-Do not teach a `safety_constraints=[...]` code sample as runnable. For gating today, use the two mechanisms this skill already covers that ARE implemented:
+SDKs below 0.28.0, including 0.27.x: do not pass a non-empty
+`safety_constraints` value — it raises `NotImplementedError` at decoration
+time. Omit the argument, or upgrade.
+
+`PromotionGate` on a holdout is the safety gate on every SDK version; in-run constraints only end a run early and never certify a config. On every SDK version, use:
 
 - **`PromotionGate`** (below) to statistically compare a candidate config against the incumbent before promoting it.
 - **TVL spec validation** (`python -m traigent.tvl ... --strict`) to enforce configuration-space and objective constraints ahead of a run.

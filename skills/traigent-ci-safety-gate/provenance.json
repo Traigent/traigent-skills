@@ -1,8 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "290513e3fb2be53d",
+  "doc_hash": "e59d5644e1a48b7e",
   "reference_hashes": {
-    "references/gate-workflow.md": "1c682ea2f7f932aa"
+    "references/gate-workflow.md": "1c682ea2f7f932aa",
+    "references/in-run-safety.md": "3ac893a23defbd34"
   },
   "entries": [
     {
@@ -120,6 +121,48 @@
       "doc_before_hash": "7dd1d63238843dd5",
       "doc_after_hash": "290513e3fb2be53d",
       "note": "Apply-flow pointer names traigent-boost-agent Fast Path Step 5 instead of a removed skill section; the safety_constraints note quotes the NotImplementedError without a private tracker URL; the minimal workflow declares permissions: contents: read.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "safety-constraints-floor-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "290513e3fb2be53d",
+      "doc_after_hash": "2afd60f6338b61b5",
+      "note": "In-run safety_constraints is accepted since SDK 0.28.0 (see version-matrix: safety-constraints-impl): the section is now version-conditional (0.28.0+: soft, run-level statistical halt that does not filter trials, so an unsafe config can still be best_config; below 0.28.0: do not pass a non-empty value, it raises NotImplementedError at decoration time); new references/in-run-safety.md, floored at 0.28.0, with semantics, min_samples sizing and two runnable examples (violating run halts with stop_reason safety_constraint and best_config still set; fully compliant run also halts on insufficient evidence); states that optimize() applies best_config to the decorated function, so after a safety halt that instance already runs the winner: optimize in a separate candidate process and promote only through PromotionGate; the reference scopes the missing-metric default (hallucination_rate() preset 1.0, custom MetricKeyMetric 0.0); drops the stale 0.18.x stamp.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "safety-constraints-out-of-range-threshold-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "note": "references/in-run-safety.md only (SKILL.md unchanged): the Halt rule states that the `1 - v` / `v` required-compliance-rate formula assumes a [0, 1] metric. traigent 0.30.0 _required_compliance_rate (traigent/api/safety.py) returns 1.0 for a below()/</<= threshold outside [0, 1] and threshold.value unchanged for above(), so below(500) or above(5) requires a rate no finite-sample lower bound reaches and a fully compliant run halts at min_samples; hint to constrain a 0..1 metric or ratio instead.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "safety-constraints-max-trials-precedence-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "2afd60f6338b61b5",
+      "doc_after_hash": "e59d5644e1a48b7e",
+      "note": "In-run safety_constraints: the check runs after the max_trials check, so on the trial that reaches max_trials (including min_samples == max_trials) a failing constraint leaves stop_reason max_trials_reached, and a run that ends below min_samples never checks it (traigent 0.28.0/0.30.0 offline probe: min_samples=4, max_trials=4, 4/4 trials violating -> max_trials_reached; stop_condition_manager lists MaxTrials first). SKILL.md and references/in-run-safety.md now say a non-safety stop_reason is not a pass and the SDK reports no separate safety verdict; keep min_samples below max_trials and do not raise max_trials just to reach min_samples. New third runnable block pins the max_trials_reached outcome. Reframed: PromotionGate on a holdout is the safety gate on every SDK version; in-run constraints only end a run early and never certify a config (replaces 'complement in-run constraints').",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "safety-constraints-metric-wiring-asserts-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "e59d5644e1a48b7e",
+      "doc_after_hash": "e59d5644e1a48b7e",
+      "note": "references/in-run-safety.md only (SKILL.md unchanged): each runnable block now asserts every trial's hallucination_rate metric value (0.5 violating / 0.0 compliant). Without it the compliant example passed with the metric unwired (traigent 0.30.0 offline probe: metric_functions without hallucination_rate -> trial metrics None, still stop_reason safety_constraint at 3 trials, because the preset defaults a missing value to 1.0).",
       "source_type": "agent"
     }
   ]
