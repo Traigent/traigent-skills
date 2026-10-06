@@ -56,7 +56,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "838feefd1437899f",
       "doc_after_hash": "77ffaa88b34926ab",
-      "note": "note that the apply threshold check runs on the search slice, not a promotion decision \u2014 promotion needs the holdout gate (optimizer implementation review, #89)",
+      "note": "note that the apply threshold check runs on the search slice, not a promotion decision \u2014 promotion needs the holdout gate (optimizer implementation review)",
       "source_type": "human"
     },
     {

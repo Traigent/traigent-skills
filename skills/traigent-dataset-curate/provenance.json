@@ -33,7 +33,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "0ad5c6a7036490e6",
       "doc_after_hash": "f5481ef2791c45ef",
-      "note": "add partition-record requirement to Holdout rules (reserve before first run; create one if none exists; preserve split across rounds) (optimizer implementation review, #89)",
+      "note": "add partition-record requirement to Holdout rules (reserve before first run; create one if none exists; preserve split across rounds) (optimizer implementation review)",
       "source_type": "human"
     },
     {
