@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.17"
+  version: "1.0.18"
 ---
 
 # Traigent Decorator Setup
@@ -230,16 +230,24 @@ Configure how Traigent evaluates each trial using `EvaluationOptions`.
 | `surrogate_evaluator_name` | `str \| None` | Display/evaluator id override for `surrogate_evaluator`; runtime `optimize(surrogate_evaluator_name=...)` can override it. |
 | `metric_functions` | `dict[str, Callable] \| None` | Named metrics: `{"accuracy": fn, "relevance": fn}` |
 
-**The evaluator-quality anchor is not a client-side field.** An evaluator-quality audit
+**The evaluator-quality anchor is designated server-side.** An evaluator-quality audit
 (`traigent-eval-audit`) scores your evaluator against an **anchor** — verifiable ground truth
 computed independently of that evaluator. The anchor is designated server-side, from the
 independent correctness signal registered for the run; you never name one yourself.
-`EvaluationOptions` forbids unknown fields, so a task-category kwarg such as
-`EvaluationOptions(task_type="exact_match")` raises `ValidationError: Extra inputs are not
-permitted` at construction on traigent 0.27.0 — do not pass it. Such a field is expected in a
-later SDK release, but it is in no released version. Until then a run with no independent
-correctness signal registered resolves to "no anchor" and the audit abstains — a correct
-refusal, not a failure.
+
+**SDK 0.28.0 and later:** `EvaluationOptions.task_type` is supported since 0.28.0
+(see version-matrix: evaluation-task-type).
+It takes a coarse task category, set as in
+[the supported-version recipe](references/task-type.md). The service maps the category to an
+evaluator-quality anchor policy; you never name an anchor, and declaring a category does not
+guarantee that one exists. Unknown categories resolve to "no anchor", and free-form tasks have
+none by construction — the audit abstains, a correct refusal, not a failure.
+
+**SDKs below 0.28.0, including 0.27.x:** do not pass `task_type`. `EvaluationOptions` forbids
+unknown fields there, so `EvaluationOptions(task_type="exact_match")` raises
+`ValidationError: Extra inputs are not permitted` at construction. A run with no independent
+correctness signal registered resolves to "no anchor" and the audit abstains. Upgrade to
+traigent 0.28.0 or later to declare a task category.
 
 `surrogate_evaluator` uses the same calling convention as `scoring_function`:
 `(output, expected_output=None, example=None) -> float` in `[0, 1]`, or a dict

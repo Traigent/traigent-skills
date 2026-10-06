@@ -1,9 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f6dc06b41bcc23c5",
+  "doc_hash": "664726f03ba21978",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/scorer-equivalence-check.md": "52ac774b94fc999f"
+    "references/scorer-equivalence-check.md": "52ac774b94fc999f",
+    "references/task-type.md": "1846eca9dfd0d725"
   },
   "entries": [
     {
@@ -185,6 +186,17 @@
       "doc_before_hash": "e4a3d3f3ff302297",
       "doc_after_hash": "f6dc06b41bcc23c5",
       "note": "scorer-equivalence check now fetches its example ids from the service and verifies the count and digest locally before judging; adds a pure verify-selection helper with tests.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "task-type-floor-2026-10-04",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-04T00:00:00Z",
+      "doc_before_hash": "f6dc06b41bcc23c5",
+      "doc_after_hash": "664726f03ba21978",
+      "note": "document EvaluationOptions.task_type as supported from SDK 0.28.0 with the no-task_type path kept for older SDKs; add a floored runnable reference (#378; #270's 0.27.x rule preserved)",
       "source_type": "agent"
     }
   ]

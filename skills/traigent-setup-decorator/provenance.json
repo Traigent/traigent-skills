@@ -1,11 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "872de6c4103547a8",
+  "doc_hash": "518e1df95eb2414c",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/evaluation-options.md": "f766d4df828a1ade",
     "references/execution-modes.md": "9d797be6dae9c6e1",
     "references/injection-modes.md": "d81067c2dff72c82",
+    "references/task-type.md": "e6201449c6f90853",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
   },
   "entries": [
@@ -241,6 +242,17 @@
       "doc_before_hash": "42f73a0bd02c83dc",
       "doc_after_hash": "872de6c4103547a8",
       "note": "Scope the When-to-Use bullet to zero Traigent backend egress, matching the offline=True wording.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "task-type-floor-2026-10-04",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-04T00:00:00Z",
+      "doc_before_hash": "872de6c4103547a8",
+      "doc_after_hash": "518e1df95eb2414c",
+      "note": "document EvaluationOptions.task_type as supported from SDK 0.28.0 with the no-task_type path kept for older SDKs; add a floored runnable reference (#378; #270's 0.27.x rule preserved)",
       "source_type": "agent"
     }
   ]

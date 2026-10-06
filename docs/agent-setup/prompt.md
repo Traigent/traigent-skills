@@ -33,12 +33,14 @@ codex plugin marketplace add https://github.com/Traigent/traigent-skills
 codex plugin add traigent@traigent
 ```
 
-**Important — Codex does not auto-discover a skills directory the way Claude Code does; it only
-reads `AGENTS.md`.** In a 20-cell simulation wave, 7 of 7 Codex agents ignored mounted skills for
-exactly this reason, **and this applies to Codex on VS Code too**. If you mount the skills into the
-project (e.g. copied to `.github/skills/<name>/SKILL.md`) instead of using the plugin above, you
-must copy the ready-made stanza from `templates/AGENTS.md.example` in the traigent-skills repo into
-this project's `AGENTS.md`, or Codex will not open them.
+Don't end this session yet — steps 2–4 still run in it. Once setup is finished, tell the user to
+start a new Codex session (the reminder at the end of step 4): the `traigent:*` skills load when a
+session starts (verified on Codex CLI 0.160.0), so don't count on them before then.
+
+If you mount the skills into the project instead of installing the plugin (e.g. copied to
+`.github/skills/<name>/SKILL.md`), copy the ready-made stanza from `templates/AGENTS.md.example` in
+the traigent-skills repo into this project's `AGENTS.md`. Codex may not open mounted skill files on
+its own — in a 20-cell simulation wave, 7 of 7 Codex agents ignored mounted skills.
 
 ### GitHub Copilot CLI
 
@@ -149,13 +151,14 @@ Finally, print a summary box:
 If the key is not set yet, render that last line (keeping it within the box width) as
 `⧗  TRAIGENT_API_KEY — add a Full-access key` instead of a check.
 
-Right below the box, remind the user of the last gate: the skills installed in step 1 don't load
-into the current session — in Claude Code they activate only after `/reload-plugins` (or restarting
-the session); other agents may need a restart too.
+Right below the box, remind the user of the last gate for the skills installed in step 1: in Claude
+Code they activate only after `/reload-plugins` (or restarting the session); in Codex, start a new
+session, since the skills load when a session starts; other agents may need a restart too.
 
 ## Next
 
-First confirm the reload above actually happened — the `traigent:*` skills stay inert until then.
+First confirm the reload (or new session) above actually happened — until then, don't count on the
+`traigent:*` skills.
 
 Point the user at the `traigent-setup-quickstart` and `traigent-boost-agent` skills to optimize a
 real function against their own evaluation dataset. Always mock/dry-run first; run a real (paid)
