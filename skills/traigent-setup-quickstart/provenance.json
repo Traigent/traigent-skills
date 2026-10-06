@@ -68,7 +68,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "037e101120aa673d",
       "doc_after_hash": "d21842f3174c05d5",
-      "note": "add a Tips-for-Good-Datasets bullet: reserve a holdout slice before tuning; never tune and validate on the same rows (optimizer implementation review, #89)",
+      "note": "add a Tips-for-Good-Datasets bullet: reserve a holdout slice before tuning; never tune and validate on the same rows (optimizer implementation review)",
       "source_type": "human"
     },
     {

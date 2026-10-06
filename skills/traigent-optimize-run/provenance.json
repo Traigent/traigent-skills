@@ -69,7 +69,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "8919917184a31663",
       "doc_after_hash": "2455d55a5f7ca49c",
-      "note": "note that applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (optimizer implementation review, #89)",
+      "note": "note that applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (optimizer implementation review)",
       "source_type": "human"
     },
     {
