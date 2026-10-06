@@ -57,7 +57,8 @@ the helper script) point back here instead of repeating it:
 4. Re-sync each current downstream copy in a separate PR, with the same content adapted to its
    format. The current list is:
    - **`TraigentFrontend`** `src/components/onboarding/agentSetupPrompt.ts` — hand-synced to this
-     file as of the genesis entry in `provenance.json`. This repo cannot verify that copy directly
+     file as of the latest issue #363 entry in `provenance.json` (the re-sync made in the
+     companion Frontend change). This repo cannot verify that copy directly
      (an exact byte match isn't achievable there either: the portal's copy is split across several
      template pieces with a freshly issued API key injected into one, not one flat file). The
      companion Frontend guard is `npm run check:agent-setup-prompt-drift`: it resolves this
