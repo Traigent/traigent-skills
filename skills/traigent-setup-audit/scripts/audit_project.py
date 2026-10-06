@@ -28,6 +28,7 @@ import ast
 import csv
 import importlib.metadata as md
 import json
+import math
 import os
 import re
 import subprocess
@@ -111,6 +112,16 @@ SKIP_DIRS = frozenset(
 SDK_INPUT_KEYS = ("input", "input_data")
 INPUT_KEYS = (*SDK_INPUT_KEYS, "question", "prompt", "query", "messages")
 EXPECTED_KEYS = ("output", "expected", "expected_output", "answer", "target", "label")
+# Why a row has no usable gold value, in display order. The first gold key
+# present decides; a later key never stands in for an unusable one.
+GOLD_KIND_LABEL = {
+    "absent": "with no gold key",
+    "null": "null",
+    "nan": "NaN",
+    "infinite": "infinite",
+    "empty": "empty string",
+}
+DATASET_SUFFIXES = (".jsonl", ".json", ".csv")
 HOLDOUT_VALUES = frozenset({"holdout", "test", "validation", "val", "eval"})
 # A dataset file whose name carries one of these tokens, beside another dataset
 # file in the same directory, declares the holdout slice by file name — a
@@ -471,8 +482,11 @@ def normalize_text(value: object) -> str:
 
 
 def relative(path: Path, root: Path) -> str:
+    # realpath, not Path.resolve(): on Python <= 3.12 resolve() raises
+    # RuntimeError on a symlink loop, which then crashed the whole audit.
     try:
-        return path.resolve().relative_to(root.resolve()).as_posix()
+        real = Path(os.path.realpath(path))
+        return real.relative_to(os.path.realpath(root)).as_posix()
     except ValueError:
         return path.as_posix()
 
@@ -630,11 +644,40 @@ def resolve_config_space(
     return None, None
 
 
+def _non_finite(value: object) -> bool:
+    """Whether a literal holds ``inf`` or ``nan`` anywhere (``1e999`` parses to
+    ``inf``), which strict JSON cannot carry."""
+    if isinstance(value, float):
+        return not math.isfinite(value)
+    if isinstance(value, dict):
+        value = [*value.keys(), *value.values()]
+    if isinstance(value, (list, tuple, set, frozenset)):
+        return any(_non_finite(item) for item in value)
+    return False
+
+
+def _gold_kind(value: object) -> str | None:
+    """Why a gold value cannot be scored against, or ``None`` when it can.
+
+    ``0``, ``False`` and ``[]`` are real labels; ``null``, a non-finite number
+    and an empty or blank string are not."""
+    if value is None:
+        return "null"
+    if isinstance(value, float) and math.isnan(value):
+        return "nan"
+    if isinstance(value, float) and math.isinf(value):
+        return "infinite"
+    if isinstance(value, str) and not value.strip():
+        return "empty"
+    return None
+
+
 def knob_values(node: ast.expr) -> tuple[list[object], bool]:
     """``(values, readable)``. Understands a literal list plus the
-    ``Choices(...)`` / ``Choices.model(...)`` factories."""
+    ``Choices(...)`` / ``Choices.model(...)`` factories. Values holding a
+    non-finite number count as unreadable, so the report stays strict JSON."""
     literal = _literal(node)
-    if isinstance(literal, (list, tuple, set)):
+    if isinstance(literal, (list, tuple, set)) and not _non_finite(literal):
         return list(literal), True
     if isinstance(node, ast.Call):
         callee = node.func
@@ -645,7 +688,11 @@ def knob_values(node: ast.expr) -> tuple[list[object], bool]:
             name = callee.value.id
         if name in CHOICES_FACTORIES:
             values = [_literal(arg) for arg in node.args]
-            if values and all(value is not None for value in values):
+            if (
+                values
+                and all(value is not None for value in values)
+                and not _non_finite(values)
+            ):
                 return values, True
     return [], False
 
@@ -954,20 +1001,25 @@ def classify_scorer(tree: ast.AST, node: ast.AST) -> tuple[str, list[str]]:
     return "deterministic", signals
 
 
-def classify_module_function(path: Path, function: str) -> tuple[str, list[str]]:
+def classify_module_function(path: Path, function: str) -> tuple[str, list[str], int]:
     """Classify a scorer chosen with ``--scorer`` that the inventory did not
-    reach. Never assume deterministic: an unreadable module is `executing`."""
+    reach. Never assume deterministic: an unreadable module is `executing`.
+    The line is 0 when the function is not found by name."""
     try:
         tree = ast.parse(path.read_text(encoding="utf-8-sig", errors="replace"))
     except (OSError, SyntaxError, ValueError):
-        return "executing", ["the module could not be parsed, so it is not run"]
+        return "executing", ["the module could not be parsed, so it is not run"], 0
     for node in ast.walk(tree):
         if (
             isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             and node.name == function
         ):
-            return classify_scorer(tree, node)
-    return "executing", ["the function was not found in the module, so it is not run"]
+            return (*classify_scorer(tree, node), node.lineno)
+    return (
+        "executing",
+        ["the function was not found in the module, so it is not run"],
+        0,
+    )
 
 
 def scan_python(files: list[Path], root: Path) -> PythonInventory:
@@ -1059,6 +1111,14 @@ class RawDataset:
     rows: list[dict] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     skipped: str | None = None
+    # Set when the file parsed but holds no object rows: a config file in
+    # discovery, never a damaged dataset (that is `skipped`).
+    not_rows: str | None = None
+    # The key of a top-level list of input-keyed objects inside a JSON object:
+    # a wrapped dataset, which discovery still names rather than drops.
+    nested_rows: str | None = None
+    # Non-standard constants (`NaN`, `Infinity`, `-Infinity`) by name.
+    constants: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -1092,6 +1152,12 @@ class DatasetReport:
     # Rows with neither `input` nor `input_data`: the SDK refuses the whole
     # file on the first one. One field drives both the finding and the next step.
     rows_without_sdk_input: int = 0
+    # Full per-kind counts of rows with no usable gold value (GOLD_KIND_LABEL
+    # keys); `missing_expected` keeps only the first 20 positions.
+    missing_gold_counts: dict[str, int] = field(default_factory=dict)
+    # Every overlapping row, before the 20-row cap on `holdout_overlap`.
+    holdout_overlap_total: int = 0
+    overlap_rows: set[int] = field(default_factory=set, repr=False)
 
 
 NO_HOLDOUT_FINDING = "no split marker on any row, so no holdout slice is declared"
@@ -1130,6 +1196,14 @@ def load_rows(path: Path) -> RawDataset:
         )
         return result
 
+    # Python's json accepts NaN/Infinity, which strict readers refuse: counted
+    # here so the file's own non-standard constants become a finding.
+    constants: Counter[str] = Counter()
+
+    def _constant(name: str) -> float:
+        constants[name] += 1
+        return float(name)
+
     try:
         if suffix == ".jsonl":
             bad_lines = 0
@@ -1145,12 +1219,19 @@ def load_rows(path: Path) -> RawDataset:
                         truncated = True
                         continue
                     try:
-                        item = json.loads(line)
+                        item = json.loads(line, parse_constant=_constant)
                     except ValueError:
                         bad_lines += 1
                         continue
                     if isinstance(item, dict):
                         result.rows.append(item)
+            if not result.rows and bad_lines:
+                # Every line failed: a damaged file, not an absent one.
+                result.skipped = (
+                    f"could not be parsed (none of its {total_lines} line(s) is a "
+                    f"JSON object; {bad_lines} were not valid JSON)"
+                )
+                return result
             if bad_lines:
                 result.notes.append(
                     f"{bad_lines} line(s) were not valid JSON and were skipped"
@@ -1160,22 +1241,29 @@ def load_rows(path: Path) -> RawDataset:
                     f"read the first {MAX_ROWS} of {total_lines} line(s); the rest "
                     "were not analysed"
                 )
-            return result
-        if suffix == ".json":
-            payload = json.loads(path.read_text(encoding="utf-8-sig", errors="replace"))
+        elif suffix == ".json":
+            payload = json.loads(
+                path.read_text(encoding="utf-8-sig", errors="replace"),
+                parse_constant=_constant,
+            )
             if not isinstance(payload, list):
-                result.skipped = "is not a JSON array of objects"
-                return result
-            if len(payload) > MAX_ROWS:
-                result.notes.append(
-                    f"read the first {MAX_ROWS} of {len(payload)} row(s); the rest "
-                    "were not analysed"
+                result.nested_rows = _nested_row_key(payload)
+                result.not_rows = (
+                    f"is a JSON object with a nested row list (`{result.nested_rows}`), "
+                    "which this audit does not read; name a top-level array"
+                    if result.nested_rows
+                    else "is not a JSON array of objects"
                 )
-            result.rows = [
-                item for item in payload[:MAX_ROWS] if isinstance(item, dict)
-            ]
-            return result
-        if suffix == ".csv":
+            else:
+                if len(payload) > MAX_ROWS:
+                    result.notes.append(
+                        f"read the first {MAX_ROWS} of {len(payload)} row(s); the "
+                        "rest were not analysed"
+                    )
+                result.rows = [
+                    item for item in payload[:MAX_ROWS] if isinstance(item, dict)
+                ]
+        elif suffix == ".csv":
             with path.open(
                 "r", encoding="utf-8-sig", errors="replace", newline=""
             ) as handle:
@@ -1188,11 +1276,29 @@ def load_rows(path: Path) -> RawDataset:
                         )
                         break
                     result.rows.append(dict(item))
-            return result
     except (OSError, ValueError, csv.Error) as exc:
         result.skipped = f"could not be parsed ({type(exc).__name__})"
         return result
+    result.constants = dict(constants)
+    if not result.rows and not result.not_rows:
+        result.not_rows = "holds no rows"
     return result
+
+
+def _nested_row_key(payload: object) -> str | None:
+    """The first top-level key of a JSON object whose value is a non-empty list
+    starting with an input-keyed object (``{"data": [{"input": ...}]}``)."""
+    if not isinstance(payload, dict):
+        return None
+    for key, value in payload.items():
+        if (
+            isinstance(value, list)
+            and value
+            and isinstance(value[0], dict)
+            and any(name in value[0] for name in INPUT_KEYS)
+        ):
+            return str(key)
+    return None
 
 
 def _tokenize(text: str) -> frozenset[str]:
@@ -1238,6 +1344,7 @@ def analyse_dataset(
     input_key_counts: Counter[str] = Counter()
     expected_key_counts: Counter[str] = Counter()
     missing_expected: list[int] = []
+    gold_kinds: Counter[str] = Counter()
 
     for position, row in enumerate(rows):
         input_key = next((key for key in INPUT_KEYS if key in row), None)
@@ -1245,17 +1352,28 @@ def analyse_dataset(
             continue
         input_key_counts[input_key] += 1
         expected_key = next((key for key in EXPECTED_KEYS if key in row), None)
+        expected = None
         if expected_key is None:
             missing_expected.append(position)
+            gold_kinds["absent"] += 1
         else:
-            expected_key_counts[expected_key] += 1
+            # The first gold key present decides: an unusable value there is
+            # not rescued by a later key.
+            kind = _gold_kind(row[expected_key])
+            if kind is None:
+                expected_key_counts[expected_key] += 1
+                expected = row[expected_key]
+            else:
+                missing_expected.append(position)
+                gold_kinds[kind] += 1
+                expected_key = None
         parsed.append(
             DatasetRow(
                 index=position,
                 input_key=input_key,
                 normalized_input=normalize_text(row[input_key]),
                 expected_key=expected_key,
-                expected=row.get(expected_key) if expected_key else None,
+                expected=expected,
                 split=_row_split(row),
             )
         )
@@ -1330,10 +1448,31 @@ def analyse_dataset(
             "`input_data` and refuses the whole file on the first such row — "
             "rename or add the key"
         )
-    if missing_expected:
+    if gold_kinds["absent"]:
         findings.append(
-            f"{len(missing_expected)} row(s) carry no gold key "
+            f"{gold_kinds['absent']} row(s) carry no gold key "
             f"({'/'.join(EXPECTED_KEYS)})"
+        )
+    unusable = {
+        kind: gold_kinds[kind]
+        for kind in GOLD_KIND_LABEL
+        if kind != "absent" and gold_kinds[kind]
+    }
+    if unusable:
+        detail = ", ".join(
+            f"{count} {GOLD_KIND_LABEL[kind]}" for kind, count in unusable.items()
+        )
+        findings.append(
+            f"{sum(unusable.values())} row(s) carry a gold key with no usable "
+            f"value ({detail})"
+        )
+    if raw.constants:
+        named = ", ".join(
+            f"{name} ×{count}" for name, count in sorted(raw.constants.items())
+        )
+        findings.append(
+            f"{sum(raw.constants.values())} non-standard JSON constant(s) in the "
+            f"file ({named}); strict JSON readers refuse them"
         )
     if exact_groups:
         findings.append(
@@ -1389,6 +1528,11 @@ def analyse_dataset(
         label_counts=label_counts,
         findings=findings,
         rows_without_sdk_input=rows_without_sdk_input,
+        missing_gold_counts={
+            kind: gold_kinds[kind] for kind in GOLD_KIND_LABEL if gold_kinds[kind]
+        },
+        holdout_overlap_total=len(holdout_overlap),
+        overlap_rows=set(holdout_overlap),
         input_index=dict(by_input),
         holdout_input_index=dict(holdout_by_input),
         non_holdout_input_index=dict(non_holdout_by_input),
@@ -1501,9 +1645,9 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                 if text in holdout_inputs
                 for index in indexes
             )
-            report.holdout_overlap = sorted(
-                set(report.holdout_overlap).union(overlap)
-            )[:20]
+            report.overlap_rows |= set(overlap)
+            report.holdout_overlap_total = len(report.overlap_rows)
+            report.holdout_overlap = sorted(report.overlap_rows)[:20]
             if overlap:
                 report.findings.append(
                     f"{len(overlap)} row(s) appear in both this file and the "
@@ -1511,12 +1655,40 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
                 )
 
 
+def _read_dataset(
+    path: Path, root: Path, *, named: bool
+) -> tuple[DatasetReport | None, str | None]:
+    """``(report, skip line)`` for one candidate file, shared by discovery and
+    ``--dataset`` so both read a file the same way.
+
+    A file that cannot be parsed is always a skip line: the audit cannot tell
+    it from a damaged dataset. A file that parses but holds no rows is a skip
+    line when the user named it; in discovery it is dropped like a JSONL whose
+    rows carry no input-like key (a `package.json`), unless its name declares
+    a holdout slice or it wraps a row list in an object — those are evaluation
+    assets this audit did not read, so they stay named.
+    """
+    raw = load_rows(path)
+    rel = relative(path, root)
+    if raw.skipped:
+        return None, f"{rel} {raw.skipped}"
+    if raw.not_rows:
+        if named or raw.nested_rows or file_names_holdout(rel):
+            return None, f"{rel} {raw.not_rows}"
+        return None, None
+    if not named:
+        with_input = sum(
+            1 for row in raw.rows if any(key in row for key in INPUT_KEYS)
+        )
+        if with_input == 0 or with_input < 0.5 * len(raw.rows):
+            return None, None
+    return analyse_dataset(path, root, raw), None
+
+
 def scan_datasets(
     files: list[Path], root: Path
 ) -> tuple[list[DatasetReport], int, list[str], list[str]]:
-    candidates = [
-        path for path in files if path.suffix.lower() in {".jsonl", ".json", ".csv"}
-    ]
+    candidates = [path for path in files if path.suffix.lower() in DATASET_SUFFIXES]
     considered = candidates[:MAX_DATA_FILES]
     notes: list[str] = []
     if len(candidates) > len(considered):
@@ -1527,21 +1699,65 @@ def scan_datasets(
     reports: list[DatasetReport] = []
     skipped: list[str] = []
     for path in considered:
-        raw = load_rows(path)
-        if raw.skipped:
-            skipped.append(f"{relative(path, root)} {raw.skipped}")
-            continue
-        if not raw.rows:
-            continue
-        with_input = sum(
-            1 for row in raw.rows if any(key in row for key in INPUT_KEYS)
-        )
-        if with_input == 0 or with_input < 0.5 * len(raw.rows):
-            continue
-        reports.append(analyse_dataset(path, root, raw))
+        report, skip = _read_dataset(path, root, named=False)
+        if report is not None:
+            reports.append(report)
+        if skip is not None:
+            skipped.append(skip)
     reports.sort(key=lambda report: report.file)
     apply_sibling_holdouts(reports)
     return reports, len(candidates), notes, sorted(skipped)
+
+
+def explicit_datasets(
+    path: Path, root: Path
+) -> tuple[list[DatasetReport], int, list[str], list[str]]:
+    """``(reports, candidates, notes, skipped)`` for ``--dataset FILE``.
+
+    The named file is read whatever its rows look like, and any holdout-named
+    sibling in its directory is read as its declared holdout slice, exactly as
+    discovery reads the two-file layout. Naming the holdout file itself pulls
+    in no tuning sibling: only holdout-named siblings are looked for.
+    """
+    reports: list[DatasetReport] = []
+    skipped: list[str] = []
+    report, skip = _read_dataset(path, root, named=True)
+    if report is not None:
+        reports.append(report)
+    if skip is not None:
+        skipped.append(skip)
+    siblings: list[Path] = []
+    if path.parent.is_dir():
+        try:
+            entries = list(path.parent.iterdir())
+        except OSError:
+            entries = []
+        named_real = os.path.realpath(path)
+        siblings = sorted(
+            entry
+            for entry in entries
+            if entry.is_file()
+            and entry.suffix.lower() in DATASET_SUFFIXES
+            and os.path.realpath(entry) != named_real
+            and file_names_holdout(relative(entry, root))
+        )
+    considered = siblings[: MAX_DATA_FILES - 1]
+    notes: list[str] = []
+    if len(siblings) > len(considered):
+        notes.append(
+            f"looked at the first {1 + len(considered)} of {1 + len(siblings)} "
+            "JSONL/JSON/CSV file(s), including the named dataset and holdout siblings; "
+            "the rest were not analysed"
+        )
+    for sibling in considered:
+        report, skip = _read_dataset(sibling, root, named=False)
+        if report is not None:
+            reports.append(report)
+        if skip is not None:
+            skipped.append(skip)
+    reports.sort(key=lambda report: report.file)
+    apply_sibling_holdouts(reports)
+    return reports, 1 + len(siblings), notes, sorted(skipped)
 
 
 # --------------------------------------------------------------------------
@@ -1611,7 +1827,13 @@ def _numbers(value: object) -> list[float] | None:
     for item in value:
         if isinstance(item, bool) or not isinstance(item, (int, float)):
             return None
-        out.append(float(item))
+        try:
+            number = float(item)
+        except OverflowError:
+            return None
+        if not math.isfinite(number):
+            return None
+        out.append(number)
     return out
 
 
@@ -1622,17 +1844,21 @@ def _clean_error(value: object) -> dict | None:
     site = value.get("error_site")
     case = value.get("case")
     cleaned: dict = {}
-    if not (isinstance(kind, str) and ERROR_TYPE_RE.match(kind)):
-        return None
-    cleaned["error_type"] = kind
+    # A type name the report cannot carry is dropped, not the record: the
+    # failure still happened, and is then shown as "an error".
+    cleaned["error_type"] = (
+        kind if isinstance(kind, str) and ERROR_TYPE_RE.match(kind) else None
+    )
     if site is None:
         cleaned["error_site"] = None
     elif isinstance(site, str) and ERROR_SITE_RE.match(site):
         cleaned["error_site"] = site
     else:
         cleaned["error_site"] = None
-    if case in SCORE_CASES:
+    if isinstance(case, str) and case in SCORE_CASES:
         cleaned["case"] = case
+    if value.get("non_finite") is True:
+        cleaned["non_finite"] = True
     return cleaned
 
 
@@ -1657,24 +1883,24 @@ def validate_probe_payload(payload: object) -> tuple[dict, int]:
     if isinstance(payload.get("network_blocked"), bool):
         clean["network_blocked"] = payload["network_blocked"]
         known += 1
-    if payload.get("network_guard") in GUARD_STATES:
+    if isinstance(payload.get("network_guard"), str) and payload["network_guard"] in GUARD_STATES:
         clean["network_guard"] = payload["network_guard"]
         known += 1
-    if payload.get("stage") in PROBE_STAGES:
+    if isinstance(payload.get("stage"), str) and payload["stage"] in PROBE_STAGES:
         clean["stage"] = payload["stage"]
         known += 1
-    if isinstance(payload.get("repeats"), int) and not isinstance(
-        payload.get("repeats"), bool
-    ):
-        clean["repeats"] = payload["repeats"]
-        known += 1
 
-    scores = payload.get("scores")
-    if isinstance(scores, dict) and set(scores) <= SCORE_CASES:
-        converted = {name: _numbers(value) for name, value in scores.items()}
-        if all(value is not None for value in converted.values()):
-            clean["scores"] = converted
-            known += 1
+    if "scores" in payload:
+        scores = payload["scores"]
+        converted = None
+        if isinstance(scores, dict) and set(scores) <= SCORE_CASES:
+            converted = {name: _numbers(value) for name, value in scores.items()}
+        # Scores the parent cannot hold as finite numbers are not the child's
+        # honest output: the child withholds a non-finite value itself.
+        if converted is None or any(value is None for value in converted.values()):
+            return {"ran": False, "stage": "tampered-result"}, len(payload)
+        clean["scores"] = converted
+        known += 1
 
     errors = payload.get("errors")
     if isinstance(errors, list) and len(errors) <= 100:
@@ -1692,6 +1918,65 @@ def validate_probe_payload(payload: object) -> tuple[dict, int]:
     if "ran" not in clean:
         return {"ran": False, "stage": "tampered-result"}, len(payload)
     return clean, max(0, len(payload) - known)
+
+
+def validate_probe_evidence(payload: object, repeats: int | None = None) -> tuple[dict, int]:
+    """Validate measurements before either tier can use them as evidence.
+
+    The requested count is parent-owned. Older stored reports lack it, so their
+    types and completeness are checked without inventing a historical count.
+    Error-bearing results retain their existing repair-versus-not-run reading.
+    """
+    if not isinstance(payload, dict) or type(payload.get("ran")) is not bool:
+        raise ValueError("probe ran must be a boolean")
+    if repeats is not None and (type(repeats) is not int or repeats < 1):
+        raise ValueError("requested repeats must be a positive integer")
+    clean, dropped = validate_probe_payload(payload)
+    if payload["ran"]:
+        scores = clean.get("scores")
+        errors = clean.get("errors")
+        if not isinstance(scores, dict) or set(scores) != SCORE_CASES or errors is None:
+            raise ValueError("probe measurements are malformed")
+        if not errors:
+            good_count = len(scores["good"])
+            if (good_count != repeats if repeats is not None else good_count < 1):
+                raise ValueError("probe good count differs from requested repeats")
+            if len(scores["partial"]) != 1 or len(scores["bad"]) != 1:
+                raise ValueError("probe comparison cases are incomplete")
+    return clean, dropped
+
+
+def _unique_members(pairs: list[tuple[str, object]]) -> dict:
+    """Do not allow a later JSON member to erase earlier evidence."""
+    result = {}
+    for name, value in pairs:
+        if name in result:
+            raise ValueError("duplicate member in the probe result")
+        result[name] = value
+    return result
+
+
+def _refuse_constant(name: str) -> float:
+    raise ValueError(f"non-finite constant {name} in the probe result")
+
+
+def _strict_float(text: str) -> float:
+    """``1e999`` is valid JSON that decodes to inf: refused like ``Infinity``."""
+    value = float(text)
+    if not math.isfinite(value):
+        raise ValueError("non-finite number in the probe result")
+    return value
+
+
+def _strict_int(text: str) -> int:
+    """An int too large for a float is refused while decoding, before a
+    duplicated key could discard it."""
+    value = int(text)
+    try:
+        float(value)
+    except OverflowError:
+        raise ValueError("unconvertible number in the probe result") from None
+    return value
 
 
 def _framed_lines(stdout: str) -> list[str]:
@@ -1769,8 +2054,16 @@ def run_scorer_probe(
             "framed_result_lines": len(framed),
             "payload_source": source,
         }
+    parsed = None
     try:
-        parsed = json.loads(framed[0])
+        parsed = json.loads(
+            framed[0],
+            parse_constant=_refuse_constant,
+            parse_float=_strict_float,
+            parse_int=_strict_int,
+            object_pairs_hook=_unique_members,
+        )
+        result, dropped = validate_probe_evidence(parsed, repeats)
     except ValueError:
         return {
             "ran": False,
@@ -1778,8 +2071,9 @@ def run_scorer_probe(
             "stderr_bytes": stderr_bytes,
             "framed_result_lines": 1,
             "payload_source": source,
+            "dropped_keys": validate_probe_payload(parsed)[1] if isinstance(parsed, dict) else 0,
         }
-    result, dropped = validate_probe_payload(parsed)
+    result["requested_repeats"] = repeats
     result["payload_source"] = source
     result["stderr_bytes"] = stderr_bytes
     result["framed_result_lines"] = 1
@@ -1820,6 +2114,21 @@ PROBE_FAILURE_SENTENCE = {
 }
 
 
+def _error_summary(errors: list[dict]) -> str:
+    """What the failed probe calls did, by exception TYPE and location only."""
+    raised = [error for error in errors if not error.get("non_finite")]
+    non_finite = len(errors) - len(raised)
+    parts = []
+    if raised:
+        faults = ", ".join(sorted({_fault_phrase(error) for error in raised}))
+        parts.append(f"{len(raised)} probe call(s) raised {faults}")
+    if non_finite:
+        parts.append(
+            f"{non_finite} probe call(s) returned a value that is not a finite number"
+        )
+    return "; ".join(parts)
+
+
 def probe_metrics(result: dict | None) -> dict:
     """One reading of a probe result, shared by the card and the next step."""
     if result is None:
@@ -1840,7 +2149,25 @@ def probe_metrics(result: dict | None) -> dict:
     partial = list(scores.get("partial") or [])
     bad = list(scores.get("bad") or [])
     errors = list(result.get("errors") or [])
-    if not good:
+    # The child records an error for every case it could not score, so missing
+    # scores with no error to account for them are not its honest output. A key
+    # the parent dropped may have been that error (an older parent dropped error
+    # records it could not name), so the evidence is incomplete then too.
+    complete = (
+        bool(good)
+        and len(partial) == 1
+        and len(bad) == 1
+        and not result.get("dropped_keys")
+    )
+    if not errors and not complete:
+        return {
+            "verdict": "failed",
+            "stage": "tampered-result",
+            "sentence": PROBE_FAILURE_SENTENCE["tampered-result"],
+        }
+    if not (good or partial or bad) and not any(
+        error.get("non_finite") for error in errors
+    ):
         fault = _fault_phrase(errors[0] if errors else {})
         return {
             "verdict": "failed",
@@ -1850,6 +2177,10 @@ def probe_metrics(result: dict | None) -> dict:
     ordered = bool(good and bad) and good[0] > bad[0]
     if partial:
         ordered = ordered and good[0] >= partial[0] >= bad[0]
+    # A report written before the parent refused non-finite scores can still
+    # hold them, and inf > 0 would otherwise read as ordered.
+    finite = all(math.isfinite(score) for score in good + partial + bad)
+    stable = len(set(good)) == 1
     return {
         "verdict": "ran",
         "good": good,
@@ -1857,11 +2188,25 @@ def probe_metrics(result: dict | None) -> dict:
         "bad": bad,
         "repeats": len(good),
         "distinct": len(set(good)),
-        "stable": len(set(good)) == 1,
+        "stable": stable,
         "ordered": ordered,
         "errors": errors,
+        "finite": finite,
+        # The one readiness rule: the card, the next step and Tier 2 all read it.
+        "ready": finite and stable and ordered and not errors,
     }
 
+
+# A call that raised while others scored may have failed on the probe's own
+# conditions, so those are named before the scorer, without claiming which one
+# it was. Only the return types are a fixed fact of ``call_scorer``; how the
+# probe process runs is documented in one place, the skill's Safety section.
+PROBE_CONDITIONS_REMEDY = (
+    "rule out the probe's own conditions first (it reads a return value only as "
+    "an int, float, bool or a dict with a numeric score, value or result key, "
+    "and runs the scorer in a separate restricted process described under "
+    "Safety in the traigent-setup-audit skill), then fix the scorer"
+)
 
 UNMEASURED_MEANING = (
     "The scorer could not be run, so its repeatability is unmeasured — a score "
@@ -1879,6 +2224,14 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
     if metrics["verdict"] == "failed":
         return "failed", [metrics["sentence"]]
 
+    errors = metrics["errors"]
+    order = ""
+    if not errors and metrics["finite"]:
+        order = (
+            " (ordered as expected)"
+            if metrics["ordered"]
+            else " (not ordered as expected)"
+        )
     evidence = [
         f"repeat-scoring the same pair {metrics['repeats']} times returned "
         + (
@@ -1888,32 +2241,31 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
         ),
         "known-good / partial / known-bad probes scored "
         f"{_show(metrics['good'])} / {_show(metrics['partial'])} / "
-        f"{_show(metrics['bad'])}"
-        + (
-            " (ordered as expected)"
-            if metrics["ordered"]
-            else " (not ordered as expected)"
-        ),
+        f"{_show(metrics['bad'])}{order}",
     ]
-    if metrics["errors"]:
-        faults = ", ".join(
-            sorted({_fault_phrase(error) for error in metrics["errors"]})
-        )
-        evidence.append(f"{len(metrics['errors'])} probe call(s) raised {faults}")
-    status = (
-        "ok"
-        if metrics["stable"] and metrics["ordered"] and not metrics["errors"]
-        else "attention"
-    )
-    return status, evidence
+    # A repeat count cut short by an error is not a repeatability reading.
+    if not metrics["good"] or any(error.get("case") == "good" for error in errors):
+        evidence.pop(0)
+    if errors:
+        evidence.append(_error_summary(errors))
+    return ("ok" if metrics["ready"] else "attention"), evidence
 
 
 def probe_symptom(metrics: dict) -> str:
     """Why a probe that ran is not reliable, in the probe's own numbers.
 
     Only meaningful for a ``probe_metrics`` result with verdict ``ran`` that is
-    not both stable and ordered; shared by the next step and the Tier 2 cards.
+    not ``ready``; shared by the next step and the Tier 2 cards. Failed calls
+    are stated as observed, without a claim about what caused them.
     """
+    errors = metrics["errors"]
+    if errors:
+        scored = metrics["good"] or metrics["partial"] or metrics["bad"]
+        return (
+            "scored some probe calls and " if scored else "produced no finite score: "
+        ) + _error_summary(errors)
+    if not metrics["finite"]:
+        return "returned a score that is not a finite number"
     if not metrics["stable"]:
         return (
             f"returned {metrics['distinct']} different scores for the same "
@@ -1932,9 +2284,27 @@ def probe_remedy(metrics: dict) -> str:
     known-bad answer at or above a known-good one IS repeatable, and what it
     measures is what needs fixing.
     """
+    errors = metrics["errors"]
+    if any(not error.get("non_finite") for error in errors):
+        return PROBE_CONDITIONS_REMEDY
+    if errors or not metrics["finite"]:
+        return "make it return a finite number"
     if not metrics["stable"]:
         return "make it repeatable"
     return "fix what it measures"
+
+
+# The one consequence that judges the scorer itself: every call scored, finitely.
+SCORER_MEASURED = "a configuration comparison would be measuring the scorer"
+
+
+def probe_consequence(metrics: dict) -> str:
+    """What the ``probe_symptom`` finding means for a configuration comparison."""
+    if metrics["errors"] or not metrics["finite"]:
+        return (
+            "it is not established that a run would get a usable score for every row"
+        )
+    return SCORER_MEASURED
 
 
 # --------------------------------------------------------------------------
@@ -2104,6 +2474,186 @@ def env_file_ignored(root: Path) -> str:
 # --------------------------------------------------------------------------
 
 
+def entry_point_records(entry_points: list[EntryPoint]) -> list[dict]:
+    """The report's `entry_points` records."""
+    return [
+        {
+            "function": entry.function,
+            "file": entry.file,
+            "line": entry.line,
+            "config_space_note": entry.config_space_note,
+            "knobs": [
+                {
+                    "name": knob.name,
+                    "values": knob.values,
+                    "values_readable": knob.values_readable,
+                    "status": knob.status,
+                    "file": knob.file,
+                    "line": knob.line,
+                }
+                for knob in entry.knobs
+            ],
+        }
+        for entry in entry_points
+    ]
+
+
+def _names(knobs: list[dict]) -> str:
+    shown = [f"`{knob['name']}`" for knob in knobs[:3]]
+    text = ", ".join(shown)
+    if len(knobs) > 3:
+        text += f", and {len(knobs) - 3} more"
+    return text
+
+
+def knob_wiring(entry_points: list[dict]) -> dict:
+    """One reading of the declared knobs, shared by the Agent card, the next
+    step and Tier 2. It reads the report's own `entry_points` records, so Tier 2
+    applies the same rule to a stored report.
+
+    The verdict is the first that matches, scanning the entries in order for
+    each: ``none``, ``blank``, ``all-unread``, ``partly-unread``,
+    ``not-inventoried``, ``possibly-read``, ``read``. Malformed input raises
+    ``TypeError``, ``AttributeError``, ``KeyError`` or ``ValueError``.
+    """
+    all_knobs = [knob for entry in entry_points for knob in entry["knobs"]]
+    if any(
+        not isinstance(knob["status"], str)
+        or knob["status"] not in (KNOB_READ, KNOB_UNREAD, KNOB_MAYBE)
+        for knob in all_knobs
+    ):
+        raise ValueError("stored knob status is not a supported reading")
+    knob_count = len(all_knobs)
+    read_count = sum(1 for knob in all_knobs if knob["status"] == KNOB_READ)
+
+    def first(predicate):
+        return next((entry for entry in entry_points if predicate(entry)), None)
+
+    def with_status(entry: dict, status: str) -> list[dict]:
+        return [knob for knob in entry["knobs"] if knob["status"] == status]
+
+    verdict, entry, knobs = "read", None, []
+    if not entry_points:
+        verdict = "none"
+    elif (
+        found := first(lambda e: not e["knobs"] and not e["config_space_note"])
+    ) is not None:
+        verdict, entry = "blank", found
+    elif (
+        found := first(
+            lambda e: e["knobs"]
+            and all(knob["status"] == KNOB_UNREAD for knob in e["knobs"])
+        )
+    ) is not None:
+        verdict, entry, knobs = "all-unread", found, list(found["knobs"])
+    elif (found := first(lambda e: with_status(e, KNOB_UNREAD))) is not None:
+        verdict, entry, knobs = "partly-unread", found, with_status(found, KNOB_UNREAD)
+    elif (found := first(lambda e: e["config_space_note"])) is not None:
+        verdict, entry, knobs = "not-inventoried", found, list(found["knobs"])
+    elif (found := first(lambda e: with_status(e, KNOB_MAYBE))) is not None:
+        verdict, entry, knobs = "possibly-read", found, with_status(found, KNOB_MAYBE)
+
+    summary = ""
+    if entry is not None:
+        where = f"`{entry['function']}` at {entry['file']}:{entry['line']}"
+        declared = len(entry["knobs"])
+        if verdict == "blank":
+            summary = f"{where} declares 0 knobs"
+        elif verdict == "all-unread":
+            summary = (
+                f"{where} declares {declared} knob(s) and the body reads none of them"
+            )
+        elif verdict == "partly-unread":
+            summary = (
+                f"{where} declares {declared} knob(s) and the body never reads "
+                f"{len(knobs)} of them ({_names(knobs)})"
+            )
+        elif verdict == "not-inventoried":
+            summary = f"the configuration space of {where} was not inventoried"
+        elif verdict == "possibly-read":
+            summary = (
+                f"{len(knobs)} knob(s) of {where} ({_names(knobs)}) are read "
+                "through a mapping the parser cannot follow"
+            )
+    return {
+        "verdict": verdict,
+        "entry": entry,
+        "knobs": knobs,
+        "knob_count": knob_count,
+        "read_count": read_count,
+        "summary": summary,
+    }
+
+
+CONFIG_SPACE_SKILLS = ["traigent-optimize-config-space"]
+
+
+def knob_step(wiring: dict) -> dict | None:
+    """The next step a knob reading calls for, or ``None`` when it calls for
+    none (``none``, ``read`` or an unknown verdict). ``b`` stops the run before
+    anything else; ``h`` waits behind the scorer and dataset steps."""
+    verdict = wiring.get("verdict")
+    summary = wiring.get("summary", "")
+    if verdict == "blank":
+        branch = "b"
+        line = (
+            f"{summary}, so every trial would evaluate the same configuration — "
+            "define a real configuration space with `traigent-optimize-config-space`."
+        )
+    elif verdict == "all-unread":
+        branch = "b"
+        line = (
+            f"{summary}, so varying them cannot change the output — rework the "
+            "configuration space with `traigent-optimize-config-space`."
+        )
+    elif verdict == "partly-unread":
+        branch = "h"
+        line = (
+            f"{summary}, so every trial that varies them is spend with no effect — "
+            "wire or remove them with `traigent-optimize-config-space`."
+        )
+    elif verdict == "not-inventoried":
+        entry = wiring["entry"]
+        branch = "h"
+        line = (
+            f"The configuration space of `{entry['function']}` at "
+            f"{entry['file']}:{entry['line']} was not inventoried, so whether its "
+            "knobs reach the function body is unconfirmed — confirm by hand, or "
+            "declare the space as a dict literal so the next audit can read it, "
+            "with `traigent-optimize-config-space`."
+        )
+    elif verdict == "possibly-read":
+        branch = "h"
+        line = (
+            f"{summary}, so whether each one reaches the body is unconfirmed — "
+            "confirm by hand that each one does, with "
+            "`traigent-optimize-config-space`, before a run."
+        )
+    else:
+        return None
+    return {"branch": branch, "skills": list(CONFIG_SPACE_SKILLS), "line": line}
+
+
+def inventory_gap(inventory: PythonInventory) -> str:
+    """Why the Python inventory may be incomplete, or ``""``."""
+    if inventory.files_unparsed:
+        return (
+            f"{len(inventory.files_unparsed)} Python file(s) could not be parsed "
+            f"by this audit's Python {sys.version_info[0]}.{sys.version_info[1]} "
+            f"(first: {inventory.files_unparsed[0]})"
+        )
+    if inventory.files_total > MAX_PYTHON_FILES:
+        return (
+            f"only the first {MAX_PYTHON_FILES} of {inventory.files_total} Python "
+            "file(s) were inventoried"
+        )
+    return ""
+
+
+def _capitalised(text: str) -> str:
+    return text[:1].upper() + text[1:]
+
+
 def agent_area(inventory: PythonInventory) -> dict:
     evidence: list[str] = []
     evidence.extend(inventory.notes)
@@ -2159,31 +2709,36 @@ def agent_area(inventory: PythonInventory) -> dict:
                 f"`{entry.function}` at {entry.file}:{entry.line} declares no "
                 "configuration space, so there is nothing to search"
             )
-        unreadable_space = [
-            entry for entry in inventory.entry_points if entry.config_space_note
-        ]
-        problems = bool(unread or no_space or unreadable_space or inventory.notes)
-        status = "attention" if problems else ("attention" if maybe else "ok")
-        if unread:
+        # One reading, shared with the next step and Tier 2: the card cannot
+        # read `ok` over a knob or inventory fact the ladder would act on.
+        verdict = knob_wiring(entry_point_records(inventory.entry_points))["verdict"]
+        gap = inventory_gap(inventory)
+        status = "ok" if verdict == "read" and not gap else "attention"
+        if verdict in ("all-unread", "partly-unread"):
             meaning = (
                 "A knob the function never reads cannot change the output, so every "
                 "trial that varies it is spend with no effect."
             )
-        elif no_space:
+        elif verdict == "blank":
             meaning = (
                 "A decorated function with no configuration space gives the "
                 "optimizer one point to evaluate, so there is nothing to compare."
             )
-        elif unreadable_space:
+        elif verdict == "not-inventoried":
             meaning = (
                 "The configuration space was not readable statically, so this audit "
                 "cannot say whether its knobs reach the function body — check those "
                 "by hand."
             )
-        elif maybe:
+        elif verdict == "possibly-read":
             meaning = (
                 f"{len(maybe)} knob(s) are read through a mapping the parser cannot "
                 "follow — confirm by hand that each one reaches the body."
+            )
+        elif gap:
+            meaning = (
+                f"{_capitalised(gap)}, so the entry points and knobs listed here may "
+                "be incomplete — this audit cannot vouch for code it did not read."
             )
         else:
             meaning = (
@@ -2214,6 +2769,19 @@ def agent_area(inventory: PythonInventory) -> dict:
     return {"status": status, "evidence": evidence, "meaning": meaning}
 
 
+def dataset_findings(
+    reports: list[DatasetReport], notes: list[str], skipped_files: list[str]
+) -> list[str]:
+    """Every dataset fact that keeps the Dataset area from `ok`, in the order
+    the card and the next step name them: report findings, then scan notes,
+    then files that could not be read."""
+    return [
+        *(f"{report.file}: {finding}" for report in reports for finding in report.findings),
+        *notes,
+        *skipped_files,
+    ]
+
+
 def dataset_area(
     reports: list[DatasetReport],
     candidates: int,
@@ -2221,6 +2789,22 @@ def dataset_area(
     skipped_files: list[str],
 ) -> dict:
     skip_lines = [f"{item} — not analysed" for item in skipped_files]
+    if not reports and skipped_files:
+        return {
+            "status": "attention",
+            "evidence": [
+                f"searched {candidates} JSONL/JSON/CSV file(s) for rows carrying an "
+                f"input-like key; {len(skipped_files)} could not be read, so whether "
+                "one of them is the dataset is unconfirmed",
+                *notes,
+                *skip_lines,
+            ],
+            "meaning": (
+                "A dataset file this audit could not read cannot be judged, so "
+                "nothing confirmed is there to score a configuration against yet; "
+                "`traigent-dataset-curate` covers the file formats."
+            ),
+        }
     if not reports:
         return {
             "status": "attention" if (notes or skipped_files) else "not-found",
@@ -2249,7 +2833,7 @@ def dataset_area(
             evidence.append(f"{report.file}: {finding}")
         if report.missing_expected:
             evidence.append(
-                f"{report.file}: first row indexes with no gold key: "
+                f"{report.file}: first row indexes with no usable gold value: "
                 f"{report.missing_expected[:5]}"
             )
         if report.exact_duplicate_groups:
@@ -2267,10 +2851,7 @@ def dataset_area(
             f"{len(reports) - len(shown)} further dataset file(s) are in the JSON "
             "report and not printed here"
         )
-    problems = (
-        any(report.findings for report in reports) or bool(notes) or bool(skipped_files)
-    )
-    status = "attention" if problems else "ok"
+    status = "attention" if dataset_findings(reports, notes, skipped_files) else "ok"
     meaning = (
         "Row shortfalls, duplicates, a missing holdout slice and anything the audit "
         "could not read all widen the error bars on a measured score, so a small "
@@ -2416,6 +2997,11 @@ def scorer_area(
             "known-good answer from a known-bad one, so a score movement is at "
             "least not scorer variation."
         )
+    elif probe_metrics(probe)["errors"]:
+        meaning = (
+            "Not every probe call produced a finite score, so whether a run would "
+            "get a usable score for every row is not established."
+        )
     else:
         meaning = (
             "A scorer that returns different numbers for the same pair makes a "
@@ -2492,9 +3078,21 @@ def next_step(
     reports: list[DatasetReport],
     probe: dict | None,
     probed: ScorerCandidate | None,
+    *,
+    skipped_files: list[str] | tuple[str, ...] = (),
+    dataset_notes: list[str] | tuple[str, ...] = (),
+    dataset_named: bool = False,
 ) -> dict:
-    """Exactly one next step, chosen by the most blocking finding."""
+    """Exactly one next step, chosen by the most blocking finding.
+
+    The Agent and Dataset rungs read the same `knob_wiring`, `inventory_gap`
+    and `dataset_findings` the area cards read, so `g` is reached only when
+    the Agent, Dataset and Scorer areas all read `ok`.
+    """
     metrics = probe_metrics(probe)
+    wiring = knob_wiring(entry_point_records(inventory.entry_points))
+    knob = knob_step(wiring)
+    curate = ["traigent-dataset-curate"]
 
     if not inventory.entry_points:
         return {
@@ -2508,44 +3106,8 @@ def next_step(
             ),
         }
 
-    blank = next(
-        (
-            entry
-            for entry in inventory.entry_points
-            if not entry.knobs and not entry.config_space_note
-        ),
-        None,
-    )
-    all_unread = next(
-        (
-            entry
-            for entry in inventory.entry_points
-            if entry.knobs
-            and all(knob.status == KNOB_UNREAD for knob in entry.knobs)
-        ),
-        None,
-    )
-    if blank is not None:
-        return {
-            "branch": "b",
-            "skills": ["traigent-optimize-config-space"],
-            "line": (
-                f"`{blank.function}` at {blank.file}:{blank.line} declares 0 knobs, "
-                "so every trial would evaluate the same configuration — define a "
-                "real configuration space with `traigent-optimize-config-space`."
-            ),
-        }
-    if all_unread is not None:
-        return {
-            "branch": "b",
-            "skills": ["traigent-optimize-config-space"],
-            "line": (
-                f"`{all_unread.function}` at {all_unread.file}:{all_unread.line} "
-                f"declares {len(all_unread.knobs)} knob(s) and the body reads none "
-                "of them, so varying them cannot change the output — rework the "
-                "configuration space with `traigent-optimize-config-space`."
-            ),
-        }
+    if knob is not None and knob["branch"] == "b":
+        return knob
 
     if not inventory.scorers:
         return {
@@ -2558,17 +3120,16 @@ def next_step(
             ),
         }
 
-    if metrics["verdict"] == "ran" and not (metrics["stable"] and metrics["ordered"]):
+    if metrics["verdict"] == "ran" and not metrics["ready"]:
         symptom = probe_symptom(metrics)
         remedy = probe_remedy(metrics)
         return {
             "branch": "d",
             "skills": ["traigent-eval-build", "traigent-eval-audit"],
             "line": (
-                f"`{probed.function}` at {probed.file}:{probed.line} {symptom}, so a "
-                f"configuration comparison would be measuring the scorer — {remedy} "
-                "with `traigent-eval-build`, then assess it with "
-                "`traigent-eval-audit`."
+                f"`{probed.function}` at {probed.file}:{probed.line} {symptom}, so "
+                f"{probe_consequence(metrics)} — {remedy} with `traigent-eval-build`, "
+                "then assess it with `traigent-eval-audit`."
             ),
         }
 
@@ -2584,6 +3145,33 @@ def next_step(
                 "with `traigent-eval-audit`."
             ),
         }
+
+    # A file that could not be read is named, never reported as absent. Beside
+    # analysed rows it outranks the rest only when the user named the dataset
+    # (then it is the named file's holdout sibling); in discovery it waits for
+    # the catch-all below.
+    unread = list(skipped_files) if (dataset_named or not reports) else []
+    if unread or (not reports and dataset_notes):
+        if unread and not reports:
+            line = (
+                f"{unread[0]}, so no evaluation dataset could be analysed and there "
+                "is nothing to score a configuration against yet — repair the file, "
+                "or point --dataset at a readable one; `traigent-dataset-curate` "
+                "covers the format."
+            )
+        elif unread:
+            line = (
+                f"{unread[0]}, so the slice it holds was not analysed and this "
+                "dataset's readiness is unconfirmed — repair it with "
+                "`traigent-dataset-curate`, then re-run this audit."
+            )
+        else:
+            line = (
+                f"{dataset_notes[0]}, and none of the files read is a dataset — "
+                "point --dataset at your evaluation file, or build one with "
+                "`traigent-dataset-curate`."
+            )
+        return {"branch": "f", "skills": list(curate), "line": line}
 
     if not reports:
         return {
@@ -2608,6 +3196,48 @@ def next_step(
                 f"{worst.file} has {worst.rows_without_sdk_input} row(s) with no "
                 "`input`/`input_data` key, so `eval_dataset` will refuse to load "
                 "it — rename or add the key with `traigent-dataset-curate`."
+            ),
+        }
+
+    # A row with no usable gold can never score correct against gold, so every
+    # measured score is capped below what the agent really does.
+    gold = [report for report in reports if report.missing_gold_counts]
+    if gold:
+        worst = max(gold, key=lambda report: sum(report.missing_gold_counts.values()))
+        detail = ", ".join(
+            f"{worst.missing_gold_counts[kind]} {label}"
+            for kind, label in GOLD_KIND_LABEL.items()
+            if worst.missing_gold_counts.get(kind)
+        )
+        return {
+            "branch": "f",
+            "skills": list(curate),
+            "line": (
+                f"{worst.file} has {sum(worst.missing_gold_counts.values())} row(s) "
+                f"with no usable gold value ({detail}), so a scorer that compares "
+                "against gold cannot score those rows correct and every measured "
+                "score is capped — fill or drop them with `traigent-dataset-curate`."
+            ),
+        }
+
+    # A holdout that shares rows with the searched slice re-measures what the
+    # search already saw, so its score is not a held-out score.
+    overlapping = [report for report in reports if report.holdout_overlap]
+    if overlapping:
+        worst = max(
+            overlapping,
+            key=lambda report: report.holdout_overlap_total
+            or len(report.holdout_overlap),
+        )
+        count = worst.holdout_overlap_total or len(worst.holdout_overlap)
+        return {
+            "branch": "f",
+            "skills": list(curate),
+            "line": (
+                f"{worst.file} has {count} row(s) that appear in both the holdout "
+                "slice and another slice, so a holdout score would partly re-measure "
+                "rows the search already saw — make the slices disjoint with "
+                "`traigent-dataset-curate`."
             ),
         }
 
@@ -2647,6 +3277,42 @@ def next_step(
             "skills": ["traigent-dataset-curate"],
             "line": line,
         }
+
+    # Knob wiring that is partly broken or unconfirmed: concrete spend, but
+    # below the dataset faults that make a run worthless outright.
+    if knob is not None and knob["branch"] == "h":
+        return knob
+
+    gap = inventory_gap(inventory)
+    if gap:
+        if inventory.files_unparsed:
+            pronoun = "it" if len(inventory.files_unparsed) == 1 else "them"
+            remedy = f"fix or exclude {pronoun} and re-run this audit."
+        else:
+            remedy = "narrow --root to the project's own code and re-run this audit."
+        return {
+            "branch": "i",
+            "skills": [],
+            "line": (
+                f"{_capitalised(gap)}, so the entry points and scorers above may be "
+                f"incomplete — {remedy}"
+            ),
+        }
+
+    facts = dataset_findings(reports, list(dataset_notes), list(skipped_files))
+    if facts:
+        if len(facts) == len(skipped_files):
+            line = (
+                f"{facts[0]}, so this audit cannot rule out an evaluation file it "
+                "did not read — repair it, or name your dataset with --dataset so "
+                "other files are not scanned, then re-run this audit."
+            )
+        else:
+            line = (
+                f"{facts[0]}, so this audit cannot call the dataset ready — resolve "
+                "it with `traigent-dataset-curate`, then re-run this audit."
+            )
+        return {"branch": "f", "skills": list(curate), "line": line}
 
     return {
         "branch": "g",
@@ -2734,14 +3400,9 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
     dataset_notes: list[str] = []
     skipped_files: list[str] = []
     if args.dataset:
-        dataset_path = Path(args.dataset)
-        raw = load_rows(dataset_path)
-        reports = []
-        if raw.skipped:
-            skipped_files.append(f"{relative(dataset_path, root)} {raw.skipped}")
-        elif raw.rows:
-            reports.append(analyse_dataset(dataset_path, root, raw))
-        dataset_candidates = 1
+        reports, dataset_candidates, dataset_notes, skipped_files = explicit_datasets(
+            Path(args.dataset), root
+        )
     else:
         reports, dataset_candidates, dataset_notes, skipped_files = scan_datasets(
             files, root
@@ -2749,30 +3410,55 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
 
     probed: ScorerCandidate | None = None
     refusal: str | None = None
+    selected: ScorerCandidate | None = None
     if args.scorer:
         file_part, _, function_part = args.scorer.rpartition(":")
         if not file_part or not function_part:
             raise ValueError("--scorer must be given as FILE.py:FUNCTION")
-        chosen_file = relative(Path(file_part), root)
+        # A relative selector is read against the working directory when that
+        # lands inside --root, else against --root: joined to the root once.
+        # Every read of the selected file uses this one resolved path.
+        sel_abs = os.path.realpath(root / relative(Path(file_part), root))
+        chosen_file = relative(Path(sel_abs), root)
+
+        def is_selection(file: str, function: str) -> bool:
+            # Same resolved path, not same spelling or inode. Known limit: on a
+            # case-insensitive volume a differently-cased selection lists twice.
+            return (
+                function == function_part
+                and os.path.realpath(root / file) == sel_abs
+            )
+
         selected = next(
             (
                 candidate
                 for candidate in inventory.scorers
-                if candidate.file == chosen_file
-                and candidate.function == function_part
+                if is_selection(candidate.file, candidate.function)
             ),
             None,
         )
         if selected is None:
-            kind, signals = classify_module_function(root / chosen_file, function_part)
+            kind, signals, line = classify_module_function(
+                Path(sel_abs), function_part
+            )
             selected = ScorerCandidate(
                 function=function_part,
                 file=chosen_file,
-                line=0,
+                line=line,
                 kind=kind,
                 signals=signals,
                 parameters=[],
             )
+            # A selected function found by name IS a scorer, whatever its name
+            # and whether it is probed or refused: listing it keeps the scorer
+            # area, the next step and Tier 2 on one fact.
+            if line:
+                inventory.scorers.append(selected)
+                inventory.skipped_scorers = [
+                    item
+                    for item in inventory.skipped_scorers
+                    if not is_selection(item.file, item.function)
+                ]
         # An explicit selection is not permission to run arbitrary code: a
         # judge calls a provider and an executing scorer runs code, and this
         # audit does neither, whichever way the scorer was chosen.
@@ -2854,26 +3540,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             },
         },
         "areas": areas,
-        "entry_points": [
-            {
-                "function": entry.function,
-                "file": entry.file,
-                "line": entry.line,
-                "config_space_note": entry.config_space_note,
-                "knobs": [
-                    {
-                        "name": knob.name,
-                        "values": knob.values,
-                        "values_readable": knob.values_readable,
-                        "status": knob.status,
-                        "file": knob.file,
-                        "line": knob.line,
-                    }
-                    for knob in entry.knobs
-                ],
-            }
-            for entry in inventory.entry_points
-        ],
+        "entry_points": entry_point_records(inventory.entry_points),
         "llm_call_sites": inventory.llm_call_sites[:20],
         "dataset_minimums": {
             "smoke_check": MIN_SMOKE,
@@ -2890,6 +3557,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
                 "input_keys": report.input_key_counts,
                 "gold_keys": report.expected_key_counts,
                 "missing_gold_rows": report.missing_expected,
+                "missing_gold_counts": report.missing_gold_counts,
                 "duplicate_groups": report.exact_duplicate_groups,
                 "near_duplicate_pairs": report.near_duplicate_pairs,
                 "splits": report.split_counts,
@@ -2909,6 +3577,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
                 "line": candidate.line,
                 "kind": candidate.kind,
                 "signals": candidate.signals,
+                **({"selected": True} if candidate is selected else {}),
             }
             for candidate in inventory.scorers
         ],
@@ -2923,7 +3592,15 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         ],
         "scorer_selection_refused": refusal,
         "scorer_probe": probe,
-        "next_step": next_step(inventory, reports, probe, probed),
+        "next_step": next_step(
+            inventory,
+            reports,
+            probe,
+            probed,
+            skipped_files=skipped_files,
+            dataset_notes=dataset_notes,
+            dataset_named=bool(args.dataset),
+        ),
         "setup": {
             "sdk": sdk,
             "keys": keys,
@@ -3051,16 +3728,21 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         report = build_report(root, args, guard)
+        # Strict JSON, built before anything is written: a non-finite number
+        # refuses the whole report rather than writing `Infinity`.
+        text = (
+            json.dumps(report, indent=2, sort_keys=True, allow_nan=False) + "\n"
+            if args.json_out
+            else None
+        )
     except ValueError as exc:
         print(f"audit_project.py: {exc}", file=sys.stderr)
         return 2
 
-    if args.json_out:
+    if text is not None:
         out_path = Path(args.json_out)
         out_path.parent.mkdir(parents=True, exist_ok=True)
-        out_path.write_text(
-            json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-        )
+        out_path.write_text(text, encoding="utf-8")
     print(render_card(report))
     return 0
 

@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1b28651275d824d6",
+  "doc_hash": "de9bb2275159d7ea",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/environment-variables.md": "ecbad3a819bff13f",
-    "references/first-value-fallback.md": "7b0ebf2aadd2e679",
+    "references/environment-variables.md": "84bbd07054919956",
+    "references/first-value-fallback.md": "60b459fb82958bf7",
     "references/installation-extras.md": "1f85f18cdd0be60e",
     "references/run-cost-and-limits.md": "8579f950b7e78af6"
   },
@@ -133,7 +133,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "d1fcc507af83c0ee",
       "doc_after_hash": "1bceeccc65431713",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -308,6 +308,39 @@
       "run_id": null,
       "timestamp": "2026-09-27T00:00:00Z",
       "note": "references/environment-variables.md only (SKILL.md unchanged): the LITELLM_LOCAL_MODEL_COST_MAP row now says traigent <= 0.28.0 requires setting it yourself, fixed in 0.29.0 (traigent/__init__.py sets it unconditionally on import, provided traigent is imported before litellm; TRAIGENT_LITELLM_LIVE_PRICES=1 is the SDK's own documented opt-out and still leaks on every version).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "audit-2026-10-05-384",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "1b28651275d824d6",
+      "doc_after_hash": "dd1443edc4120c57",
+      "note": "#384: a key is written to .env only after a runnable check block in 'Using a .env File' and in references/environment-variables.md '.env File Support', placed before each filled .env example. The block refuses when GIT_DIR or GIT_WORK_TREE is set; when a .git exists here or in a parent folder, Git must confirm the work tree (git missing or a repository owned by another user is a refusal, never 'outside Git'); .env must be absent or a regular file (no symlink, no directory); inside Git, .env must be untracked and ignored by the repository's own rules (core.excludesFile=/dev/null, so a global excludes file does not count); outside Git, ./.gitignore must already hold a .env or /.env line; it survives a caller with set -euo pipefail and then sets mode 0600. The paste flow's step 1 now runs that block before anything is written, then fills .env only while it is still empty, via `cat .env.example > .env` (a redirect into the existing file keeps mode 0600), so a symlinked, tracked or directory .env is refused before any write. Literal-key export lines in SKILL.md (portal key, device-flow key, prereq blockquote, Production Mode), references/environment-variables.md (production example) and references/first-value-fallback.md (step 3) replaced by .env pointers; step 6 fallback no longer offers a shell export; SKILL.md and first-value-fallback.md show `set -a; . ./.env; set +a` to load .env for a CLI command without typing a key. metadata.version 1.0.27 -> 1.0.28.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "adjacent-env-ignore-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T13:19:49.546590+00:00",
+      "doc_before_hash": "dd1443edc4120c57",
+      "doc_after_hash": "4453c2e301a0afeb",
+      "note": "Make the directory-owned ignore rule precede key writes, retain tracked-file refusal and private file mode, and use one documentation home.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "env-comment-wording-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "4453c2e301a0afeb",
+      "doc_after_hash": "de9bb2275159d7ea",
+      "note": "Describe key storage as prose comments rather than assignment-like labels.",
       "source_type": "agent"
     }
   ]

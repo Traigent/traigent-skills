@@ -35,8 +35,10 @@ from __future__ import annotations
 import argparse
 import ipaddress
 import json
+import math
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -52,11 +54,17 @@ if str(SCRIPT_DIR) not in sys.path:
 
 # The guard is imported, never copied: one implementation, one set of tests.
 from audit_project import (  # noqa: E402
+    SCORER_MEASURED,
+    _unique_members,
     install_network_guard,
+    knob_step,
+    knob_wiring,
     printable_text,
+    probe_consequence,
     probe_metrics,
     probe_remedy,
     probe_symptom,
+    validate_probe_evidence,
     verify_network_guard,
 )
 
@@ -175,7 +183,8 @@ CATALOGUE: tuple[Check, ...] = (
         ),
         key_line=KEY_NOT_SENT + " — the provider key is the SDK's to send",
         cost="$0. Egress goes to the provider, not to Traigent.",
-        needs="model ids declared in the configuration space, and a provider key",
+        needs=("model ids declared in the configuration space, a provider key, "
+               "and the `traigent` CLI on PATH"),
         stop_rule="one CLI call per declared id, then stop.",
     ),
     Check(
@@ -207,7 +216,8 @@ CATALOGUE: tuple[Check, ...] = (
             "$0 read. The plan's `cost_limit_usd` echoes the cap YOU passed; it "
             "is not a budget the service authored."
         ),
-        needs="an API key, and --cost-limit (the cap is yours to set)",
+        needs=("an API key, the `traigent` CLI on PATH, and a --cost-limit that is "
+               "a finite number above zero (the cap is yours to set)"),
         stop_rule="one CLI call, then stop.",
     ),
     Check(
@@ -395,6 +405,10 @@ CATALOGUE: tuple[Check, ...] = (
 )
 
 CATALOGUE_BY_ID = {check.id: check for check in CATALOGUE}
+
+# The checks that spawn the `traigent` CLI rather than call the backend.
+CLI_CHECKS = ("model-ids", "plan")
+
 RUN_DEPENDENT = ("evaluator-quality", "example-insights", "example-scoring",
                  "decision-brief")
 NOT_EXECUTED_HERE = ("bounded-run", "stop-here")
@@ -416,6 +430,16 @@ class Tier1:
     entry_points: list[dict]
     knob_count: int
     read_knob_count: int
+    # Tier 1's own reading of the stored knobs (`knob_wiring`), or the verdict
+    # "unreadable" when the stored entry points could not be read.
+    knob_wiring: dict
+    # The stored area statuses; "" when the report carries none.
+    agent_status: str
+    dataset_status: str
+    # The first stored dataset fact behind a Dataset status, or "".
+    dataset_detail: str
+    # How many stored Python files went uninventoried, as a clause, or "".
+    python_gap: str
     datasets: list[dict]
     scorers: list[dict]
     # "repeatable", "unreliable", "not-run" or "none": the probe's OUTCOME,
@@ -423,10 +447,46 @@ class Tier1:
     probe_verdict: str
     probe_symptom: str
     probe_remedy: str
+    probe_consequence: str
     model_ids: list[str]
     dataset_candidates: int
     python_files: int
     key_names_set: list[str]
+
+    @property
+    def stale_subjects(self) -> list[tuple[str, str]]:
+        """Each part of the report's own evidence that does not read clear, as
+        (subject, detail). A missing or malformed area counts as not clear."""
+        subjects: list[tuple[str, str]] = []
+        if self.agent_status != "ok" or self.knob_wiring.get("verdict") != "read":
+            subjects.append((
+                "Agent area",
+                self.knob_wiring.get("summary") or self.python_gap or (
+                    f"its card reads `{self.agent_status}`" if self.agent_status
+                    else "it is missing from the report"
+                ),
+            ))
+        if self.probe_verdict != "repeatable":
+            # A not-run symptom is already a whole clause naming its subject.
+            symptom = self.probe_symptom if self.probe_verdict == "not-run" else (
+                f"the scorer {self.probe_symptom}"
+            )
+            subjects.append(("scorer probe", symptom if self.probe_symptom else ""))
+        if self.dataset_status != "ok":
+            subjects.append((
+                "Dataset area",
+                self.dataset_detail or (
+                    f"its card reads `{self.dataset_status}`" if self.dataset_status
+                    else "it is missing from the report"
+                ),
+            ))
+        return subjects
+
+    @property
+    def stale_all_clear(self) -> bool:
+        """The report records the all-clear its own area or probe evidence does
+        not support."""
+        return self.branch == "g" and bool(self.stale_subjects)
 
     @property
     def largest_dataset(self) -> dict | None:
@@ -448,7 +508,7 @@ class Tier1:
 
 def load_tier1(path: Path) -> Tier1:
     try:
-        report = json.loads(path.read_text(encoding="utf-8"))
+        report = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_members)
     except (OSError, ValueError) as exc:
         raise ValueError(
             f"--from-audit {path} could not be read as JSON ({type(exc).__name__}). "
@@ -468,18 +528,70 @@ def load_tier1(path: Path) -> Tier1:
     setup = report.get("setup") or {}
     keys = setup.get("keys") or {}
     next_step = report.get("next_step") or {}
-    metrics = probe_metrics(probe) if probe else {"verdict": "none"}
-    symptom = remedy = ""
-    if metrics["verdict"] == "none":
-        verdict = "none"
-    elif metrics["verdict"] != "ran":
-        verdict = "not-run"
-    elif metrics["stable"] and metrics["ordered"]:
-        verdict = "repeatable"
-    else:
-        verdict = "unreliable"
-        symptom = probe_symptom(metrics)
-        remedy = probe_remedy(metrics)
+    symptom = remedy = consequence = ""
+    # The stored probe is the one input to this reading the parent never
+    # validated: a malformed one reads as not run, so a stored all-clear over
+    # it is answered with a re-run rather than a traceback.
+    try:
+        if probe:
+            # Report metadata was added by the parent, never by the child.
+            metadata = {"requested_repeats", "payload_source", "stderr_bytes",
+                        "framed_result_lines", "dropped_keys"}
+            payload = {key: value for key, value in probe.items() if key not in metadata}
+            if "requested_repeats" in probe and probe["requested_repeats"] is None:
+                raise ValueError("requested repeats must be a positive integer")
+            clean, dropped = validate_probe_evidence(payload, probe.get("requested_repeats"))
+            clean["dropped_keys"] = dropped or probe.get("dropped_keys", 0)
+            metrics = probe_metrics(clean)
+        else:
+            metrics = {"verdict": "none"}
+        if metrics["verdict"] == "none":
+            verdict = "none"
+        elif metrics["verdict"] != "ran":
+            verdict = "not-run"
+            symptom = metrics.get("sentence", "")
+        elif metrics["ready"]:
+            verdict = "repeatable"
+        else:
+            verdict = "unreliable"
+            symptom = probe_symptom(metrics)
+            remedy = probe_remedy(metrics)
+            consequence = probe_consequence(metrics)
+    except (TypeError, AttributeError, ValueError, OverflowError, KeyError):
+        verdict, remedy, consequence = "not-run", "", ""
+        symptom = "its stored probe result could not be read"
+
+    # The same reading Tier 1 used, applied to the stored entry points, so an
+    # edited `areas` block cannot make this script contradict the knobs.
+    try:
+        wiring = knob_wiring(entry_points)
+    except (TypeError, AttributeError, KeyError, ValueError):
+        wiring = {"verdict": "unreadable",
+                  "summary": "its stored entry points could not be read",
+                  "knob_count": len(knobs), "read_count": 0, "entry": None,
+                  "knobs": []}
+    areas = report.get("areas")
+    statuses = {}
+    for name in ("agent", "dataset"):
+        area = areas.get(name) if isinstance(areas, dict) else None
+        statuses[name] = str(area.get("status") or "") if isinstance(area, dict) else ""
+    datasets = [item for item in (report.get("datasets") or [])
+                if isinstance(item, dict)]
+    dataset_detail = next(
+        (f"{item.get('file')}: {finding}" for item in datasets
+         for finding in (item.get("findings") or []) if isinstance(finding, str)),
+        "",
+    ) or next(
+        (item for item in (files.get("dataset_files_not_analysed") or [])
+         if isinstance(item, str)),
+        "",
+    )
+    python_total = int(files.get("python_total") or 0)
+    python_parsed = int(files.get("python_parsed") or 0)
+    python_gap = (
+        f"{python_total - python_parsed} Python file(s) were not inventoried"
+        if python_total > python_parsed else ""
+    )
 
     return Tier1(
         path=path,
@@ -489,13 +601,18 @@ def load_tier1(path: Path) -> Tier1:
         entry_points=entry_points,
         knob_count=len(knobs),
         read_knob_count=sum(1 for knob in knobs if knob.get("status") == "read"),
-        datasets=[item for item in (report.get("datasets") or [])
-                  if isinstance(item, dict)],
+        knob_wiring=wiring,
+        agent_status=statuses["agent"],
+        dataset_status=statuses["dataset"],
+        dataset_detail=dataset_detail,
+        python_gap=python_gap,
+        datasets=datasets,
         scorers=[item for item in (report.get("scorers") or [])
                  if isinstance(item, dict)],
         probe_verdict=verdict,
         probe_symptom=symptom,
         probe_remedy=remedy,
+        probe_consequence=consequence,
         model_ids=[str(item) for item in (setup.get("model_ids_declared") or [])],
         dataset_candidates=int(files.get("dataset_candidates") or 0),
         python_files=int(files.get("python_parsed") or 0),
@@ -523,19 +640,33 @@ def motivation(check_id: str, tier1: Tier1, run_id: str | None) -> str:
                 f"`{dataset.get('file')}` has {dataset.get('rows')} row(s) and a "
                 f"{dataset.get('holdout_rows')}-row holdout slice"
             )
+        if tier1.knob_wiring.get("verdict") in {"read", "none"}:
+            knobs = (
+                f"{len(tier1.entry_points)} entry point(s) declare "
+                f"{tier1.knob_count} knob(s), {tier1.read_knob_count} of which "
+                "the body reads"
+            )
+        else:
+            knobs = tier1.knob_wiring.get("summary", "")
         return (
-            f"{where}, and {len(tier1.entry_points)} entry point(s) declare "
-            f"{tier1.knob_count} knob(s), {tier1.read_knob_count} of which the "
-            "body reads. The planning service sizes a first run from exactly "
-            "those numbers. Tier 1's own next step was: "
+            f"{where}, and {knobs}. The plan request sends the dataset size and "
+            "holdout flag above, your trial ceiling and your cap; it does not "
+            "send knob counts. Tier 1's own next step was: "
             f"{tier1.next_step_line or 'not recorded'}"
         )
     if check_id == "evaluator-quality":
         if tier1.probe_verdict == "unreliable":
+            # Only a scorer that scored every call is judged unreliable, or
+            # said to be repeat-scored; a failed or non-finite call leaves that
+            # not established.
+            judged = (
+                "repeat-scored your scorer and it is NOT reliable: it "
+                if tier1.probe_consequence == SCORER_MEASURED
+                else "probed your scorer and it "
+            )
             basis = (
-                "Tier 1 repeat-scored your scorer and it is NOT reliable: it "
-                f"{tier1.probe_symptom}, so a configuration comparison would be "
-                "measuring the scorer. First "
+                f"Tier 1 {judged}"
+                f"{tier1.probe_symptom}, so {tier1.probe_consequence}. Next: "
                 f"{tier1.probe_remedy}, with `traigent-eval-build`"
             )
         elif tier1.probe_verdict == "repeatable":
@@ -593,19 +724,25 @@ def motivation(check_id: str, tier1: Tier1, run_id: str | None) -> str:
             "(--run-id). This lists the completed runs your account already has."
         )
     if check_id == "bounded-run":
+        wiring = tier1.knob_wiring
+        if wiring.get("verdict") == "unreadable":
+            return (
+                "Tier 1's stored entry points could not be read, so whether the "
+                "decorated body reads its knobs is not established here — re-run "
+                "the free audit before spending anything."
+            )
+        step = knob_step(wiring)
+        if step is not None:
+            return (
+                f"Tier 1's own reading of your knobs: {step['line']} A bounded run "
+                "before that is settled spends on trials Tier 1 cannot vouch for."
+            )
         if tier1.knob_count == 0:
             return (
                 f"{len(tier1.entry_points)} entry point(s) declare 0 knobs, so "
                 "every trial would evaluate the same configuration. Define a "
                 "configuration space first with `traigent-optimize-config-space`; "
                 "there is nothing for a run to search yet."
-            )
-        if tier1.read_knob_count == 0:
-            return (
-                f"{tier1.knob_count} knob(s) are declared and the decorated body "
-                "reads none of them, so varying them cannot change the output. "
-                "Rework the configuration space with "
-                "`traigent-optimize-config-space` before spending anything."
             )
         missing = []
         if not tier1.datasets:
@@ -631,6 +768,23 @@ def motivation(check_id: str, tier1: Tier1, run_id: str | None) -> str:
             "tuning moves the score is the one question only a real run answers."
         )
     if check_id == "stop-here":
+        if tier1.stale_all_clear:
+            subjects = tier1.stale_subjects
+            names = [name for name, _ in subjects]
+            subject = (names[0] if len(names) == 1
+                       else f"{', '.join(names[:-1])} and {names[-1]}")
+            verb = "does" if len(names) == 1 else "do"
+            # Two areas missing from the report share one detail; say it once.
+            details = "; ".join(dict.fromkeys(detail for _, detail in subjects if detail))
+            root = shlex.quote(tier1.root) if tier1.root else "<project>"
+            return (
+                f"This report records the all-clear, but its own {subject} {verb} "
+                f"not support it{f' ({details})' if details else ''} — "
+                "it was written by an older audit or edited. Re-run the free audit "
+                "before anything else, with the same options you used before (for "
+                "example --scorer, --dataset, --repeats): audit_project.py --root "
+                f"{root} --json {shlex.quote(str(tier1.path))}"
+            )
         return (
             "Tier 1 named a local next step and it is still open: "
             f"{tier1.next_step_line or 'not recorded'} Every reader above needs a "
@@ -679,7 +833,9 @@ def recommended_id(tier1: Tier1, run_id: str | None,
                    offered: list[str]) -> str | None:
     """One recommendation, chosen by Tier 1's own ladder.
 
-    Two rules, in this order:
+    A stored all-clear that the report's own area or probe evidence does not
+    support (``Tier1.stale_all_clear``) is answered first, in either mode:
+    re-run the audit. Then two rules, in this order:
 
     1. With a completed run in hand, read it — a scorer nobody trusts is read
        about before a dataset is grown, because the dataset would otherwise be
@@ -691,6 +847,8 @@ def recommended_id(tier1: Tier1, run_id: str | None,
        still abstain. `plan` is recommended only when Tier 1 found nothing left
        to fix locally, which is exactly when sizing a first run is the question.
     """
+    if tier1.stale_all_clear and "stop-here" in offered:
+        return "stop-here"
     if run_id:
         if tier1.branch in {"d", "e"} and "evaluator-quality" in offered:
             return "evaluator-quality"
@@ -1201,19 +1359,15 @@ def provider_for(model_id: str) -> str | None:
     return None
 
 
-def run_cli(argv: list[str], subprocesses: list[dict], out: list[str]) -> dict | None:
+def run_cli(argv: list[str], executable: str, subprocesses: list[dict],
+            out: list[str]) -> dict | None:
     """Run one `traigent` command, record its argv, and return parsed JSON.
 
     The key is never on the command line: the SDK reads it from the environment
     this process already has, so the recorded argv is safe to print and to keep.
+    `executable` is the CLI `execute` resolved on PATH before anything ran; the
+    recorded argv keeps its `traigent` spelling.
     """
-    executable = shutil.which(argv[0])
-    if executable is None:
-        out.append(
-            f"  `{argv[0]}` is not on PATH, so this check cannot run. Install the "
-            "SDK (`pip install \"traigent>=0.27.0\"`) and try again."
-        )
-        return None
     record: dict = {"argv": list(argv)}
     try:
         completed = subprocess.run(
@@ -1251,7 +1405,8 @@ def run_cli(argv: list[str], subprocesses: list[dict], out: list[str]) -> dict |
         return None
 
 
-def run_model_ids(tier1: Tier1, subprocesses: list[dict], api_key: str,
+def run_model_ids(tier1: Tier1, executable: str, subprocesses: list[dict],
+                  key_value: str,
                   out: list[str]) -> dict:
     record: dict = {"check": "model-ids", "results": []}
     for model_id in tier1.model_ids:
@@ -1268,13 +1423,14 @@ def run_model_ids(tier1: Tier1, subprocesses: list[dict], api_key: str,
         payload = run_cli(
             ["traigent", "models", "--provider", provider, "--check", model_id,
              "--json"],
+            executable,
             subprocesses,
             out,
         )
         if payload is None:
             record["results"].append({"model_id": model_id, "relayed": False})
             continue
-        dumped = safe_dump(payload, api_key)
+        dumped = safe_dump(payload, key_value)
         if dumped is None:
             out.append("  the output echoed a value equal to your API key; not shown.")
             record["results"].append({"model_id": model_id, "relayed": False})
@@ -1286,8 +1442,10 @@ def run_model_ids(tier1: Tier1, subprocesses: list[dict], api_key: str,
     return record
 
 
-def run_plan(tier1: Tier1, args, backend_url: str, subprocesses: list[dict],
-             api_key: str, out: list[str]) -> dict:
+def run_plan(tier1: Tier1, args, backend_url: str, executable: str,
+             subprocesses: list[dict],
+             key_value: str,
+             out: list[str]) -> dict:
     task = args.task or default_task(tier1)
     argv = [
         "traigent", "plan",
@@ -1305,11 +1463,11 @@ def run_plan(tier1: Tier1, args, backend_url: str, subprocesses: list[dict],
         f"row count), holdout {'yes' if tier1.has_holdout else 'no'}, max-trials "
         f"{args.max_trials}, cost-limit {args.cost_limit} USD (your cap)."
     )
-    payload = run_cli(argv, subprocesses, out)
+    payload = run_cli(argv, executable, subprocesses, out)
     record: dict = {"check": "plan", "relayed": False}
     if payload is None:
         return record
-    dumped = safe_dump(payload, api_key)
+    dumped = safe_dump(payload, key_value)
     if dumped is None:
         out.append("  the output echoed a value equal to your API key; not shown.")
         return record
@@ -1402,7 +1560,7 @@ def render_card(check: Check, tier1: Tier1, run_id: str | None, backend_url: str
     lines.append(f"Stop rule           : {check.stop_rule}")
     if check.id == "stop-here":
         lines.append(
-            "How to take it      : do nothing here. Act on the Tier 1 next step "
+            "How to take it      : do nothing here. Act on the local next step "
             "quoted above; this card needs no approval, and `--approve "
             "stop-here` is an error."
         )
@@ -1492,6 +1650,26 @@ def invocation_for(check_id: str, args, script: str) -> str:
 # --------------------------------------------------------------------------
 
 
+def _finite_above_zero(text: str) -> float:
+    try:
+        value = float(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a number") from None
+    if not math.isfinite(value) or value <= 0:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a finite number above zero")
+    return value
+
+
+def _at_least_one(text: str) -> int:
+    try:
+        value = int(text)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{text!r} is not a whole number") from None
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"{text!r} is below 1")
+    return value
+
+
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="tier2_checks.py",
@@ -1513,9 +1691,9 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--task", help="task description sent to the planning service")
     parser.add_argument("--objective", default=DEFAULT_OBJECTIVE,
                         help=f"objective name for the plan (default {DEFAULT_OBJECTIVE})")
-    parser.add_argument("--max-trials", type=int, default=DEFAULT_MAX_TRIALS,
+    parser.add_argument("--max-trials", type=_at_least_one, default=DEFAULT_MAX_TRIALS,
                         help=f"trial ceiling for the plan (default {DEFAULT_MAX_TRIALS})")
-    parser.add_argument("--cost-limit", type=float,
+    parser.add_argument("--cost-limit", type=_finite_above_zero,
                         help="YOUR spend cap in USD, required by the plan check")
     parser.add_argument("--backend-url",
                         help=f"backend base URL (else ${BACKEND_URL_ENV_NAME}, "
@@ -1523,7 +1701,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--receipt", help="write the request/process receipt here")
     parser.add_argument("--json", dest="json_out",
                         help="also write this run's record as JSON")
-    parser.add_argument("--timeout", type=float, default=DEFAULT_TIMEOUT_SECONDS,
+    parser.add_argument("--timeout", type=_finite_above_zero, default=DEFAULT_TIMEOUT_SECONDS,
                         help="per-request timeout in seconds")
     return parser.parse_args(argv)
 
@@ -1636,6 +1814,20 @@ def execute(args, tier1: Tier1, backend_url: str, invocations: dict[str, str]) -
         )
         return 2
 
+    # Resolve the CLI once, before anything is attempted: a CLI check that
+    # cannot spawn did not run, and exit 0 means the approved checks ran.
+    cli_checks = [check_id for check_id in approved if check_id in CLI_CHECKS]
+    executable = shutil.which("traigent") if cli_checks else None
+    if cli_checks and executable is None:
+        print(
+            "tier2_checks.py: `traigent` is not on PATH, so "
+            + ", ".join(f"`{check_id}`" for check_id in cli_checks)
+            + ' cannot run. Install the SDK (`pip install "traigent>=0.27.0"`) '
+            "and try again. No approved check was attempted.",
+            file=sys.stderr,
+        )
+        return 2
+
     transport = Transport(
         backend_url=backend_url,
         api_key=api_key,
@@ -1668,10 +1860,12 @@ def execute(args, tier1: Tier1, backend_url: str, invocations: dict[str, str]) -
             elif check_id == "list-runs":
                 records.append(run_list_runs(transport, out))
             elif check_id == "model-ids":
-                records.append(run_model_ids(tier1, subprocesses, api_key, out))
+                records.append(run_model_ids(tier1, executable, subprocesses, api_key,
+                                             out))
             elif check_id == "plan":
                 records.append(
-                    run_plan(tier1, args, backend_url, subprocesses, api_key, out)
+                    run_plan(tier1, args, backend_url, executable, subprocesses, api_key,
+                             out)
                 )
             out.append("")
     finally:
