@@ -10,10 +10,18 @@ from __future__ import annotations
 
 import json
 import re
+import shlex
 import shutil
 from pathlib import Path
 
-from conftest import FIXTURES, _tier1_report, recorded_argv, run_tier2
+import pytest
+from conftest import (
+    FIXTURES,
+    _tier1_report,
+    healthy_variant,
+    recorded_argv,
+    run_tier2,
+)
 from tier2_fake_backend import LOCAL_SESSION_ID, RUN_ID, FakeBackend
 
 
@@ -433,3 +441,273 @@ def test_no_card_promises_a_finding_it_cannot_produce(healthy_tier1: Path) -> No
     assert "settles" not in out
     # Every card carries the caveat line that keeps the offer honest.
     assert out.count("Caveat              :") == out.count("APPROVAL CARD")
+
+
+# A report written by an older audit can carry branch `g` over a probe the
+# current rule does not call ready. Each mutation keeps the stored branch.
+STALE_PROBES = (
+    "errors",
+    "infinity",
+    "dropped_errors",
+    "legacy_dropped_key",
+    "huge_int",
+    "blocked",
+    "string_scores",
+    "string_errors",
+)
+
+
+def _make_stale(probe: dict, how: str) -> None:
+    if how == "legacy_dropped_key":
+        # An older parent dropped an error record it could not name and kept
+        # only the count, so the scores alone look complete.
+        probe.clear()
+        probe.update(
+            {
+                "ran": True,
+                "scores": {"good": [1.0], "partial": [0.5], "bad": [0.0]},
+                "dropped_keys": 1,
+            }
+        )
+    elif how == "huge_int":
+        # Valid JSON, finite, and too large for a float.
+        probe["scores"]["good"] = [10**400] * len(probe["scores"]["good"])
+    elif how == "blocked":
+        # No symptom text to quote.
+        probe.clear()
+        probe.update({"ran": False, "network_blocked": True})
+    elif how == "string_scores":
+        # Malformed stored data the parent would never have written.
+        probe["scores"]["good"] = ["1.0"]
+    elif how == "string_errors":
+        probe["errors"] = ["RuntimeError"]
+    elif how == "errors":
+        probe["errors"] = [
+            {"case": "partial", "error_type": "RuntimeError", "error_site": "scorer.py:6"}
+        ]
+    elif how == "infinity":
+        # Written with json.dumps' default, so it lands as a legacy `Infinity`.
+        probe["scores"]["good"] = [float("inf")] * len(probe["scores"]["good"])
+    else:
+        probe["scores"]["partial"] = []
+        probe.pop("errors", None)
+
+
+@pytest.mark.parametrize("run_id", [None, RUN_ID], ids=["no-run-id", "run-id"])
+@pytest.mark.parametrize("how", STALE_PROBES)
+def test_a_stale_all_clear_recommends_rerunning_the_audit(
+    how: str, run_id: str | None, healthy_tier1: Path, tmp_path: Path
+) -> None:
+    report = json.loads(healthy_tier1.read_text(encoding="utf-8"))
+    assert report["next_step"]["branch"] == "g"
+    _make_stale(report["scorer_probe"], how)
+    # Paths a shell would split, so the quoted command is the one to paste.
+    report["root"] = str(tmp_path / "my project")
+    stale = tmp_path / "stale report.json"
+    stale.write_text(json.dumps(report), encoding="utf-8")
+    completed = run_tier2(
+        "--from-audit", str(stale), *(("--run-id", run_id) if run_id else ())
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "Traceback" not in completed.stderr
+    out = completed.stdout
+    assert out.count("(recommended)") == 1
+    assert "APPROVAL CARD — stop-here   (recommended)" in out
+    assert "APPROVAL CARD — plan   (recommended)" not in out
+    card = _card(out, "stop-here")
+    assert "all-clear" in card
+    assert "written by an older audit or edited" in card
+    assert "with the same options you used before (for example --scorer" in card
+    command = (
+        f"audit_project.py --root {shlex.quote(report['root'])} "
+        f"--json {shlex.quote(str(stale))}"
+    )
+    assert command in card
+    if how == "blocked":
+        assert "does not support it —" in card
+        assert "()" not in card
+    if how.startswith("string_"):
+        assert "(its stored probe result could not be read)" in card
+
+
+def test_a_fresh_mixed_error_report_is_not_called_repeatable(tmp_path: Path) -> None:
+    project = tmp_path / "partial-raise"
+    shutil.copytree(FIXTURES / "healthy", project)
+    (project / "scorer.py").write_text(
+        "def score(output, expected):\n"
+        "    if output == expected:\n        return 1.0\n"
+        "    if expected.startswith(output):\n"
+        "        raise RuntimeError('partial')\n"
+        "    return 0.0\n",
+        encoding="utf-8",
+    )
+    report = _tier1_report(project, tmp_path / "tier1")
+
+    without = run_tier2("--from-audit", str(report))
+    assert without.returncode == 0, without.stderr
+    assert "APPROVAL CARD — stop-here   (recommended)" in without.stdout
+    assert without.stdout.count("(recommended)") == 1
+
+    with_run = run_tier2("--from-audit", str(report), "--run-id", RUN_ID)
+    assert with_run.returncode == 0, with_run.stderr
+    assert "APPROVAL CARD — evaluator-quality   (recommended)" in with_run.stdout
+    card = _card(with_run.stdout, "evaluator-quality")
+    # Not judged: a raised call leaves the reading not established.
+    assert "NOT reliable" not in card
+    assert re.search(
+        r"scored some probe calls and 1 probe call\(s\) raised RuntimeError"
+        r" at scorer\.py:\d+",
+        card,
+    ), card
+    assert "not established that a run would get a usable score" in card
+    assert "rule out the probe's own conditions" in card
+    assert "measuring the scorer" not in card
+    assert "found it repeatable" not in card
+
+
+def test_a_probe_with_no_finite_score_is_not_called_repeat_scored(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "all-nan"
+    shutil.copytree(FIXTURES / "healthy", project)
+    (project / "scorer.py").write_text(
+        "def score(output, expected):\n    return float('nan')\n", encoding="utf-8"
+    )
+    report = _tier1_report(project, tmp_path / "tier1")
+    completed = run_tier2("--from-audit", str(report), "--run-id", RUN_ID)
+    assert completed.returncode == 0, completed.stderr
+    card = _card(completed.stdout, "evaluator-quality")
+    assert "repeat-scored" not in card
+    assert "Tier 1 probed your scorer and it produced no finite score" in card
+
+
+@pytest.fixture(scope="module")
+def variant_tier1(tmp_path_factory):
+    """A Tier 1 report per healthy-fixture mutation, written once per module."""
+    made: dict[str, Path] = {}
+
+    def make(mutation: str) -> Path:
+        if mutation not in made:
+            base = tmp_path_factory.mktemp(mutation)
+            made[mutation] = _tier1_report(
+                healthy_variant(base, mutation), base / "tier1"
+            )
+        return made[mutation]
+
+    return make
+
+
+# Each mutation leaves one Tier 1 area reading `attention`.
+ATTENTION_AREAS = {
+    "partly_unread": "agent",
+    "space_not_inventoried": "agent",
+    "kwargs": "agent",
+    "unparsed_helper": "agent",
+    "no_gold": "dataset",
+    "holdout_leak": "dataset",
+}
+
+
+@pytest.mark.parametrize("mutation", list(ATTENTION_AREAS))
+def test_tier2_agrees_with_an_attention_tier1(
+    mutation: str, variant_tier1, healthy_tier1: Path
+) -> None:
+    """An area Tier 1 left open is local work: Tier 2 says stop, not plan."""
+    report_path = variant_tier1(mutation)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    assert report["areas"][ATTENTION_AREAS[mutation]]["status"] == "attention"
+    completed = run_tier2("--from-audit", str(report_path))
+    assert completed.returncode == 0, completed.stderr
+    out = completed.stdout
+    assert out.count("(recommended)") == 1
+    assert "APPROVAL CARD — stop-here   (recommended)" in out
+    assert "APPROVAL CARD — plan   (recommended)" not in out
+    assert report["next_step"]["branch"] != "g"
+    # Control: with every area clear, the plan is still what is offered first.
+    control = run_tier2("--from-audit", str(healthy_tier1))
+    assert control.returncode == 0, control.stderr
+    assert "APPROVAL CARD — plan   (recommended)" in control.stdout
+
+
+# The fragment of Tier 1's knob reading the plan card must carry.
+KNOB_READINGS = {
+    "kwargs": "read through a mapping",
+    "space_not_inventoried": "was not inventoried",
+    "partly_unread": "never reads 1 of them",
+}
+
+
+@pytest.mark.parametrize("mutation", list(KNOB_READINGS))
+def test_tier2_quotes_tier1s_knob_reading(mutation: str, variant_tier1) -> None:
+    """The cards quote Tier 1's own sentence; they never recount the knobs into
+    "0 knobs" or "reads none of them"."""
+    report_path = variant_tier1(mutation)
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    completed = run_tier2("--from-audit", str(report_path))
+    assert completed.returncode == 0, completed.stderr
+    bounded = _card(completed.stdout, "bounded-run")
+    assert report["next_step"]["line"] in bounded
+    assert "declare 0 knobs" not in bounded
+    assert "reads none of them" not in bounded
+    plan = _card(completed.stdout, "plan")
+    assert "declare 0 knobs" not in plan
+    assert "sizes a first run from exactly" not in plan
+    assert KNOB_READINGS[mutation] in plan
+
+
+# Each way a stored all-clear can sit over area evidence that does not support
+# it, and the subjects the stop-here card must then name.
+STALE_AREAS = {
+    "agent_status": ("Agent area",),
+    "dataset_status": ("Dataset area",),
+    "no_areas": ("Agent area", "Dataset area"),
+    "edited_knob": ("Agent area",),
+    "restamped_kwargs_report": ("Agent area",),
+}
+
+
+@pytest.mark.parametrize("run_id", [None, RUN_ID], ids=["no-run-id", "run-id"])
+@pytest.mark.parametrize("how", list(STALE_AREAS))
+def test_a_stored_all_clear_over_an_attention_area_is_stale(
+    how: str, run_id: str | None, healthy_tier1: Path, variant_tier1, tmp_path: Path
+) -> None:
+    healthy = json.loads(healthy_tier1.read_text(encoding="utf-8"))
+    assert healthy["next_step"]["branch"] == "g"
+    report = json.loads(healthy_tier1.read_text(encoding="utf-8"))
+    if how == "agent_status":
+        report["areas"]["agent"]["status"] = "attention"
+    elif how == "dataset_status":
+        report["areas"]["dataset"]["status"] = "attention"
+    elif how == "no_areas":
+        del report["areas"]
+    elif how == "edited_knob":
+        # The areas still read `ok`; the stored knobs say otherwise.
+        report["entry_points"][0]["knobs"][0]["status"] = (
+            "possibly read through a config mapping"
+        )
+    else:
+        report = json.loads(variant_tier1("kwargs").read_text(encoding="utf-8"))
+        report["next_step"] = healthy["next_step"]
+    report["root"] = str(tmp_path / "my project")
+    stale = tmp_path / "stale report.json"
+    stale.write_text(json.dumps(report), encoding="utf-8")
+    completed = run_tier2(
+        "--from-audit", str(stale), *(("--run-id", run_id) if run_id else ())
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert "Traceback" not in completed.stderr
+    out = completed.stdout
+    assert out.count("(recommended)") == 1
+    assert "APPROVAL CARD — stop-here   (recommended)" in out
+    card = _card(out, "stop-here")
+    assert "all-clear" in card
+    assert "written by an older audit or edited" in card
+    command = (
+        f"audit_project.py --root {shlex.quote(report['root'])} "
+        f"--json {shlex.quote(str(stale))}"
+    )
+    assert command in card
+    for subject in ("Agent area", "Dataset area", "scorer probe"):
+        assert (subject in card) == (subject in STALE_AREAS[how]), (subject, card)
+    if how in {"edited_knob", "restamped_kwargs_report"}:
+        assert "read through a mapping the parser cannot follow" in card

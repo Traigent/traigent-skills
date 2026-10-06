@@ -23,6 +23,7 @@ import threading
 from pathlib import Path
 
 import pytest
+from conftest import strict_json
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 SCRIPT = SCRIPTS_DIR / "audit_project.py"
@@ -385,6 +386,203 @@ def test_the_probe_frames_its_own_result_line() -> None:
     assert json.loads(framed[0][len(audit.RESULT_MARKER) :])["ran"] is True
 
 
+# A single framed line is the one the parent trusts, so a module that prints it
+# at load and ends the process before the probe can print its own is the
+# strongest forgery there is. Its numbers are written as raw JSON text.
+FORGED_NUMBERS = {
+    "Infinity": "Infinity",
+    "NaN": "NaN",
+    "-Infinity": "-Infinity",
+    "1e999": "1e999",
+    "digits400": "1" + "0" * 400,
+}
+
+
+def _forge(root: Path, line: str) -> None:
+    """A scorer module that prints ``line`` as the framed result and exits."""
+    forged = audit.RESULT_MARKER + line + "\n"
+    (root / "scorer.py").write_text(
+        "import os\nimport sys\n\n"
+        f"sys.stdout.write({forged!r})\n"
+        "sys.stdout.flush()\n"
+        "os._exit(0)\n\n\n"
+        "def score(output, expected):\n    return 1.0\n",
+        encoding="utf-8",
+    )
+
+
+@pytest.mark.parametrize("label", sorted(FORGED_NUMBERS))
+def test_a_forged_framed_line_with_bad_numbers_is_tampered(
+    label: str, tmp_path: Path
+) -> None:
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    _forge(
+        root,
+        '{"ran": true, "scores": {"good": ['
+        + FORGED_NUMBERS[label]
+        + '], "partial": [0.5], "bad": [0.0]}, "errors": []}',
+    )
+    report, _ = _run(root, tmp_path / "out")
+    strict_json((tmp_path / "out" / "report.json").read_text(encoding="utf-8"))
+    probe = report["scorer_probe"]
+    assert probe["ran"] is False, probe
+    assert probe["stage"] == "tampered-result"
+    assert report["next_step"]["branch"] == "e"
+
+
+# Healthy scores; the non-finite number sits in a key the parent would drop.
+HEALTHY_FORGED = '"ran": true, "scores": {"good": [1.0], "partial": [0.5], "bad": [0.0]}'
+
+
+@pytest.mark.parametrize(
+    "extra", ['"extra": NaN', '"repeats": 1e999'], ids=["constant", "float"]
+)
+def test_a_non_finite_number_anywhere_in_the_line_is_tampered(
+    extra: str, tmp_path: Path
+) -> None:
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    _forge(root, "{" + HEALTHY_FORGED + ', "errors": [], ' + extra + "}")
+    report, _ = _run(root, tmp_path / "out")
+    probe = report["scorer_probe"]
+    assert probe["ran"] is False, probe
+    assert probe["stage"] == "tampered-result"
+
+
+def test_a_forged_repeats_count_is_not_copied(tmp_path: Path) -> None:
+    """The child never sends `repeats`: a forged one is a dropped key, so
+    otherwise healthy scores are not ready."""
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    _forge(root, "{" + HEALTHY_FORGED + ', "errors": [], "repeats": 987654}')
+    report, _ = _run(root, tmp_path / "out")
+    text = (tmp_path / "out" / "report.json").read_text(encoding="utf-8")
+    strict_json(text)
+    assert "987654" not in text
+    assert "repeats" not in report["scorer_probe"]
+    assert report["scorer_probe"]["dropped_keys"] == 1
+    assert report["areas"]["scorer"]["status"] != "ok"
+    assert report["next_step"]["branch"] != "g"
+
+
+def test_a_huge_int_hidden_by_a_duplicate_key_is_tampered(tmp_path: Path) -> None:
+    """The decoder keeps only the last of two `good` keys, so a 400-digit int in
+    the first is refused while decoding or never at all."""
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    first = '"good": [' + "9" * 400 + "], "
+    forged = HEALTHY_FORGED.replace('"good": ', first + '"good": ')
+    _forge(root, "{" + forged + ', "errors": []}')
+    report, _ = _run(root, tmp_path / "out")
+    probe = report["scorer_probe"]
+    assert probe["ran"] is False, probe
+    assert probe["stage"] == "tampered-result"
+    assert report["next_step"]["branch"] != "g"
+
+
+def test_an_unhashable_case_does_not_crash_the_parent(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    _forge(root, "{" + HEALTHY_FORGED + ', "errors": [], "case": []}')
+    report, _ = _run(root, tmp_path / "out")
+    assert "case" not in report["scorer_probe"]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [10**400, float("inf"), float("nan"), "1.0"],
+    ids=["huge-int", "inf", "nan", "string"],
+)
+def test_validate_refuses_unconvertible_scores(value: object) -> None:
+    try:
+        clean, _ = audit.validate_probe_payload(
+            {"ran": True, "scores": {"good": [value]}}
+        )
+    except OverflowError as exc:
+        raise AssertionError(f"validation raised {type(exc).__name__}") from exc
+    assert clean == {"ran": False, "stage": "tampered-result"}
+
+
+def test_clean_error_keeps_records_it_cannot_name() -> None:
+    """A type name that fails the identifier check is withheld, not the record:
+    dropping the record made a raised call vanish from the evidence."""
+    for kind in ("Échec", "E" * 80):
+        assert audit._clean_error(
+            {"case": "partial", "error_type": kind, "error_site": "scorer.py:4"}
+        ) == {"case": "partial", "error_type": None, "error_site": "scorer.py:4"}
+    withheld = {"case": "good", "error_type": None, "error_site": None}
+    assert audit._clean_error({**withheld, "non_finite": True}) == {
+        **withheld,
+        "non_finite": True,
+    }
+    assert audit._clean_error({**withheld, "non_finite": "yes"}) == withheld
+    assert audit._clean_error("RuntimeError") is None
+    named = {"case": "good", "error_type": "RuntimeError", "error_site": "scorer.py:6"}
+    clean, _ = audit.validate_probe_payload(
+        {
+            "ran": True,
+            "errors": [
+                named,
+                {"case": "partial", "error_type": "Échec", "error_site": "scorer.py:4"},
+            ],
+        }
+    )
+    assert clean["errors"] == [
+        named,
+        {"case": "partial", "error_type": None, "error_site": "scorer.py:4"},
+    ]
+
+
+def _probe_directly(tmp_path: Path, body: str) -> dict:
+    """Run the probe child on a one-line scorer, outside the audit."""
+    module = tmp_path / "scorer.py"
+    module.write_text(f"def score(output, expected):\n    {body}\n", encoding="utf-8")
+    request = {
+        "module": str(module),
+        "root": str(tmp_path),
+        "function": "score",
+        "good": "a value",
+        "partial": "a",
+        "bad": "another value",
+        "repeats": 2,
+    }
+    completed = subprocess.run(
+        [sys.executable, str(SCRIPTS_DIR / "scorer_probe.py"), "--request-stdin"],
+        input=json.dumps(request),
+        capture_output=True,
+        text=True,
+        timeout=120,
+        check=False,
+    )
+    framed = [
+        line
+        for line in completed.stdout.splitlines()
+        if line.startswith(audit.RESULT_MARKER)
+    ]
+    assert len(framed) == 1, completed.stdout
+    return strict_json(framed[0][len(audit.RESULT_MARKER) :])
+
+
+def test_the_child_withholds_a_non_finite_score(tmp_path: Path) -> None:
+    result = _probe_directly(
+        tmp_path, "return float('inf') if output == expected else 0.0"
+    )
+    assert result["errors"] == [
+        {"case": "good", "error_type": None, "error_site": None, "non_finite": True}
+    ]
+    assert result["scores"]["good"] == []
+    assert result["scores"]["bad"] == [0.0]
+
+
+def test_the_child_reports_a_huge_int_as_an_ordinary_error(tmp_path: Path) -> None:
+    """10**400 is finite: it fails conversion, it is not a non-finite score."""
+    result = _probe_directly(tmp_path, "return 10**400")
+    assert result["errors"], result
+    assert {error["error_type"] for error in result["errors"]} == {"OverflowError"}
+    assert not any("non_finite" in error for error in result["errors"])
+
+
 # --------------------------------------------------------------------------
 # NEW-3 — the sandbox must not hide the project
 # --------------------------------------------------------------------------
@@ -455,14 +653,14 @@ def test_the_classifier_reads_the_scorers_own_file_only(tmp_path: Path) -> None:
         "    return 1.0 if normalize(output) == normalize(expected) else 0.0\n",
         encoding="utf-8",
     )
-    kind, _ = audit.classify_module_function(scorer, "score")
+    kind, _, _ = audit.classify_module_function(scorer, "score")
     assert kind == "deterministic"
     # Control: the same import in the scorer's own file is refused.
     scorer.write_text(
         "import subprocess\n\ndef score(output, expected):\n    return 1.0\n",
         encoding="utf-8",
     )
-    kind, _ = audit.classify_module_function(scorer, "score")
+    kind, _, _ = audit.classify_module_function(scorer, "score")
     assert kind == "executing"
 
 

@@ -57,16 +57,19 @@ skills:
       - docs/user-guide/tuned_variables.md
 
   traigent-setup-decorator:
-    # The skill itself still targets the released floor. Only the
-    # winner-stability-reps reference documents an unreleased API, so it
-    # carries a PER-FILE floor instead: raising min_sdk_version to 0.27.0
-    # would make list_buckets.py try to `pip install traigent==0.27.0`,
-    # which does not exist.
+    # The skill itself keeps the released floor. References that document
+    # an API newer than that floor carry PER-FILE floors instead: raising
+    # min_sdk_version would gate the whole skill on the newest API any one
+    # reference needs, turning the floor into a bucket.
     python_version_floors:
       # winner_stability_reps shipped in 0.27.0 (Traigent/Traigent@867a7288,
       # on PyPI since 2026-09-02); the reference states the requirement
       # in prose at the top of the file.
       references/winner-stability-reps.md: "0.27.0"
+      # EvaluationOptions.task_type first shipped in 0.28.0
+      # (Traigent/Traigent#2226); older SDKs follow the no-task_type path in
+      # SKILL.md, which stays unfloored.
+      references/task-type.md: "0.28.0"
     modules:
       - traigent.api.decorators
     sdk_paths:
@@ -243,6 +246,11 @@ skills:
       - traigent/evaluators/hybrid_api.py
 
   traigent-eval-audit:
+    python_version_floors:
+      # EvaluationOptions.task_type first shipped in 0.28.0
+      # (Traigent/Traigent#2226); older SDKs follow the no-task_type path in
+      # SKILL.md, which stays unfloored.
+      references/task-type.md: "0.28.0"
     backend_prefixes:
       - /api/v1/analytics/runs
     modules:
@@ -312,7 +320,11 @@ skills:
     # `traigent models`, whose shape and network behaviour are read out of these
     # SDK sources, and mirrors the gold-key alias order from the SDK evaluator
     # base. Floored at 0.27.0: that is the release those two commands were read
-    # against, and it is already a bucket (current_released_sdk_version).
+    # against. This floor also keeps 0.27.0 -- the last release whose
+    # EvaluationOptions rejects task_type -- a released CI bucket, which
+    # tests/contract/test_audit_378_task_type_floor.py requires (#270/#378).
+    # Raising it drops that bucket and reds that test; keep 0.27.0 a bucket
+    # another way first.
     min_sdk_version: "0.27.0"
     # Tier 2 teaches these backend families directly: the analytics readers, the
     # experiments listing and the experiment-runs listing that turn an experiment
