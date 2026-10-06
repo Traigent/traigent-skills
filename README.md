@@ -74,24 +74,28 @@ These skills were renamed or merged as part of a taxonomy consolidation. No prio
 
 ## Install
 
-### As a plugin (recommended — one step, stays in sync)
+### As a plugin (recommended — one step)
 
-This repo is a plugin marketplace for Claude Code and GitHub Copilot CLI.
+This repo is a plugin marketplace for Claude Code, OpenAI Codex CLI, and GitHub Copilot CLI.
 Installing the `traigent` plugin gives you all 20 skills at once,
-namespaced as `traigent:<skill-name>`, with updates delivered through your
-agent's normal plugin-update flow.
+namespaced as `traigent:<skill-name>`. On Claude Code and Copilot CLI, updates
+arrive through the agent's normal plugin-update flow.
 
 ```bash
 # Claude Code
 /plugin marketplace add Traigent/traigent-skills
 /plugin install traigent@traigent
 
+# OpenAI Codex CLI
+codex plugin marketplace add https://github.com/Traigent/traigent-skills
+codex plugin add traigent@traigent
+
 # GitHub Copilot CLI
 copilot plugin marketplace add Traigent/traigent-skills
 copilot plugin install traigent@traigent
 ```
 
-**Note for OpenAI Codex**: the plugin commands above are for Claude Code and Copilot CLI. For Codex, use the [Codex CLI](#using-with-codex-cli) setup below: it puts the instructions in `AGENTS.md`, which Codex reads, so it does not depend on Codex loading a skills folder or plugin.
+**Note for OpenAI Codex**: Codex loads the plugin's `traigent:*` skills when a new session starts (checked on Codex CLI 0.160.0), so start a new Codex session after installing. Whether `codex plugin marketplace upgrade` updates an installed plugin hasn't been checked. If you mount the skills into a project instead of installing the plugin, use the [Codex CLI](#using-with-codex-cli) `AGENTS.md` setup below.
 
 ### Via `npx skills` (cross-agent, pick individual skills)
 
@@ -139,6 +143,9 @@ done
 ```
 
 ### Using with Codex CLI
+
+If you installed the plugin ([Install](#install), above), you don't need this section: start a new
+Codex session and the `traigent:*` skills load. This section is for skills mounted into a project.
 
 Codex CLI reads `AGENTS.md`, but it may not open skill files you mount into a project on its own:
 in a 20-cell simulation wave, 7 of 7 Codex agents ignored mounted skills. If you mount these skills into a project (e.g. copied to

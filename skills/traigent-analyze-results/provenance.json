@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "cb6760621ddfaedd",
+  "doc_hash": "9091e84b952fec4c",
   "reference_hashes": {
     "references/convergence-patterns.md": "1b074da6b72cce91",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/mcp-analytics-tools.md": "9d4cc7c87db109fd",
+    "references/mcp-analytics-tools.md": "2ec821d7a13eaa1d",
     "references/optimization-result-api.md": "0c7713bc50c16758"
   },
   "entries": [
@@ -352,6 +352,17 @@
       "doc_before_hash": "19d01f5a50c2224b",
       "doc_after_hash": "cb6760621ddfaedd",
       "note": "PR-stack rebase reconciliation: final merge of PR #365's analyze-results edits (audit-2026-09-23-311/311-r2/314/311-r2/311-r2b, all open-PR commits not yet on main when run-cost-guidance-2026-09-26 and unmeasured-cost-030-2026-09-26 landed) with main's tip; doc_hash recomputed over the fully merged SKILL.md (same pattern as merge-main-taxonomy-into-econ-wi-a-2026-07-18). See GAP_EXCEPTIONS in tests/contract/test_provenance.py for the parallel-branch gap this closes on one side.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "mcp-session-activation-results-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "cb6760621ddfaedd",
+      "doc_after_hash": "9091e84b952fec4c",
+      "note": "Issue #383: the analytics MCP prerequisite branches on observable state, not on which session registered the server: analytics_* tools listed -> proceed (confirm before calling the brief); not listed -> check the client's MCP config (e.g. claude mcp list / codex mcp list): not registered -> register, then one restart/reload/reconnect and re-run; registered but not listed -> not loaded yet (not unreachable), one restart/reload/reconnect and re-run. Never re-register a server that is already registered; the portal deep-link may be offered meanwhile. Still not listed after that one restart/reload/reconnect -> step 2's genuine-failure fallback (unchanged). Same branch in references/mcp-analytics-tools.md. Version 1.1.25 -> 1.1.26.",
       "source_type": "agent"
     }
   ]

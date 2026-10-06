@@ -16,7 +16,6 @@ here.
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 
@@ -103,19 +102,19 @@ def test_category_only_in_marketplace_entries() -> None:
 
 def test_readme_documents_plugin_install() -> None:
     readme = (repo_root() / "README.md").read_text(encoding="utf-8")
+    # The Codex commands are required since issue #380: on Codex CLI 0.160.0 (checked
+    # 2026-10-04 for #363) the plugin installed and a new session listed all 19
+    # traigent:* skills. Mounted-skill setups still use the "Using with Codex CLI" section.
     for command in (
         "/plugin marketplace add Traigent/traigent-skills",
         "copilot plugin marketplace add Traigent/traigent-skills",
+        "codex plugin marketplace add https://github.com/Traigent/traigent-skills",
+        "codex plugin add traigent@traigent",
     ):
         assert command in readme, f"README.md is missing plugin install command: {command}"
-    # Note: "codex plugin marketplace add" is intentionally absent from the main install
-    # section: the Codex plugin installs, but a Codex session loading its skills has not
-    # been verified. Users are directed to the "Using with Codex CLI" section instead
-    # (issue #205). While that holds, the README must not advertise a Codex marketplace
-    # either, or the install section contradicts itself (issue #348).
-    if "codex plugin marketplace add" not in readme:
-        advertised = re.search(r"plugin marketplace for[^.]*Codex", readme)
-        assert advertised is None, (
-            "README.md calls the repo a Codex plugin marketplace but gives no Codex "
-            f"plugin command: {advertised.group(0)!r}"
-        )
+    # Codex loads plugin skills when a session starts, so the README must say to start one.
+    # Whitespace is collapsed first so re-wrapping the README note doesn't break the match.
+    assert "start a new Codex session" in " ".join(readme.split())
+    # The pre-#380 note sent Codex users to AGENTS.md "so it does not depend on Codex
+    # loading a skills folder or plugin"; it contradicts the Codex commands above.
+    assert "does not depend on Codex loading" not in readme

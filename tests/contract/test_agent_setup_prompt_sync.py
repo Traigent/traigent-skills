@@ -157,3 +157,17 @@ def test_valid_provenance_append_satisfies_guard() -> None:
     }
 
     assert _provenance_errors(provenance, new_hash) == []
+
+
+def test_prompt_env_rule_matches_quickstart_byte_for_byte() -> None:
+    root = Path(__file__).resolve().parents[2]
+    quickstart = (root / "skills/traigent-setup-quickstart/SKILL.md").read_text()
+    section = quickstart.split("### Using a .env File\n", 1)[1].split("#### ", 1)[0]
+    source_blocks = re.findall(r"^```bash\n(.*?)^```", section, re.M | re.S)
+    prompt = (root / "docs/agent-setup/prompt.md").read_text()
+    key_section = prompt.split("## 3. Add your Traigent API key\n", 1)[1].split("## 4.", 1)[0]
+    prompt_blocks = re.findall(r"^```bash\n(.*?)^```", key_section, re.M | re.S)
+    assert len(source_blocks) == len(prompt_blocks) == 1
+    assert prompt_blocks[0] == source_blocks[0], "the pre-write .env rule has drifted"
+    assert key_section.index("```bash") < key_section.index("- **If a key was pasted")
+    assert "After the block succeeds" in key_section

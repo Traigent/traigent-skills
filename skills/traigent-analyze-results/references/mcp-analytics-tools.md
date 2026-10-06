@@ -19,6 +19,16 @@ Use the absolute path to `traigent-analytics-mcp` when the SDK lives in a virtua
 server's `health_check` and `auth_status` tools report readiness and masked credential status
 with no network call; they are not analytics tools and return no run data.
 
+Confirm the `analytics_*` tools are listed before calling them. If they are not listed, check
+whether `traigent-analytics` is already registered in this client's MCP config (its MCP list
+command, e.g. `claude mcp list` / `codex mcp list`, or the config file). Not registered: register
+it, then have the user restart/reload the session or reconnect once, and re-run the request.
+Registered but not listed: this session has not loaded it yet (it may have been registered from
+another session or terminal) — have the user restart/reload or reconnect once, then re-run; it is
+**not loaded yet**, not unreachable. Never re-register a server that is already registered; the
+portal deep-link can be offered meanwhile. If the tools are still not listed after that one
+restart, reload or reconnect, or a call fails, use the skill's portal deep-link fallback.
+
 ## Registered Tools
 
 Use only these analytics tool names:
