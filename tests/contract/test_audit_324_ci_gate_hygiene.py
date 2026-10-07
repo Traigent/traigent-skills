@@ -51,13 +51,6 @@ def test_backticked_skill_references_resolve_to_catalog_skills() -> None:
     assert not dangling, "skill references outside catalog/skills.json:\n" + "\n".join(dangling)
 
 
-# Skills whose shipped files this guard owns; widen as the other skills are cleaned.
-GUARDED_SKILLS = (
-    "traigent-boost-agent",
-    "traigent-recipe-text2sql",
-    "traigent-debugging",
-    "traigent-ci-safety-gate",
-)
 # sha256 hex digests of the lower-cased private repository names and internal
 # process names this guard forbids. Only digests are stored, so this public file
 # does not itself publish the names. A name is matched as an exact token or as a
@@ -65,6 +58,8 @@ GUARDED_SKILLS = (
 _FORBIDDEN_DIGESTS = frozenset(
     {
         "4b0d52b5fe57a72118686eceb450745490a7845fd8aed3cd70d63a61d6ae83f5",
+        "cc9db4e55c28106dea0d59a6929f34edd957df0ef99da92ab7d6b4728b17e684",
+        "1320c7b34f1ed1a0163612fe60f9d43656c9fe5f0afb2df75aadd1e3908b2f8c",
         "e263d8477cc55c17a893b97f6f157670e08c6e9a4075b64640d36fb8577c11a1",
         "46a4eb38efcb91478fa66e5ee562d06d1fdd8ab589505e8d6b1414c391d234d1",
         "5e4bce6b1241887627c40c217bbbc3449cf1671fee397a1b491e8216ae04e704",
@@ -103,7 +98,7 @@ def _forbidden_in(line: str) -> list[str]:
 
 def _shipped_files() -> list[Path]:
     listed = subprocess.run(
-        ["git", "ls-files", "-z", "--", *(f"skills/{name}" for name in GUARDED_SKILLS)],
+        ["git", "ls-files", "-z", "--", "skills", "README.md", "docs"],
         cwd=ROOT, capture_output=True, check=True,
     ).stdout.decode("utf-8")
     return [ROOT / rel for rel in listed.split("\0") if rel]
@@ -111,14 +106,14 @@ def _shipped_files() -> list[Path]:
 
 def test_no_private_repository_or_internal_process_names_in_shipped_skill_files() -> None:
     files = _shipped_files()
-    assert files, "git ls-files returned nothing for the guarded skills"
+    assert files, "git ls-files returned nothing for the public payload"
     hits = [
         f"{path.relative_to(ROOT)}:{number}: {match!r}"
         for path in files
         for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1)
         for match in _forbidden_in(line)
     ]
-    assert not hits, "private repository / internal process names in public skill files:\n" + "\n".join(hits)
+    assert not hits, "private repository / internal process names in public skills and docs:\n" + "\n".join(hits)
     assert "track progress at https://" not in "".join(p.read_text(encoding="utf-8") for p in files)
 
 

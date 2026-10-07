@@ -325,7 +325,7 @@ def test_list_runs_reports_completed_runs_newest_first(
     assert f"portal run id : {RUN_ID}" in summary
     assert "project id    : project_personal_66c1223ef6a64ce8a7cce5fbeb777479" in summary
     assert "experiment id : cbb7bf81-06cb-4677-aa82-19bf8627afab" in summary
-    assert "experiment    : ruler-dev-001" in summary
+    assert "experiment    : offline-test-experiment" in summary
     assert "status        : completed" in summary
     assert "completed_at  : 2026-09-13T09:12:00Z" in summary
     assert "configuration runs: 8" in summary

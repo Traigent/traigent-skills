@@ -1,5 +1,7 @@
 # Phase E — spine staleness integration + human-gated SkillOpt remediation
 
+Maintainer sketch: `internal-skill-source` is an opaque placeholder for the separately maintained internal skill source; resolve it in the maintainer environment before using these paths.
+
 The contract program (phases A–D + the upstream gate C) is the enforcement core and is **live**:
 skills fail CI when they teach a non-existent SDK symbol, MCP tool, JS export, or backend route;
 new interfaces with no skill are flagged; and upstream PRs can run the contract against their own
@@ -14,7 +16,7 @@ proper governed path for each.
 skill drift in the spine dashboard/posture, not just CI.
 
 **Why a spec, not an edit here:** `ops/_validation/catalog/artifacts.yaml` and `impact.py` are the
-spine governance core; per the workspace rules a change to them is a governed spine ChangeSession,
+spine governance core; per the workspace rules a change to them is a governed change session,
 not an ad-hoc edit. Implement via `/spine:change`.
 
 **Reuse:** `validation_spine.artifact_registry.dependency_staleness()` already implements
@@ -26,12 +28,12 @@ lists its inputs. No new mechanism — just register skills.
 
 ```yaml
 - id: artifact:skill_contract:mcp
-  path: skills/agents-skills/tests/data/mcp_tools_snapshot.json
+  path: skills/internal-skill-source/tests/data/mcp_tools_snapshot.json
   kind: vendored_snapshot
   artifact_domain: learning_material
   subject_domains: [traigent_product, spine_system]
-  producer: agents-skills.tools.contract.refresh_mcp_tools
-  consumers: [agents-skills.tests.contract.test_mcp]
+  producer: internal-skill-source.tools.contract.refresh_mcp_tools
+  consumers: [internal-skill-source.tests.contract.test_mcp]
   gate_impact: advisory
   status: active
   derived_from:
@@ -60,7 +62,7 @@ lists its inputs. No new mechanism — just register skills.
   gate_impact: advisory
   status: active
   derived_from:
-    - (TraigentBackend route source files; pinned by commit_sha in the snapshot header)
+    - (Traigent backend route source files; pinned by commit_sha in the snapshot header)
 ```
 
 **impact.py extension:** in `build_impact_report()`, after the module/UCM/gap traversal, add a
@@ -128,6 +130,6 @@ A human reviews the diff. This makes the remediation a *suggestion*, never an un
 
 ## Recommended sequencing
 
-1. **E1** as a spine ChangeSession (`/spine:change`) — additive, advisory `gate_impact`, low risk.
+1. **E1** as a governed change session (`/spine:change`) — additive, advisory `gate_impact`, low risk.
 2. **E2** after the SkillOpt live-training path is owner-approved for unattended dry-runs; arm with a
    `SKILLOPT_TOKEN` and keep it `workflow_dispatch`-only + draft-PR until trust is established.

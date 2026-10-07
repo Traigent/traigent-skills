@@ -20,6 +20,14 @@ wall clock; whichever is hit first stops the run with `stop_reason="execution_bu
 `results.metadata["execution_budget"]` says which limit it was. Per-run `cost_limit` still
 applies inside each call; the shared cap is the binding one.
 
-It sees only SDK-tracked spend — calls your evaluator or a judge places directly are outside it
-(Traigent/Traigent#2297). It holds its state in one Python object, so it cannot reach across
+It sees only SDK-tracked spend. On SDK 0.28.0+, metric-function judge calls through intercepted clients
+(non-streaming LiteLLM or synchronous LangChain `.invoke`) with usable usage and pricing are
+folded into trial cost and the cost-limit ledger, with a separate `evaluation_cost` metric.
+That breakdown can be dropped at the metric-key ceiling; folded cost remains counted.
+SDK <= 0.27.x, unintercepted provider-SDK/HTTP judges and uncaptured streams are outside this fold.
+The pre-run estimator does not include judge calls: keep judge cost as a separate
+budget line (calls per scored row × price × rows × trials).
+Neither this shared budget nor per-run `cost_limit` is a provider hard billing ceiling: an
+admitted trial and parallel in-flight work can overshoot before the next admission is denied.
+It holds its state in one Python object, so it cannot reach across
 processes: phases that run in separate processes need a cap each.

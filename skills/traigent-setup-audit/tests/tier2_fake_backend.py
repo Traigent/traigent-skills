@@ -3,7 +3,7 @@
 Every payload here is either OBSERVED or LABELLED SYNTHETIC. The observed ones
 are the shapes the live probe of the portal and the customer dogfood run
 recorded on 2026-09-13 (`runs/setup-audit-2026-09-13/tier2-live-probe.md`, and
-`experiments/ruler-dev-001/FINDINGS.md` §6-§7 in the customer project):
+the customer-project findings, sections 6–7):
 
 * evaluator quality ABSTAINS, with `anchor_type: none` and `evaluators: []`;
 * example insights returns zero rows alongside `dataset_quality: low`;
@@ -141,7 +141,7 @@ def experiments_page(count: int = 1, experiment_id: str = EXPERIMENT_ID) -> dict
                     "experiment_id": experiment_id if index == 0
                     else f"{experiment_id}-{index}",
                     "project_id": PROJECT_ID,
-                    "name": "ruler-dev-001",
+                    "name": "offline-test-experiment",
                     "description": "text2sql grader development",
                 }
                 for index in range(count)

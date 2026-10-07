@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.29"
+  version: "1.0.30"
 ---
 
 # Traigent Quickstart
@@ -423,9 +423,15 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
    - **Don't** open via the user's IDE (`code <file>` / `cursor <file>`): it can spawn a
      nested instance that *crashes*, and it hijacks whichever IDE window is focused — so
      `.env` can pop up inside an unrelated project.
-   - **Don't** trust the launcher's exit code as "opened" — a crashed window can still exit 0.
-     Verify the editor process is actually alive (e.g. `pgrep`) **and ask the user to confirm
-     the window appeared.**
+   On Linux, skip GUI launch in a known headless session (neither `DISPLAY` nor
+   `WAYLAND_DISPLAY` is set). A display variable only permits an attempt; it does not prove
+   a working window. SSH alone is not a reason to skip: forwarded/remote GUI may work.
+   Launcher exit status and process matches cannot verify the intended file opened:
+   full-command searches such as `pgrep -f` can match the invoking shell. Ask the user to
+   confirm the intended `.env` window and absolute path. A single-instance editor may reuse
+   an existing window; if its buffer is stale, ask the user to preserve unsaved changes and
+   reload the file. Do not overwrite buffers or automatically relaunch it. If opening is
+   uncertain or fails, have the user open the printed absolute path manually.
 4. **Pick the provider key by detecting the vendor from the project** (its
    `openai` / `anthropic` / `litellm` / Bedrock imports or config). If the vendor is
    ambiguous, undetectable, or the project uses **multiple** providers (e.g. OpenAI *and*
@@ -687,7 +693,7 @@ traigent onboard         # guided first-run setup wizard
 | -------------------------- | ------------------------------------------------------------------- |
 | `traigent quickstart`      | Run the bundled mock-mode demo (keyless, zero-setup, always works)  |
 | `traigent onboard`         | Guided setup for Traigent in this project (API key, project, env)   |
-| `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-3-haiku-20240307` (ID-shape preflight against a shipped snapshot; confirm liveness via the provider's catalog) |
+| `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-haiku-4-5-20251001` (ID-shape preflight against a shipped snapshot; confirm liveness via the provider's catalog) |
 | `traigent generate-config` | Scaffold a full `@traigent.optimize()` config for your function     |
 | `traigent detect-tvars`    | Detect tuned-variable candidates in existing Python files           |
 | `traigent info`            | Show SDK version, environment, and integrations                     |

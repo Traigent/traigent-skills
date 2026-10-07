@@ -27,7 +27,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "902bcf60a89bab6e",
       "doc_after_hash": "7b9256ff96ffba2d",
-      "note": "require confirming a reserved, disjoint holdout slice in Mode A pre-run gathering and make search-vs-promotion evidence explicit in Mode B presentation rules (Traigent/traigent-smartopt#88, #89)",
+      "note": "require confirming a reserved, disjoint holdout slice in Mode A pre-run gathering and make search-vs-promotion evidence explicit in Mode B presentation rules (optimizer implementation review)",
       "source_type": "human"
     },
     {
@@ -170,7 +170,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "51a8c8aea0c8cf0f",
       "doc_after_hash": "368bf51ad808152b",
-      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: weigh next-run cost against conservative value and the value of further information, without overriding the service decision. WI-A of the economics model; Spine-Trail st_6443b96904d7",
+      "note": "point every economics decision at the one canonical reference (docs/shared/economics-characterization.v0.md) instead of restating it per skill: drop cost-avoidance as the default posture in favor of the bounded-investment posture (propose a small capped daily budget when conservative value is positive; record value channel, cap, frozen evaluator, required receipt, and stop rule before spending), and add the mandatory explanation duty (show options, recommend one, explain why in the user's own numbers). Mock validation, explicit paid approval, spend caps, receipts, stop rules, and production safety are unchanged. Role here: weigh next-run cost against conservative value and the value of further information, without overriding the service decision. economics revision of the economics model; independent review record",
       "source_type": "human"
     },
     {
@@ -181,7 +181,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "368bf51ad808152b",
       "doc_after_hash": "59464aba14a2deb3",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7 Additionally, restore this skill's thin-client boundary: it collects and relays the characterization and presents ONLY a service-authored budget — it does not compute, adjust, or recommend a budget locally, and when the service returns no economics result it says so and stops or falls back with no budget number rather than inventing one (regression-linted in tests/contract/test_economics_reference.py).",
+      "note": "repair the economics-reference wiring after review (independent review findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. Independent review repaired the economics model. Additionally, restore this skill's thin-client boundary: it collects and relays the characterization and presents ONLY a service-authored budget — it does not compute, adjust, or recommend a budget locally, and when the service returns no economics result it says so and stops or falls back with no budget number rather than inventing one (regression-linted in tests/contract/test_economics_reference.py).",
       "source_type": "human"
     },
     {
@@ -192,7 +192,7 @@
       "timestamp": "2026-07-18T00:00:00Z",
       "doc_before_hash": "59464aba14a2deb3",
       "doc_after_hash": "e3bc28c725cd680e",
-      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics WI-A edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
+      "note": "three-way merge of main's plugin-taxonomy metadata (PR #236) with the economics economics revision edits; doc_hash recomputed over the merged SKILL.md; audit entries from both sides retained.",
       "source_type": "human"
     },
     {
@@ -203,7 +203,7 @@
       "timestamp": "2026-07-26T00:00:00Z",
       "doc_before_hash": "e3bc28c725cd680e",
       "doc_after_hash": "beee7675380e0c9d",
-      "note": "Mode B Presentation Rules: add the conditional active-voice presentation of the Traigent `attribution` block (show headline + why verbatim as provenance, not a performance claim; no evidence upgrade) for when the service payload carries it. Backend support landed via Traigent/TraigentBackend#2439 and SDK support via Traigent/Traigent#2019 + #2042 (all merged 2026-07-27); the block stays optional and version-dependent, so presentation is conditional on the payload carrying it (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
+      "note": "Mode B Presentation Rules: add the conditional active-voice presentation of the Traigent `attribution` block (show headline + why verbatim as provenance, not a performance claim; no evidence upgrade) for when the service payload carries it. Backend support landed via Traigent/Traigent backend#2439 and SDK support via Traigent/Traigent#2019 + #2042 (all merged 2026-07-27); the block stays optional and version-dependent, so presentation is conditional on the payload carrying it (Traigent/traigent-skills#243). doc_hash recomputed over the edited SKILL.md.",
       "source_type": "human"
     },
     {

@@ -1,6 +1,6 @@
 {
   "schema": "agent-setup-prompt-provenance/v1",
-  "doc_hash": "6267651a672b0f34",
+  "doc_hash": "4d2476af0dce12f9",
   "entries": [
     {
       "edit_id": "genesis",
@@ -10,7 +10,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": null,
       "doc_after_hash": "6c93b0f874b28004",
-      "note": "pin the first checksum baseline for docs/agent-setup/prompt.md (issue #234): the canonical body as merged in #241, the state the TraigentFrontend vendored copy was hand-synced against (see docs/agent-setup/README.md's bump protocol for the current list of downstream copies and what this checksum does and does not guard).",
+      "note": "pin the first checksum baseline for docs/agent-setup/prompt.md (issue #234): the canonical body as merged in #241, the state the Traigent portal vendored copy was hand-synced against (see docs/agent-setup/README.md's bump protocol for the current list of downstream copies and what this checksum does and does not guard).",
       "source_type": "agent"
     },
     {
@@ -67,6 +67,17 @@
       "doc_after_hash": "6267651a672b0f34",
       "note": "Phrase the blank API-key entry as an instruction, avoiding an assignment-like label without changing key-entry behavior.",
       "source_type": "human"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-06-4d2476af",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-06T00:00:00Z",
+      "doc_before_hash": "6267651a672b0f34",
+      "doc_after_hash": "4d2476af0dce12f9",
+      "note": "Require intended-window confirmation and manual fallback; permit forwarded GUI; preserve buffers. Consumer synchronization remains a separate reviewed change.",
+      "source_type": "agent"
     }
   ]
 }

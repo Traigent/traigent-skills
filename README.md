@@ -4,7 +4,7 @@ User-facing [Agent Skills](https://agentskills.io/) for the **Traigent SDKs** �
 
 These skills work across **all major AI coding agents**: Claude Code, Cursor, GitHub Copilot, Gemini CLI, OpenAI Codex, Windsurf, Junie, and [30+ more](https://skills.sh/).
 
-> Looking for internal dev/CI/design skills (code review, PR automation, security forensics, UI/UX)? Those live in the internal [`Traigent/agents-skills`](https://github.com/Traigent/agents-skills) repo. **This repo holds only the user-facing SDK skills.**
+> This public repository holds the user-facing SDK skills. Development, CI and design tooling is maintained separately and is not required to use these skills.
 
 ## Interface identity
 
@@ -13,11 +13,11 @@ These skills work across **all major AI coding agents**: Claude Code, Cursor, Gi
 - Skills: `traigent-<lifecycle>-<capability>` — portable names for clients that flatten or install individual skills.
 - Metadata: `catalog/skills.json` plus `traigent-audience`, `traigent-topic`, `traigent-stage`, and `traigent-maturity` in every skill.
 
-The related internal plugins are `traigent-coding-agents` and `traigent-spine`; their skills are not copied into this public interface.
+Internal development plugins are maintained separately; their skills are not copied into this public interface.
 
 ## Interaction policy
 
-Every skill carries a shared **Traigent Interaction Policy** — a managed block that instructs the coding agent to track the user's expertise (`se` / `ds`) and autonomy preference (`delegate` / `guided` / `inspect`) and adapt verbosity, terminology, and how much it stops to ask accordingly. The policy also enforces that the agent always recommends the next Traigent skill or action to take at the end of each response. The canonical text lives in [`docs/shared/interaction-policy.v1.md`](docs/shared/interaction-policy.v1.md) and is propagated to all skills by `python tools/contract/sync_interaction_policy.py`.
+Every skill carries a shared **Traigent Interaction Policy** — a managed block that instructs the coding agent to track the user's expertise (`se` / `ds`) and autonomy preference (`delegate` / `guided` / `inspect`) and adapt verbosity, terminology, and how much it stops to ask accordingly. The policy recommends the next skill only after a result-bearing step or an explicit decision point, omits recommendations during setup or mid-walkthrough, and caps them at 3 per response, each with a one-line eligibility reason. The canonical text lives in [`docs/shared/interaction-policy.v1.md`](docs/shared/interaction-policy.v1.md) and is propagated to all skills by `python tools/contract/sync_interaction_policy.py`.
 
 ## Optimization economics
 
@@ -166,11 +166,11 @@ skills/<skill-name>/
   references/    # deeper API docs, loaded on demand
 ```
 
-These skills are Markdown, with two exceptions: `traigent-setup-audit` ships local scripts (standard library only; its free local tier does not read credentials, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) and `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read). The remaining skills are instructions and make no calls themselves.
+These skills are Markdown instructions. The following skills also ship Python helpers: `traigent-setup-audit` ships local scripts (standard library only; its free local tier does not read credentials, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`); `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read); and `traigent-eval-audit` ships `scripts/equivalence_result.py`, a standard-library-only offline evaluator helper (no model or network calls and no credential read). The remaining skills are instructions and make no calls themselves.
 
 ## Requirements
 
-**To use the skills themselves: nothing.** They're Markdown instructions your AI coding agent reads — no runtime, nothing to install (the `traigent-setup-audit` and `traigent-analyze-variable-importance` scripts run on any Python 3.11+ interpreter already present).
+**To use the skills themselves: nothing.** They're Markdown instructions your AI coding agent reads — no runtime, nothing to install (the `traigent-setup-audit`, `traigent-analyze-variable-importance` and `traigent-eval-audit` helpers run on any Python 3.11+ interpreter already present).
 
 The skills *teach your agent to drive the Traigent SDKs*, so to actually run an optimization you'll need the relevant SDK in your own project:
 

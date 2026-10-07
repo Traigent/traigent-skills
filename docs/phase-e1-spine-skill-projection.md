@@ -1,5 +1,7 @@
 # E1 — spine skill-interface projection (implementation plan)
 
+Maintainer sketch: `internal-skill-source` is an opaque placeholder for the separately maintained internal skill source; resolve it in the maintainer environment before using these paths.
+
 Designed with codex gpt-5.5 (xhigh), which converged on a **spine-side committed projection** and
 surfaced a **proven precedent**: the spine already ships an in-repo projection of exactly this shape —
 the **agent-rule projection** (spine PR #240): `src/validation_spine/agent_rules.py` →
@@ -23,7 +25,7 @@ cross-repo *inputs* are established; only the artifact `path` must be in-repo �
 
 | New file | Role (template) |
 |---|---|
-| `src/validation_spine/skill_interface.py` | Projector. Mirrors `agent_rules.py`. Reads the skill repos at **pinned refs** (`origin/main` for traigent-skills, agents-skills) + their `sync_map.yml` + the 3 vendored snapshots; emits the projection. |
+| `src/validation_spine/skill_interface.py` | Projector. Mirrors `agent_rules.py`. Reads the skill repos at **pinned refs** (`origin/main` for traigent-skills, internal-skill-source) + their `sync_map.yml` + the 3 vendored snapshots; emits the projection. |
 | `health/latest-skill-interface-projection.json` | The materialized projection (in-repo → registry can hash it). |
 | `schemas/skill_interface_projection.schema.json` | New schema (mirror `agent_rule_projection.schema.json`). **Do not bend `artifact_catalog.schema.json`.** |
 | `catalog/artifacts.yaml` entry | `id: artifact:skill_interface_projection`, `kind: generated_projection`, `gate_impact: advisory`, `replay_role: output`, `status: active`, `derived_from:` the interface-source paths it watches (see below). |
@@ -39,7 +41,7 @@ cross-repo *inputs* are established; only the artifact `path` must be in-repo �
     { "repo": "traigent-skills", "skill": "traigent-js", "family": "js",
       "taught_interface_ids": ["js:@traigent/sdk#optimize", ...],
       "snapshot_path": "tests/data/js_api_snapshot.json", "snapshot_sha256": "<hex>" },
-    { "repo": "agents-skills", "skill": "traigent-validation-spine-update", "family": "mcp",
+    { "repo": "internal-skill-source", "skill": "traigent-validation-spine-update", "family": "mcp",
       "taught_interface_ids": ["mcp:ops.kg.precheck", ...],
       "snapshot_path": "tests/data/mcp_tools_snapshot.json", "snapshot_sha256": "<hex>" }
     // backend family likewise
@@ -72,7 +74,7 @@ Add a skill-impact pass to `build_impact_report()`: load the projection; for the
 the changed paths against per-family **interface-source globs**:
 - mcp → `src/validation_spine/mcp/services.py`
 - js → (traigent-js) `src/index.ts`, `src/**/index.ts`, `package.json`
-- backend → (TraigentBackend) route files
+- backend → (Traigent backend) route files
 
 Emit a new output key `impacted_skills: [{repo, skill, family, reason}]`, surfaced through
 `ops.impact.analyze` / `ops.change.impact`. Path-intersection mirrors the existing `_impacted_modules()`.
@@ -80,7 +82,7 @@ Emit a new output key `impacted_skills: [{repo, skill, family, reason}]`, surfac
 ## CI — the projector job
 
 A scheduled + dispatch job **in the spine repo** (next to the spine's own CI) that:
-1. checks out traigent-skills + agents-skills at `origin/main` (deterministic; **pinned refs, not sibling
+1. checks out traigent-skills + internal-skill-source at `origin/main` (deterministic; **pinned refs, not sibling
    working trees** — codex flagged that the parked workspace clones must not be the source) using a
    read-only token (the same `SKILLS_REPO_TOKEN` PAT already provisioned);
 2. runs `python -m validation_spine.skill_interface materialize` to regenerate the projection;
@@ -105,7 +107,7 @@ This stays in sync with the weekly drift jobs because both read the same committ
 4. **False staleness** → compare snapshot sha256 (content), ignore `commit_sha` churn — same lesson as the
    drift jobs; only a real content change flags a gap.
 5. **Governance** → land via `/spine:change` on spine `develop` (where the precedent + active line live);
-   advisory `gate_impact`; one focused ChangeSession, mirroring agent-rule-projection PR #240.
+   advisory `gate_impact`; one focused governed change session, mirroring agent-rule-projection PR #240.
 
 ## Reference
 - Template/precedent: spine PR #240 (`agent_rules.py`, `agent_rule_projection.schema.json`,
