@@ -369,13 +369,27 @@ Before writing any key, run this in the directory that will hold `.env`:
 ```bash
 (
   for file in .gitignore .env; do [ ! -L "$file" ] && { [ ! -e "$file" ] || [ -f "$file" ]; } || { printf 'STOP: %s must be a plain file\n' "$file" >&2; exit 1; }; done
-  if git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git ls-files --error-unmatch -- .env >/dev/null 2>&1; then printf '%s\n' 'STOP: .env is tracked; run git rm --cached .env before adding keys' >&2; exit 1; fi
+  no_repo=1
+  if command -v git >/dev/null 2>&1; then
+    git_rc=0; git_msg=$(LC_ALL=C git rev-parse --is-inside-work-tree 2>&1) || git_rc=$?
+    if [ "$git_rc" -eq 0 ]; then
+      no_repo=0; git_rc=0; LC_ALL=C git ls-files --error-unmatch -- .env >/dev/null 2>&1 || git_rc=$?
+      [ "$git_rc" -ne 0 ] || { printf '%s\n' 'STOP: .env is tracked; run git rm --cached .env before adding keys' >&2; exit 1; }
+      [ "$git_rc" -eq 1 ] || { printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1; }
+    else
+      case $git_msg in *'not a git repository'*) ;; *) printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1;; esac
+    fi
+  fi
+  if [ "$no_repo" -eq 1 ]; then
+    [ -z "${GIT_DIR:-}${GIT_WORK_TREE:-}${GIT_COMMON_DIR:-}${GIT_INDEX_FILE:-}" ] || { printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1; }
+    dir=$PWD; while :; do { [ ! -e "$dir/.git" ] && [ ! -L "$dir/.git" ]; } || { printf '%s\n' 'STOP: found .git but git cannot use it; resolve the git error before adding keys' >&2; exit 1; }; [ "$dir" != / ] || break; dir=$(dirname "$dir"); case ":${GIT_CEILING_DIRECTORIES:-}:" in *":$dir:"*) break;; esac; done
+  fi
   [ "$(tail -n 1 .gitignore 2>/dev/null)" = .env ] || printf '\n.env\n' >> .gitignore || exit 1
   umask 077; touch .env && chmod 600 .env
 )
 ```
 
-Continue only if it exits 0. It ensures the `.gitignore` in this same directory ends with a `.env` rule, then creates or preserves `.env` at mode 0600 without printing its contents. Placing the rule last also protects it from an earlier negation. That directory's own rule applies in a current repository and in any repository that later contains it, including after `git init`; it does not depend on global excludes or finding a parent repository. Inside a Git work tree, an already tracked `.env` is refused with `git rm --cached .env` as the remedy: ignoring never untracks a file. Both paths must be absent or plain files. If you later remove or override the `.env` rule, the protection is lost.
+Continue only if it exits 0. It ensures the `.gitignore` in this same directory ends with a `.env` rule, then creates or preserves `.env` at mode 0600 without printing its contents. Placing the rule last also protects it from an earlier negation. That directory's own rule applies in a current repository and in any repository that later contains it, including after `git init`; it does not depend on global excludes or finding a parent repository. Inside a Git work tree, an already tracked `.env` is refused with `git rm --cached .env` as the remedy: ignoring never untracks a file. Any other git failure (for example "dubious ownership", an unusable `GIT_DIR`, an unreadable index, or a `.git` that git cannot use) also stops the block: stop on unexpected git errors, tell the user to resolve the git error, and never write the key; only a directory with no git repository at all proceeds. Both paths must be absent or plain files. If you later remove or override the `.env` rule, the protection is lost.
 
 Then the `.env` file in your project root (only after the checks pass):
 

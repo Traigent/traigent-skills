@@ -1,6 +1,6 @@
 {
   "schema": "agent-setup-prompt-provenance/v1",
-  "doc_hash": "378e092a7b9c4818",
+  "doc_hash": "7e32112d72b63552",
   "entries": [
     {
       "edit_id": "genesis",
@@ -34,6 +34,72 @@
       "doc_after_hash": "378e092a7b9c4818",
       "note": "Issue #363 review: scope the end-of-setup reload reminder per agent (new Codex session) instead of a universal 'don't load into the current session', and move the Codex new-session step to after setup.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "setup-activation-key-order-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "378e092a7b9c4818",
+      "doc_after_hash": "0badbf7b431b8221",
+      "note": "Issue #382 and part of #384 (the pasted-key bullet): step 4 reads the Literal First Run block from the installed traigent-setup-quickstart directory (the skills may not be loaded in this session yet; prefer the copy step 1 installed, else the newest installed copy, over a marketplace checkout); the pasted-key bullet is an allowlist gate whose numbered sub-steps must each positively pass before the key is stored: a symlinked .env (even a broken one) is a stop checked before .env is created, then .env must be a regular file; mode 0600 on macOS/Linux; the repository status is confirmed with LC_ALL=C git rev-parse --is-inside-work-tree, where only the exact 'fatal: not a git repository (or any of the parent directories): .git' message skips the git checks and any other result stops; inside a repo, .env is untracked and git-ignored, judged by exit code. A failed gate skips the key write and setup continues to the keyless step 4, with the summary box's pending TRAIGENT_API_KEY line.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-05-f9c10de9",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "0badbf7b431b8221",
+      "doc_after_hash": "f9c10de9ca0f098b",
+      "note": "Use the adjacent .env ignore rule in both key-entry flows, matching setup-quickstart; keep keyless verification available on refusal.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-05-6267651a",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "f9c10de9ca0f098b",
+      "doc_after_hash": "6267651a672b0f34",
+      "note": "Phrase the blank API-key entry as an instruction, avoiding an assignment-like label without changing key-entry behavior.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-07-582b06cc",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-07T00:00:00Z",
+      "doc_before_hash": "6267651a672b0f34",
+      "doc_after_hash": "582b06cce60ad800",
+      "note": "Key-entry guard stops on unexpected git errors instead of treating them as not tracked.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-07-a50f3c62",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-07T00:00:00Z",
+      "doc_before_hash": "582b06cce60ad800",
+      "doc_after_hash": "a50f3c621c02be74",
+      "note": "Key-entry guard also stops when GIT_DIR, GIT_WORK_TREE, GIT_COMMON_DIR or GIT_INDEX_FILE is set and git reports no repository.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-07-7e32112d",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-07T00:00:00Z",
+      "doc_before_hash": "a50f3c621c02be74",
+      "doc_after_hash": "7e32112d72b63552",
+      "note": "Key-entry guard stops on a set GIT_DIR, GIT_WORK_TREE, GIT_COMMON_DIR or GIT_INDEX_FILE whenever no usable repository was found, with or without git installed.",
+      "source_type": "human"
     }
   ]
 }

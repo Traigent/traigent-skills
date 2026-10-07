@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9073e3ef9cd6cdbb",
+  "doc_hash": "3a46e403ffbf8cf8",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -345,6 +345,17 @@
       "doc_before_hash": "6b20862bc57c820c",
       "doc_after_hash": "9073e3ef9cd6cdbb",
       "note": "Mode C weak-examples snippet now uses plan_kind=prompt_rewrite with prompt_param so the SDK actually reads weak_examples, and states they are (input, expected, actual) tuples.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "mcp-session-activation-guidance-2026-10-05",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-05T00:00:00Z",
+      "doc_before_hash": "9073e3ef9cd6cdbb",
+      "doc_after_hash": "3a46e403ffbf8cf8",
+      "note": "Issue #383: Mode B's prerequisite pointer follows analyze-results' state-keyed branch: when the analytics_* tools are not listed, check whether traigent-analytics is already registered in the client's MCP config; register only if it is not (never re-register), then one restart/reload/reconnect and re-run. Registered but not listed is not loaded yet, not a fetch failure (don't retry the fetch; the portal deep-link may be offered meanwhile). Still not listed after that one restart/reload/reconnect -> the brief cannot be fetched. Genuine fetch-failure handling is unchanged. Version 1.2.5 -> 1.2.6.",
       "source_type": "agent"
     }
   ]
