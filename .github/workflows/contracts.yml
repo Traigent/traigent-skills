@@ -43,7 +43,7 @@ jobs:
         run: uv run ruff check .
 
   # released-contracts is split into three jobs so that each released SDK
-  # bucket gets its own runner (and its own 20-minute clock) instead of
+  # bucket gets its own runner (and its own bounded 20-minute clock) instead of
   # running all buckets back-to-back in one job that can time out partway
   # through the last bucket. `released-contracts` is a required status check
   # on main by exact name (see branches/main/protection/required_status_checks),
@@ -97,7 +97,10 @@ jobs:
     name: released-contracts (${{ matrix.bucket }})
     needs: released-contracts-buckets
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    # The 0.30.0 lane measured 12 minutes of contracts plus 2.4 minutes of
+    # bundled tests; setup and cache cleanup exhausted the previous 15-minute
+    # limit after both suites passed. Keep bounded headroom for the full job.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -167,10 +170,9 @@ jobs:
           ".bucket-$version/bin/python" -m pytest tests/contract --sdk-version="$version" -q
           # The bundled per-skill suites (skills/<name>/tests). They need only
           # the locked harness tooling already installed in this bucket venv --
-          # both current suites are standard library plus pytest -- so they add
-          # no dependency and run in the venv that is already built. They take
-          # well under a minute, against a contract run of well over a minute
-          # per bucket; the network-escape harness is the slow part, and its
+          # the suites are standard library plus pytest -- so they add no
+          # dependency and run in the venv that is already built. Allow roughly
+          # 2.5 minutes for bundled tests in addition to the contract run;
           # sandbox cases skip themselves where no namespace backend exists.
           # A future skill whose tests need a
           # third-party package must either vendor a stub or get its own lane;
