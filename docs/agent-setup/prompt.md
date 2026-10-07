@@ -108,10 +108,11 @@ this protection.
       [ "$git_rc" -ne 0 ] || { printf '%s\n' 'STOP: .env is tracked; run git rm --cached .env before adding keys' >&2; exit 1; }
       [ "$git_rc" -eq 1 ] || { printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1; }
     else
-      case $git_msg in *'not a git repository'*) [ -z "${GIT_DIR:-}${GIT_WORK_TREE:-}${GIT_COMMON_DIR:-}${GIT_INDEX_FILE:-}" ] || { printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1; };; *) printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1;; esac
+      case $git_msg in *'not a git repository'*) ;; *) printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1;; esac
     fi
   fi
   if [ "$no_repo" -eq 1 ]; then
+    [ -z "${GIT_DIR:-}${GIT_WORK_TREE:-}${GIT_COMMON_DIR:-}${GIT_INDEX_FILE:-}" ] || { printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1; }
     dir=$PWD; while :; do { [ ! -e "$dir/.git" ] && [ ! -L "$dir/.git" ]; } || { printf '%s\n' 'STOP: found .git but git cannot use it; resolve the git error before adding keys' >&2; exit 1; }; [ "$dir" != / ] || break; dir=$(dirname "$dir"); case ":${GIT_CEILING_DIRECTORIES:-}:" in *":$dir:"*) break;; esac; done
   fi
   [ "$(tail -n 1 .gitignore 2>/dev/null)" = .env ] || printf '\n.env\n' >> .gitignore || exit 1

@@ -196,6 +196,31 @@ def test_rule_stops_on_unusable_external_git_env(
     assert not (project / ".gitignore").exists()
 
 
+@pytest.mark.parametrize("strict", [False, True], ids=["plain-shell", "strict-shell"])
+@pytest.mark.parametrize("var", ["GIT_DIR", "GIT_WORK_TREE", "GIT_COMMON_DIR", "GIT_INDEX_FILE"])
+def test_rule_stops_on_external_git_env_when_git_is_absent(
+    repo_root: Path, tmp_path: Path, shell_env: dict[str, str], var: str, strict: bool,
+) -> None:
+    project = tmp_path / "project"
+    project.mkdir()
+    bindir = tmp_path / "nogit"
+    bindir.mkdir()
+    for tool in ("tail", "printf", "touch", "chmod", "dirname"):
+        (bindir / tool).symlink_to(shutil.which(tool))
+    (project / ".env").write_text(SENTINEL, encoding="utf-8")
+    env = {**shell_env, "PATH": str(bindir), var: str(tmp_path / "bogus")}
+    block = documented_block(repo_root)
+    done = subprocess.run(
+        [shutil.which("bash"), "-c", ("set -euo pipefail\n" if strict else "") + block],
+        cwd=project, env=env, capture_output=True, text=True, check=False,
+    )
+    assert done.returncode != 0, done.stderr
+    assert "STOP" in done.stderr
+    assert SENTINEL not in done.stdout + done.stderr
+    assert (project / ".env").read_text() == SENTINEL
+    assert not (project / ".gitignore").exists()
+
+
 def test_rule_proceeds_without_git_outside_any_repo(
     repo_root: Path, tmp_path: Path, shell_env: dict[str, str],
 ) -> None:

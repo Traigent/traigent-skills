@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c8f6fb412441c70a",
+  "doc_hash": "667ccfc56bf71f03",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/environment-variables.md": "84bbd07054919956",
@@ -363,6 +363,17 @@
       "doc_before_hash": "f3edd994dd01818e",
       "doc_after_hash": "c8f6fb412441c70a",
       "note": "The .env key-entry block also stops when an external GIT_* location is set and git reports no repository.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "env-guard-git-env-absent-2026-10-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-07T00:00:00Z",
+      "doc_before_hash": "c8f6fb412441c70a",
+      "doc_after_hash": "667ccfc56bf71f03",
+      "note": "The .env key-entry block checks external GIT_* locations whether or not git is installed.",
       "source_type": "agent"
     }
   ]
