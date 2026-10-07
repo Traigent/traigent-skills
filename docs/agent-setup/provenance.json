@@ -1,6 +1,6 @@
 {
   "schema": "agent-setup-prompt-provenance/v1",
-  "doc_hash": "582b06cce60ad800",
+  "doc_hash": "a50f3c621c02be74",
   "entries": [
     {
       "edit_id": "genesis",
@@ -77,6 +77,17 @@
       "doc_before_hash": "6267651a672b0f34",
       "doc_after_hash": "582b06cce60ad800",
       "note": "Key-entry guard stops on unexpected git errors instead of treating them as not tracked.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-07-a50f3c62",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-07T00:00:00Z",
+      "doc_before_hash": "582b06cce60ad800",
+      "doc_after_hash": "a50f3c621c02be74",
+      "note": "Key-entry guard also stops when GIT_DIR, GIT_WORK_TREE, GIT_COMMON_DIR or GIT_INDEX_FILE is set and git reports no repository.",
       "source_type": "human"
     }
   ]

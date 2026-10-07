@@ -90,7 +90,7 @@ Before either key flow below, run this block in the current project directory. I
 same block as setup-quickstart's "Using a .env File" section: the adjacent `.gitignore`
 protects `.env` in this repository and in a repository initialized later. A tracked `.env`
 must be untracked first; the block prints the remedy. It also stops on any unexpected git
-error (for example "dubious ownership" or an unreadable repository): never treat a git error
+error (for example "dubious ownership", an unreadable repository, or an unusable `GIT_DIR`): never treat a git error
 as "not tracked", and never write the key until the user has resolved it. It preserves existing content and
 sets mode 0600. If the block fails, do not write a key or open the file for key entry;
 report the failure, continue with step 4's keyless mock run, and render the summary box's
@@ -108,7 +108,7 @@ this protection.
       [ "$git_rc" -ne 0 ] || { printf '%s\n' 'STOP: .env is tracked; run git rm --cached .env before adding keys' >&2; exit 1; }
       [ "$git_rc" -eq 1 ] || { printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1; }
     else
-      case $git_msg in *'not a git repository'*) ;; *) printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1;; esac
+      case $git_msg in *'not a git repository'*) [ -z "${GIT_DIR:-}${GIT_WORK_TREE:-}${GIT_COMMON_DIR:-}${GIT_INDEX_FILE:-}" ] || { printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1; };; *) printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1;; esac
     fi
   fi
   if [ "$no_repo" -eq 1 ]; then
