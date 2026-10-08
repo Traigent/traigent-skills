@@ -33,9 +33,10 @@ exists, then classify:
 Keep what is already there: a task the user already agreed, a dataset, a scorer, a decorated
 function. Ask only for a fact you could not read, one question at a time. When the signals
 conflict — run records for a different function, two candidate agents — name what you found
-and ask which one the user means. A JavaScript/TypeScript agent (`@traigent/sdk` in `package.json`) takes `traigent-js` for setup, metric, real probe and real run. There is no free
-JavaScript dry run: record the dry-run row skipped with that reason; the first model call is
-the paid probe, approved under `traigent-js`'s own gate. `traigent-setup-audit` reads only Python, so record its
+and ask which one the user means. A JavaScript/TypeScript agent (`@traigent/sdk` in `package.json`) takes `traigent-js` for setup, metric, dry run, real probe and real run. Its SDK has no mock
+mode, so its dry-run row records the free checks in `traigent-js`'s Verification section (the
+project's own tests and type check, before any model call); the paid probe follows under
+`traigent-js`'s own approval gate. `traigent-setup-audit` reads only Python, so record its
 audit as skipped with that reason. The dataset, evaluator, result-read and promotion skills
 describe Python APIs: apply their rules to the JavaScript agent and say so in the evidence, or
 mark the row blocked with "no JavaScript owner"; never pass or skip such a row because the
@@ -130,8 +131,8 @@ status, or the run ID resolves through its owner skill); a skipped row counts on
 user confirms it in this session; a row dated in the future counts as not yet run. When a file
 a passed checkpoint relied on (the dataset, the scorer, the decorated function, the
 configuration space) changed after that row's date, or you cannot tell (a fresh clone resets
-file dates), treat the row as not yet run and route it to its owner skill. Re-run the free checks (the audit, a deterministic scorer's sanity gate, the dry run) before
-any paid step; re-checking an LLM judge is paid and goes through `traigent-eval-audit`. A paid check runs again only with
+file dates), treat the row as not yet run and route it to its owner skill. Re-run the free checks (the audit, a deterministic scorer's sanity gate, the dry run; for a
+JavaScript agent, its Verification checks) before any paid step; re-checking an LLM judge is paid and goes through `traigent-eval-audit`. A paid check runs again only with
 its owner skill's fresh approval, and never when its inputs did not change.
 
 ## What this entry does not do
