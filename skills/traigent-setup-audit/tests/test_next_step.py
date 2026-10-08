@@ -1518,3 +1518,135 @@ def test_a_dataset_file_cap_routes_to_the_dataset_step() -> None:
     )
     assert step["branch"] == "f"
     assert step["line"].startswith(note), step["line"]
+
+
+# --------------------------------------------------------------------------
+# typed gold: the probe scores the task's own answers, whatever their kind
+# --------------------------------------------------------------------------
+
+# Each kind: a gold value per row index, and a scorer that only accepts that
+# kind (it raises on the placeholder text the probe used to fall back to). The
+# scorers and values are fixtures; the probe itself has no per-kind scorer.
+TYPED_GOLD = {
+    "object": (
+        lambda i: {"category": ["billing", "outage", "account"][i % 3],
+                   "urgency": ["low", "high"][i % 2]},
+        "def score(output, expected):\n"
+        "    return sum(output[k] == expected[k] for k in expected) / len(expected)\n",
+        (1.0, 0.5, 0.0),
+    ),
+    "array": (
+        lambda i: [f"tag{i % 5}", f"tag{i % 5 + 5}"],
+        "def score(output, expected):\n"
+        "    if not isinstance(output, list) or not isinstance(expected, list):\n"
+        "        raise TypeError('a list answer')\n"
+        "    return len(set(output) & set(expected)) / len(set(expected))\n",
+        (1.0, 0.5, 0.0),
+    ),
+    # Item by item: a partial answer must keep the answer's length.
+    "array_positional": (
+        lambda i: [f"tag{i % 5}", f"tag{i % 5 + 5}"],
+        "def score(output, expected):\n"
+        "    if len(output) != len(expected):\n"
+        "        raise ValueError('an answer of the same length')\n"
+        "    return sum(o == e for o, e in zip(output, expected)) / len(expected)\n",
+        (1.0, 0.5, 0.0),
+    ),
+    "number": (
+        lambda i: 10 + 80 * (i % 2),
+        "def score(output, expected):\n"
+        "    return 1.0 - min(1.0, abs(output - expected) / 100)\n",
+        (1.0, None, 0.2),
+    ),
+    "boolean": (
+        lambda i: i % 2 == 0,
+        "def score(output, expected):\n"
+        "    if not isinstance(output, bool):\n"
+        "        raise TypeError('a boolean answer')\n"
+        "    return 1.0 if output is expected else 0.0\n",
+        (1.0, None, 0.0),
+    ),
+}
+
+
+def _gold_dataset(root: Path, gold) -> None:
+    lines = []
+    for index, line in enumerate(
+        (root / "dataset.jsonl").read_text(encoding="utf-8").splitlines()
+    ):
+        row = json.loads(line)
+        row["expected_output"] = gold(index)
+        lines.append(json.dumps(row) + "\n")
+    (root / "dataset.jsonl").write_text("".join(lines), encoding="utf-8")
+
+
+@pytest.mark.parametrize("kind", sorted(TYPED_GOLD))
+def test_structured_gold_is_probed_with_the_tasks_own_answers(
+    kind: str, tmp_path: Path
+) -> None:
+    gold, scorer, (good, partial, bad) = TYPED_GOLD[kind]
+    root = _variant(tmp_path, scorer)
+    _gold_dataset(root, gold)
+    report, card = _run(root, tmp_path)
+    probe = report["scorer_probe"]
+    assert probe["payload_source"] == "dataset", probe
+    assert probe["errors"] == [], probe
+    assert probe["scores"]["good"] == [good] * 5
+    assert probe["scores"]["bad"] == [pytest.approx(bad)]
+    if partial is None:
+        # No in-between value exists for this kind, so none is invented.
+        assert probe["partial_probed"] is False
+        assert probe["scores"]["partial"] == []
+        assert "known-good / known-bad probes scored" in card
+    else:
+        assert probe["partial_probed"] is True
+        assert probe["scores"]["partial"] == [partial]
+    assert report["areas"]["scorer"]["status"] == "ok"
+    assert report["next_step"]["branch"] == "g"
+
+
+def test_a_stored_report_without_a_partial_case_reads_repeatable(
+    tmp_path: Path,
+) -> None:
+    import tier2_checks as tier2
+
+    gold, scorer, _ = TYPED_GOLD["number"]
+    root = _variant(tmp_path, scorer)
+    _gold_dataset(root, gold)
+    _run(root, tmp_path)
+    assert tier2.load_tier1(tmp_path / "report.json").probe_verdict == "repeatable"
+
+
+def test_placeholder_probe_values_do_not_claim_separation(tmp_path: Path) -> None:
+    """One distinct gold value gives the probe nothing of the task's to compare,
+    so it falls back to placeholder text and must say what that does not show."""
+    root = _variant(tmp_path, _three_way())
+    _gold_dataset(root, lambda i: "the same answer")
+    report, card = _run(root, tmp_path)
+    assert report["scorer_probe"]["payload_source"] == "synthetic"
+    assert report["scorer_probe"]["errors"] == []
+    scorer = report["areas"]["scorer"]
+    assert scorer["status"] == "attention"
+    assert "separates a known-good answer from a known-bad one" not in card
+    assert "on placeholder text, not on this task's answers" in card
+    assert "all check out" not in card
+    assert audit.SYNTHETIC_PROBE_NOTE in scorer["evidence"]
+    assert scorer["meaning"] == audit.SYNTHETIC_MEANING
+
+
+def test_a_placeholder_probe_never_reaches_the_all_clear() -> None:
+    """With every other area clear, the next step still abstains."""
+    entry = _entry([_knob("model", "read")])
+    probe = {**GOOD_PROBE, "payload_source": "synthetic"}
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [_dataset(80, 40)], probe, _scorer()
+    )
+    assert step["branch"] == "e"
+    assert step["skills"] == ["traigent-eval-audit"]
+    assert "placeholder text" in step["line"]
+    assert "all check out" not in step["line"]
+    # Teeth: the same probe from dataset values is the all-clear.
+    dataset_probe = {**GOOD_PROBE, "payload_source": "dataset"}
+    assert audit.next_step(
+        _inventory([entry], [_scorer()]), [_dataset(80, 40)], dataset_probe, _scorer()
+    )["branch"] == "g"

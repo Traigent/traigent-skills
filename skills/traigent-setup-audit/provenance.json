@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "484ddf770012a054",
+  "doc_hash": "a3e4020a05812d18",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b"
   },
@@ -253,6 +253,17 @@
       "doc_before_hash": "d27f41b9e55b20ef",
       "doc_after_hash": "484ddf770012a054",
       "note": "--dataset reads holdout-named siblings; Dataset row covers unusable gold values, missing_gold_counts and non-standard JSON constants; discovery passes over a file that parses but holds no rows unless it is holdout-named or wraps a row list; ladder gains the unreadable, gold, overlap, knob-wiring, inventory and dataset catch-all rows and g requires the Agent, Dataset and Scorer areas ok; Tier 2 exit codes add the CLI-on-PATH and numeric-flag refusals; stale all-clear covers Agent/Dataset evidence; bounded-run quotes Tier 1's knob reading; version 0.2.5. Explicit sibling caps report omitted evidence and total candidate counts.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issue-432-typed-gold-probe",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T00:00:00Z",
+      "doc_before_hash": "484ddf770012a054",
+      "doc_after_hash": "a3e4020a05812d18",
+      "note": "Scorer row: the probe is built from two distinct gold values of the same JSON kind (text, object, list, number, boolean) and passes them to the scorer unchanged, with no partial case where none can be built (a number, a boolean); with no such pair it scores placeholder text and the card says separation was not tested (#432). Ladder gains the placeholder-probe row before the all-clear. Ladder gains the placeholder-probe row before the all-clear.",
       "source_type": "agent"
     }
   ]
