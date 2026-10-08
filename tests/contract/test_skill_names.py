@@ -61,6 +61,9 @@ ALLOWLIST = {
     # user's project (run-plan.md, tuning/holdout files, calibration records,
     # optimized-results.json); a path, not a skill dir.
     "traigent-runs",
+    # The checkpoint file the `traigent` router entry keeps in the user's project
+    # root (`traigent-checkpoints.md`); a path, not a skill dir.
+    "traigent-checkpoints",
 }
 
 # The 16 retired names from the 2026-07 taxonomy consolidation (12 renames +
@@ -124,7 +127,9 @@ README_RENAME_NOTE_RE = re.compile(
 # A skill citing "the `traigent` lifecycle skill" for a rule therefore points
 # at nothing; the token check above cannot see it because the bare name is a
 # live skill directory again.
-REMOVED_TRAIGENT_SKILL_RE = re.compile(r"`traigent`\s+(?:lifecycle\s+)?skill\b")
+REMOVED_TRAIGENT_SKILL_RE = re.compile(
+    r"`?\btraigent\b`?\s+(?:lifecycle\s+skill|meta-skill)\b", re.IGNORECASE
+)
 
 
 def test_no_skill_cites_the_removed_traigent_lifecycle_skill() -> None:

@@ -49,6 +49,9 @@ in for one. Offer the two routes that do exist and let the user choose:
 - run a disclosed demo — `traigent-setup-quickstart`'s mock-first first-value path, stated as
   a bundled example, not the user's agent.
 
+Recommend the first when the user has an agent anywhere; the demo shows the workflow, not a
+result for their task.
+
 **Existing agent.** The next action is the free local audit: open `traigent-setup-audit`, run
 it, present its card, and take the next step that card names. Open the owner skill for each
 gap as it comes up:
@@ -70,7 +73,9 @@ gap as it comes up:
 - an offline or local result only — `traigent-analyze-guidance` Mode C;
 - a candidate the user wants to adopt — `traigent-ci-safety-gate`;
 - records under `traigent-runs/` from the guided first run — `traigent-boost-agent`, entering
-  at the step those records leave open.
+  at the step those records leave open;
+- otherwise — the first checkpoint in section 3 with no passed or skipped row, through the
+  *Existing agent* gap table.
 
 ## 3. Record checkpoints
 
@@ -103,7 +108,8 @@ Use exactly three statuses:
 
 On a later session, re-read the table. When a file a passed checkpoint relied on (the dataset,
 the scorer, the decorated function, the configuration space) changed after that row's date,
-re-run that checkpoint's own check. Never repeat a paid step whose inputs did not change.
+treat that row as not yet run and route it to its owner skill. A paid check runs again only
+with that skill's fresh approval, and never when its inputs did not change.
 
 ## What this entry does not do
 

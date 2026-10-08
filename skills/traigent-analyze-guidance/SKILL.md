@@ -489,7 +489,7 @@ results = answer.optimize_with_guidance(
 
 `optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). `rewrite_llm` is required (a callable `fn(prompt) -> str` or a constructed client); `provider` supplies the guidance plan. `weak_examples` are `(input, expected, actual)` tuples, and only a `plan_kind="prompt_rewrite"` plan reads them: it rewrites the prompt variants of the knob named by `prompt_param` (a tuned knob whose values are prompt strings). Under the default `benchmark_guide` plan they are ignored. Keep the provider and rewrite model project-specific, and confirm the new candidate still improves on a heldout slice.
 
-This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (Steps 3-5 of `traigent-boost-agent`).
+This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (`traigent-boost-agent` Fast Path Steps 3-5; Playbook Steps 8-9).
 
 Before iterating, note that flat/negative scores can also mean: (a) the base model
 isn't capable enough — structural knobs fix *form*, not reasoning the model lacks;

@@ -47,7 +47,7 @@ pip install "traigent>=0.19" "dspy==3.3.1"
 > verified with `dspy==3.3.1` on `traigent==0.27.0`; pin that version, or re-verify the examples
 > against the exact `dspy` version you pin before relying on them.
 
-> **Dry-run first.** Before any paid optimization run, dry-run in mock mode (`enable_mock_mode_for_quickstart()`) with **no real provider key**, review the estimated cost, and get explicit user approval. `traigent-boost-agent` owns the mandatory dry-run-first / cost-approval workflow (Steps 3-5). Apply this to every integration example below before running against real providers:
+> **Dry-run first.** Before any paid optimization run, dry-run in mock mode (`enable_mock_mode_for_quickstart()`) with **no real provider key**, review the estimated cost, and get explicit user approval. `traigent-boost-agent` owns the mandatory dry-run-first / cost-approval workflow (Fast Path Steps 3-5; Playbook Steps 8-9). Apply this to every integration example below before running against real providers:
 > - LiteLLM examples: `enable_mock_mode_for_quickstart()` is enough.
 > - LangChain examples: LangChain clients require a key at construction, so set a non-secret
 >   placeholder in the dry-run process only — e.g. `OPENAI_API_KEY=mock-placeholder` (it cannot bill;

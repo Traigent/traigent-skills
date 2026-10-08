@@ -95,6 +95,10 @@ copilot plugin marketplace add Traigent/traigent-skills
 copilot plugin install traigent@traigent
 ```
 
+Then start with the `traigent` entry: `/traigent:traigent` in Claude Code, or ask your agent to
+"use the traigent skill". It reads your project, names one next step, and opens the skills that
+step needs.
+
 **Note for OpenAI Codex**: Codex loads the plugin's `traigent:*` skills when a new session starts (checked on Codex CLI 0.160.0), so start a new Codex session after installing. Whether `codex plugin marketplace upgrade` updates an installed plugin hasn't been checked. If you mount the skills into a project instead of installing the plugin, use the [Codex CLI](#using-with-codex-cli) `AGENTS.md` setup below.
 
 ### Via `npx skills` (cross-agent, pick individual skills)
