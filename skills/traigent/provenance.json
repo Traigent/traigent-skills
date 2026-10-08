@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "feec3c9fc4962130",
+  "doc_hash": "67b29a71853de00e",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -88,6 +88,17 @@
       "doc_before_hash": "9dd526bd8a8515d4",
       "doc_after_hash": "feec3c9fc4962130",
       "note": "Review loop round 6: say how to tell a JavaScript project's tests are free (run them with provider and Traigent keys unset, network blocked where possible; a test that fails or skips for want of a key or network is paid), and make the free-checks list exclude network calls too.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-9-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T20:00:00Z",
+      "doc_before_hash": "feec3c9fc4962130",
+      "doc_after_hash": "67b29a71853de00e",
+      "note": "Review loop round 7: a .env loader refills keys removed from the environment, so the keys-unset heuristic could pass a provider-calling test as free. Fail closed instead: a JavaScript project's tests are paid unless the user confirms they make no model or network call.",
       "source_type": "agent"
     }
   ]
