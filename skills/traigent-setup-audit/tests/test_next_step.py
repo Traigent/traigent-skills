@@ -1120,6 +1120,39 @@ def test_a_non_finite_knob_value_is_reported_as_unreadable(
     assert "has values the audit could not read" in card
 
 
+@pytest.mark.parametrize(
+    "literal",
+    [
+        "[1 + 2j]",
+        "[b'opaque']",
+        "[{1, 2}]",
+        "[{'nested': [b'opaque']}]",
+        "Choices(1 + 2j)",
+        "Choices(b'opaque')",
+        "Choices({1, 2})",
+        "[{1: 'one', 'two': 2}]",
+    ],
+)
+def test_non_json_knob_values_produce_a_located_unreadable_report(
+    literal: str, tmp_path: Path
+) -> None:
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    agent = root / "agent.py"
+    source = agent.read_text(encoding="utf-8")
+    replacement = source.replace('"temperature": [0.0, 0.7]', f'"temperature": {literal}')
+    assert replacement != source
+    agent.write_text(replacement, encoding="utf-8")
+    report, card = _run(root, tmp_path)
+    knobs = {knob["name"]: knob for entry in report["entry_points"] for knob in entry["knobs"]}
+    assert knobs["temperature"]["values_readable"] is False
+    assert knobs["temperature"]["values"] == []
+    assert knobs["temperature"]["file"] == "agent.py"
+    assert knobs["temperature"]["line"] > 0
+    assert knobs["top_k"]["values_readable"] is True
+    assert "has values the audit could not read" in card
+
+
 @pytest.mark.parametrize("target", ["existing_file", "missing_dir"])
 def test_a_report_that_cannot_be_strict_json_is_not_written(
     target: str, tmp_path: Path, monkeypatch, capsys
