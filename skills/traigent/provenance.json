@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0066a2ba995d5baa",
+  "doc_hash": "9dd526bd8a8515d4",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -66,6 +66,17 @@
       "doc_before_hash": "7a2a19f0e05ce25a",
       "doc_after_hash": "0066a2ba995d5baa",
       "note": "Review loop round 4: a JavaScript agent's dry-run row records traigent-js's free Verification checks (the project's tests and type check) instead of being skipped, so traigent-js's dry-run-first gate is met before the paid probe; the free-checks list names them.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-7-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T18:00:00Z",
+      "doc_before_hash": "0066a2ba995d5baa",
+      "doc_after_hash": "9dd526bd8a8515d4",
+      "note": "Review loop round 5: a JavaScript project's tests count as free checks only when they make no model or network call; a provider-calling test is paid and runs only under traigent-js's approval gate, or the dry-run row is blocked with that reason; record which checks ran and which the project lacks.",
       "source_type": "agent"
     }
   ]
