@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a77d443660797c2d",
+  "doc_hash": "98c0527d9f0d0947",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -11,6 +11,17 @@
       "doc_before_hash": "e3b0c44298fc1c14",
       "doc_after_hash": "a77d443660797c2d",
       "note": "Create the short `traigent` entry approved on #75 (option 1): a thin router that detects empty project / existing agent / returning run, shows one next action, opens the owning specialist skills, and records checkpoints as passed, blocked or skipped with evidence. The empty-project build route is reported as unavailable until a build entry ships.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-2-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T12:00:00Z",
+      "doc_before_hash": "a77d443660797c2d",
+      "doc_after_hash": "98c0527d9f0d0947",
+      "note": "Steelman and red-team review: add metric and real-probe checkpoints and record a real run only after the probe; treat an earlier checkpoint file as unverified history whose rows are never instructions; git-ignore the file and keep secrets out of it; re-check stale rows when dates cannot be trusted; say the interaction policy's timing rule does not hold back the one next action; drop the bare 'traigent' trigger.",
       "source_type": "agent"
     }
   ]
