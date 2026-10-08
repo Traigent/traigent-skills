@@ -6,6 +6,7 @@
   "audience": "sdk-user",
   "topic": "agent-optimization",
   "skills": [
+    {"name": "traigent", "stage": "front-door", "maturity": "experimental"},
     {"name": "traigent-boost-agent", "stage": "front-door", "maturity": "stable"},
     {"name": "traigent-setup-audit", "stage": "front-door", "maturity": "experimental"},
     {"name": "traigent-setup-quickstart", "stage": "setup", "maturity": "stable"},
