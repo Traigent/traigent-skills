@@ -29,10 +29,25 @@ def test_catalog_tracks_plugin_version() -> None:
     assert CATALOG["plugin_version"] == plugin["version"]
 
 
+def _is_public_skill_name(name: str) -> bool:
+    # Every skill is traigent-<lifecycle>-<capability>, with one exception: the
+    # short entry that carries the plugin's own name (owner decision on
+    # traigent-skills#75, 2026-10-08), so `traigent:traigent` is the one start
+    # command. No other bare or non-prefixed name is accepted.
+    return name.startswith("traigent-") or name == CATALOG["plugin"]
+
+
+def test_skill_name_rule_admits_only_the_plugin_named_entry() -> None:
+    assert _is_public_skill_name("traigent-boost-agent")
+    assert _is_public_skill_name(CATALOG["plugin"])
+    for name in ("traigentx", "boost-agent", "traigent_", "start", ""):
+        assert not _is_public_skill_name(name), name
+
+
 def test_public_skills_declare_audience_topic_and_stage() -> None:
     for item in CATALOG["skills"]:
         name = item["name"]
-        assert name.startswith("traigent-")
+        assert _is_public_skill_name(name)
         data = _frontmatter(ROOT / "skills" / name / "SKILL.md")
         assert data["name"] == name
         metadata = data["metadata"]
