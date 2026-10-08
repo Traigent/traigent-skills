@@ -36,7 +36,8 @@ def test_real_probe_is_a_checkpoint_before_the_real_run() -> None:
     assert text.index("| real probe |") < text.index("| real run |")
     assert "A real run starts only after the real probe passed" in text
     assert "`traigent-boost-agent` Step 3.6" in text
-    assert "record the probe row passed or blocked from that evidence" in text
+    assert "mark the probe row skipped because the run already happened" in text
+    assert "It is never passed, because it never ran." in text
 
 
 def test_earlier_checkpoints_are_unverified_history() -> None:
@@ -45,6 +46,14 @@ def test_earlier_checkpoints_are_unverified_history() -> None:
     assert "A passed row counts only after you re-check its evidence" in text
     assert "a skipped row counts only when the user confirms it in this session" in text
     assert "a row dated in the future counts as not yet run" in text
+
+
+def test_javascript_agent_routes_only_to_rows_traigent_js_owns() -> None:
+    text = _text()
+    assert "takes `traigent-js` for setup, metric, real probe and real run" in text
+    assert "There is no free JavaScript dry run" in text
+    assert "record the audit skipped (it reads only Python) and open `traigent-js` instead" in text
+    assert "mark the row blocked with \"no JavaScript owner\"" in text
 
 
 def test_checkpoint_file_is_ignored_and_holds_no_secret() -> None:
