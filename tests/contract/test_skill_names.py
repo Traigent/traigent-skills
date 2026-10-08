@@ -134,9 +134,11 @@ REMOVED_TRAIGENT_SKILL_RE = re.compile(
 
 def test_no_skill_cites_the_removed_traigent_lifecycle_skill() -> None:
     root = repo_root()
+    paths = [*(root / "skills").rglob("*.md"), *(root / "templates").rglob("*")]
+    paths += [root / "README.md"]
     hits = [
         str(path.relative_to(root))
-        for path in sorted((root / "skills").rglob("*.md"))
+        for path in sorted(p for p in paths if p.is_file())
         if REMOVED_TRAIGENT_SKILL_RE.search(path.read_text(encoding="utf-8"))
     ]
     assert not hits, (
