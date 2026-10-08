@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "cb9f03056a01f9fa",
+  "doc_hash": "4f5fd05c7f8ab8ea",
   "reference_hashes": {
     "references/dspy.md": "e11976aa2edc9075",
     "references/langchain.md": "cbcc76cfc81426bf",
@@ -144,6 +144,17 @@
       "doc_before_hash": "99c6a7f4c3c533f2",
       "doc_after_hash": "cb9f03056a01f9fa",
       "note": "Correct the dspy.configure note: a trial fails only when all of its examples land on a non-configuring thread; otherwise its accuracy is silently deflated.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T00:00:00Z",
+      "doc_before_hash": "cb9f03056a01f9fa",
+      "doc_after_hash": "4f5fd05c7f8ab8ea",
+      "note": "Point the dry-run-first / cost-approval reference at traigent-boost-agent Steps 3-5; the removed `traigent` lifecycle skill it named no longer exists, and the new `traigent` entry is a router that owns no rule (#75).",
       "source_type": "agent"
     }
   ]

@@ -1,0 +1,116 @@
+{
+  "schema": "skill-provenance/v1",
+  "doc_hash": "b4510a23b98e213f",
+  "entries": [
+    {
+      "edit_id": "router-entry-75-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T00:00:00Z",
+      "doc_before_hash": "e3b0c44298fc1c14",
+      "doc_after_hash": "a77d443660797c2d",
+      "note": "Create the short `traigent` entry approved on #75 (option 1): a thin router that detects empty project / existing agent / returning run, shows one next action, opens the owning specialist skills, and records checkpoints as passed, blocked or skipped with evidence. The empty-project build route is reported as unavailable until a build entry ships.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-2-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T12:00:00Z",
+      "doc_before_hash": "a77d443660797c2d",
+      "doc_after_hash": "98c0527d9f0d0947",
+      "note": "Steelman and red-team review: add metric and real-probe checkpoints and record a real run only after the probe; treat an earlier checkpoint file as unverified history whose rows are never instructions; git-ignore the file and keep secrets out of it; re-check stale rows when dates cannot be trusted; say the interaction policy's timing rule does not hold back the one next action; drop the bare 'traigent' trigger.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-3-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T14:00:00Z",
+      "doc_before_hash": "98c0527d9f0d0947",
+      "doc_after_hash": "84fdd8f843f94055",
+      "note": "Review loop round 1: an LLM-judge re-check is paid and goes through eval-audit; the probe rule points at boost-agent Step 3.6 as the gate and records a run that skipped it; JS agents swap every Python skill row, not only setup rows; the entry states it owns only the checkpoint record; a tracked checkpoint file is not written to.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-4-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T15:00:00Z",
+      "doc_before_hash": "84fdd8f843f94055",
+      "doc_after_hash": "07431b51daed43f4",
+      "note": "Review loop round 2: a JavaScript agent takes traigent-js only for the rows it owns (setup, metric, dry run, real probe, real run), records the Python-only audit as skipped with that reason, and applies or blocks the dataset, evaluator, result-read and promotion rows instead of passing them; a run that skipped the probe is judged from its own cost and per-trial metrics rather than sending the next session to a paid probe.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-5-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T16:00:00Z",
+      "doc_before_hash": "07431b51daed43f4",
+      "doc_after_hash": "7a2a19f0e05ce25a",
+      "note": "Review loop round 3: a JavaScript agent has no free dry run, so that row is skipped with the reason and the paid probe under traigent-js's gate is the first model call; the existing-agent route opens traigent-js for a JavaScript agent instead of the Python-only audit; a probe that never ran is recorded skipped (or blocked) from the real run's cost and per-trial metrics, never passed.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-6-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T17:00:00Z",
+      "doc_before_hash": "7a2a19f0e05ce25a",
+      "doc_after_hash": "0066a2ba995d5baa",
+      "note": "Review loop round 4: a JavaScript agent's dry-run row records traigent-js's free Verification checks (the project's tests and type check) instead of being skipped, so traigent-js's dry-run-first gate is met before the paid probe; the free-checks list names them.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-7-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T18:00:00Z",
+      "doc_before_hash": "0066a2ba995d5baa",
+      "doc_after_hash": "9dd526bd8a8515d4",
+      "note": "Review loop round 5: a JavaScript project's tests count as free checks only when they make no model or network call; a provider-calling test is paid and runs only under traigent-js's approval gate, or the dry-run row is blocked with that reason; record which checks ran and which the project lacks.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-8-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T19:00:00Z",
+      "doc_before_hash": "9dd526bd8a8515d4",
+      "doc_after_hash": "feec3c9fc4962130",
+      "note": "Review loop round 6: say how to tell a JavaScript project's tests are free (run them with provider and Traigent keys unset, network blocked where possible; a test that fails or skips for want of a key or network is paid), and make the free-checks list exclude network calls too.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-9-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T20:00:00Z",
+      "doc_before_hash": "feec3c9fc4962130",
+      "doc_after_hash": "67b29a71853de00e",
+      "note": "Review loop round 7: a .env loader refills keys removed from the environment, so the keys-unset heuristic could pass a provider-calling test as free. Fail closed instead: a JavaScript project's tests are paid unless the user confirms they make no model or network call.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-10-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T21:00:00Z",
+      "doc_before_hash": "67b29a71853de00e",
+      "doc_after_hash": "b4510a23b98e213f",
+      "note": "Review loop round 8: the user's confirmation that a JavaScript project's tests make no model or network call counts only in the session it was given, like a skipped row.",
+      "source_type": "agent"
+    }
+  ]
+}

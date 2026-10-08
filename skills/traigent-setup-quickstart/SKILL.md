@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.29"
+  version: "1.0.30"
 ---
 
 # Traigent Quickstart
@@ -468,7 +468,7 @@ See `references/environment-variables.md` for all available environment variable
 
 ## Your First Optimization
 
-> **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+> **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. `traigent-boost-agent` owns the mandatory dry-run-first / cost-approval workflow (Fast Path Steps 3-5; Playbook Steps 8-9).
 >
 > **Real LLM runs require the user's approval — the SDK's cost handshake is conditional, not a
 > gate you can lean on.** The SDK prompts only when its pre-run estimate exceeds
@@ -711,7 +711,7 @@ traigent onboard         # guided first-run setup wizard
 ## Next Steps
 
 - **Configure your decorator for a real optimization** -- The example above is the *minimal* decorator. To make it optimization-ready -- custom evaluators / `metric_functions`, injection mode, execution (`algorithm`/`offline`), and weighted objectives -- use the `traigent-setup-decorator` skill, then launch with `traigent-optimize-run`. This `decorator-setup` → `run-optimization` pair is the standard two-step cycle for going from "first run" to a real optimization.
-- **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
+- **Dry-run before a real run** -- `traigent-boost-agent` owns the mandatory dry-run-first / cost-approval workflow (Fast Path Steps 3-5; Playbook Steps 8-9) before any paid execution.
 - **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-optimize-run` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-optimize-config-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
 - **Choose an optimization algorithm** -- For connected real runs, omit `algorithm` or use `"auto"`; use `"grid"`/`"random"` for explicit local/offline search. `traigent algorithms` lists auto + smart names since 0.20.1 (see version-matrix: `algorithms-cli`) — the full public selector surface with a local/connected availability column (on 0.20.0 the CLI omitted `auto` and the smart names: Traigent/Traigent#1751). Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): `bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random` bind to the typed backend Optuna strategy, while unsupported smart names such as `nsga2`/`cmaes` fail fast with a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no smart name executed end-to-end). With `offline=True` every smart name still raises `ConfigurationError` at decoration time (verified on 0.21.0). The `traigent-optimize-run` skill owns the full selector contract.
