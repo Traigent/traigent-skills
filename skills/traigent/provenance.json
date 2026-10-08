@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7a2a19f0e05ce25a",
+  "doc_hash": "0066a2ba995d5baa",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -55,6 +55,17 @@
       "doc_before_hash": "07431b51daed43f4",
       "doc_after_hash": "7a2a19f0e05ce25a",
       "note": "Review loop round 3: a JavaScript agent has no free dry run, so that row is skipped with the reason and the paid probe under traigent-js's gate is the first model call; the existing-agent route opens traigent-js for a JavaScript agent instead of the Python-only audit; a probe that never ran is recorded skipped (or blocked) from the real run's cost and per-trial metrics, never passed.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-6-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T17:00:00Z",
+      "doc_before_hash": "7a2a19f0e05ce25a",
+      "doc_after_hash": "0066a2ba995d5baa",
+      "note": "Review loop round 4: a JavaScript agent's dry-run row records traigent-js's free Verification checks (the project's tests and type check) instead of being skipped, so traigent-js's dry-run-first gate is met before the paid probe; the free-checks list names them.",
       "source_type": "agent"
     }
   ]
