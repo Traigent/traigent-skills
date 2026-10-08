@@ -51,7 +51,8 @@ def test_earlier_checkpoints_are_unverified_history() -> None:
 def test_javascript_agent_routes_only_to_rows_traigent_js_owns() -> None:
     text = _text()
     assert "takes `traigent-js` for setup, metric, dry run, real probe and real run" in text
-    assert "its dry-run row records the free checks in `traigent-js`'s Verification section" in text
+    assert "its dry-run row records the checks in `traigent-js`'s Verification section" in text
+    assert "They count as free only when they make no model or network call" in text
     assert "record the audit skipped (it reads only Python) and open `traigent-js` instead" in text
     assert "mark the row blocked with \"no JavaScript owner\"" in text
 
