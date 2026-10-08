@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9dd526bd8a8515d4",
+  "doc_hash": "feec3c9fc4962130",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -77,6 +77,17 @@
       "doc_before_hash": "0066a2ba995d5baa",
       "doc_after_hash": "9dd526bd8a8515d4",
       "note": "Review loop round 5: a JavaScript project's tests count as free checks only when they make no model or network call; a provider-calling test is paid and runs only under traigent-js's approval gate, or the dry-run row is blocked with that reason; record which checks ran and which the project lacks.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-8-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T19:00:00Z",
+      "doc_before_hash": "9dd526bd8a8515d4",
+      "doc_after_hash": "feec3c9fc4962130",
+      "note": "Review loop round 6: say how to tell a JavaScript project's tests are free (run them with provider and Traigent keys unset, network blocked where possible; a test that fails or skips for want of a key or network is paid), and make the free-checks list exclude network calls too.",
       "source_type": "agent"
     }
   ]
