@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "84fdd8f843f94055",
+  "doc_hash": "07431b51daed43f4",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -33,6 +33,17 @@
       "doc_before_hash": "98c0527d9f0d0947",
       "doc_after_hash": "84fdd8f843f94055",
       "note": "Review loop round 1: an LLM-judge re-check is paid and goes through eval-audit; the probe rule points at boost-agent Step 3.6 as the gate and records a run that skipped it; JS agents swap every Python skill row, not only setup rows; the entry states it owns only the checkpoint record; a tracked checkpoint file is not written to.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-4-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T15:00:00Z",
+      "doc_before_hash": "84fdd8f843f94055",
+      "doc_after_hash": "07431b51daed43f4",
+      "note": "Review loop round 2: a JavaScript agent takes traigent-js only for the rows it owns (setup, metric, dry run, real probe, real run), records the Python-only audit as skipped with that reason, and applies or blocks the dataset, evaluator, result-read and promotion rows instead of passing them; a run that skipped the probe is judged from its own cost and per-trial metrics rather than sending the next session to a paid probe.",
       "source_type": "agent"
     }
   ]
