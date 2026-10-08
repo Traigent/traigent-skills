@@ -36,8 +36,8 @@ conflict — run records for a different function, two candidate agents — name
 ask which one the user means. A JavaScript/TypeScript agent (`@traigent/sdk` in `package.json`)
 takes `traigent-js` for setup, metric, dry run, real probe and real run. Its SDK has no mock
 mode, so its dry-run row records the checks in `traigent-js`'s Verification section (the
-project's own tests and type check), naming which ran and which the project lacks. Treat them
-as paid unless the user confirms they make no model or network call (a `.env` loader can supply
+project's own tests and type check), naming which ran and which the project lacks. Treat them as paid unless the user confirms in this session that they make no model or network
+call (a `.env` loader can supply
 a key you removed, so the environment cannot prove it); paid checks run only under
 `traigent-js`'s approval gate, or record the row blocked with that reason. The paid probe
 follows under the same gate. `traigent-setup-audit` reads only Python, so record its audit as
@@ -135,7 +135,7 @@ status, or the run ID resolves through its owner skill); a skipped row counts on
 user confirms it in this session; a row dated in the future counts as not yet run. When a file
 a passed checkpoint relied on (the dataset, the scorer, the decorated function, the
 configuration space) changed after that row's date, or you cannot tell (a fresh clone resets
-file dates), treat the row as not yet run and route it to its owner skill. Re-run the free checks (the audit, a deterministic scorer's sanity gate, the dry run; for a JavaScript agent, its Verification checks the user confirmed make no model or network call) before any paid
+file dates), treat the row as not yet run and route it to its owner skill. Re-run the free checks (the audit, a deterministic scorer's sanity gate, the dry run; for a JavaScript agent, its Verification checks the user confirmed free in this session) before any paid
 step; re-checking an LLM judge is paid and goes through `traigent-eval-audit`. A paid check runs again only with
 its owner skill's fresh approval, and never when its inputs did not change.
 

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "67b29a71853de00e",
+  "doc_hash": "b4510a23b98e213f",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -99,6 +99,17 @@
       "doc_before_hash": "feec3c9fc4962130",
       "doc_after_hash": "67b29a71853de00e",
       "note": "Review loop round 7: a .env loader refills keys removed from the environment, so the keys-unset heuristic could pass a provider-calling test as free. Fail closed instead: a JavaScript project's tests are paid unless the user confirms they make no model or network call.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-review-10-2026-10-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-08T21:00:00Z",
+      "doc_before_hash": "67b29a71853de00e",
+      "doc_after_hash": "b4510a23b98e213f",
+      "note": "Review loop round 8: the user's confirmation that a JavaScript project's tests make no model or network call counts only in the session it was given, like a skipped row.",
       "source_type": "agent"
     }
   ]

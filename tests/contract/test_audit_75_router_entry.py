@@ -52,8 +52,8 @@ def test_javascript_agent_routes_only_to_rows_traigent_js_owns() -> None:
     text = _text()
     assert "takes `traigent-js` for setup, metric, dry run, real probe and real run" in text
     assert "its dry-run row records the checks in `traigent-js`'s Verification section" in text
-    assert "Treat them as paid unless the user confirms they make no model or network call" in text
-    assert "Verification checks the user confirmed make no model or network call" in text
+    assert "Treat them as paid unless the user confirms in this session that they make no model or network call" in text
+    assert "Verification checks the user confirmed free in this session" in text
     assert "record the audit skipped (it reads only Python) and open `traigent-js` instead" in text
     assert "mark the row blocked with \"no JavaScript owner\"" in text
 
