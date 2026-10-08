@@ -317,6 +317,9 @@ MAX_ROWS = 20000
 NEAR_DUPLICATE_LIMIT = 5000
 NEAR_DUPLICATE_JACCARD = 0.9
 PROBE_TIMEOUT_SECONDS = 30
+# Distinct gold values of the probed kind read when choosing the known-bad
+# answer. Bounded so a large dataset is not compared value by value.
+PROBE_CANDIDATES = 32
 # The JSON report keeps everything; the printed card stops here so one tree with
 # dozens of eval files or scorers stays readable.
 MAX_DATASETS_IN_CARD = 10
@@ -1765,31 +1768,148 @@ def explicit_datasets(
 # --------------------------------------------------------------------------
 
 
+def _probe_kind(value: object) -> str | None:
+    """The JSON kind a gold value is probed as, or ``None`` when it cannot be.
+
+    Gold is whatever the task's answer is: text, a structured object, a list, a
+    number or a boolean. Each kind is probed with values of that same kind, so a
+    scorer written for the task's answers is called the way a run would call it.
+    """
+    if _gold_kind(value) is not None:
+        return None
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, (int, float)):
+        return "number"
+    if isinstance(value, str):
+        return "text"
+    if isinstance(value, dict):
+        return "object" if value else None
+    if isinstance(value, list):
+        return "array" if value else None
+    return None
+
+
 def build_probe_payload(datasets: list[DatasetReport], root: Path):
-    """Return ``(good, partial, bad, source)`` probe values."""
+    """Return ``(good, partial, bad, source)`` probe values.
+
+    ``good`` and ``bad`` are two distinct gold values of the same JSON kind from
+    the dataset. ``partial`` sits between them when one can be built from the
+    two values alone (see ``partial_value``) and is ``None`` otherwise, so the
+    partial case is skipped rather than invented. With no such pair the values
+    are placeholder text and ``source`` is ``"synthetic"``: the report then
+    abstains from saying the scorer separates good from bad answers for the task.
+
+    The kind is the first one with two distinct values. ``good`` is its first
+    value; ``bad`` is, among its first ``PROBE_CANDIDATES`` distinct values, the
+    one that differs most from ``good`` (see ``answer_difference``).
+    """
     for report in sorted(datasets, key=lambda item: -item.rows):
         raw = load_rows(root / report.file)
         if not raw.rows:
             continue
-        values: list[str] = []
+        values: dict[str, list[object]] = {}
+        chosen: str | None = None
         for row in raw.rows:
             key = next((name for name in EXPECTED_KEYS if name in row), None)
             if key is None:
                 continue
             value = row[key]
-            if isinstance(value, str) and value.strip():
-                if value not in values:
-                    values.append(value)
-            if len(values) >= 2:
+            kind = _probe_kind(value)
+            if kind is None:
+                continue
+            if chosen is not None and kind != chosen:
+                continue
+            seen = values.setdefault(kind, [])
+            if value not in seen:
+                seen.append(value)
+            if chosen is None and len(seen) >= 2:
+                chosen = kind
+            if chosen is not None and len(seen) >= PROBE_CANDIDATES:
                 break
-        if len(values) >= 2:
-            return values[0], perturb(values[0]), values[1], "dataset"
+        if chosen is not None:
+            good, *others = values[chosen]
+            # The first candidate that differs most from ``good``: two gold
+            # values can be distinct and still the same answer to the task
+            # (a case or spacing variant, numbers within a tolerance, objects
+            # that differ only in a field the scorer ignores). Taking the next
+            # distinct value as the known-bad answer would then read a correct
+            # scorer as one that cannot tell good from bad.
+            bad = max(others, key=lambda other: answer_difference(good, other))
+            return good, partial_value(good, bad), bad, "dataset"
     return (
         "traigent setup audit probe value",
         "traigent setup audit probe",
         "an unrelated answer",
         "synthetic",
     )
+
+
+def _same_answer(left: object, right: object) -> bool:
+    """Equal, reading text without case or spacing differences."""
+    if isinstance(left, str) and isinstance(right, str):
+        return " ".join(left.casefold().split()) == " ".join(right.casefold().split())
+    return left == right
+
+
+def answer_difference(good: object, other: object) -> float:
+    """How far ``other`` is from ``good``, compared within one JSON kind.
+
+    Text counts as different only when it differs beyond case and spacing; a
+    number by its distance; an object by how many of its fields differ; a list
+    by how many positions differ, plus the difference in length. It ranks
+    candidates for the known-bad probe and is not a score for the task.
+    """
+    if isinstance(good, bool) or isinstance(other, bool):
+        return float(good != other)
+    if isinstance(good, (int, float)) and isinstance(other, (int, float)):
+        # JSON integers have no size limit; a distance no float can hold ranks
+        # last rather than stopping the audit.
+        try:
+            distance = float(abs(good - other))
+        except OverflowError:
+            return 0.0
+        return distance if math.isfinite(distance) else 0.0
+    if isinstance(good, dict) and isinstance(other, dict):
+        return float(
+            sum(
+                1
+                for key in good.keys() | other.keys()
+                if key not in good
+                or key not in other
+                or not _same_answer(good[key], other[key])
+            )
+        )
+    if isinstance(good, list) and isinstance(other, list):
+        differing = sum(1 for a, b in zip(good, other) if not _same_answer(a, b))
+        return float(differing + abs(len(good) - len(other)))
+    return float(not _same_answer(good, other))
+
+
+def partial_value(good: object, bad: object) -> object | None:
+    """A value between ``good`` and ``bad``, or ``None`` when there is none.
+
+    Text loses its last token. A list keeps its length and takes the bad
+    answer's last item in place of its own; an object takes the bad answer's
+    value for one key it shares with it. Both keep the rest of the good answer
+    and the answer's shape, so a scorer that compares item by item or field by
+    field is called on input it was written for. A number or a boolean has no
+    in-between value that holds for every scorer, so none is built.
+    """
+    if isinstance(good, str):
+        return perturb(good)
+    if isinstance(good, list) and isinstance(bad, list):
+        if len(good) < 2 or not bad:
+            return None
+        candidate = [*good[:-1], bad[-1]]
+        return candidate if candidate not in (good, bad) else None
+    if isinstance(good, dict) and isinstance(bad, dict):
+        for key, value in good.items():
+            if key in bad and bad[key] != value:
+                candidate = {**good, key: bad[key]}
+                if candidate != bad:
+                    return candidate
+    return None
 
 
 def perturb(text: str) -> str:
@@ -1920,11 +2040,15 @@ def validate_probe_payload(payload: object) -> tuple[dict, int]:
     return clean, max(0, len(payload) - known)
 
 
-def validate_probe_evidence(payload: object, repeats: int | None = None) -> tuple[dict, int]:
+def validate_probe_evidence(
+    payload: object, repeats: int | None = None, *, partial_probed: bool = True
+) -> tuple[dict, int]:
     """Validate measurements before either tier can use them as evidence.
 
     The requested count is parent-owned. Older stored reports lack it, so their
     types and completeness are checked without inventing a historical count.
+    Whether a partial case was sent is parent-owned too: a gold kind with no
+    in-between value sends none, and then no partial score may come back.
     Error-bearing results retain their existing repair-versus-not-run reading.
     """
     if not isinstance(payload, dict) or type(payload.get("ran")) is not bool:
@@ -1941,7 +2065,8 @@ def validate_probe_evidence(payload: object, repeats: int | None = None) -> tupl
             good_count = len(scores["good"])
             if (good_count != repeats if repeats is not None else good_count < 1):
                 raise ValueError("probe good count differs from requested repeats")
-            if len(scores["partial"]) != 1 or len(scores["bad"]) != 1:
+            expected_partial = 1 if partial_probed else 0
+            if len(scores["partial"]) != expected_partial or len(scores["bad"]) != 1:
                 raise ValueError("probe comparison cases are incomplete")
     return clean, dropped
 
@@ -2002,7 +2127,7 @@ def run_scorer_probe(
     interpreter: str,
     scorer: ScorerCandidate,
     root: Path,
-    payload: tuple[str, str, str, str],
+    payload: tuple[object, object | None, object, str],
     repeats: int,
     isolation: list[str],
 ) -> dict:
@@ -2063,7 +2188,9 @@ def run_scorer_probe(
             parse_int=_strict_int,
             object_pairs_hook=_unique_members,
         )
-        result, dropped = validate_probe_evidence(parsed, repeats)
+        result, dropped = validate_probe_evidence(
+            parsed, repeats, partial_probed=partial is not None
+        )
     except ValueError:
         return {
             "ran": False,
@@ -2075,6 +2202,7 @@ def run_scorer_probe(
         }
     result["requested_repeats"] = repeats
     result["payload_source"] = source
+    result["partial_probed"] = partial is not None
     result["stderr_bytes"] = stderr_bytes
     result["framed_result_lines"] = 1
     result["dropped_keys"] = dropped
@@ -2153,9 +2281,12 @@ def probe_metrics(result: dict | None) -> dict:
     # scores with no error to account for them are not its honest output. A key
     # the parent dropped may have been that error (an older parent dropped error
     # records it could not name), so the evidence is incomplete then too.
+    # A gold kind with no in-between value sends no partial case (the parent
+    # records that as ``partial_probed: false``); every other probe sends one.
+    expected_partial = 0 if result.get("partial_probed") is False else 1
     complete = (
         bool(good)
-        and len(partial) == 1
+        and len(partial) == expected_partial
         and len(bad) == 1
         and not result.get("dropped_keys")
     )
@@ -2208,6 +2339,20 @@ PROBE_CONDITIONS_REMEDY = (
     "Safety in the traigent-setup-audit skill), then fix the scorer"
 )
 
+# The probe could not draw two distinct gold values of one kind from a dataset,
+# so it scored placeholder text. That still measures repeatability; it does not
+# show that the scorer tells a good answer for THIS task from a bad one.
+SYNTHETIC_PROBE_NOTE = (
+    "no dataset gave two distinct usable gold values of the same kind, so the "
+    "probe scored placeholder text: whether the scorer separates a good answer "
+    "for this task from a bad one was not tested"
+)
+SYNTHETIC_MEANING = (
+    "The scorer returns the same number for the same pair, but it was probed "
+    "with placeholder text rather than this task's answers, so this audit makes "
+    "no claim that it separates a good answer from a bad one."
+)
+
 UNMEASURED_MEANING = (
     "The scorer could not be run, so its repeatability is unmeasured — a score "
     "movement cannot yet be separated from scorer variation."
@@ -2232,6 +2377,18 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
             if metrics["ordered"]
             else " (not ordered as expected)"
         )
+    synthetic = result.get("payload_source") == "synthetic"
+    if synthetic and order:
+        order += " on placeholder text, not on this task's answers"
+    if result.get("partial_probed") is False:
+        cases = "gold self-match / contrast candidate probes scored "
+        scored = f"{_show(metrics['good'])} / {_show(metrics['bad'])}"
+    else:
+        cases = "gold self-match / partial / contrast candidate probes scored "
+        scored = (
+            f"{_show(metrics['good'])} / {_show(metrics['partial'])} / "
+            f"{_show(metrics['bad'])}"
+        )
     evidence = [
         f"repeat-scoring the same pair {metrics['repeats']} times returned "
         + (
@@ -2239,10 +2396,10 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
             if metrics["stable"]
             else f"{metrics['distinct']} different scores"
         ),
-        "known-good / partial / known-bad probes scored "
-        f"{_show(metrics['good'])} / {_show(metrics['partial'])} / "
-        f"{_show(metrics['bad'])}{order}",
+        f"{cases}{scored}{order}",
     ]
+    if synthetic:
+        evidence.append(SYNTHETIC_PROBE_NOTE)
     # A repeat count cut short by an error is not a repeatability reading.
     if not metrics["good"] or any(error.get("case") == "good" for error in errors):
         evidence.pop(0)
@@ -2271,18 +2428,18 @@ def probe_symptom(metrics: dict) -> str:
             f"returned {metrics['distinct']} different scores for the same "
             f"pair across {metrics['repeats']} repeats"
         )
-    return (
-        "did not rank a known-good answer above a known-bad one "
-        f"({_show(metrics['good'])} vs {_show(metrics['bad'])})"
-    )
+    cases = f"gold self-match {_show(metrics['good'])}"
+    if metrics["partial"]:
+        cases += f", partial {_show(metrics['partial'])}"
+    cases += f", contrast candidate {_show(metrics['bad'])}"
+    return f"did not produce the expected probe ordering ({cases})"
 
 
 def probe_remedy(metrics: dict) -> str:
     """What to do about the symptom ``probe_symptom`` names.
 
-    An unstable scorer needs to be made repeatable; a stable one that ranks a
-    known-bad answer at or above a known-good one IS repeatable, and what it
-    measures is what needs fixing.
+    A stable scorer can tie equivalent task answers. Structural differences
+    alone do not establish that the contrast candidate is actually incorrect.
     """
     errors = metrics["errors"]
     if any(not error.get("non_finite") for error in errors):
@@ -2291,7 +2448,11 @@ def probe_remedy(metrics: dict) -> str:
         return "make it return a finite number"
     if not metrics["stable"]:
         return "make it repeatable"
-    return "fix what it measures"
+    return (
+        "verify the contrast with a task-verified incorrect answer and any partial "
+        "probe's expected position; if these task-verified probes still fail the "
+        "expected ordering, fix what it measures"
+    )
 
 
 # The one consequence that judges the scorer itself: every call scored, finitely.
@@ -2303,6 +2464,11 @@ def probe_consequence(metrics: dict) -> str:
     if metrics["errors"] or not metrics["finite"]:
         return (
             "it is not established that a run would get a usable score for every row"
+        )
+    if metrics["stable"]:
+        return (
+            "the candidate may be equivalent for this task; task-quality "
+            "separation is not established by this probe"
         )
     return SCORER_MEASURED
 
@@ -2983,7 +3149,8 @@ def scorer_area(
         f"process ({probe.get('payload_source')} probe values)"
     )
     evidence.extend(probe_evidence)
-    status = "ok" if probe_status == "ok" else "attention"
+    synthetic = probe.get("payload_source") == "synthetic"
+    status = "ok" if probe_status == "ok" and not synthetic else "attention"
     if probe_status == "blocked":
         meaning = (
             "A scorer that reaches the network is not a local deterministic scorer; "
@@ -2991,22 +3158,31 @@ def scorer_area(
         )
     elif probe_status == "failed":
         meaning = UNMEASURED_MEANING
+    elif probe_status == "ok" and synthetic:
+        meaning = SYNTHETIC_MEANING
     elif probe_status == "ok":
         meaning = (
-            "The scorer returns the same number for the same pair and separates a "
-            "known-good answer from a known-bad one, so a score movement is at "
-            "least not scorer variation."
+            "The scorer returns the same number for the same pair and ranks the "
+            "gold self-match above the contrast candidate. This shows repeatability "
+            "and separation of the tested pair, not correctness for every task answer."
         )
     elif probe_metrics(probe)["errors"]:
         meaning = (
             "Not every probe call produced a finite score, so whether a run would "
             "get a usable score for every row is not established."
         )
-    else:
+    elif not probe_metrics(probe)["stable"]:
         meaning = (
             "A scorer that returns different numbers for the same pair makes a "
             "configuration comparison unreliable: the movement you measure may be "
             "the scorer moving."
+        )
+    else:
+        meaning = (
+            "Repeated self-match scores are identical, but the probe values "
+            "do not have the expected ordering. The contrast candidate may be "
+            "equivalent for this task, so verify an actually incorrect answer "
+            "before concluding that the scorer needs fixing."
         )
     return {"status": status, "evidence": evidence, "meaning": meaning}
 
@@ -3313,6 +3489,21 @@ def next_step(
                 "it with `traigent-dataset-curate`, then re-run this audit."
             )
         return {"branch": "f", "skills": list(curate), "line": line}
+
+    # A probe on placeholder text measured repeatability only, so the Scorer
+    # area is not `ok` and `g` would claim more than was tested.
+    if probe is not None and probe.get("payload_source") == "synthetic":
+        return {
+            "branch": "e",
+            "skills": ["traigent-eval-audit"],
+            "line": (
+                f"`{probed.function}` at {probed.file}:{probed.line} is repeatable, "
+                "but it was probed with placeholder text because no dataset gave "
+                "two distinct usable gold values of the same kind, so whether it "
+                "separates a good answer for this task from a bad one is unknown — "
+                "assess it with `traigent-eval-audit`."
+            ),
+        }
 
     return {
         "branch": "g",

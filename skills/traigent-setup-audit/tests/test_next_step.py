@@ -505,7 +505,7 @@ def test_a_misordered_but_stable_scorer_takes_the_scorer_branch() -> None:
         _inventory([entry], [_scorer()]), [_dataset(80, 40)], misordered, _scorer()
     )
     assert step["branch"] == "d"
-    assert "did not rank a known-good answer above a known-bad one" in step["line"]
+    assert "did not produce the expected probe ordering" in step["line"]
     # It IS repeatable: the remedy is what it measures, not its repeatability.
     assert "make it repeatable" not in step["line"]
     assert "fix what it measures" in step["line"]
@@ -1518,3 +1518,206 @@ def test_a_dataset_file_cap_routes_to_the_dataset_step() -> None:
     )
     assert step["branch"] == "f"
     assert step["line"].startswith(note), step["line"]
+
+
+# --------------------------------------------------------------------------
+# typed gold: the probe scores the task's own answers, whatever their kind
+# --------------------------------------------------------------------------
+
+# Each kind: a gold value per row index, and a scorer that only accepts that
+# kind (it raises on the placeholder text the probe used to fall back to). The
+# scorers and values are fixtures; the probe itself has no per-kind scorer.
+TYPED_GOLD = {
+    "object": (
+        lambda i: {"category": ["billing", "outage", "account"][i % 3],
+                   "urgency": ["low", "high"][i % 2]},
+        "def score(output, expected):\n"
+        "    return sum(output[k] == expected[k] for k in expected) / len(expected)\n",
+        (1.0, 0.5, 0.0),
+    ),
+    "array": (
+        lambda i: [f"tag{i % 5}", f"tag{i % 5 + 5}"],
+        "def score(output, expected):\n"
+        "    if not isinstance(output, list) or not isinstance(expected, list):\n"
+        "        raise TypeError('a list answer')\n"
+        "    return len(set(output) & set(expected)) / len(set(expected))\n",
+        (1.0, 0.5, 0.0),
+    ),
+    # Item by item: a partial answer must keep the answer's length.
+    "array_positional": (
+        lambda i: [f"tag{i % 5}", f"tag{i % 5 + 5}"],
+        "def score(output, expected):\n"
+        "    if len(output) != len(expected):\n"
+        "        raise ValueError('an answer of the same length')\n"
+        "    return sum(o == e for o, e in zip(output, expected)) / len(expected)\n",
+        (1.0, 0.5, 0.0),
+    ),
+    "number": (
+        lambda i: 10 + 80 * (i % 2),
+        "def score(output, expected):\n"
+        "    return 1.0 - min(1.0, abs(output - expected) / 100)\n",
+        (1.0, None, 0.2),
+    ),
+    "boolean": (
+        lambda i: i % 2 == 0,
+        "def score(output, expected):\n"
+        "    if not isinstance(output, bool):\n"
+        "        raise TypeError('a boolean answer')\n"
+        "    return 1.0 if output is expected else 0.0\n",
+        (1.0, None, 0.0),
+    ),
+}
+
+
+def _gold_dataset(root: Path, gold) -> None:
+    lines = []
+    for index, line in enumerate(
+        (root / "dataset.jsonl").read_text(encoding="utf-8").splitlines()
+    ):
+        row = json.loads(line)
+        row["expected_output"] = gold(index)
+        lines.append(json.dumps(row) + "\n")
+    (root / "dataset.jsonl").write_text("".join(lines), encoding="utf-8")
+
+
+@pytest.mark.parametrize("kind", sorted(TYPED_GOLD))
+def test_structured_gold_is_probed_with_the_tasks_own_answers(
+    kind: str, tmp_path: Path
+) -> None:
+    gold, scorer, (good, partial, bad) = TYPED_GOLD[kind]
+    root = _variant(tmp_path, scorer)
+    _gold_dataset(root, gold)
+    report, card = _run(root, tmp_path)
+    probe = report["scorer_probe"]
+    assert probe["payload_source"] == "dataset", probe
+    assert probe["errors"] == [], probe
+    assert probe["scores"]["good"] == [good] * 5
+    assert probe["scores"]["bad"] == [pytest.approx(bad)]
+    if partial is None:
+        # No in-between value exists for this kind, so none is invented.
+        assert probe["partial_probed"] is False
+        assert probe["scores"]["partial"] == []
+        assert "gold self-match / contrast candidate probes scored" in card
+    else:
+        assert probe["partial_probed"] is True
+        assert probe["scores"]["partial"] == [partial]
+    assert report["areas"]["scorer"]["status"] == "ok"
+    assert report["next_step"]["branch"] == "g"
+
+
+def test_a_stored_report_without_a_partial_case_reads_repeatable(
+    tmp_path: Path,
+) -> None:
+    import tier2_checks as tier2
+
+    gold, scorer, _ = TYPED_GOLD["number"]
+    root = _variant(tmp_path, scorer)
+    _gold_dataset(root, gold)
+    _run(root, tmp_path)
+    assert tier2.load_tier1(tmp_path / "report.json").probe_verdict == "repeatable"
+
+
+def test_placeholder_probe_values_do_not_claim_separation(tmp_path: Path) -> None:
+    """One distinct gold value gives the probe nothing of the task's to compare,
+    so it falls back to placeholder text and must say what that does not show."""
+    root = _variant(tmp_path, _three_way())
+    _gold_dataset(root, lambda i: "the same answer")
+    report, card = _run(root, tmp_path)
+    assert report["scorer_probe"]["payload_source"] == "synthetic"
+    assert report["scorer_probe"]["errors"] == []
+    scorer = report["areas"]["scorer"]
+    assert scorer["status"] == "attention"
+    assert "separates a known-good answer from a known-bad one" not in card
+    assert "on placeholder text, not on this task's answers" in card
+    assert "all check out" not in card
+    assert audit.SYNTHETIC_PROBE_NOTE in scorer["evidence"]
+    assert scorer["meaning"] == audit.SYNTHETIC_MEANING
+
+
+def test_a_placeholder_probe_never_reaches_the_all_clear() -> None:
+    """With every other area clear, the next step still abstains."""
+    entry = _entry([_knob("model", "read")])
+    probe = {**GOOD_PROBE, "payload_source": "synthetic"}
+    step = audit.next_step(
+        _inventory([entry], [_scorer()]), [_dataset(80, 40)], probe, _scorer()
+    )
+    assert step["branch"] == "e"
+    assert step["skills"] == ["traigent-eval-audit"]
+    assert "placeholder text" in step["line"]
+    assert "all check out" not in step["line"]
+    # Teeth: the same probe from dataset values is the all-clear.
+    dataset_probe = {**GOOD_PROBE, "payload_source": "dataset"}
+    assert audit.next_step(
+        _inventory([entry], [_scorer()]), [_dataset(80, 40)], dataset_probe, _scorer()
+    )["branch"] == "g"
+
+
+# Two distinct gold values can be the same answer to the task. The known-bad
+# probe is the candidate that differs most from the known-good one, so a scorer
+# that rightly scores such a pair alike is not read as unable to tell good from
+# bad. The first two rows of each fixture are such a pair.
+EQUIVALENT_GOLD_PAIRS = {
+    "number_within_tolerance": (
+        lambda i: [3.14, 3.141][i] if i < 2 else float(i),
+        "def score(output, expected):\n"
+        "    return 1.0 if abs(output - expected) < 0.01 else 0.0\n",
+    ),
+    "object_with_an_ignored_field": (
+        lambda i: {"id": i, "category": ["billing", "billing", "outage"][min(i, 2)]},
+        "def score(output, expected):\n"
+        "    return 1.0 if output['category'] == expected['category'] else 0.0\n",
+    ),
+    "text_case_variant": (
+        lambda i: ["Paris", "paris"][i] if i < 2 else f"city {i}",
+        "def score(output, expected):\n"
+        "    return 1.0 if output.strip().lower() == expected.strip().lower() else 0.0\n",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(EQUIVALENT_GOLD_PAIRS))
+def test_an_equivalent_gold_pair_is_not_the_known_bad_probe(
+    case: str, tmp_path: Path
+) -> None:
+    gold, scorer = EQUIVALENT_GOLD_PAIRS[case]
+    root = _variant(tmp_path, scorer)
+    _gold_dataset(root, gold)
+    report, card = _run(root, tmp_path)
+    probe = report["scorer_probe"]
+    assert probe["payload_source"] == "dataset", probe
+    assert probe["errors"] == [], probe
+    assert probe["scores"]["bad"] == [0.0], probe
+    assert report["areas"]["scorer"]["status"] == "ok", card
+    assert report["next_step"]["branch"] == "g", report["next_step"]
+
+
+def test_the_known_bad_candidate_search_is_bounded(monkeypatch) -> None:
+    """Only the first PROBE_CANDIDATES distinct values are compared."""
+    from types import SimpleNamespace
+
+    far = audit.PROBE_CANDIDATES + 1000
+    golds = [0, *range(1, audit.PROBE_CANDIDATES), far]
+    rows = [{"expected": value} for value in golds]
+    monkeypatch.setattr(audit, "load_rows", lambda _path: SimpleNamespace(rows=rows))
+    datasets = [SimpleNamespace(file="d.jsonl", rows=len(rows))]
+    good, _partial, bad, source = audit.build_probe_payload(datasets, Path("."))
+    assert (good, source) == (0, "dataset")
+    assert bad == audit.PROBE_CANDIDATES - 1
+    # The documented bound is the one the code applies.
+    skill = (Path(audit.__file__).resolve().parents[1] / "SKILL.md").read_text()
+    assert f"among the first {audit.PROBE_CANDIDATES} distinct values" in skill
+
+
+def test_a_gold_number_too_large_for_a_float_does_not_stop_the_probe(
+    monkeypatch,
+) -> None:
+    from types import SimpleNamespace
+
+    huge = 10**400
+    rows = [{"expected": value} for value in (1, huge, 7)]
+    monkeypatch.setattr(audit, "load_rows", lambda _path: SimpleNamespace(rows=rows))
+    datasets = [SimpleNamespace(file="d.jsonl", rows=len(rows))]
+    good, partial, bad, source = audit.build_probe_payload(datasets, Path("."))
+    # The distance to the huge value cannot be held, so the next one is taken.
+    assert (good, partial, bad, source) == (1, None, 7, "dataset")
+    assert audit.answer_difference(huge, 1.5) == 0.0
