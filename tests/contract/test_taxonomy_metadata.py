@@ -38,8 +38,11 @@ def _is_public_skill_name(name: str) -> bool:
 
 
 def test_skill_name_rule_admits_only_the_plugin_named_entry() -> None:
+    # Pin the exception to the real plugin name, so an edit to the catalog's
+    # plugin field cannot widen it to some other bare name.
+    assert CATALOG["plugin"] == "traigent"
     assert _is_public_skill_name("traigent-boost-agent")
-    assert _is_public_skill_name(CATALOG["plugin"])
+    assert _is_public_skill_name("traigent")
     for name in ("traigentx", "boost-agent", "traigent_", "start", ""):
         assert not _is_public_skill_name(name), name
 
