@@ -505,7 +505,7 @@ def test_a_misordered_but_stable_scorer_takes_the_scorer_branch() -> None:
         _inventory([entry], [_scorer()]), [_dataset(80, 40)], misordered, _scorer()
     )
     assert step["branch"] == "d"
-    assert "did not rank a known-good answer above a known-bad one" in step["line"]
+    assert "did not produce the expected probe ordering" in step["line"]
     # It IS repeatable: the remedy is what it measures, not its repeatability.
     assert "make it repeatable" not in step["line"]
     assert "fix what it measures" in step["line"]
@@ -1597,7 +1597,7 @@ def test_structured_gold_is_probed_with_the_tasks_own_answers(
         # No in-between value exists for this kind, so none is invented.
         assert probe["partial_probed"] is False
         assert probe["scores"]["partial"] == []
-        assert "known-good / known-bad probes scored" in card
+        assert "gold self-match / contrast candidate probes scored" in card
     else:
         assert probe["partial_probed"] is True
         assert probe["scores"]["partial"] == [partial]

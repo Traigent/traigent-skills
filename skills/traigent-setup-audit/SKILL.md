@@ -111,8 +111,18 @@ written). A finding is not a failure.
 |---|---|---|
 | Agent | `@traigent.optimize` decorators, parsed with `ast` | entry points with `file:line`; each declared knob marked read, never read, or possibly read through a mapping |
 | Dataset | JSONL / JSON arrays / CSV whose rows carry an input-like key (`input`, `input_data`, `question`, `prompt`, `query`, `messages`) | the count of rows with no `input`/`input_data` key (keyed `question`/`prompt`/`query`/`messages`, or with no input-like key at all), since `eval_dataset` loads only those two keys and refuses the whole file on the first such row; row count against the `traigent-dataset-curate` minimums; rows with no usable gold value — no gold key, or a value that is `null`, `NaN`, infinite or an empty string, counted per kind in `missing_gold_counts` (the first gold key present decides; a later key does not stand in for it); non-standard JSON constants (`NaN`, `Infinity`) anywhere in the file, which strict JSON readers refuse; exact and near-duplicate inputs; whether a holdout slice exists, how large it is, and whether it overlaps another slice; label balance where the gold values are few and repeated |
-| Scorer | functions named `score*`/`evaluate*`/`grade*`/`metric*`, or taking `expected` second | classification (deterministic / LLM judge / code-executing / hybrid); for a deterministic one, repeat-scoring plus a known-good, partial and known-bad probe built from gold values of one kind in the dataset — text, object, list, number or boolean, passed to the scorer as they are; the known-bad value is the one, among the first 32 distinct values, that differs most from the known-good one, so two gold values that are the same answer (a case variant, numbers within a tolerance) are not paired (no partial case where none can be built, as for a number or a boolean); with no such pair the probe uses placeholder text and the card says separation was not tested |
+| Scorer | functions named `score*`/`evaluate*`/`grade*`/`metric*`, or taking `expected` second | classification (deterministic / LLM judge / code-executing / hybrid); for a deterministic one, repeat-scoring plus a gold self-match, partial and contrast-candidate probe built from gold values of one kind in the dataset — text, object, list, number or boolean, passed to the scorer as they are; the contrast candidate is the one, among the first 32 distinct values, that differs most from the gold self-match, to seek a contrast beyond case or spacing variants; structural distance alone cannot prove that the candidate is an incorrect answer for the task (no partial case where none can be built, as for a number or a boolean); with no such pair the probe uses placeholder text and the card says separation was not tested |
 | Setup | the project interpreter, the environment, `.env*` files, `git check-ignore` | installed SDK version; which key **names** are set; whether `.env` is git-ignored; which model ids the configuration space declares |
+
+### Interpreting a tied contrast probe
+
+A distinct dataset gold used as the contrast candidate can still be equivalent
+for the task (for example, a tolerated number or an ignored object field). A
+stable tie remains an attention finding: the probe did not demonstrate
+separation, and a constant scorer must not get an all-clear. It does not prove
+the scorer broken. Verify a task-verified incorrect answer and any partial
+probe's expected position before recommending a scorer fix; the audit does not
+infer the task's equivalence policy.
 
 Row minimums come from `traigent-dataset-curate`: 10-20 for a smoke check, 30-100
 for a first tuning slice, 30+ for a holdout slice, 100+ for a high-variance task.
@@ -186,7 +196,7 @@ would be measured with is still unreliable:
 | no `@traigent.optimize` anywhere | `traigent-setup-quickstart`, then `traigent-setup-decorator` |
 | a decorated function with no knobs, or no knob its body reads | `traigent-optimize-config-space` |
 | no scorer found | `traigent-eval-build` |
-| the probed scorer is not repeatable, ranks a known-bad answer above a known-good one, had some probe calls raise while others scored, or returned a non-finite number | `traigent-eval-build`, then `traigent-eval-audit` |
+| the probed scorer is not repeatable, does not produce the expected gold self-match / partial / contrast-candidate ordering, had some probe calls raise while others scored, or returned a non-finite number | `traigent-eval-build`, then `traigent-eval-audit` |
 | a scorer exists but none could be measured here (including one that raised on every probe call or returned something that is not a number) | `traigent-eval-audit` |
 | no dataset could be analysed because a file could not be read, or the file named with `--dataset` (or its holdout sibling) could not be read | `traigent-dataset-curate` |
 | no evaluation dataset found | `traigent-dataset-curate` |

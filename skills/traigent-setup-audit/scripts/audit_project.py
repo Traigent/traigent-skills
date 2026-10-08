@@ -2381,10 +2381,10 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
     if synthetic and order:
         order += " on placeholder text, not on this task's answers"
     if result.get("partial_probed") is False:
-        cases = "known-good / known-bad probes scored "
+        cases = "gold self-match / contrast candidate probes scored "
         scored = f"{_show(metrics['good'])} / {_show(metrics['bad'])}"
     else:
-        cases = "known-good / partial / known-bad probes scored "
+        cases = "gold self-match / partial / contrast candidate probes scored "
         scored = (
             f"{_show(metrics['good'])} / {_show(metrics['partial'])} / "
             f"{_show(metrics['bad'])}"
@@ -2428,18 +2428,18 @@ def probe_symptom(metrics: dict) -> str:
             f"returned {metrics['distinct']} different scores for the same "
             f"pair across {metrics['repeats']} repeats"
         )
-    return (
-        "did not rank a known-good answer above a known-bad one "
-        f"({_show(metrics['good'])} vs {_show(metrics['bad'])})"
-    )
+    cases = f"gold self-match {_show(metrics['good'])}"
+    if metrics["partial"]:
+        cases += f", partial {_show(metrics['partial'])}"
+    cases += f", contrast candidate {_show(metrics['bad'])}"
+    return f"did not produce the expected probe ordering ({cases})"
 
 
 def probe_remedy(metrics: dict) -> str:
     """What to do about the symptom ``probe_symptom`` names.
 
-    An unstable scorer needs to be made repeatable; a stable one that ranks a
-    known-bad answer at or above a known-good one IS repeatable, and what it
-    measures is what needs fixing.
+    A stable scorer can tie equivalent task answers. Structural differences
+    alone do not establish that the contrast candidate is actually incorrect.
     """
     errors = metrics["errors"]
     if any(not error.get("non_finite") for error in errors):
@@ -2448,7 +2448,11 @@ def probe_remedy(metrics: dict) -> str:
         return "make it return a finite number"
     if not metrics["stable"]:
         return "make it repeatable"
-    return "fix what it measures"
+    return (
+        "verify the contrast with a task-verified incorrect answer and any partial "
+        "probe's expected position; if these task-verified probes still fail the "
+        "expected ordering, fix what it measures"
+    )
 
 
 # The one consequence that judges the scorer itself: every call scored, finitely.
@@ -2460,6 +2464,11 @@ def probe_consequence(metrics: dict) -> str:
     if metrics["errors"] or not metrics["finite"]:
         return (
             "it is not established that a run would get a usable score for every row"
+        )
+    if metrics["stable"]:
+        return (
+            "the candidate may be equivalent for this task; task-quality "
+            "separation is not established by this probe"
         )
     return SCORER_MEASURED
 
@@ -3153,20 +3162,27 @@ def scorer_area(
         meaning = SYNTHETIC_MEANING
     elif probe_status == "ok":
         meaning = (
-            "The scorer returns the same number for the same pair and separates a "
-            "known-good answer from a known-bad one, so a score movement is at "
-            "least not scorer variation."
+            "The scorer returns the same number for the same pair and ranks the "
+            "gold self-match above the contrast candidate. This shows repeatability "
+            "and separation of the tested pair, not correctness for every task answer."
         )
     elif probe_metrics(probe)["errors"]:
         meaning = (
             "Not every probe call produced a finite score, so whether a run would "
             "get a usable score for every row is not established."
         )
-    else:
+    elif not probe_metrics(probe)["stable"]:
         meaning = (
             "A scorer that returns different numbers for the same pair makes a "
             "configuration comparison unreliable: the movement you measure may be "
             "the scorer moving."
+        )
+    else:
+        meaning = (
+            "Repeated self-match scores are identical, but the probe values "
+            "do not have the expected ordering. The contrast candidate may be "
+            "equivalent for this task, so verify an actually incorrect answer "
+            "before concluding that the scorer needs fixing."
         )
     return {"status": status, "evidence": evidence, "meaning": meaning}
 
