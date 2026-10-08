@@ -105,9 +105,23 @@ command). If the SDK is installed in a virtualenv, use that environment's absolu
 {"mcpServers": {"traigent-analytics": {"command": "traigent-analytics-mcp"}}}
 ```
 
-Confirm the `analytics_*` tools are listed before calling the brief (the server's `health_check`
-and `auth_status` tools report readiness and masked credentials without a network call). If they
-are not listed, treat the server as unreachable (step 2): use the portal deep-link.
+Before calling the brief, branch on what you can observe:
+
+- **`analytics_*` tools listed** — proceed; confirm they are listed before calling the brief (the
+  server's `health_check` and `auth_status` tools report readiness and masked credentials without
+  a network call).
+- **Not listed** — check whether `traigent-analytics` is already registered in this client's MCP
+  config (its MCP list command, e.g. `claude mcp list` / `codex mcp list`, or the config file):
+  - *Not registered* — register it as above, then have the user restart/reload the session (or use
+    the client's MCP reconnect) once, and re-run the request.
+  - *Registered but not listed* — this session has not loaded it yet (it may have been registered
+    from another session or terminal): have the user restart/reload or reconnect once, then re-run.
+    This is **not loaded yet**, not unreachable.
+
+  Never re-register a server that is already registered. You can offer the portal deep-link
+  meanwhile.
+- **Still not listed after that one restart, reload or reconnect** — treat the server as
+  unreachable (step 2): use the portal deep-link.
 
 ### 1. Collect explicit project + run context
 

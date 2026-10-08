@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6cc764faecf7a8b0",
+  "doc_hash": "2f055dfa9705cd88",
   "reference_hashes": {
     "references/convergence-patterns.md": "1b074da6b72cce91",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/mcp-analytics-tools.md": "9d4cc7c87db109fd",
+    "references/mcp-analytics-tools.md": "2ec821d7a13eaa1d",
     "references/optimization-result-api.md": "0c7713bc50c16758"
   },
   "entries": [
@@ -56,7 +56,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "838feefd1437899f",
       "doc_after_hash": "77ffaa88b34926ab",
-      "note": "note that the apply threshold check runs on the search slice, not a promotion decision — promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
+      "note": "note that the apply threshold check runs on the search slice, not a promotion decision \u2014 promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
       "source_type": "human"
     },
     {
@@ -122,7 +122,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "3e30b2333041940f",
       "doc_after_hash": "f2dda030a1ffec27",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -364,6 +364,28 @@
       "doc_after_hash": "6cc764faecf7a8b0",
       "note": "Stop Reasons table: add the safety_constraint row (since 0.28.0, see version-matrix: safety-constraints-impl): an in-run safety_constraints halt that also fires on too little evidence; not a trial filter or a safety verdict, best_config may be unsafe; promote only through traigent-ci-safety-gate.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "replay-mcp-activation-after-safety-2026-10-06",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-06T07:55:00Z",
+      "doc_before_hash": "6cc764faecf7a8b0",
+      "doc_after_hash": "2f055dfa9705cd88",
+      "note": "Replay the MCP activation guidance onto the merged safety stop-reason table. Preserve the incoming main-line provenance chain; the original parallel-branch edit is retained below rather than inventing a linear transition between branch histories.",
+      "source_type": "agent",
+      "replayed_entry": {
+        "edit_id": "mcp-session-activation-results-2026-10-05",
+        "op": "manual_edit",
+        "status": "accepted",
+        "run_id": null,
+        "timestamp": "2026-10-05T00:00:00Z",
+        "doc_before_hash": "cb6760621ddfaedd",
+        "doc_after_hash": "9091e84b952fec4c",
+        "note": "Issue #383: the analytics MCP prerequisite branches on observable state, not on which session registered the server: analytics_* tools listed -> proceed (confirm before calling the brief); not listed -> check the client's MCP config (e.g. claude mcp list / codex mcp list): not registered -> register, then one restart/reload/reconnect and re-run; registered but not listed -> not loaded yet (not unreachable), one restart/reload/reconnect and re-run. Never re-register a server that is already registered; the portal deep-link may be offered meanwhile. Still not listed after that one restart/reload/reconnect -> step 2's genuine-failure fallback (unchanged). Same branch in references/mcp-analytics-tools.md. Version 1.1.25 -> 1.1.26.",
+        "source_type": "agent"
+      }
     }
   ]
 }

@@ -86,15 +86,48 @@ portal result history) need `TRAIGENT_API_KEY`, and the key must be **read + wri
 (`experiments:write`): with a read-only key the cloud optimizer and dataset synthesis get a 403 and
 the SDK silently falls back to local — the run never reaches portal history.
 
-- **If a key was pasted into this prompt** (a portal handed it to you), add it to this project's
-  `.env` as `TRAIGENT_API_KEY` (don't echo it) and continue.
+Before either key flow below, run this block in the current project directory. It is the
+same block as setup-quickstart's "Using a .env File" section: the adjacent `.gitignore`
+protects `.env` in this repository and in a repository initialized later. A tracked `.env`
+must be untracked first; the block prints the remedy. It also stops on any unexpected git
+error (for example "dubious ownership", an unreadable repository, or an unusable `GIT_DIR`): never treat a git error
+as "not tracked", and never write the key until the user has resolved it. It preserves existing content and
+sets mode 0600. If the block fails, do not write a key or open the file for key entry;
+report the failure, continue with step 4's keyless mock run, and render the summary box's
+`⧗  TRAIGENT_API_KEY` line. Removing or overriding the `.env` ignore rule later removes
+this protection.
+
+```bash
+(
+  for file in .gitignore .env; do [ ! -L "$file" ] && { [ ! -e "$file" ] || [ -f "$file" ]; } || { printf 'STOP: %s must be a plain file\n' "$file" >&2; exit 1; }; done
+  no_repo=1
+  if command -v git >/dev/null 2>&1; then
+    git_rc=0; git_msg=$(LC_ALL=C git rev-parse --is-inside-work-tree 2>&1) || git_rc=$?
+    if [ "$git_rc" -eq 0 ]; then
+      no_repo=0; git_rc=0; LC_ALL=C git ls-files --error-unmatch -- .env >/dev/null 2>&1 || git_rc=$?
+      [ "$git_rc" -ne 0 ] || { printf '%s\n' 'STOP: .env is tracked; run git rm --cached .env before adding keys' >&2; exit 1; }
+      [ "$git_rc" -eq 1 ] || { printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1; }
+    else
+      case $git_msg in *'not a git repository'*) ;; *) printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1;; esac
+    fi
+  fi
+  if [ "$no_repo" -eq 1 ]; then
+    [ -z "${GIT_DIR:-}${GIT_WORK_TREE:-}${GIT_COMMON_DIR:-}${GIT_INDEX_FILE:-}" ] || { printf '%s\n' 'STOP: git failed while checking .env; resolve the git error before adding keys' >&2; exit 1; }
+    dir=$PWD; while :; do { [ ! -e "$dir/.git" ] && [ ! -L "$dir/.git" ]; } || { printf '%s\n' 'STOP: found .git but git cannot use it; resolve the git error before adding keys' >&2; exit 1; }; [ "$dir" != / ] || break; dir=$(dirname "$dir"); case ":${GIT_CEILING_DIRECTORIES:-}:" in *":$dir:"*) break;; esac; done
+  fi
+  [ "$(tail -n 1 .gitignore 2>/dev/null)" = .env ] || printf '\n.env\n' >> .gitignore || exit 1
+  umask 077; touch .env && chmod 600 .env
+)
+```
+
+- **If a key was pasted into this prompt** (a portal handed it to you), after the block
+  succeeds, add it as `TRAIGENT_API_KEY` to this project's `.env` without printing it.
 - **Otherwise**, prepare `.env` first, then send the user to create a key:
-  1. Create this project's `.env` if it's missing, preserving any existing content. If
+  1. After the block succeeds, inspect this project's `.env` without printing its values. If
      `TRAIGENT_API_KEY` already has a non-empty value, keep it (don't overwrite) and skip creating a
      new key — but it must be **read + write** (`experiments:write`); if a later cloud run 403s, that
      key is read-only and needs replacing via the Full-access flow below. Otherwise add the line
-     `TRAIGENT_API_KEY=` with the value left blank, confirm `.env`
-     is git-ignored, and print its **absolute path**. Then set `$ENV` to that path and best-effort
+     for `TRAIGENT_API_KEY` with the value left blank and print its **absolute path**. Then set `$ENV` to that path and best-effort
      open it in a **standalone, detached** editor — Linux: `setsid -f gnome-text-editor "$ENV"` (or
      the first of `kate`/`gedit`/`xed`/`mousepad` that exists; last resort `xdg-open "$ENV"`);
      macOS: `open -t "$ENV"`; Windows: `start "" notepad "<that absolute path>"`. Do **not** open it through the
@@ -121,6 +154,15 @@ Prove the whole pipeline end-to-end at **zero cost and zero egress** using the
 `@traigent.optimize`-decorated classifier that calls `enable_mock_mode_for_quickstart()` and passes
 `offline=True`), and runs `classify_ticket.optimize_sync(max_trials=4, algorithm="grid")`. Run it
 in the foreground and wait for the final line `TRAIGENT-DRY-RUN-OK`.
+
+The skills from step 1 may not be loaded in this session yet, so read the block from disk; reading a
+file does not need the skill loaded in this session. Search your agent's config directory (e.g.
+`~/.claude`, `~/.codex`, `~/.copilot`) or this project's skills folder for a path ending in
+`traigent-setup-quickstart/SKILL.md`. Prefer the installed plugin or skill directory over a
+marketplace checkout; if several copies exist, use the one step 1 just installed, or the newest
+installed version if you can't tell which that is. Use SKILL.md's
+"Literal First Run" block or the identical `references/literal-quickstart.sh` beside it. If you
+can't find either, stop and report.
 
 Then show the user the ranked results — the best config and the per-trial scores, for example:
 
