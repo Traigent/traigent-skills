@@ -317,6 +317,9 @@ MAX_ROWS = 20000
 NEAR_DUPLICATE_LIMIT = 5000
 NEAR_DUPLICATE_JACCARD = 0.9
 PROBE_TIMEOUT_SECONDS = 30
+# Distinct gold values of the probed kind read when choosing the known-bad
+# answer. Bounded so a large dataset is not compared value by value.
+PROBE_CANDIDATES = 32
 # The JSON report keeps everything; the printed card stops here so one tree with
 # dozens of eval files or scorers stays readable.
 MAX_DATASETS_IN_CARD = 10
@@ -1796,12 +1799,17 @@ def build_probe_payload(datasets: list[DatasetReport], root: Path):
     partial case is skipped rather than invented. With no such pair the values
     are placeholder text and ``source`` is ``"synthetic"``: the report then
     abstains from saying the scorer separates good from bad answers for the task.
+
+    The kind is the first one with two distinct values. ``good`` is its first
+    value; ``bad`` is, among its first ``PROBE_CANDIDATES`` distinct values, the
+    one that differs most from ``good`` (see ``answer_difference``).
     """
     for report in sorted(datasets, key=lambda item: -item.rows):
         raw = load_rows(root / report.file)
         if not raw.rows:
             continue
         values: dict[str, list[object]] = {}
+        chosen: str | None = None
         for row in raw.rows:
             key = next((name for name in EXPECTED_KEYS if name in row), None)
             if key is None:
@@ -1810,18 +1818,67 @@ def build_probe_payload(datasets: list[DatasetReport], root: Path):
             kind = _probe_kind(value)
             if kind is None:
                 continue
+            if chosen is not None and kind != chosen:
+                continue
             seen = values.setdefault(kind, [])
             if value not in seen:
                 seen.append(value)
-            if len(seen) >= 2:
-                good, bad = seen[0], seen[1]
-                return good, partial_value(good, bad), bad, "dataset"
+            if chosen is None and len(seen) >= 2:
+                chosen = kind
+            if chosen is not None and len(seen) >= PROBE_CANDIDATES:
+                break
+        if chosen is not None:
+            good, *others = values[chosen]
+            # The first candidate that differs most from ``good``: two gold
+            # values can be distinct and still the same answer to the task
+            # (a case or spacing variant, numbers within a tolerance, objects
+            # that differ only in a field the scorer ignores). Taking the next
+            # distinct value as the known-bad answer would then read a correct
+            # scorer as one that cannot tell good from bad.
+            bad = max(others, key=lambda other: answer_difference(good, other))
+            return good, partial_value(good, bad), bad, "dataset"
     return (
         "traigent setup audit probe value",
         "traigent setup audit probe",
         "an unrelated answer",
         "synthetic",
     )
+
+
+def _same_answer(left: object, right: object) -> bool:
+    """Equal, reading text without case or spacing differences."""
+    if isinstance(left, str) and isinstance(right, str):
+        return " ".join(left.casefold().split()) == " ".join(right.casefold().split())
+    return left == right
+
+
+def answer_difference(good: object, other: object) -> float:
+    """How far ``other`` is from ``good``, compared within one JSON kind.
+
+    Text counts as different only when it differs beyond case and spacing; a
+    number by its distance; an object by how many of its fields differ; a list
+    by how many positions differ, plus the difference in length. It ranks
+    candidates for the known-bad probe and is not a score for the task.
+    """
+    if isinstance(good, bool) or isinstance(other, bool):
+        return float(good != other)
+    if isinstance(good, (int, float)) and isinstance(other, (int, float)):
+        distance = abs(float(good) - float(other))
+        return distance if math.isfinite(distance) else 0.0
+    if isinstance(good, dict) and isinstance(other, dict):
+        return float(
+            sum(
+                1
+                for key in good.keys() | other.keys()
+                if key not in good
+                or key not in other
+                or not _same_answer(good[key], other[key])
+            )
+        )
+    if isinstance(good, list) and isinstance(other, list):
+        differing = sum(1 for a, b in zip(good, other) if not _same_answer(a, b))
+        return float(differing + abs(len(good) - len(other)))
+    return float(not _same_answer(good, other))
 
 
 def partial_value(good: object, bad: object) -> object | None:

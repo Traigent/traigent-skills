@@ -1650,3 +1650,59 @@ def test_a_placeholder_probe_never_reaches_the_all_clear() -> None:
     assert audit.next_step(
         _inventory([entry], [_scorer()]), [_dataset(80, 40)], dataset_probe, _scorer()
     )["branch"] == "g"
+
+
+# Two distinct gold values can be the same answer to the task. The known-bad
+# probe is the candidate that differs most from the known-good one, so a scorer
+# that rightly scores such a pair alike is not read as unable to tell good from
+# bad. The first two rows of each fixture are such a pair.
+EQUIVALENT_GOLD_PAIRS = {
+    "number_within_tolerance": (
+        lambda i: [3.14, 3.141][i] if i < 2 else float(i),
+        "def score(output, expected):\n"
+        "    return 1.0 if abs(output - expected) < 0.01 else 0.0\n",
+    ),
+    "object_with_an_ignored_field": (
+        lambda i: {"id": i, "category": ["billing", "billing", "outage"][min(i, 2)]},
+        "def score(output, expected):\n"
+        "    return 1.0 if output['category'] == expected['category'] else 0.0\n",
+    ),
+    "text_case_variant": (
+        lambda i: ["Paris", "paris"][i] if i < 2 else f"city {i}",
+        "def score(output, expected):\n"
+        "    return 1.0 if output.strip().lower() == expected.strip().lower() else 0.0\n",
+    ),
+}
+
+
+@pytest.mark.parametrize("case", sorted(EQUIVALENT_GOLD_PAIRS))
+def test_an_equivalent_gold_pair_is_not_the_known_bad_probe(
+    case: str, tmp_path: Path
+) -> None:
+    gold, scorer = EQUIVALENT_GOLD_PAIRS[case]
+    root = _variant(tmp_path, scorer)
+    _gold_dataset(root, gold)
+    report, card = _run(root, tmp_path)
+    probe = report["scorer_probe"]
+    assert probe["payload_source"] == "dataset", probe
+    assert probe["errors"] == [], probe
+    assert probe["scores"]["bad"] == [0.0], probe
+    assert report["areas"]["scorer"]["status"] == "ok", card
+    assert report["next_step"]["branch"] == "g", report["next_step"]
+
+
+def test_the_known_bad_candidate_search_is_bounded(monkeypatch) -> None:
+    """Only the first PROBE_CANDIDATES distinct values are compared."""
+    from types import SimpleNamespace
+
+    far = audit.PROBE_CANDIDATES + 1000
+    golds = [0, *range(1, audit.PROBE_CANDIDATES), far]
+    rows = [{"expected": value} for value in golds]
+    monkeypatch.setattr(audit, "load_rows", lambda _path: SimpleNamespace(rows=rows))
+    datasets = [SimpleNamespace(file="d.jsonl", rows=len(rows))]
+    good, _partial, bad, source = audit.build_probe_payload(datasets, Path("."))
+    assert (good, source) == (0, "dataset")
+    assert bad == audit.PROBE_CANDIDATES - 1
+    # The documented bound is the one the code applies.
+    skill = (Path(audit.__file__).resolve().parents[1] / "SKILL.md").read_text()
+    assert f"among the first {audit.PROBE_CANDIDATES} distinct values" in skill
