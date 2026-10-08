@@ -91,6 +91,9 @@ def test_a_partial_ordering_failure_is_described_without_a_false_pair_claim(
     assert "expected probe ordering" in report["next_step"]["line"]
     assert "partial 2" in report["next_step"]["line"]
     assert "any partial probe's expected position" in report["next_step"]["line"]
-    assert "task-verified probes still fail the expected ordering" in report["next_step"]["line"]
+    assert (
+        "task-verified probes still fail the expected ordering"
+        in report["next_step"]["line"]
+    )
     assert "does not outrank the contrast candidate" not in card
     assert "returns different numbers for the same pair" not in card
