@@ -7,6 +7,11 @@ default_min_sdk_version: "0.24.0"
 # per-PR released-contracts. Do not resolve PyPI live in PR CI.
 current_released_sdk_version: "0.30.0"
 skills:
+  traigent:
+    # Router entry (#75): it names other skills and reads no SDK module, path or
+    # doc of its own, so it has nothing to sync.
+    {}
+
   traigent-setup-quickstart:
     # the `traigent plan` command taught below ships in traigent>=0.17.0.
     min_sdk_version: "0.24.0"

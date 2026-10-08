@@ -65,11 +65,9 @@ ALLOWLIST = {
 
 # The 16 retired names from the 2026-07 taxonomy consolidation (12 renames +
 # 4 skills merged away). The bare `traigent` name folded into
-# traigent-boost-agent is NOT included here because "traigent" alone doesn't
-# match the \btraigent-[a-z0-9]+(?:-[a-z0-9]+)*\b token shape these names use,
-# and it is a substring of every other skill name — it was verified manually
-# during the consolidation instead (git grep for "the `traigent` skill" and
-# ../traigent/SKILL.md).
+# traigent-boost-agent is NOT included here: since #75 it names the live router
+# entry (skills/traigent/), and the old meaning is guarded by
+# test_no_skill_cites_the_removed_traigent_lifecycle_skill below.
 RETIRED_NAMES = {
     "traigent-quickstart",
     "traigent-decorator-setup",
@@ -119,6 +117,27 @@ def test_prose_skill_references_exist() -> None:
 README_RENAME_NOTE_RE = re.compile(
     r"(?ms)^### Renamed in the 2026-07 consolidation.*?(?=^## |\Z)"
 )
+
+
+# The `traigent` lifecycle skill was merged into traigent-boost-agent in the
+# 2026-07 consolidation, and since #75 `traigent` is a router that owns no rule.
+# A skill citing "the `traigent` lifecycle skill" for a rule therefore points
+# at nothing; the token check above cannot see it because the bare name is a
+# live skill directory again.
+REMOVED_TRAIGENT_SKILL_RE = re.compile(r"`traigent`\s+(?:lifecycle\s+)?skill\b")
+
+
+def test_no_skill_cites_the_removed_traigent_lifecycle_skill() -> None:
+    root = repo_root()
+    hits = [
+        str(path.relative_to(root))
+        for path in sorted((root / "skills").rglob("*.md"))
+        if REMOVED_TRAIGENT_SKILL_RE.search(path.read_text(encoding="utf-8"))
+    ]
+    assert not hits, (
+        "These files cite the removed `traigent` lifecycle skill; name the skill "
+        f"that owns the rule (usually traigent-boost-agent): {hits}"
+    )
 
 
 def test_retired_names_absent() -> None:
