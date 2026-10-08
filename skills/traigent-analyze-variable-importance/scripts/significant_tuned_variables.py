@@ -36,6 +36,28 @@ MAX_ALPHA = 0.10
 # while still catching constrained or conditional spaces that couple a knob to
 # another one strongly enough to fake its effect.
 KNOB_DEPENDENCE_P = 0.001
+# Bound recursive grouping and output transformations independently of Python's stack.
+MAX_INPUT_NESTING = 100
+
+
+def check_input_nesting(value: Any, path: str) -> None:
+    pending = [(value, 0)]
+    while pending:
+        item, depth = pending.pop()
+        if not isinstance(item, (dict, list, tuple)):
+            continue
+        if depth > MAX_INPUT_NESTING:
+            raise ValueError(f"{path}: nesting exceeds {MAX_INPUT_NESTING} levels")
+        children = item.values() if isinstance(item, dict) else item
+        pending.extend((child, depth + 1) for child in children)
+
+
+def load_json_text(text: str, path: str) -> Any:
+    try:
+        return json.loads(text)
+    except RecursionError as exc:
+        raise ValueError(f"{path}: JSON nesting exceeds the parser limit") from exc
+
 
 
 @dataclass(frozen=True)
@@ -305,7 +327,7 @@ def _read_trial_file_with_counts(
             if not stripped:
                 continue
             try:
-                record = json.loads(stripped)
+                record = load_json_text(stripped, f"{path}:{line_number}")
             except json.JSONDecodeError as exc:
                 raise ValueError(
                     f"{path}:{line_number}: invalid JSONL record: {exc}"
@@ -329,6 +351,7 @@ def _read_trial_file_with_counts(
                 continue
             # Only a measured row's config reaches a report; a skipped row
             # (failed, or no objective value) is counted and never encoded.
+            check_input_nesting(config, f"{path}:{line_number}: config")
             text_error = invalid_text_error(config, "config")
             if text_error is not None:
                 raise ValueError(f"{path}:{line_number}: {text_error}")
@@ -354,7 +377,8 @@ def read_config_space(path: Path | None) -> dict[str, list[Any]] | None:
     if path is None:
         return None
     with path.open("r", encoding="utf-8") as handle:
-        data = json.load(handle)
+        data = load_json_text(handle.read(), str(path))
+    check_input_nesting(data, str(path))
     if not isinstance(data, dict):
         raise ValueError(f"{path}: config-space JSON must be an object")
     text_error = invalid_text_error(data, "config_space")
@@ -877,7 +901,8 @@ def read_heldout(path: Path | None) -> dict[str, Any] | None:
     if path is None:
         return None
     with path.open("r", encoding="utf-8") as handle:
-        data = json.load(handle)
+        data = load_json_text(handle.read(), str(path))
+    check_input_nesting(data, str(path))
     if not isinstance(data, dict):
         raise ValueError(f"{path}: heldout report must be a JSON object")
     return data
@@ -934,6 +959,10 @@ def heldout_card_metrics(
 
 def strict_json_text(payload: Any, artifact: str) -> str:
     """Serialize a report artifact as strict JSON, naming any non-finite value."""
+    check_input_nesting(payload, artifact)
+    text_error = invalid_text_error(payload, artifact)
+    if text_error is not None:
+        raise ValueError(text_error)
     found = nonfinite_value_path(payload, artifact)
     if found is not None:
         path, value = found
@@ -1536,4 +1565,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        raise SystemExit(2) from None
