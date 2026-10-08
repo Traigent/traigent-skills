@@ -19,6 +19,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parents[2]
 ROUTER = ROOT / "skills" / "traigent" / "SKILL.md"
 
@@ -34,6 +36,7 @@ def test_real_probe_is_a_checkpoint_before_the_real_run() -> None:
     assert text.index("| real probe |") < text.index("| real run |")
     assert "A real run starts only after the real probe passed" in text
     assert "`traigent-boost-agent` Step 3.6" in text
+    assert "record the probe row passed or blocked from that evidence" in text
 
 
 def test_earlier_checkpoints_are_unverified_history() -> None:
@@ -51,7 +54,13 @@ def test_checkpoint_file_is_ignored_and_holds_no_secret() -> None:
 
 
 def test_description_has_no_bare_traigent_trigger() -> None:
-    front = ROUTER.read_text(encoding="utf-8").split("---", 2)[1]
-    # No standalone 'traigent' trigger phrase, however it is punctuated.
-    assert not re.search(r"'traigent'", front)
-    assert "'start traigent'" in front
+    front = yaml.safe_load(ROUTER.read_text(encoding="utf-8").split("---", 2)[1])
+    description = front["description"]
+    # Every quoted phrase, one quote style at a time, so mixed quotes cannot pair up.
+    phrases = {
+        phrase.strip().lower()
+        for quote in ("'", '"', "`")
+        for phrase in re.findall(f"{quote}([^{quote}]+){quote}", description)
+    }
+    assert "start traigent" in phrases
+    assert "traigent" not in phrases
