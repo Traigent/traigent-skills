@@ -1863,7 +1863,12 @@ def answer_difference(good: object, other: object) -> float:
     if isinstance(good, bool) or isinstance(other, bool):
         return float(good != other)
     if isinstance(good, (int, float)) and isinstance(other, (int, float)):
-        distance = abs(float(good) - float(other))
+        # JSON integers have no size limit; a distance no float can hold ranks
+        # last rather than stopping the audit.
+        try:
+            distance = float(abs(good - other))
+        except OverflowError:
+            return 0.0
         return distance if math.isfinite(distance) else 0.0
     if isinstance(good, dict) and isinstance(other, dict):
         return float(

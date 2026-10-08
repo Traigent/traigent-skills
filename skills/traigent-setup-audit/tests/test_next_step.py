@@ -1706,3 +1706,18 @@ def test_the_known_bad_candidate_search_is_bounded(monkeypatch) -> None:
     # The documented bound is the one the code applies.
     skill = (Path(audit.__file__).resolve().parents[1] / "SKILL.md").read_text()
     assert f"among the first {audit.PROBE_CANDIDATES} distinct values" in skill
+
+
+def test_a_gold_number_too_large_for_a_float_does_not_stop_the_probe(
+    monkeypatch,
+) -> None:
+    from types import SimpleNamespace
+
+    huge = 10**400
+    rows = [{"expected": value} for value in (1, huge, 7)]
+    monkeypatch.setattr(audit, "load_rows", lambda _path: SimpleNamespace(rows=rows))
+    datasets = [SimpleNamespace(file="d.jsonl", rows=len(rows))]
+    good, partial, bad, source = audit.build_probe_payload(datasets, Path("."))
+    # The distance to the huge value cannot be held, so the next one is taken.
+    assert (good, partial, bad, source) == (1, None, 7, "dataset")
+    assert audit.answer_difference(huge, 1.5) == 0.0
