@@ -1,6 +1,6 @@
 {
   "generated_from": {
-    "commit_sha": "eae60d7ebc4cf98ad356f25f125f6e3d3b43fa67",
+    "commit_sha": "a3d618b0a2ed3ea21f3e6e769715d7718393c6a5",
     "ref": "HEAD",
     "repo": "Traigent/TraigentBackend"
   },
@@ -128,6 +128,24 @@
     {
       "blueprint": "observability",
       "method": "DELETE",
+      "path_template": "/api/v1beta/observability/scores/<score_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/observability/sessions/<session_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
       "path_template": "/api/v1beta/observability/traces/<trace_id>/comments/<comment_id>",
       "source_file": "src/routes/observability_routes.py"
     },
@@ -164,6 +182,24 @@
     {
       "blueprint": "observability",
       "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/scores/<score_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions/<session_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "DELETE",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/comments/<comment_id>",
       "source_file": "src/routes/observability_routes.py"
     },
@@ -172,6 +208,12 @@
       "method": "DELETE",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/feedback",
       "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability_webhooks",
+      "method": "DELETE",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/webhooks/<string:endpoint_id>",
+      "source_file": "src/routes/observability_webhook_routes.py"
     },
     {
       "blueprint": "planner",
@@ -489,6 +531,12 @@
       "blueprint": "analytics_runs",
       "method": "GET",
       "path_template": "/api/v1/analytics/runs/<string:run_id>/provenance",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1/analytics/runs/<string:run_id>/reference-review",
       "source_file": "src/routes/analytics_runs_routes.py"
     },
     {
@@ -932,6 +980,12 @@
     {
       "blueprint": "director",
       "method": "GET",
+      "path_template": "/api/v1/director/sessions/<session_id>/instructions/<instruction_id>/check-examples",
+      "source_file": "src/routes/director_routes.py"
+    },
+    {
+      "blueprint": "director",
+      "method": "GET",
       "path_template": "/api/v1/director/sessions/<session_id>/state",
       "source_file": "src/routes/director_routes.py"
     },
@@ -1102,6 +1156,12 @@
       "method": "GET",
       "path_template": "/api/v1/hybrid/sessions/<session_id>/status",
       "source_file": "src/routes/hybrid_routes.py"
+    },
+    {
+      "blueprint": "scoring_admin",
+      "method": "GET",
+      "path_template": "/api/v1/internal/scoring/status",
+      "source_file": "src/routes/scoring_admin_routes.py"
     },
     {
       "blueprint": "api_keys",
@@ -1386,6 +1446,24 @@
       "source_file": "src/routes/traigent_session_routes.py"
     },
     {
+      "blueprint": "teams",
+      "method": "GET",
+      "path_template": "/api/v1/teams",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
+      "blueprint": "teams",
+      "method": "GET",
+      "path_template": "/api/v1/teams/<string:team_id>",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
+      "blueprint": "teams",
+      "method": "GET",
+      "path_template": "/api/v1/teams/<string:team_id>/members",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
       "blueprint": "trace",
       "method": "GET",
       "path_template": "/api/v1/traces/<trace_id>",
@@ -1542,6 +1620,12 @@
       "source_file": "src/routes/analytics_runs_routes.py"
     },
     {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/analytics/runs/<string:run_id>/reference-review",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
       "blueprint": "analytics",
       "method": "GET",
       "path_template": "/api/v1beta/analytics/runs/<string:run_id>/report",
@@ -1638,6 +1722,12 @@
       "source_file": "src/routes/evaluation_routes.py"
     },
     {
+      "blueprint": "experiment_context",
+      "method": "GET",
+      "path_template": "/api/v1beta/experiments/<experiment_id>/context",
+      "source_file": "src/routes/experiment_context_routes.py"
+    },
+    {
       "blueprint": "observability",
       "method": "GET",
       "path_template": "/api/v1beta/observability/analysis/insights",
@@ -1652,6 +1742,12 @@
     {
       "blueprint": "observability",
       "method": "GET",
+      "path_template": "/api/v1beta/observability/export",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
       "path_template": "/api/v1beta/observability/issues",
       "source_file": "src/routes/observability_routes.py"
     },
@@ -1659,6 +1755,12 @@
       "blueprint": "observability",
       "method": "GET",
       "path_template": "/api/v1beta/observability/issues/<issue_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/observations",
       "source_file": "src/routes/observability_routes.py"
     },
     {
@@ -1683,6 +1785,12 @@
       "blueprint": "observability",
       "method": "GET",
       "path_template": "/api/v1beta/observability/sessions/<session_id>/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/observability/sessions/by-raw-id",
       "source_file": "src/routes/observability_routes.py"
     },
     {
@@ -1754,6 +1862,12 @@
     {
       "blueprint": "observability",
       "method": "GET",
+      "path_template": "/api/v1beta/observability/users",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
       "path_template": "/api/v1beta/observability/users/<user_id>",
       "source_file": "src/routes/observability_routes.py"
     },
@@ -1802,7 +1916,55 @@
     {
       "blueprint": "agent_readiness",
       "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/<path:agent_id>/lifecycle-history",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/<path:agent_id>/next-step",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/finding-remediations",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/finding-remediations/<technique_id>/prompt",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/findings",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/findings/groups/<group_id>/members",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/fleet-posture",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/teams/summary",
+      "source_file": "src/routes/agent_readiness_routes.py"
+    },
+    {
+      "blueprint": "agent_readiness",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/agent-readiness/teams/trends",
       "source_file": "src/routes/agent_readiness_routes.py"
     },
     {
@@ -1959,6 +2121,12 @@
       "blueprint": "analytics_runs",
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/provenance",
+      "source_file": "src/routes/analytics_runs_routes.py"
+    },
+    {
+      "blueprint": "analytics_runs",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/analytics/runs/<string:run_id>/reference-review",
       "source_file": "src/routes/analytics_runs_routes.py"
     },
     {
@@ -2210,6 +2378,12 @@
     {
       "blueprint": "observability",
       "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/export",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/issues",
       "source_file": "src/routes/observability_routes.py"
     },
@@ -2217,6 +2391,12 @@
       "blueprint": "observability",
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/issues/<issue_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/observations",
       "source_file": "src/routes/observability_routes.py"
     },
     {
@@ -2241,6 +2421,12 @@
       "blueprint": "observability",
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions/<session_id>/stream",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/sessions/by-raw-id",
       "source_file": "src/routes/observability_routes.py"
     },
     {
@@ -2312,6 +2498,12 @@
     {
       "blueprint": "observability",
       "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/users",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/users/<user_id>",
       "source_file": "src/routes/observability_routes.py"
     },
@@ -2326,6 +2518,12 @@
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/variants/<variant_id>",
       "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability_webhooks",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/webhooks",
+      "source_file": "src/routes/observability_webhook_routes.py"
     },
     {
       "blueprint": "planner",
@@ -2356,6 +2554,12 @@
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/planner/status/<draft_id>",
       "source_file": "src/routes/planner_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/policies/content-storage",
+      "source_file": "src/routes/project_routes.py"
     },
     {
       "blueprint": "projects",
@@ -2416,6 +2620,12 @@
       "method": "GET",
       "path_template": "/api/v1beta/projects/<string:project_id>/scores/<string:score_id>",
       "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "team_ownership",
+      "method": "GET",
+      "path_template": "/api/v1beta/projects/<string:project_id>/team-ownership/unassigned",
+      "source_file": "src/routes/team_routes.py"
     },
     {
       "blueprint": "trial",
@@ -2556,6 +2766,12 @@
       "source_file": "src/routes/experiment_routes.py"
     },
     {
+      "blueprint": "teams",
+      "method": "PATCH",
+      "path_template": "/api/v1/teams/<string:team_id>",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
       "blueprint": "enterprise_admin",
       "method": "PATCH",
       "path_template": "/api/v1beta/admin/tenants/<string:tenant_id>",
@@ -2589,6 +2805,18 @@
       "blueprint": "observability",
       "method": "PATCH",
       "path_template": "/api/v1beta/observability/issues/<issue_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/observability/observations/<observation_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/observability/traces/<trace_id>",
       "source_file": "src/routes/observability_routes.py"
     },
     {
@@ -2642,8 +2870,26 @@
     {
       "blueprint": "observability",
       "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/observations/<observation_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>",
+      "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability",
+      "method": "PATCH",
       "path_template": "/api/v1beta/projects/<string:project_id>/observability/traces/<trace_id>/collaboration",
       "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "projects",
+      "method": "PATCH",
+      "path_template": "/api/v1beta/projects/<string:project_id>/policies/content-storage",
+      "source_file": "src/routes/project_routes.py"
     },
     {
       "blueprint": "projects",
@@ -3300,6 +3546,12 @@
       "source_file": "src/routes/hybrid_routes.py"
     },
     {
+      "blueprint": "scoring_admin",
+      "method": "POST",
+      "path_template": "/api/v1/internal/scoring/reaper/run",
+      "source_file": "src/routes/scoring_admin_routes.py"
+    },
+    {
       "blueprint": "api_keys",
       "method": "POST",
       "path_template": "/api/v1/keys",
@@ -3552,6 +3804,18 @@
       "source_file": "src/routes/traigent_session_routes.py"
     },
     {
+      "blueprint": "teams",
+      "method": "POST",
+      "path_template": "/api/v1/teams",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
+      "blueprint": "teams",
+      "method": "POST",
+      "path_template": "/api/v1/teams/<string:team_id>/membership-events",
+      "source_file": "src/routes/team_routes.py"
+    },
+    {
       "blueprint": "trace",
       "method": "POST",
       "path_template": "/api/v1/traces/ingest",
@@ -3646,6 +3910,12 @@
       "method": "POST",
       "path_template": "/api/v1beta/observability/ingest",
       "source_file": "src/routes/observability_routes.py"
+    },
+    {
+      "blueprint": "observability_otlp",
+      "method": "POST",
+      "path_template": "/api/v1beta/observability/otlp/v1/traces",
+      "source_file": "src/routes/observability_otlp_routes.py"
     },
     {
       "blueprint": "observability",
@@ -3900,6 +4170,24 @@
       "source_file": "src/routes/observability_routes.py"
     },
     {
+      "blueprint": "observability_webhooks",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/webhooks",
+      "source_file": "src/routes/observability_webhook_routes.py"
+    },
+    {
+      "blueprint": "observability_webhooks",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/webhooks/<string:endpoint_id>/rotate-secret",
+      "source_file": "src/routes/observability_webhook_routes.py"
+    },
+    {
+      "blueprint": "observability_webhooks",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/observability/webhooks/<string:endpoint_id>/test",
+      "source_file": "src/routes/observability_webhook_routes.py"
+    },
+    {
       "blueprint": "planner",
       "method": "POST",
       "path_template": "/api/v1beta/projects/<string:project_id>/planner/drafts/<draft_id>/cancel",
@@ -3940,6 +4228,12 @@
       "method": "POST",
       "path_template": "/api/v1beta/projects/<string:project_id>/scores",
       "source_file": "src/routes/evaluation_routes.py"
+    },
+    {
+      "blueprint": "team_ownership",
+      "method": "POST",
+      "path_template": "/api/v1beta/projects/<string:project_id>/team-ownership",
+      "source_file": "src/routes/team_routes.py"
     },
     {
       "blueprint": "trial",
