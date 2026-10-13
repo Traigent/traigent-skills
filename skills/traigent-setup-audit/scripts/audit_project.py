@@ -644,16 +644,13 @@ def resolve_config_space(
     return None, None
 
 
-def _non_finite(value: object) -> bool:
-    """Whether a literal holds ``inf`` or ``nan`` anywhere (``1e999`` parses to
-    ``inf``), which strict JSON cannot carry."""
-    if isinstance(value, float):
-        return not math.isfinite(value)
-    if isinstance(value, dict):
-        value = [*value.keys(), *value.values()]
-    if isinstance(value, (list, tuple, set, frozenset)):
-        return any(_non_finite(item) for item in value)
-    return False
+def _reportable_knob_values(values: list[object]) -> bool:
+    """Use the report's JSON codec before accepting literal knob values."""
+    try:
+        json.dumps(values, sort_keys=True, allow_nan=False)
+    except (TypeError, ValueError, RecursionError, OverflowError):
+        return False
+    return True
 
 
 def _gold_kind(value: object) -> str | None:
@@ -675,9 +672,9 @@ def _gold_kind(value: object) -> str | None:
 def knob_values(node: ast.expr) -> tuple[list[object], bool]:
     """``(values, readable)``. Understands a literal list plus the
     ``Choices(...)`` / ``Choices.model(...)`` factories. Values holding a
-    non-finite number count as unreadable, so the report stays strict JSON."""
+    value the report cannot encode count as unreadable."""
     literal = _literal(node)
-    if isinstance(literal, (list, tuple, set)) and not _non_finite(literal):
+    if isinstance(literal, (list, tuple, set)) and _reportable_knob_values(list(literal)):
         return list(literal), True
     if isinstance(node, ast.Call):
         callee = node.func
@@ -691,7 +688,7 @@ def knob_values(node: ast.expr) -> tuple[list[object], bool]:
             if (
                 values
                 and all(value is not None for value in values)
-                and not _non_finite(values)
+                and _reportable_knob_values(values)
             ):
                 return values, True
     return [], False
