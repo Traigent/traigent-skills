@@ -280,7 +280,7 @@ def test_a_stable_but_misranking_scorer_is_told_to_fix_what_it_measures(
     completed = run_tier2("--from-audit", str(report), "--run-id", RUN_ID)
     assert completed.returncode == 0, completed.stderr
     card = _card(completed.stdout, "evaluator-quality")
-    assert "did not rank a known-good answer above a known-bad one" in card
+    assert "did not produce the expected probe ordering" in card
     assert "Make it repeatable" not in card
     assert "found it repeatable" not in card
     assert "fix what it measures" in card

@@ -536,12 +536,18 @@ def load_tier1(path: Path) -> Tier1:
         if probe:
             # Report metadata was added by the parent, never by the child.
             metadata = {"requested_repeats", "payload_source", "stderr_bytes",
-                        "framed_result_lines", "dropped_keys"}
+                        "framed_result_lines", "dropped_keys", "partial_probed"}
             payload = {key: value for key, value in probe.items() if key not in metadata}
             if "requested_repeats" in probe and probe["requested_repeats"] is None:
                 raise ValueError("requested repeats must be a positive integer")
-            clean, dropped = validate_probe_evidence(payload, probe.get("requested_repeats"))
+            # Only an explicit false skips the partial case; anything else
+            # (absent, as in older reports) still requires one.
+            partial_probed = probe.get("partial_probed") is not False
+            clean, dropped = validate_probe_evidence(
+                payload, probe.get("requested_repeats"), partial_probed=partial_probed
+            )
             clean["dropped_keys"] = dropped or probe.get("dropped_keys", 0)
+            clean["partial_probed"] = partial_probed
             metrics = probe_metrics(clean)
         else:
             metrics = {"verdict": "none"}

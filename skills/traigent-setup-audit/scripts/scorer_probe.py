@@ -143,7 +143,7 @@ def load_callable(module_path: str, function_name: str):
     return target
 
 
-def call_scorer(target, output_value: str, expected_value: str) -> float:
+def call_scorer(target, output_value: object, expected_value: object) -> float:
     result = target(output_value, expected_value)
     if isinstance(result, bool):
         return 1.0 if result else 0.0
@@ -177,12 +177,16 @@ def probe(request: dict) -> dict:
         }
 
     repeats = max(1, int(request.get("repeats", 5)))
-    cases = (
-        ("good", request["good"], request["good"], repeats),
-        ("partial", request["partial"], request["good"], 1),
-        ("bad", request["bad"], request["good"], 1),
-    )
-    scores: dict[str, list[float]] = {}
+    # Gold values arrive as whatever JSON kind the task's answers are (text,
+    # object, list, number, boolean) and are passed to the scorer unchanged. A
+    # null partial means the parent found no in-between value for that kind,
+    # so that case is not scored.
+    cases = [("good", request["good"], request["good"], repeats)]
+    if request.get("partial") is not None:
+        cases.append(("partial", request["partial"], request["good"], 1))
+    cases.append(("bad", request["bad"], request["good"], 1))
+    # Every case key is present, so a skipped partial reads as an empty list.
+    scores: dict[str, list[float]] = {"partial": []}
     errors: list[dict] = []
     for name, output_value, expected_value, times in cases:
         collected: list[float] = []
