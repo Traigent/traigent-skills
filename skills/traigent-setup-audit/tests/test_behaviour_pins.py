@@ -848,22 +848,21 @@ def _observe_execute(case: dict) -> dict:
             mock.patch.object(tier2, "run_model_ids", cli_check("model-ids")),
             mock.patch.object(tier2, "run_plan", cli_check("plan")),
         ]
-        saved = os.environ.pop(tier2.KEY_ENV_NAME, None)
-        try:
-            with contextlib.ExitStack() as stack:
-                for patch in patches:
-                    stack.enter_context(patch)
-                stack.enter_context(mock.patch.dict(os.environ, env))
-                stack.enter_context(contextlib.redirect_stdout(stdout))
-                stack.enter_context(contextlib.redirect_stderr(stderr))
-                try:
-                    result: dict = {"returned": tier2.execute(
-                        args, tier1, "https://backend.example", {"x": "y"})}
-                except Exception as exc:  # noqa: BLE001 - the raised type is pinned
-                    result = {"raised": type(exc).__name__, "message": str(exc)}
-        finally:
-            if saved is not None:
-                os.environ[tier2.KEY_ENV_NAME] = saved
+        # The key is present only when the case supplies one. The outer patch.dict
+        # snapshots the environment and restores it, key included, on exit.
+        with contextlib.ExitStack() as stack:
+            for patch in patches:
+                stack.enter_context(patch)
+            stack.enter_context(mock.patch.dict(os.environ, {}))
+            os.environ.pop(tier2.KEY_ENV_NAME, None)
+            stack.enter_context(mock.patch.dict(os.environ, env))
+            stack.enter_context(contextlib.redirect_stdout(stdout))
+            stack.enter_context(contextlib.redirect_stderr(stderr))
+            try:
+                result: dict = {"returned": tier2.execute(
+                    args, tier1, "https://backend.example", {"x": "y"})}
+            except Exception as exc:  # noqa: BLE001 - the raised type is pinned
+                result = {"raised": type(exc).__name__, "message": str(exc)}
         written = {}
         for name in ("receipt", "json_out"):
             target = getattr(args, name)
