@@ -161,6 +161,7 @@
 "near_duplicate_pairs/reversed_indexes": {"returned": [[2, 5]]},
 "near_duplicate_pairs/common_token_only": {"returned": []},
 "near_duplicate_pairs/empty_texts": {"returned": []},
+"near_duplicate_pairs/at_threshold": {"returned": [[0, 1]]},
 "build_probe_payload/no_datasets": {"returned": ["traigent setup audit probe value", "traigent setup audit probe", "an unrelated answer", "synthetic"]},
 "build_probe_payload/text_gold": {"returned": ["Paris", "paris", "London", "dataset"]},
 "build_probe_payload/number_gold": {"returned": [1, null, 40, "dataset"]},

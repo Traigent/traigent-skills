@@ -668,6 +668,9 @@ def _near_duplicate_cases() -> dict[str, list[audit.DatasetRow]]:
         "reversed_indexes": [_drow(5, base), _drow(2, swapped)],
         "common_token_only": common,
         "empty_texts": [_drow(0, ""), _drow(1, "")],
+        # Jaccard exactly at the threshold: 9 shared tokens of a 10-token union.
+        "at_threshold": [_drow(0, " ".join(f"w{j}" for j in range(10))),
+                         _drow(1, " ".join(f"w{j}" for j in range(9)))],
     }
 
 
