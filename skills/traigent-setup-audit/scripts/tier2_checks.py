@@ -506,7 +506,7 @@ class Tier1:
         return int(largest.get("rows") or 0) if largest else 0
 
 
-def load_tier1(path: Path) -> Tier1:
+def _read_tier1_report(path: Path) -> dict:
     try:
         report = json.loads(path.read_text(encoding="utf-8"), object_pairs_hook=_unique_members)
     except (OSError, ValueError) as exc:
@@ -519,71 +519,88 @@ def load_tier1(path: Path) -> Tier1:
             f"--from-audit {path} is not a {TIER1_SCHEMA} report. Produce one with: "
             "audit_project.py --root <project> --json <path>"
         )
+    return report
 
-    entry_points = [item for item in (report.get("entry_points") or [])
-                    if isinstance(item, dict)]
-    knobs = [knob for entry in entry_points for knob in (entry.get("knobs") or [])]
-    probe = report.get("scorer_probe") or {}
-    files = report.get("files") or {}
-    setup = report.get("setup") or {}
-    keys = setup.get("keys") or {}
-    next_step = report.get("next_step") or {}
-    symptom = remedy = consequence = ""
-    # The stored probe is the one input to this reading the parent never
-    # validated: a malformed one reads as not run, so a stored all-clear over
-    # it is answered with a re-run rather than a traceback.
+
+def _stored(mapping, key: str, default):
+    """``mapping[key]``, or ``default`` when it is absent or falsy."""
+    return mapping.get(key) or default
+
+
+def _dict_items(value) -> list[dict]:
+    return [item for item in (value or []) if isinstance(item, dict)]
+
+
+def _stored_probe_metrics(probe: dict) -> dict:
+    """The parent's reading of a stored probe, validated first."""
+    if not probe:
+        return {"verdict": "none"}
+    # Report metadata was added by the parent, never by the child.
+    metadata = {"requested_repeats", "payload_source", "stderr_bytes",
+                "framed_result_lines", "dropped_keys", "partial_probed"}
+    payload = {key: value for key, value in probe.items() if key not in metadata}
+    if "requested_repeats" in probe and probe["requested_repeats"] is None:
+        raise ValueError("requested repeats must be a positive integer")
+    # Only an explicit false skips the partial case; anything else
+    # (absent, as in older reports) still requires one.
+    partial_probed = probe.get("partial_probed") is not False
+    clean, dropped = validate_probe_evidence(
+        payload, probe.get("requested_repeats"), partial_probed=partial_probed
+    )
+    clean["dropped_keys"] = dropped or probe.get("dropped_keys", 0)
+    clean["partial_probed"] = partial_probed
+    return probe_metrics(clean)
+
+
+def _probe_outcome(metrics: dict) -> tuple[str, str, str, str]:
+    """``(verdict, symptom, remedy, consequence)`` for one probe reading."""
+    if metrics["verdict"] == "none":
+        return "none", "", "", ""
+    if metrics["verdict"] != "ran":
+        return "not-run", metrics.get("sentence", ""), "", ""
+    if metrics["ready"]:
+        return "repeatable", "", "", ""
+    return (
+        "unreliable",
+        probe_symptom(metrics),
+        probe_remedy(metrics),
+        probe_consequence(metrics),
+    )
+
+
+def _stored_probe_outcome(probe: dict) -> tuple[str, str, str, str]:
+    """The stored probe is the one input to this reading the parent never
+    validated: a malformed one reads as not run, so a stored all-clear over
+    it is answered with a re-run rather than a traceback."""
     try:
-        if probe:
-            # Report metadata was added by the parent, never by the child.
-            metadata = {"requested_repeats", "payload_source", "stderr_bytes",
-                        "framed_result_lines", "dropped_keys", "partial_probed"}
-            payload = {key: value for key, value in probe.items() if key not in metadata}
-            if "requested_repeats" in probe and probe["requested_repeats"] is None:
-                raise ValueError("requested repeats must be a positive integer")
-            # Only an explicit false skips the partial case; anything else
-            # (absent, as in older reports) still requires one.
-            partial_probed = probe.get("partial_probed") is not False
-            clean, dropped = validate_probe_evidence(
-                payload, probe.get("requested_repeats"), partial_probed=partial_probed
-            )
-            clean["dropped_keys"] = dropped or probe.get("dropped_keys", 0)
-            clean["partial_probed"] = partial_probed
-            metrics = probe_metrics(clean)
-        else:
-            metrics = {"verdict": "none"}
-        if metrics["verdict"] == "none":
-            verdict = "none"
-        elif metrics["verdict"] != "ran":
-            verdict = "not-run"
-            symptom = metrics.get("sentence", "")
-        elif metrics["ready"]:
-            verdict = "repeatable"
-        else:
-            verdict = "unreliable"
-            symptom = probe_symptom(metrics)
-            remedy = probe_remedy(metrics)
-            consequence = probe_consequence(metrics)
+        return _probe_outcome(_stored_probe_metrics(probe))
     except (TypeError, AttributeError, ValueError, OverflowError, KeyError):
-        verdict, remedy, consequence = "not-run", "", ""
-        symptom = "its stored probe result could not be read"
+        return "not-run", "its stored probe result could not be read", "", ""
 
-    # The same reading Tier 1 used, applied to the stored entry points, so an
-    # edited `areas` block cannot make this script contradict the knobs.
+
+def _stored_knob_wiring(entry_points: list[dict], knob_count: int) -> dict:
+    """The same reading Tier 1 used, applied to the stored entry points, so an
+    edited `areas` block cannot make this script contradict the knobs."""
     try:
-        wiring = knob_wiring(entry_points)
+        return knob_wiring(entry_points)
     except (TypeError, AttributeError, KeyError, ValueError):
-        wiring = {"verdict": "unreadable",
-                  "summary": "its stored entry points could not be read",
-                  "knob_count": len(knobs), "read_count": 0, "entry": None,
-                  "knobs": []}
-    areas = report.get("areas")
+        return {"verdict": "unreadable",
+                "summary": "its stored entry points could not be read",
+                "knob_count": knob_count, "read_count": 0, "entry": None,
+                "knobs": []}
+
+
+def _stored_area_statuses(areas) -> dict[str, str]:
     statuses = {}
     for name in ("agent", "dataset"):
         area = areas.get(name) if isinstance(areas, dict) else None
         statuses[name] = str(area.get("status") or "") if isinstance(area, dict) else ""
-    datasets = [item for item in (report.get("datasets") or [])
-                if isinstance(item, dict)]
-    dataset_detail = next(
+    return statuses
+
+
+def _stored_dataset_detail(datasets: list[dict], files: dict) -> str:
+    """The first stored dataset finding, else the first file not analysed."""
+    return next(
         (f"{item.get('file')}: {finding}" for item in datasets
          for finding in (item.get("findings") or []) if isinstance(finding, str)),
         "",
@@ -592,18 +609,38 @@ def load_tier1(path: Path) -> Tier1:
          if isinstance(item, str)),
         "",
     )
+
+
+def _stored_python_gap(files: dict) -> str:
     python_total = int(files.get("python_total") or 0)
     python_parsed = int(files.get("python_parsed") or 0)
-    python_gap = (
+    return (
         f"{python_total - python_parsed} Python file(s) were not inventoried"
         if python_total > python_parsed else ""
     )
 
+
+def load_tier1(path: Path) -> Tier1:
+    report = _read_tier1_report(path)
+    entry_points = _dict_items(report.get("entry_points"))
+    knobs = [knob for entry in entry_points for knob in _stored(entry, "knobs", [])]
+    probe = _stored(report, "scorer_probe", {})
+    files = _stored(report, "files", {})
+    setup = _stored(report, "setup", {})
+    keys = _stored(setup, "keys", {})
+    next_step = _stored(report, "next_step", {})
+    verdict, symptom, remedy, consequence = _stored_probe_outcome(probe)
+    wiring = _stored_knob_wiring(entry_points, len(knobs))
+    statuses = _stored_area_statuses(report.get("areas"))
+    datasets = _dict_items(report.get("datasets"))
+    dataset_detail = _stored_dataset_detail(datasets, files)
+    python_gap = _stored_python_gap(files)
+
     return Tier1(
         path=path,
-        root=str(report.get("root") or ""),
-        branch=str(next_step.get("branch") or ""),
-        next_step_line=str(next_step.get("line") or ""),
+        root=str(_stored(report, "root", "")),
+        branch=str(_stored(next_step, "branch", "")),
+        next_step_line=str(_stored(next_step, "line", "")),
         entry_points=entry_points,
         knob_count=len(knobs),
         read_knob_count=sum(1 for knob in knobs if knob.get("status") == "read"),
@@ -613,192 +650,232 @@ def load_tier1(path: Path) -> Tier1:
         dataset_detail=dataset_detail,
         python_gap=python_gap,
         datasets=datasets,
-        scorers=[item for item in (report.get("scorers") or [])
-                 if isinstance(item, dict)],
+        scorers=_dict_items(report.get("scorers")),
         probe_verdict=verdict,
         probe_symptom=symptom,
         probe_remedy=remedy,
         probe_consequence=consequence,
-        model_ids=[str(item) for item in (setup.get("model_ids_declared") or [])],
-        dataset_candidates=int(files.get("dataset_candidates") or 0),
-        python_files=int(files.get("python_parsed") or 0),
-        key_names_set=[str(name) for name in (keys.get("names_set_in_environment") or [])],
+        model_ids=[str(item) for item in _stored(setup, "model_ids_declared", [])],
+        dataset_candidates=int(_stored(files, "dataset_candidates", 0)),
+        python_files=int(_stored(files, "python_parsed", 0)),
+        key_names_set=[str(name) for name in _stored(keys, "names_set_in_environment", [])],
+    )
+
+
+def _model_ids_motivation(tier1: Tier1) -> str:
+    return (
+        f"Tier 1 collected {len(tier1.model_ids)} model id(s) "
+        f"({', '.join(tier1.model_ids)}) and validated none of them: checking "
+        "an id against a provider is a network call, which Tier 1 does not make."
+    )
+
+
+def _plan_motivation(tier1: Tier1) -> str:
+    dataset = tier1.largest_dataset
+    if dataset is None:
+        where = (
+            f"no evaluation dataset was found among "
+            f"{tier1.dataset_candidates} JSONL/JSON/CSV file(s)"
+        )
+    else:
+        where = (
+            f"`{dataset.get('file')}` has {dataset.get('rows')} row(s) and a "
+            f"{dataset.get('holdout_rows')}-row holdout slice"
+        )
+    if tier1.knob_wiring.get("verdict") in {"read", "none"}:
+        knobs = (
+            f"{len(tier1.entry_points)} entry point(s) declare "
+            f"{tier1.knob_count} knob(s), {tier1.read_knob_count} of which "
+            "the body reads"
+        )
+    else:
+        knobs = tier1.knob_wiring.get("summary", "")
+    return (
+        f"{where}, and {knobs}. The plan request sends the dataset size and "
+        "holdout flag above, your trial ceiling and your cap; it does not "
+        "send knob counts. Tier 1's own next step was: "
+        f"{tier1.next_step_line or 'not recorded'}"
+    )
+
+
+def _evaluator_quality_basis(tier1: Tier1) -> str:
+    if tier1.probe_verdict == "unreliable":
+        # Only a scorer that scored every call is judged unreliable, or
+        # said to be repeat-scored; a failed or non-finite call leaves that
+        # not established.
+        judged = (
+            "repeat-scored your scorer and it is NOT reliable: it "
+            if tier1.probe_consequence == SCORER_MEASURED
+            else "probed your scorer and it "
+        )
+        return (
+            f"Tier 1 {judged}"
+            f"{tier1.probe_symptom}, so {tier1.probe_consequence}. Next: "
+            f"{tier1.probe_remedy}, with `traigent-eval-build`"
+        )
+    if tier1.probe_verdict == "repeatable":
+        return (
+            "Tier 1 repeat-scored your scorer and found it repeatable. "
+            "Repeatability is not correctness: a scorer that returns the "
+            "same wrong number every time passes that probe"
+        )
+    if tier1.scorers:
+        return (
+            f"Tier 1 found {len(tier1.scorers)} scorer(s) and could measure "
+            "none of them here (a judge or a code-executing scorer is never "
+            "run by the audit)"
+        )
+    return (
+        f"Tier 1 found no scorer in {tier1.python_files} Python file(s), "
+        "so nothing local ranks a configuration"
+    )
+
+
+def _evaluator_quality_motivation(tier1: Tier1) -> str:
+    return (
+        f"{_evaluator_quality_basis(tier1)}. Whether the scorer agrees with an "
+        "independent signal on real model output is computed by the service "
+        "from a completed run."
+    )
+
+
+def _example_motivation(check_id: str, tier1: Tier1) -> str:
+    """`example-insights` and `example-scoring`: the smallest dataset's rows."""
+    dataset = tier1.smallest_dataset
+    if dataset is None:
+        return (
+            f"No evaluation dataset was found among {tier1.dataset_candidates} "
+            "JSONL/JSON/CSV file(s). Per-example scoring works on the rows a "
+            "completed run used, so it can speak about rows the audit never saw."
+        )
+    findings = dataset.get("findings") or []
+    first = findings[0] if findings else "no dataset finding was noted"
+    tail = (
+        "A per-example result would name which of those rows the service "
+        "flagged, IF it holds any; Tier 1 can only count them."
+        if check_id == "example-insights"
+        else "This reads whether per-example scores already exist for a run; "
+        "it does not compute them, and Tier 1 can only count the rows."
+    )
+    return (
+        f"`{dataset.get('file')}` has {dataset.get('rows')} row(s) — {first}. "
+        + tail
+    )
+
+
+def _decision_brief_motivation(tier1: Tier1) -> str:
+    return (
+        "Tier 1's next step was chosen from your code alone: "
+        f"{tier1.next_step_line or 'not recorded'} The decision brief is the "
+        "service's answer to the same question from a completed run, and it "
+        "is relayed here exactly as returned."
+    )
+
+
+def _list_runs_motivation(tier1: Tier1) -> str:
+    return (
+        "Four of the checks above need a completed run id and none was given "
+        "(--run-id). This lists the completed runs your account already has."
+    )
+
+
+def _missing_run_inputs(tier1: Tier1) -> list[str]:
+    """What Tier 1 found missing that a run would need to score anything."""
+    missing = []
+    if not tier1.datasets:
+        missing.append(
+            f"no evaluation dataset among {tier1.dataset_candidates} "
+            "JSONL/JSON/CSV file(s) (`traigent-dataset-curate` builds one)"
+        )
+    if not tier1.scorers:
+        missing.append(
+            f"no scorer in {tier1.python_files} Python file(s) "
+            "(`traigent-eval-build` wires one)"
+        )
+    return missing
+
+
+def _bounded_run_motivation(tier1: Tier1) -> str:
+    wiring = tier1.knob_wiring
+    if wiring.get("verdict") == "unreadable":
+        return (
+            "Tier 1's stored entry points could not be read, so whether the "
+            "decorated body reads its knobs is not established here — re-run "
+            "the free audit before spending anything."
+        )
+    step = knob_step(wiring)
+    if step is not None:
+        return (
+            f"Tier 1's own reading of your knobs: {step['line']} A bounded run "
+            "before that is settled spends on trials Tier 1 cannot vouch for."
+        )
+    if tier1.knob_count == 0:
+        return (
+            f"{len(tier1.entry_points)} entry point(s) declare 0 knobs, so "
+            "every trial would evaluate the same configuration. Define a "
+            "configuration space first with `traigent-optimize-config-space`; "
+            "there is nothing for a run to search yet."
+        )
+    missing = _missing_run_inputs(tier1)
+    if missing:
+        return (
+            f"{tier1.read_knob_count} of {tier1.knob_count} declared knob(s) "
+            f"are read by the decorated body, but Tier 1 found "
+            f"{' and '.join(missing)}, so a run would have nothing to score "
+            "a configuration against."
+        )
+    return (
+        f"{tier1.read_knob_count} of {tier1.knob_count} declared knob(s) are "
+        "read by the decorated body, and a dataset and scorer exist. Whether "
+        "tuning moves the score is the one question only a real run answers."
+    )
+
+
+def _stale_all_clear_motivation(tier1: Tier1) -> str:
+    subjects = tier1.stale_subjects
+    names = [name for name, _ in subjects]
+    subject = (names[0] if len(names) == 1
+               else f"{', '.join(names[:-1])} and {names[-1]}")
+    verb = "does" if len(names) == 1 else "do"
+    # Two areas missing from the report share one detail; say it once.
+    details = "; ".join(dict.fromkeys(detail for _, detail in subjects if detail))
+    root = shlex.quote(tier1.root) if tier1.root else "<project>"
+    return (
+        f"This report records the all-clear, but its own {subject} {verb} "
+        f"not support it{f' ({details})' if details else ''} — "
+        "it was written by an older audit or edited. Re-run the free audit "
+        "before anything else, with the same options you used before (for "
+        "example --scorer, --dataset, --repeats): audit_project.py --root "
+        f"{root} --json {shlex.quote(str(tier1.path))}"
+    )
+
+
+def _stop_here_motivation(tier1: Tier1) -> str:
+    if tier1.stale_all_clear:
+        return _stale_all_clear_motivation(tier1)
+    return (
+        "Tier 1 named a local next step and it is still open: "
+        f"{tier1.next_step_line or 'not recorded'} Every reader above needs a "
+        "completed run you do not have, and the service may abstain or return "
+        "nothing even once you do — so a run bought to make it answer buys "
+        "nothing you can count on."
     )
 
 
 def motivation(check_id: str, tier1: Tier1, run_id: str | None) -> str:
     """The Tier 1 finding that motivates one offer, in the user's own numbers."""
-    if check_id == "model-ids":
-        return (
-            f"Tier 1 collected {len(tier1.model_ids)} model id(s) "
-            f"({', '.join(tier1.model_ids)}) and validated none of them: checking "
-            "an id against a provider is a network call, which Tier 1 does not make."
-        )
-    if check_id == "plan":
-        dataset = tier1.largest_dataset
-        if dataset is None:
-            where = (
-                f"no evaluation dataset was found among "
-                f"{tier1.dataset_candidates} JSONL/JSON/CSV file(s)"
-            )
-        else:
-            where = (
-                f"`{dataset.get('file')}` has {dataset.get('rows')} row(s) and a "
-                f"{dataset.get('holdout_rows')}-row holdout slice"
-            )
-        if tier1.knob_wiring.get("verdict") in {"read", "none"}:
-            knobs = (
-                f"{len(tier1.entry_points)} entry point(s) declare "
-                f"{tier1.knob_count} knob(s), {tier1.read_knob_count} of which "
-                "the body reads"
-            )
-        else:
-            knobs = tier1.knob_wiring.get("summary", "")
-        return (
-            f"{where}, and {knobs}. The plan request sends the dataset size and "
-            "holdout flag above, your trial ceiling and your cap; it does not "
-            "send knob counts. Tier 1's own next step was: "
-            f"{tier1.next_step_line or 'not recorded'}"
-        )
-    if check_id == "evaluator-quality":
-        if tier1.probe_verdict == "unreliable":
-            # Only a scorer that scored every call is judged unreliable, or
-            # said to be repeat-scored; a failed or non-finite call leaves that
-            # not established.
-            judged = (
-                "repeat-scored your scorer and it is NOT reliable: it "
-                if tier1.probe_consequence == SCORER_MEASURED
-                else "probed your scorer and it "
-            )
-            basis = (
-                f"Tier 1 {judged}"
-                f"{tier1.probe_symptom}, so {tier1.probe_consequence}. Next: "
-                f"{tier1.probe_remedy}, with `traigent-eval-build`"
-            )
-        elif tier1.probe_verdict == "repeatable":
-            basis = (
-                "Tier 1 repeat-scored your scorer and found it repeatable. "
-                "Repeatability is not correctness: a scorer that returns the "
-                "same wrong number every time passes that probe"
-            )
-        elif tier1.scorers:
-            basis = (
-                f"Tier 1 found {len(tier1.scorers)} scorer(s) and could measure "
-                "none of them here (a judge or a code-executing scorer is never "
-                "run by the audit)"
-            )
-        else:
-            basis = (
-                f"Tier 1 found no scorer in {tier1.python_files} Python file(s), "
-                "so nothing local ranks a configuration"
-            )
-        return (
-            f"{basis}. Whether the scorer agrees with an independent signal on "
-            "real model output is computed by the service from a completed run."
-        )
     if check_id in {"example-insights", "example-scoring"}:
-        dataset = tier1.smallest_dataset
-        if dataset is None:
-            return (
-                f"No evaluation dataset was found among {tier1.dataset_candidates} "
-                "JSONL/JSON/CSV file(s). Per-example scoring works on the rows a "
-                "completed run used, so it can speak about rows the audit never saw."
-            )
-        findings = dataset.get("findings") or []
-        first = findings[0] if findings else "no dataset finding was noted"
-        tail = (
-            "A per-example result would name which of those rows the service "
-            "flagged, IF it holds any; Tier 1 can only count them."
-            if check_id == "example-insights"
-            else "This reads whether per-example scores already exist for a run; "
-            "it does not compute them, and Tier 1 can only count the rows."
-        )
-        return (
-            f"`{dataset.get('file')}` has {dataset.get('rows')} row(s) — {first}. "
-            + tail
-        )
-    if check_id == "decision-brief":
-        return (
-            "Tier 1's next step was chosen from your code alone: "
-            f"{tier1.next_step_line or 'not recorded'} The decision brief is the "
-            "service's answer to the same question from a completed run, and it "
-            "is relayed here exactly as returned."
-        )
-    if check_id == "list-runs":
-        return (
-            "Four of the checks above need a completed run id and none was given "
-            "(--run-id). This lists the completed runs your account already has."
-        )
-    if check_id == "bounded-run":
-        wiring = tier1.knob_wiring
-        if wiring.get("verdict") == "unreadable":
-            return (
-                "Tier 1's stored entry points could not be read, so whether the "
-                "decorated body reads its knobs is not established here — re-run "
-                "the free audit before spending anything."
-            )
-        step = knob_step(wiring)
-        if step is not None:
-            return (
-                f"Tier 1's own reading of your knobs: {step['line']} A bounded run "
-                "before that is settled spends on trials Tier 1 cannot vouch for."
-            )
-        if tier1.knob_count == 0:
-            return (
-                f"{len(tier1.entry_points)} entry point(s) declare 0 knobs, so "
-                "every trial would evaluate the same configuration. Define a "
-                "configuration space first with `traigent-optimize-config-space`; "
-                "there is nothing for a run to search yet."
-            )
-        missing = []
-        if not tier1.datasets:
-            missing.append(
-                f"no evaluation dataset among {tier1.dataset_candidates} "
-                "JSONL/JSON/CSV file(s) (`traigent-dataset-curate` builds one)"
-            )
-        if not tier1.scorers:
-            missing.append(
-                f"no scorer in {tier1.python_files} Python file(s) "
-                "(`traigent-eval-build` wires one)"
-            )
-        if missing:
-            return (
-                f"{tier1.read_knob_count} of {tier1.knob_count} declared knob(s) "
-                f"are read by the decorated body, but Tier 1 found "
-                f"{' and '.join(missing)}, so a run would have nothing to score "
-                "a configuration against."
-            )
-        return (
-            f"{tier1.read_knob_count} of {tier1.knob_count} declared knob(s) are "
-            "read by the decorated body, and a dataset and scorer exist. Whether "
-            "tuning moves the score is the one question only a real run answers."
-        )
-    if check_id == "stop-here":
-        if tier1.stale_all_clear:
-            subjects = tier1.stale_subjects
-            names = [name for name, _ in subjects]
-            subject = (names[0] if len(names) == 1
-                       else f"{', '.join(names[:-1])} and {names[-1]}")
-            verb = "does" if len(names) == 1 else "do"
-            # Two areas missing from the report share one detail; say it once.
-            details = "; ".join(dict.fromkeys(detail for _, detail in subjects if detail))
-            root = shlex.quote(tier1.root) if tier1.root else "<project>"
-            return (
-                f"This report records the all-clear, but its own {subject} {verb} "
-                f"not support it{f' ({details})' if details else ''} — "
-                "it was written by an older audit or edited. Re-run the free audit "
-                "before anything else, with the same options you used before (for "
-                "example --scorer, --dataset, --repeats): audit_project.py --root "
-                f"{root} --json {shlex.quote(str(tier1.path))}"
-            )
-        return (
-            "Tier 1 named a local next step and it is still open: "
-            f"{tier1.next_step_line or 'not recorded'} Every reader above needs a "
-            "completed run you do not have, and the service may abstain or return "
-            "nothing even once you do — so a run bought to make it answer buys "
-            "nothing you can count on."
-        )
-    return ""
+        return _example_motivation(check_id, tier1)
+    writer = {
+        "model-ids": _model_ids_motivation,
+        "plan": _plan_motivation,
+        "evaluator-quality": _evaluator_quality_motivation,
+        "decision-brief": _decision_brief_motivation,
+        "list-runs": _list_runs_motivation,
+        "bounded-run": _bounded_run_motivation,
+        "stop-here": _stop_here_motivation,
+    }.get(check_id)
+    return writer(tier1) if writer is not None else ""
 
 
 def applicable(check_id: str, tier1: Tier1, run_id: str | None,
@@ -1788,51 +1865,125 @@ def main(argv: list[str] | None = None) -> int:
     return execute(args, tier1, backend_url, invocations)
 
 
-def execute(args, tier1: Tier1, backend_url: str, invocations: dict[str, str]) -> int:
-    """Run mode: only the approved checks, only their named endpoints."""
-    approved = [check_id for check in CATALOGUE for check_id in [check.id]
-                if check_id in args.approve]
+def _refuse(message: str) -> int:
+    """Print one refusal to stderr; run mode exits 2 having attempted nothing."""
+    print(f"tier2_checks.py: {message}", file=sys.stderr)
+    return 2
 
+
+def _blocked_refusal(approved: list[str], tier1: Tier1, args) -> str | None:
+    """The first approved check that cannot run yet, as a refusal, or None."""
     for check_id in approved:
         blocked = blocked_reason(check_id, tier1, args.run_id, args.cost_limit)
         if blocked:
-            print(f"tier2_checks.py: `{check_id}` {blocked}", file=sys.stderr)
-            return 2
+            return f"`{check_id}` {blocked}"
+    return None
 
-    needs_backend = [check_id for check_id in approved if check_id != "model-ids"]
-    api_key = os.getenv(KEY_ENV_NAME) or ""
-    if needs_backend and not api_key:
-        print(
-            f"tier2_checks.py: {KEY_ENV_NAME} is not set in this environment, so "
-            "no Traigent check can run. Set it and try again; its value is never "
-            "printed or stored by this script.",
-            file=sys.stderr,
-        )
-        return 2
 
-    user_agent = sdk_user_agent()
-    if needs_backend and user_agent is None:
-        print(
-            "tier2_checks.py: the traigent distribution is not installed, so the "
-            "SDK's own User-Agent cannot be built. Install it "
-            '(`pip install "traigent>=0.27.0"`) and try again.',
-            file=sys.stderr,
-        )
-        return 2
+def _resolve_cli(approved: list[str]) -> tuple[str | None, str | None]:
+    """``(refusal, executable)`` for the approved checks that spawn the CLI.
 
-    # Resolve the CLI once, before anything is attempted: a CLI check that
-    # cannot spawn did not run, and exit 0 means the approved checks ran.
+    Resolved once, before anything is attempted: a CLI check that cannot spawn
+    did not run, and exit 0 means the approved checks ran."""
     cli_checks = [check_id for check_id in approved if check_id in CLI_CHECKS]
     executable = shutil.which("traigent") if cli_checks else None
     if cli_checks and executable is None:
-        print(
-            "tier2_checks.py: `traigent` is not on PATH, so "
+        return (
+            "`traigent` is not on PATH, so "
             + ", ".join(f"`{check_id}`" for check_id in cli_checks)
             + ' cannot run. Install the SDK (`pip install "traigent>=0.27.0"`) '
-            "and try again. No approved check was attempted.",
-            file=sys.stderr,
+            "and try again. No approved check was attempted."
+        ), None
+    return None, executable
+
+
+def _preflight(
+    approved: list[str], tier1: Tier1, args
+) -> tuple[str | None, str, str | None, str | None]:
+    """``(refusal, api key, user agent, executable)``, checked in this order:
+    a blocked check, the key, the SDK's User-Agent, the CLI. The refusal is
+    None when every approved check can be attempted."""
+    refusal = _blocked_refusal(approved, tier1, args)
+    if refusal:
+        return refusal, "", None, None
+    needs_backend = [check_id for check_id in approved if check_id != "model-ids"]
+    api_key = os.getenv(KEY_ENV_NAME) or ""
+    if needs_backend and not api_key:
+        return (
+            f"{KEY_ENV_NAME} is not set in this environment, so "
+            "no Traigent check can run. Set it and try again; its value is never "
+            "printed or stored by this script."
+        ), api_key, None, None
+    user_agent = sdk_user_agent()
+    if needs_backend and user_agent is None:
+        return (
+            "the traigent distribution is not installed, so the "
+            "SDK's own User-Agent cannot be built. Install it "
+            '(`pip install "traigent>=0.27.0"`) and try again.'
+        ), api_key, user_agent, None
+    refusal, executable = _resolve_cli(approved)
+    return refusal, api_key, user_agent, executable
+
+
+def _run_check(check_id: str, args, tier1: Tier1, backend_url: str,
+               transport: Transport, executable: str | None,
+               subprocesses: list[dict], api_key: str, out: list[str]) -> dict | None:
+    """Run one approved check and return its record (None for a check that
+    run mode never executes)."""
+    if check_id == "evaluator-quality":
+        return run_evaluator_quality(transport, args.run_id, out)
+    if check_id == "example-insights":
+        return run_example_insights(transport, args.run_id, out)
+    if check_id == "decision-brief":
+        return run_decision_brief(transport, args.run_id, out)
+    if check_id == "example-scoring":
+        return run_example_scoring(transport, args.run_id, out)
+    if check_id == "list-runs":
+        return run_list_runs(transport, out)
+    if check_id == "model-ids":
+        return run_model_ids(tier1, executable, subprocesses, api_key, out)
+    if check_id == "plan":
+        return run_plan(tier1, args, backend_url, executable, subprocesses, api_key, out)
+    return None
+
+
+def _receipt_line(args, receipt: dict, transport: Transport,
+                  subprocesses: list[dict]) -> str:
+    """Write the receipt when asked for, and say what was made either way."""
+    if not args.receipt:
+        return (
+            f"{len(transport.requests)} request(s) and {len(subprocesses)} "
+            "process(es) were made. Pass --receipt <path> to keep the record."
         )
-        return 2
+    path = Path(args.receipt)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                    encoding="utf-8")
+    return (
+        f"Receipt written to `{args.receipt}`: "
+        f"{len(transport.requests)} request(s) and {len(subprocesses)} "
+        f"process(es) were made — both counted, not assumed. "
+        "Keep it: it is the record of what left this machine. No key is in it."
+    )
+
+
+def _write_run_json(json_out: str, receipt: dict, records: list[dict]) -> None:
+    path = Path(json_out)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(
+        json.dumps({"schema": SCHEMA, "receipt": receipt, "records": records},
+                   indent=2, sort_keys=True, default=str) + "\n",
+        encoding="utf-8",
+    )
+
+
+def execute(args, tier1: Tier1, backend_url: str, invocations: dict[str, str]) -> int:
+    """Run mode: only the approved checks, only their named endpoints."""
+    approved = [check.id for check in CATALOGUE if check.id in args.approve]
+
+    refusal, api_key, user_agent, executable = _preflight(approved, tier1, args)
+    if refusal:
+        return _refuse(refusal)
 
     transport = Transport(
         backend_url=backend_url,
@@ -1855,24 +2006,10 @@ def execute(args, tier1: Tier1, backend_url: str, invocations: dict[str, str]) -
         for check_id in approved:
             out.append(f"## {check_id}")
             out.append("")
-            if check_id == "evaluator-quality":
-                records.append(run_evaluator_quality(transport, args.run_id, out))
-            elif check_id == "example-insights":
-                records.append(run_example_insights(transport, args.run_id, out))
-            elif check_id == "decision-brief":
-                records.append(run_decision_brief(transport, args.run_id, out))
-            elif check_id == "example-scoring":
-                records.append(run_example_scoring(transport, args.run_id, out))
-            elif check_id == "list-runs":
-                records.append(run_list_runs(transport, out))
-            elif check_id == "model-ids":
-                records.append(run_model_ids(tier1, executable, subprocesses, api_key,
-                                             out))
-            elif check_id == "plan":
-                records.append(
-                    run_plan(tier1, args, backend_url, executable, subprocesses, api_key,
-                             out)
-                )
+            record = _run_check(check_id, args, tier1, backend_url, transport,
+                                executable, subprocesses, api_key, out)
+            if record is not None:
+                records.append(record)
             out.append("")
     finally:
         transport.close()
@@ -1887,33 +2024,12 @@ def execute(args, tier1: Tier1, backend_url: str, invocations: dict[str, str]) -
         "subprocesses": subprocesses,
         "finished_utc": datetime.now(timezone.utc).isoformat(),
     }
-    if args.receipt:
-        path = Path(args.receipt)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n",
-                        encoding="utf-8")
-        out.append(
-            f"Receipt written to `{args.receipt}`: "
-            f"{len(transport.requests)} request(s) and {len(subprocesses)} "
-            f"process(es) were made — both counted, not assumed. "
-            "Keep it: it is the record of what left this machine. No key is in it."
-        )
-    else:
-        out.append(
-            f"{len(transport.requests)} request(s) and {len(subprocesses)} "
-            "process(es) were made. Pass --receipt <path> to keep the record."
-        )
+    out.append(_receipt_line(args, receipt, transport, subprocesses))
     out.append("")
     out.append(STOP_SENTENCE)
 
     if args.json_out:
-        path = Path(args.json_out)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(
-            json.dumps({"schema": SCHEMA, "receipt": receipt, "records": records},
-                       indent=2, sort_keys=True, default=str) + "\n",
-            encoding="utf-8",
-        )
+        _write_run_json(args.json_out, receipt, records)
 
     # Same filter as the offer: these lines carry the project's text AND the
     # service's, and neither is ours.
