@@ -210,6 +210,11 @@ def _importance_cases() -> dict[str, dict]:
         "small_group": {"trials": strong + [_trial(0.2, {"k": "rare"})] * 3,
                         "design": "randomized"},
         "low_resolution": {"trials": strong, "design": "randomized", "draws": 99},
+        # One knob at alpha 0.05 needs draws + 1 >= 200: 199 draws is exactly
+        # enough and 198 is one short.
+        "resolution_exactly_enough": {"trials": strong, "design": "randomized",
+                                      "draws": 199},
+        "resolution_one_short": {"trials": strong, "design": "randomized", "draws": 198},
         "adaptive": {"trials": strong, "design": "adaptive"},
         "unknown": {"trials": strong, "design": "unknown"},
         "coupled_knobs": {"trials": coupled, "design": "randomized", "draws": 499},
