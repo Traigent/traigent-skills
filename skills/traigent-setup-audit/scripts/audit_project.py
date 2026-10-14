@@ -34,7 +34,7 @@ import re
 import subprocess
 import sys
 from collections import Counter, defaultdict
-from collections.abc import Callable, Iterable
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import NoReturn
@@ -345,7 +345,7 @@ class _RefusingSocket:
     which the first version of this audit then reported as scorer instability.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         raise NetworkDisabled(GUARD_MESSAGE)
 
 
@@ -364,7 +364,7 @@ def install_network_guard() -> None:
     """Replace the socket entry points, in both ``socket`` and ``_socket``."""
     import socket
 
-    def _refuse(*args, **kwargs):
+    def _refuse(*args: object, **kwargs: object) -> NoReturn:
         raise NetworkDisabled(GUARD_MESSAGE)
 
     _replace_entry_points(
@@ -2148,7 +2148,9 @@ def _probe_kind(value: object) -> str | None:
     return None
 
 
-def build_probe_payload(datasets: list[DatasetReport], root: Path):
+def build_probe_payload(
+    datasets: list[DatasetReport], root: Path
+) -> tuple[object, object | None, object, str]:
     """Return ``(good, partial, bad, source)`` probe values.
 
     ``good`` and ``bad`` are two distinct gold values of the same JSON kind from
@@ -3619,14 +3621,14 @@ KIND_REASON = {
 }
 
 
-def _handles(items, limit: int = 3) -> str:
+def _handles(items: Sequence[ScorerCandidate | SkippedScorer], limit: int = 3) -> str:
     shown = [f"{item.file}:{item.line}" for item in items[:limit]]
     if len(items) > limit:
         shown.append(f"and {len(items) - limit} more")
     return ", ".join(shown)
 
 
-def not_run_lines(candidates) -> list[str]:
+def not_run_lines(candidates: Iterable[ScorerCandidate]) -> list[str]:
     """One line per REASON, not one per scorer."""
     by_kind: dict[str, list[ScorerCandidate]] = defaultdict(list)
     for candidate in candidates:

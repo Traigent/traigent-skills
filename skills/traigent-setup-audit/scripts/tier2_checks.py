@@ -46,7 +46,11 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
 from urllib.parse import quote, urlsplit
+
+if TYPE_CHECKING:
+    import httpx
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
@@ -522,12 +526,12 @@ def _read_tier1_report(path: Path) -> dict:
     return report
 
 
-def _stored(mapping, key: str, default):
+def _stored(mapping: dict[str, Any], key: str, default: Any) -> Any:
     """``mapping[key]``, or ``default`` when it is absent or falsy."""
     return mapping.get(key) or default
 
 
-def _dict_items(value) -> list[dict]:
+def _dict_items(value: object) -> list[dict]:
     return [item for item in (value or []) if isinstance(item, dict)]
 
 
@@ -590,7 +594,7 @@ def _stored_knob_wiring(entry_points: list[dict], knob_count: int) -> dict:
                 "knobs": []}
 
 
-def _stored_area_statuses(areas) -> dict[str, str]:
+def _stored_area_statuses(areas: object) -> dict[str, str]:
     statuses = {}
     for name in ("agent", "dataset"):
         area = areas.get(name) if isinstance(areas, dict) else None
@@ -1044,7 +1048,7 @@ class Transport:
     def headers(self) -> dict[str, str]:
         return {API_KEY_HEADER: self.api_key, "User-Agent": self.user_agent}
 
-    def client(self):
+    def client(self) -> httpx.Client:
         import httpx
 
         if self._client is None:
@@ -1525,7 +1529,7 @@ def run_model_ids(tier1: Tier1, executable: str, subprocesses: list[dict],
     return record
 
 
-def run_plan(tier1: Tier1, args, backend_url: str, executable: str,
+def run_plan(tier1: Tier1, args: argparse.Namespace, backend_url: str, executable: str,
              subprocesses: list[dict],
              key_value: str,
              out: list[str]) -> dict:
@@ -1654,7 +1658,7 @@ def render_card(check: Check, tier1: Tier1, run_id: str | None, backend_url: str
     return lines
 
 
-def render_offer(tier1: Tier1, args, backend_url: str, guard: str,
+def render_offer(tier1: Tier1, args: argparse.Namespace, backend_url: str, guard: str,
                  cards: list[tuple[Check, str, bool]], skipped: list[tuple[str, str]],
                  invocations: dict[str, str]) -> str:
     out = [
@@ -1715,7 +1719,7 @@ def render_offer(tier1: Tier1, args, backend_url: str, guard: str,
     return "\n".join(printable_text(line) for line in out)
 
 
-def invocation_for(check_id: str, args, script: str) -> str:
+def invocation_for(check_id: str, args: argparse.Namespace, script: str) -> str:
     parts = [f"python3 {script}", f"--from-audit {args.from_audit}"]
     if check_id in RUN_DEPENDENT and args.run_id:
         parts.append(f"--run-id {args.run_id}")
@@ -1871,7 +1875,9 @@ def _refuse(message: str) -> int:
     return 2
 
 
-def _blocked_refusal(approved: list[str], tier1: Tier1, args) -> str | None:
+def _blocked_refusal(
+    approved: list[str], tier1: Tier1, args: argparse.Namespace
+) -> str | None:
     """The first approved check that cannot run yet, as a refusal, or None."""
     for check_id in approved:
         blocked = blocked_reason(check_id, tier1, args.run_id, args.cost_limit)
@@ -1898,7 +1904,7 @@ def _resolve_cli(approved: list[str]) -> tuple[str | None, str | None]:
 
 
 def _preflight(
-    approved: list[str], tier1: Tier1, args
+    approved: list[str], tier1: Tier1, args: argparse.Namespace
 ) -> tuple[str | None, str, str | None, str | None]:
     """``(refusal, api key, user agent, executable)``, checked in this order:
     a blocked check, the key, the SDK's User-Agent, the CLI. The refusal is
@@ -1925,7 +1931,7 @@ def _preflight(
     return refusal, api_key, user_agent, executable
 
 
-def _run_check(check_id: str, args, tier1: Tier1, backend_url: str,
+def _run_check(check_id: str, args: argparse.Namespace, tier1: Tier1, backend_url: str,
                transport: Transport, executable: str | None,
                subprocesses: list[dict], api_key: str, out: list[str]) -> dict | None:
     """Run one approved check and return its record (None for a check that
@@ -1947,7 +1953,7 @@ def _run_check(check_id: str, args, tier1: Tier1, backend_url: str,
     return None
 
 
-def _receipt_line(args, receipt: dict, transport: Transport,
+def _receipt_line(args: argparse.Namespace, receipt: dict, transport: Transport,
                   subprocesses: list[dict]) -> str:
     """Write the receipt when asked for, and say what was made either way."""
     if not args.receipt:
@@ -1977,7 +1983,9 @@ def _write_run_json(json_out: str, receipt: dict, records: list[dict]) -> None:
     )
 
 
-def execute(args, tier1: Tier1, backend_url: str, invocations: dict[str, str]) -> int:
+def execute(
+    args: argparse.Namespace, tier1: Tier1, backend_url: str, invocations: dict[str, str]
+) -> int:
     """Run mode: only the approved checks, only their named endpoints."""
     approved = [check.id for check in CATALOGUE if check.id in args.approve]
 
