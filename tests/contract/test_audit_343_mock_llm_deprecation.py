@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from .extract import _iter_fenced_blocks
+from .test_audit_343_mock_mode_cost import _uses_observed_mean_admission
 
 ROOT = Path(__file__).resolve().parents[2]
 # Skills this check owns; widen as the other skills that teach the env var are updated.
@@ -114,7 +115,9 @@ def test_mock_mode_reference_states_cost_limits_still_apply() -> None:
     assert "bypass cost tracking" not in text and "bypasses cost tracking" not in text
 
 
-def test_mock_run_still_enforces_the_cost_limit(tmp_path: Path) -> None:
+def test_mock_zero_cost_admission_matches_sdk_version(
+    tmp_path: Path, sdk_version_label: str
+) -> None:
     pytest.importorskip("traigent")
     (tmp_path / "home").mkdir()
     script = tmp_path / "probe.py"
@@ -162,4 +165,9 @@ def test_mock_run_still_enforces_the_cost_limit(tmp_path: Path) -> None:
     assert completed.returncode == 0, completed.stdout + completed.stderr
     line = next(ln for ln in completed.stdout.splitlines() if ln.startswith("RESULT="))
     stop_reason, trials = line.removeprefix("RESULT=").split("|")
-    assert (stop_reason, trials) == ("cost_limit", "0")
+    expected = (
+        ("max_trials_reached", "4")
+        if _uses_observed_mean_admission(sdk_version_label)
+        else ("cost_limit", "0")
+    )
+    assert (stop_reason, trials) == expected
