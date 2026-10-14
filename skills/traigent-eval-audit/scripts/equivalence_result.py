@@ -247,6 +247,17 @@ def selection_digest(example_ids: Sequence[str]) -> str:
     return "sha256:" + _sha256(payload)
 
 
+def _selection_ids(selection: dict[str, Any]) -> list[str]:
+    """Validate the IDs collection and count, retaining the original list."""
+    ids = selection.get("example_ids")
+    if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
+        raise ValueError("example_ids must be a list of strings")
+    count = selection.get("count")
+    if isinstance(count, bool) or not isinstance(count, int) or count != len(ids):
+        raise ValueError("count does not match the number of example_ids")
+    return ids
+
+
 def verify_selection(selection: Any, check: Mapping[str, Any] | None = None) -> list[str]:
     """Validate a fetched check-examples response; return its ids exactly as returned.
 
@@ -262,12 +273,7 @@ def verify_selection(selection: Any, check: Mapping[str, Any] | None = None) -> 
         raise ValueError("unknown protocol")
     if selection.get("selection_rule") != SELECTION_RULE:
         raise ValueError("unknown selection rule")
-    ids = selection.get("example_ids")
-    if not isinstance(ids, list) or not all(isinstance(i, str) for i in ids):
-        raise ValueError("example_ids must be a list of strings")
-    count = selection.get("count")
-    if isinstance(count, bool) or not isinstance(count, int) or count != len(ids):
-        raise ValueError("count does not match the number of example_ids")
+    ids = _selection_ids(selection)
     if selection.get("digest") != selection_digest(ids):
         raise ValueError("digest does not match the example_ids")
     if check is not None:
