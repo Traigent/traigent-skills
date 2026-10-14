@@ -1336,37 +1336,49 @@ def near_duplicate_pairs(rows: list[DatasetRow]) -> list[list[int]]:
     return pairs
 
 
-def analyse_dataset(
-    path: Path, root: Path, raw: RawDataset
-) -> DatasetReport:
-    rows = raw.rows
+def _row_gold(
+    row: dict,
+    position: int,
+    expected_key_counts: Counter[str],
+    missing_expected: list[int],
+    gold_kinds: Counter[str],
+) -> tuple[str | None, object]:
+    """``(gold key, gold value)`` for one row, tallying a missing or unusable one.
+
+    The first gold key present decides: an unusable value there is not rescued
+    by a later key."""
+    expected_key = next((key for key in EXPECTED_KEYS if key in row), None)
+    if expected_key is None:
+        missing_expected.append(position)
+        gold_kinds["absent"] += 1
+        return None, None
+    kind = _gold_kind(row[expected_key])
+    if kind is not None:
+        missing_expected.append(position)
+        gold_kinds[kind] += 1
+        return None, None
+    expected_key_counts[expected_key] += 1
+    return expected_key, row[expected_key]
+
+
+def _parse_dataset_rows(
+    rows: list[dict],
+) -> tuple[list[DatasetRow], Counter[str], Counter[str], list[int], Counter[str]]:
+    """``(parsed rows, input key counts, gold key counts, rows with no usable
+    gold, gold kinds)``. A row with no input-like key is not parsed."""
     parsed: list[DatasetRow] = []
     input_key_counts: Counter[str] = Counter()
     expected_key_counts: Counter[str] = Counter()
     missing_expected: list[int] = []
     gold_kinds: Counter[str] = Counter()
-
     for position, row in enumerate(rows):
         input_key = next((key for key in INPUT_KEYS if key in row), None)
         if input_key is None:
             continue
         input_key_counts[input_key] += 1
-        expected_key = next((key for key in EXPECTED_KEYS if key in row), None)
-        expected = None
-        if expected_key is None:
-            missing_expected.append(position)
-            gold_kinds["absent"] += 1
-        else:
-            # The first gold key present decides: an unusable value there is
-            # not rescued by a later key.
-            kind = _gold_kind(row[expected_key])
-            if kind is None:
-                expected_key_counts[expected_key] += 1
-                expected = row[expected_key]
-            else:
-                missing_expected.append(position)
-                gold_kinds[kind] += 1
-                expected_key = None
+        expected_key, expected = _row_gold(
+            row, position, expected_key_counts, missing_expected, gold_kinds
+        )
         parsed.append(
             DatasetRow(
                 index=position,
@@ -1377,7 +1389,19 @@ def analyse_dataset(
                 split=_row_split(row),
             )
         )
+    return parsed, input_key_counts, expected_key_counts, missing_expected, gold_kinds
 
+
+def _input_indexes(
+    parsed: list[DatasetRow],
+) -> tuple[
+    dict[str, list[int]],
+    dict[str, list[int]],
+    dict[str, list[int]],
+    dict[str, list[int]],
+]:
+    """Row indexes by normalized input: all rows, holdout-tagged rows, every
+    other row, and untagged rows."""
     by_input: dict[str, list[int]] = defaultdict(list)
     holdout_by_input: dict[str, list[int]] = defaultdict(list)
     non_holdout_by_input: dict[str, list[int]] = defaultdict(list)
@@ -1390,16 +1414,36 @@ def analyse_dataset(
             non_holdout_by_input[row.normalized_input].append(row.index)
         if row.split is None:
             untagged_by_input[row.normalized_input].append(row.index)
-    exact_groups = sorted(
+    return by_input, holdout_by_input, non_holdout_by_input, untagged_by_input
+
+
+def _exact_duplicate_groups(by_input: dict[str, list[int]]) -> list[list[int]]:
+    """Groups of row indexes sharing a normalized input, by first index."""
+    return sorted(
         (indices for indices in by_input.values() if len(indices) > 1),
         key=lambda group: group[0],
     )
 
+
+def _split_counts(parsed: list[DatasetRow]) -> tuple[Counter[str], int]:
+    """``(rows per split marker, rows in a holdout slice)``."""
     split_counts = Counter(row.split for row in parsed if row.split)
-    named_holdout = file_names_holdout(relative(path, root))
+    holdout_rows = sum(
+        value for key, value in split_counts.items() if key in HOLDOUT_VALUES
+    )
+    return split_counts, holdout_rows
+
+
+def _is_holdout_row(row: DatasetRow, named_holdout: bool) -> bool:
+    """A holdout-tagged row, or an untagged row in a holdout-named file."""
+    return row.split in HOLDOUT_VALUES or (row.split is None and named_holdout)
+
+
+def _holdout_overlap_rows(parsed: list[DatasetRow], named_holdout: bool) -> list[int]:
+    """Indexes of rows whose normalized input is in both the holdout slice and
+    another slice of the same file."""
     holdout_inputs = {
-        row.normalized_input for row in parsed
-        if row.split in HOLDOUT_VALUES or (row.split is None and named_holdout)
+        row.normalized_input for row in parsed if _is_holdout_row(row, named_holdout)
     }
     other_inputs = {
         row.normalized_input
@@ -1408,46 +1452,63 @@ def analyse_dataset(
         and (row.split is not None or not named_holdout)
     }
     overlap_texts = holdout_inputs & other_inputs
-    holdout_overlap = sorted(
+    return sorted(
         row.index for row in parsed if row.normalized_input in overlap_texts
     )
 
-    label_counts: dict[str, int] = {}
+
+def _label_counts(parsed: list[DatasetRow]) -> dict[str, int]:
+    """Counts per scalar gold value, kept only for 20+ scalar rows over at most
+    10 distinct values."""
     scalar_expected = [
         row.expected
         for row in parsed
         if isinstance(row.expected, (str, int, float, bool))
     ]
-    if len(scalar_expected) >= 20:
-        counted = Counter(str(value) for value in scalar_expected)
-        if len(counted) <= 10:
-            label_counts = dict(sorted(counted.items()))
+    if len(scalar_expected) < 20:
+        return {}
+    counted = Counter(str(value) for value in scalar_expected)
+    if len(counted) > 10:
+        return {}
+    return dict(sorted(counted.items()))
 
-    findings: list[str] = list(raw.notes)
-    count = len(parsed)
+
+def _size_findings(count: int) -> list[str]:
     if count < MIN_SMOKE:
-        findings.append(f"{count} rows is under the {MIN_SMOKE}-row smoke minimum")
-    elif count < MIN_TUNING:
-        findings.append(
+        return [f"{count} rows is under the {MIN_SMOKE}-row smoke minimum"]
+    if count < MIN_TUNING:
+        return [
             f"{count} rows is under the {MIN_TUNING}-row first-tuning-slice minimum"
-        )
+        ]
+    return []
+
+
+def _input_key_findings(
+    row_total: int, input_key_counts: Counter[str]
+) -> tuple[int, list[str]]:
+    """``(rows with no input/input_data key, findings)``."""
     other_keys = {
         key: value
         for key, value in sorted(input_key_counts.items())
         if key not in SDK_INPUT_KEYS
     }
-    keyless = len(rows) - sum(input_key_counts.values())
+    keyless = row_total - sum(input_key_counts.values())
     rows_without_sdk_input = sum(other_keys.values()) + keyless
-    if rows_without_sdk_input:
-        detail = [f"{value} keyed `{key}`" for key, value in other_keys.items()]
-        if keyless:
-            detail.append(f"{keyless} with no input-like key at all")
-        findings.append(
-            f"{rows_without_sdk_input} row(s) have no `input`/`input_data` key "
-            f"({', '.join(detail)}); `eval_dataset` reads only `input` or "
-            "`input_data` and refuses the whole file on the first such row — "
-            "rename or add the key"
-        )
+    if not rows_without_sdk_input:
+        return rows_without_sdk_input, []
+    detail = [f"{value} keyed `{key}`" for key, value in other_keys.items()]
+    if keyless:
+        detail.append(f"{keyless} with no input-like key at all")
+    return rows_without_sdk_input, [
+        f"{rows_without_sdk_input} row(s) have no `input`/`input_data` key "
+        f"({', '.join(detail)}); `eval_dataset` reads only `input` or "
+        "`input_data` and refuses the whole file on the first such row — "
+        "rename or add the key"
+    ]
+
+
+def _gold_findings(gold_kinds: Counter[str]) -> list[str]:
+    findings: list[str] = []
     if gold_kinds["absent"]:
         findings.append(
             f"{gold_kinds['absent']} row(s) carry no gold key "
@@ -1466,53 +1527,100 @@ def analyse_dataset(
             f"{sum(unusable.values())} row(s) carry a gold key with no usable "
             f"value ({detail})"
         )
-    if raw.constants:
-        named = ", ".join(
-            f"{name} ×{count}" for name, count in sorted(raw.constants.items())
-        )
-        findings.append(
-            f"{sum(raw.constants.values())} non-standard JSON constant(s) in the "
-            f"file ({named}); strict JSON readers refuse them"
-        )
+    return findings
+
+
+def _constant_findings(constants: dict[str, int]) -> list[str]:
+    if not constants:
+        return []
+    named = ", ".join(f"{name} ×{count}" for name, count in sorted(constants.items()))
+    return [
+        f"{sum(constants.values())} non-standard JSON constant(s) in the "
+        f"file ({named}); strict JSON readers refuse them"
+    ]
+
+
+def _near_duplicate_findings(
+    parsed: list[DatasetRow],
+) -> tuple[list[list[int]], list[str]]:
+    """``(near-duplicate pairs, findings)``; skipped, and said so, over the
+    row ceiling."""
+    if len(parsed) > NEAR_DUPLICATE_LIMIT:
+        return [], [
+            f"near-duplicate detection skipped: {len(parsed)} rows over the "
+            f"{NEAR_DUPLICATE_LIMIT}-row ceiling, so near-duplicates were not "
+            "looked for"
+        ]
+    near_pairs = near_duplicate_pairs(parsed)
+    if near_pairs:
+        return near_pairs, [f"{len(near_pairs)} near-duplicate input pair(s)"]
+    return near_pairs, []
+
+
+def _holdout_findings(split_counts: Counter[str], holdout_rows: int) -> list[str]:
+    if not split_counts:
+        return [NO_HOLDOUT_FINDING]
+    if holdout_rows == 0:
+        return [
+            "split markers present but none name a holdout slice "
+            f"({'/'.join(sorted(HOLDOUT_VALUES))})"
+        ]
+    if holdout_rows < MIN_HOLDOUT:
+        return [
+            f"holdout slice has {holdout_rows} rows, under the {MIN_HOLDOUT}-row minimum"
+        ]
+    return []
+
+
+def _label_findings(label_counts: dict[str, int]) -> list[str]:
+    if not label_counts:
+        return []
+    largest = max(label_counts.values())
+    if largest >= 0.8 * sum(label_counts.values()):
+        return [
+            f"one label covers {largest} of {sum(label_counts.values())} labelled rows"
+        ]
+    return []
+
+
+def analyse_dataset(
+    path: Path, root: Path, raw: RawDataset
+) -> DatasetReport:
+    rows = raw.rows
+    parsed, input_key_counts, expected_key_counts, missing_expected, gold_kinds = (
+        _parse_dataset_rows(rows)
+    )
+    by_input, holdout_by_input, non_holdout_by_input, untagged_by_input = (
+        _input_indexes(parsed)
+    )
+    exact_groups = _exact_duplicate_groups(by_input)
+    split_counts, holdout_rows = _split_counts(parsed)
+    holdout_overlap = _holdout_overlap_rows(
+        parsed, file_names_holdout(relative(path, root))
+    )
+    label_counts = _label_counts(parsed)
+
+    findings: list[str] = list(raw.notes)
+    count = len(parsed)
+    findings.extend(_size_findings(count))
+    rows_without_sdk_input, key_findings = _input_key_findings(
+        len(rows), input_key_counts
+    )
+    findings.extend(key_findings)
+    findings.extend(_gold_findings(gold_kinds))
+    findings.extend(_constant_findings(raw.constants))
     if exact_groups:
         findings.append(
             f"{len(exact_groups)} group(s) of rows share a normalized input"
         )
-    if len(parsed) > NEAR_DUPLICATE_LIMIT:
-        near_pairs: list[list[int]] = []
-        findings.append(
-            f"near-duplicate detection skipped: {len(parsed)} rows over the "
-            f"{NEAR_DUPLICATE_LIMIT}-row ceiling, so near-duplicates were not "
-            "looked for"
-        )
-    else:
-        near_pairs = near_duplicate_pairs(parsed)
-        if near_pairs:
-            findings.append(f"{len(near_pairs)} near-duplicate input pair(s)")
-    holdout_rows = sum(
-        value for key, value in split_counts.items() if key in HOLDOUT_VALUES
-    )
-    if not split_counts:
-        findings.append(NO_HOLDOUT_FINDING)
-    elif holdout_rows == 0:
-        findings.append(
-            "split markers present but none name a holdout slice "
-            f"({'/'.join(sorted(HOLDOUT_VALUES))})"
-        )
-    elif holdout_rows < MIN_HOLDOUT:
-        findings.append(
-            f"holdout slice has {holdout_rows} rows, under the {MIN_HOLDOUT}-row minimum"
-        )
+    near_pairs, near_findings = _near_duplicate_findings(parsed)
+    findings.extend(near_findings)
+    findings.extend(_holdout_findings(split_counts, holdout_rows))
     if holdout_overlap:
         findings.append(
             f"{len(holdout_overlap)} row(s) appear in both the holdout slice and another slice"
         )
-    if label_counts:
-        largest = max(label_counts.values())
-        if largest >= 0.8 * sum(label_counts.values()):
-            findings.append(
-                f"one label covers {largest} of {sum(label_counts.values())} labelled rows"
-            )
+    findings.extend(_label_findings(label_counts))
 
     return DatasetReport(
         file=relative(path, root),
@@ -1540,119 +1648,162 @@ def analyse_dataset(
     )
 
 
+def _drop_superseded_holdout_findings(report: DatasetReport) -> None:
+    """Drop the per-file holdout findings a tagged holdout-named file replaces:
+    the holdout-size finding always (it is re-stated below), and "none name a
+    holdout slice" once the file holds holdout rows."""
+    report.findings = [
+        finding
+        for finding in report.findings
+        if not (
+            report.holdout_rows
+            and finding.startswith(
+                "split markers present but none name a holdout slice"
+            )
+        )
+        and not finding.startswith("holdout slice has ")
+    ]
+
+
+def _declare_tagged_holdout(report: DatasetReport, holdout_inputs: set[str]) -> None:
+    """A holdout-named file whose rows carry split tags.
+
+    Tagged rows keep their declared roles. A holdout-named file that contains
+    tuning rows is contradictory; do not silently relabel those rows just to
+    make the sibling layout pass. Untagged rows still inherit the holdout role
+    from the file."""
+    holdout_inputs.update(report.holdout_input_index)
+    holdout_inputs.update(report.untagged_input_index)
+    untagged_rows = sum(
+        len(indexes) for indexes in report.untagged_input_index.values()
+    )
+    report.holdout_rows += untagged_rows
+    non_holdout_rows = sum(
+        count
+        for split, count in report.split_counts.items()
+        if split not in HOLDOUT_VALUES
+    )
+    if non_holdout_rows:
+        report.findings.append(
+            f"holdout-named file contradicts {non_holdout_rows} per-row "
+            "split marker(s) naming a non-holdout slice; per-row markers win"
+        )
+    if untagged_rows:
+        report.notes.append(
+            f"{untagged_rows} untagged row(s) inherit the holdout role "
+            "from the file name"
+        )
+    _drop_superseded_holdout_findings(report)
+    if 0 < report.holdout_rows < MIN_HOLDOUT:
+        report.findings.append(
+            f"holdout slice has {report.holdout_rows} rows, under the "
+            f"{MIN_HOLDOUT}-row minimum"
+        )
+    report.holdout_by_name = (
+        report.holdout_rows == report.rows and non_holdout_rows == 0
+    )
+
+
+def _declare_untagged_holdout(
+    report: DatasetReport, holdout_inputs: set[str]
+) -> None:
+    """A holdout-named file with no per-row split marker: every row is holdout."""
+    holdout_inputs.update(report.input_index)
+    report.holdout_rows = report.rows
+    report.holdout_by_name = True
+    report.notes.append(
+        f"holdout slice declared by file name: {report.rows} row(s), "
+        "no per-row split marker"
+    )
+    if report.rows < MIN_HOLDOUT:
+        report.findings.append(
+            f"holdout slice has {report.rows} rows, under the "
+            f"{MIN_HOLDOUT}-row minimum"
+        )
+
+
+def _declare_holdout_file(report: DatasetReport, holdout_inputs: set[str]) -> int:
+    """Read one holdout-named file as a holdout slice, adding its holdout
+    inputs to ``holdout_inputs``; returns its holdout row count."""
+    if report.split_counts:
+        _declare_tagged_holdout(report, holdout_inputs)
+    else:
+        _declare_untagged_holdout(report, holdout_inputs)
+    if report.holdout_by_name:
+        # A dedicated holdout file is judged against the holdout
+        # minimum, not the tuning minimum meant for searchable rows.
+        report.findings = [
+            finding
+            for finding in report.findings
+            if finding != NO_HOLDOUT_FINDING
+            and "first-tuning-slice minimum" not in finding
+        ]
+    return report.holdout_rows
+
+
+def _link_tuning_file(
+    report: DatasetReport, holdout_inputs: set[str], total: int, names: str
+) -> None:
+    """Give a tuning file its sibling holdout slice and check the pair for
+    shared inputs."""
+    if report.holdout_rows == 0 and total:
+        report.holdout_rows = total
+        report.findings = [
+            finding
+            for finding in report.findings
+            if finding != NO_HOLDOUT_FINDING
+            and not finding.startswith(
+                "split markers present but none name a holdout slice"
+            )
+        ]
+        report.notes.append(
+            f"holdout slice declared by sibling file {names} ({total} row(s))"
+        )
+    overlap = sorted(
+        index
+        for text, indexes in report.non_holdout_input_index.items()
+        if text in holdout_inputs
+        for index in indexes
+    )
+    report.overlap_rows |= set(overlap)
+    report.holdout_overlap_total = len(report.overlap_rows)
+    report.holdout_overlap = sorted(report.overlap_rows)[:20]
+    if overlap:
+        report.findings.append(
+            f"{len(overlap)} row(s) appear in both this file and the "
+            f"sibling holdout file"
+        )
+
+
+def _sibling_groups(
+    reports: list[DatasetReport],
+) -> list[tuple[list[DatasetReport], list[DatasetReport]]]:
+    """``(holdout-named files, other files)`` for each directory holding both."""
+    by_dir: dict[str, list[DatasetReport]] = defaultdict(list)
+    for report in reports:
+        by_dir[str(Path(report.file).parent)].append(report)
+    groups = []
+    for group in by_dir.values():
+        holdouts = [r for r in group if file_names_holdout(r.file)]
+        tuning = [r for r in group if r not in holdouts]
+        if holdouts and tuning:
+            groups.append((holdouts, tuning))
+    return groups
+
+
 def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
     """Read the two-file holdout layout: a holdout-named file beside a tuning
     file in one directory declares the holdout slice for both, and the overlap
     check runs across the pair. Explicit row tags win; untagged rows inherit
     their file's role."""
-    by_dir: dict[str, list[DatasetReport]] = defaultdict(list)
-    for report in reports:
-        by_dir[str(Path(report.file).parent)].append(report)
-    for group in by_dir.values():
-        holdouts = [r for r in group if file_names_holdout(r.file)]
-        tuning = [r for r in group if r not in holdouts]
-        if not holdouts or not tuning:
-            continue
+    for holdouts, tuning in _sibling_groups(reports):
         holdout_inputs: set[str] = set()
         total = 0
         for report in holdouts:
-            if report.split_counts:
-                # Tagged rows keep their declared roles. A holdout-named file
-                # that contains tuning rows is contradictory; do not silently
-                # relabel those rows just to make the sibling layout pass.
-                # Untagged rows still inherit the holdout role from the file.
-                holdout_inputs.update(report.holdout_input_index)
-                holdout_inputs.update(report.untagged_input_index)
-                untagged_rows = sum(
-                    len(indexes) for indexes in report.untagged_input_index.values()
-                )
-                report.holdout_rows += untagged_rows
-                non_holdout_rows = sum(
-                    count
-                    for split, count in report.split_counts.items()
-                    if split not in HOLDOUT_VALUES
-                )
-                if non_holdout_rows:
-                    report.findings.append(
-                        f"holdout-named file contradicts {non_holdout_rows} per-row "
-                        "split marker(s) naming a non-holdout slice; per-row markers win"
-                    )
-                if untagged_rows:
-                    report.notes.append(
-                        f"{untagged_rows} untagged row(s) inherit the holdout role "
-                        "from the file name"
-                    )
-                report.findings = [
-                    finding
-                    for finding in report.findings
-                    if not (
-                        report.holdout_rows
-                        and finding.startswith(
-                            "split markers present but none name a holdout slice"
-                        )
-                    )
-                    and not finding.startswith("holdout slice has ")
-                ]
-                if 0 < report.holdout_rows < MIN_HOLDOUT:
-                    report.findings.append(
-                        f"holdout slice has {report.holdout_rows} rows, under the "
-                        f"{MIN_HOLDOUT}-row minimum"
-                    )
-                report.holdout_by_name = (
-                    report.holdout_rows == report.rows and non_holdout_rows == 0
-                )
-            else:
-                holdout_inputs.update(report.input_index)
-                report.holdout_rows = report.rows
-                report.holdout_by_name = True
-                report.notes.append(
-                    f"holdout slice declared by file name: {report.rows} row(s), "
-                    "no per-row split marker"
-                )
-                if report.rows < MIN_HOLDOUT:
-                    report.findings.append(
-                        f"holdout slice has {report.rows} rows, under the "
-                        f"{MIN_HOLDOUT}-row minimum"
-                    )
-            if report.holdout_by_name:
-                # A dedicated holdout file is judged against the holdout
-                # minimum, not the tuning minimum meant for searchable rows.
-                report.findings = [
-                    finding
-                    for finding in report.findings
-                    if finding != NO_HOLDOUT_FINDING
-                    and "first-tuning-slice minimum" not in finding
-                ]
-            total += report.holdout_rows
+            total += _declare_holdout_file(report, holdout_inputs)
         names = ", ".join(r.file for r in holdouts)
         for report in tuning:
-            if report.holdout_rows == 0 and total:
-                report.holdout_rows = total
-                report.findings = [
-                    finding
-                    for finding in report.findings
-                    if finding != NO_HOLDOUT_FINDING
-                    and not finding.startswith(
-                        "split markers present but none name a holdout slice"
-                    )
-                ]
-                report.notes.append(
-                    f"holdout slice declared by sibling file {names} ({total} row(s))"
-                )
-            overlap = sorted(
-                index
-                for text, indexes in report.non_holdout_input_index.items()
-                if text in holdout_inputs
-                for index in indexes
-            )
-            report.overlap_rows |= set(overlap)
-            report.holdout_overlap_total = len(report.overlap_rows)
-            report.holdout_overlap = sorted(report.overlap_rows)[:20]
-            if overlap:
-                report.findings.append(
-                    f"{len(overlap)} row(s) appear in both this file and the "
-                    f"sibling holdout file"
-                )
+            _link_tuning_file(report, holdout_inputs, total, names)
 
 
 def _read_dataset(
@@ -3246,42 +3397,24 @@ STOP_LINE = (
 )
 
 
-def next_step(
-    inventory: PythonInventory,
-    reports: list[DatasetReport],
-    probe: dict | None,
-    probed: ScorerCandidate | None,
-    *,
-    skipped_files: list[str] | tuple[str, ...] = (),
-    dataset_notes: list[str] | tuple[str, ...] = (),
-    dataset_named: bool = False,
-) -> dict:
-    """Exactly one next step, chosen by the most blocking finding.
+def _no_entry_point_step(inventory: PythonInventory) -> dict:
+    return {
+        "branch": "a",
+        "skills": ["traigent-setup-quickstart", "traigent-setup-decorator"],
+        "line": (
+            f"No `@traigent.optimize` was found in {inventory.files_scanned} "
+            "Python file(s), so there is no search space yet — install and "
+            "configure the SDK with `traigent-setup-quickstart`, then wire one "
+            "decorated function with `traigent-setup-decorator`."
+        ),
+    }
 
-    The Agent and Dataset rungs read the same `knob_wiring`, `inventory_gap`
-    and `dataset_findings` the area cards read, so `g` is reached only when
-    the Agent, Dataset and Scorer areas all read `ok`.
-    """
-    metrics = probe_metrics(probe)
-    wiring = knob_wiring(entry_point_records(inventory.entry_points))
-    knob = knob_step(wiring)
-    curate = ["traigent-dataset-curate"]
 
-    if not inventory.entry_points:
-        return {
-            "branch": "a",
-            "skills": ["traigent-setup-quickstart", "traigent-setup-decorator"],
-            "line": (
-                f"No `@traigent.optimize` was found in {inventory.files_scanned} "
-                "Python file(s), so there is no search space yet — install and "
-                "configure the SDK with `traigent-setup-quickstart`, then wire one "
-                "decorated function with `traigent-setup-decorator`."
-            ),
-        }
-
-    if knob is not None and knob["branch"] == "b":
-        return knob
-
+def _scorer_step(
+    inventory: PythonInventory, metrics: dict, probed: ScorerCandidate | None
+) -> dict | None:
+    """Branch ``c`` (no scorer), ``d`` (a probe that ran and is not ready) or
+    ``e`` (no probe ran), or ``None`` when the scorer is ready."""
     if not inventory.scorers:
         return {
             "branch": "c",
@@ -3318,190 +3451,252 @@ def next_step(
                 "with `traigent-eval-audit`."
             ),
         }
+    return None
 
-    # A file that could not be read is named, never reported as absent. Beside
-    # analysed rows it outranks the rest only when the user named the dataset
-    # (then it is the named file's holdout sibling); in discovery it waits for
-    # the catch-all below.
+
+def _unread_dataset_step(
+    reports: list[DatasetReport],
+    skipped_files: list[str] | tuple[str, ...],
+    dataset_notes: list[str] | tuple[str, ...],
+    dataset_named: bool,
+) -> dict | None:
+    """A file that could not be read is named, never reported as absent.
+
+    Beside analysed rows it outranks the rest only when the user named the
+    dataset (then it is the named file's holdout sibling); in discovery it
+    waits for the catch-all `_dataset_fact_step`."""
     unread = list(skipped_files) if (dataset_named or not reports) else []
-    if unread or (not reports and dataset_notes):
-        if unread and not reports:
-            line = (
-                f"{unread[0]}, so no evaluation dataset could be analysed and there "
-                "is nothing to score a configuration against yet — repair the file, "
-                "or point --dataset at a readable one; `traigent-dataset-curate` "
-                "covers the format."
-            )
-        elif unread:
-            line = (
-                f"{unread[0]}, so the slice it holds was not analysed and this "
-                "dataset's readiness is unconfirmed — repair it with "
-                "`traigent-dataset-curate`, then re-run this audit."
-            )
-        else:
-            line = (
-                f"{dataset_notes[0]}, and none of the files read is a dataset — "
-                "point --dataset at your evaluation file, or build one with "
-                "`traigent-dataset-curate`."
-            )
-        return {"branch": "f", "skills": list(curate), "line": line}
+    if not unread and (reports or not dataset_notes):
+        return None
+    if unread and not reports:
+        line = (
+            f"{unread[0]}, so no evaluation dataset could be analysed and there "
+            "is nothing to score a configuration against yet — repair the file, "
+            "or point --dataset at a readable one; `traigent-dataset-curate` "
+            "covers the format."
+        )
+    elif unread:
+        line = (
+            f"{unread[0]}, so the slice it holds was not analysed and this "
+            "dataset's readiness is unconfirmed — repair it with "
+            "`traigent-dataset-curate`, then re-run this audit."
+        )
+    else:
+        line = (
+            f"{dataset_notes[0]}, and none of the files read is a dataset — "
+            "point --dataset at your evaluation file, or build one with "
+            "`traigent-dataset-curate`."
+        )
+    return {"branch": "f", "skills": ["traigent-dataset-curate"], "line": line}
 
-    if not reports:
-        return {
-            "branch": "f",
-            "skills": ["traigent-dataset-curate"],
-            "line": (
-                "No evaluation dataset was found, so there is nothing to score a "
-                "configuration against — build a first tuning slice and a holdout "
-                "slice with `traigent-dataset-curate`."
-            ),
-        }
 
-    # A dataset the SDK cannot load stops the first run outright, so it outranks
-    # a row shortfall.
+def _no_dataset_step(reports: list[DatasetReport]) -> dict | None:
+    if reports:
+        return None
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": (
+            "No evaluation dataset was found, so there is nothing to score a "
+            "configuration against — build a first tuning slice and a holdout "
+            "slice with `traigent-dataset-curate`."
+        ),
+    }
+
+
+def _unloadable_dataset_step(reports: list[DatasetReport]) -> dict | None:
+    """A dataset the SDK cannot load stops the first run outright, so it
+    outranks a row shortfall."""
     unloadable = [report for report in reports if report.rows_without_sdk_input]
-    if unloadable:
-        worst = unloadable[0]
-        return {
-            "branch": "f",
-            "skills": ["traigent-dataset-curate"],
-            "line": (
-                f"{worst.file} has {worst.rows_without_sdk_input} row(s) with no "
-                "`input`/`input_data` key, so `eval_dataset` will refuse to load "
-                "it — rename or add the key with `traigent-dataset-curate`."
-            ),
-        }
+    if not unloadable:
+        return None
+    worst = unloadable[0]
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": (
+            f"{worst.file} has {worst.rows_without_sdk_input} row(s) with no "
+            "`input`/`input_data` key, so `eval_dataset` will refuse to load "
+            "it — rename or add the key with `traigent-dataset-curate`."
+        ),
+    }
 
-    # A row with no usable gold can never score correct against gold, so every
-    # measured score is capped below what the agent really does.
+
+def _missing_gold_step(reports: list[DatasetReport]) -> dict | None:
+    """A row with no usable gold can never score correct against gold, so
+    every measured score is capped below what the agent really does."""
     gold = [report for report in reports if report.missing_gold_counts]
-    if gold:
-        worst = max(gold, key=lambda report: sum(report.missing_gold_counts.values()))
-        detail = ", ".join(
-            f"{worst.missing_gold_counts[kind]} {label}"
-            for kind, label in GOLD_KIND_LABEL.items()
-            if worst.missing_gold_counts.get(kind)
-        )
-        return {
-            "branch": "f",
-            "skills": list(curate),
-            "line": (
-                f"{worst.file} has {sum(worst.missing_gold_counts.values())} row(s) "
-                f"with no usable gold value ({detail}), so a scorer that compares "
-                "against gold cannot score those rows correct and every measured "
-                "score is capped — fill or drop them with `traigent-dataset-curate`."
-            ),
-        }
+    if not gold:
+        return None
+    worst = max(gold, key=lambda report: sum(report.missing_gold_counts.values()))
+    detail = ", ".join(
+        f"{worst.missing_gold_counts[kind]} {label}"
+        for kind, label in GOLD_KIND_LABEL.items()
+        if worst.missing_gold_counts.get(kind)
+    )
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": (
+            f"{worst.file} has {sum(worst.missing_gold_counts.values())} row(s) "
+            f"with no usable gold value ({detail}), so a scorer that compares "
+            "against gold cannot score those rows correct and every measured "
+            "score is capped — fill or drop them with `traigent-dataset-curate`."
+        ),
+    }
 
-    # A holdout that shares rows with the searched slice re-measures what the
-    # search already saw, so its score is not a held-out score.
+
+def _overlap_count(report: DatasetReport) -> int:
+    return report.holdout_overlap_total or len(report.holdout_overlap)
+
+
+def _holdout_overlap_step(reports: list[DatasetReport]) -> dict | None:
+    """A holdout that shares rows with the searched slice re-measures what the
+    search already saw, so its score is not a held-out score."""
     overlapping = [report for report in reports if report.holdout_overlap]
-    if overlapping:
-        worst = max(
-            overlapping,
-            key=lambda report: report.holdout_overlap_total
-            or len(report.holdout_overlap),
+    if not overlapping:
+        return None
+    worst = max(overlapping, key=_overlap_count)
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": (
+            f"{worst.file} has {_overlap_count(worst)} row(s) that appear in both "
+            "the holdout slice and another slice, so a holdout score would partly "
+            "re-measure rows the search already saw — make the slices disjoint "
+            "with `traigent-dataset-curate`."
+        ),
+    }
+
+
+def _is_short(report: DatasetReport) -> bool:
+    """Under a row minimum. A file that is itself the holdout slice (declared
+    by name) has no tuning rows to judge: only the holdout minimum applies."""
+    return (
+        not report.holdout_by_name and report.rows < MIN_TUNING
+    ) or report.holdout_rows < MIN_HOLDOUT
+
+
+def _short_dataset_line(worst: DatasetReport) -> str:
+    if worst.holdout_by_name:
+        return (
+            f"{worst.file} is a {worst.rows}-row holdout slice declared by "
+            f"file name, under the {MIN_HOLDOUT}-row holdout minimum, so a "
+            "small score movement would not be resolvable — grow it with "
+            "`traigent-dataset-curate`."
         )
-        count = worst.holdout_overlap_total or len(worst.holdout_overlap)
-        return {
-            "branch": "f",
-            "skills": list(curate),
-            "line": (
-                f"{worst.file} has {count} row(s) that appear in both the holdout "
-                "slice and another slice, so a holdout score would partly re-measure "
-                "rows the search already saw — make the slices disjoint with "
-                "`traigent-dataset-curate`."
-            ),
-        }
+    # Name only the minimum(s) actually missed.
+    missed = []
+    if worst.rows < MIN_TUNING:
+        missed.append(f"the {MIN_TUNING}-row tuning minimum")
+    if worst.holdout_rows < MIN_HOLDOUT:
+        missed.append(f"the {MIN_HOLDOUT}-row holdout minimum")
+    return (
+        f"{worst.file} has {worst.rows} row(s) and a {worst.holdout_rows}-row "
+        f"holdout slice, under {' and '.join(missed)}, so a small score "
+        "movement would not be resolvable — grow and split it with "
+        "`traigent-dataset-curate`."
+    )
 
-    # A file that is itself the holdout slice (declared by name) has no tuning
-    # rows to judge: only the holdout minimum applies to it.
-    short = [
-        report
-        for report in reports
-        if (not report.holdout_by_name and report.rows < MIN_TUNING)
-        or report.holdout_rows < MIN_HOLDOUT
-    ]
-    if short:
-        tuning_short = [r for r in short if not r.holdout_by_name]
-        worst = min(tuning_short or short, key=lambda report: report.rows)
-        if worst.holdout_by_name:
-            line = (
-                f"{worst.file} is a {worst.rows}-row holdout slice declared by "
-                f"file name, under the {MIN_HOLDOUT}-row holdout minimum, so a "
-                "small score movement would not be resolvable — grow it with "
-                "`traigent-dataset-curate`."
-            )
-        else:
-            # Name only the minimum(s) actually missed.
-            missed = []
-            if worst.rows < MIN_TUNING:
-                missed.append(f"the {MIN_TUNING}-row tuning minimum")
-            if worst.holdout_rows < MIN_HOLDOUT:
-                missed.append(f"the {MIN_HOLDOUT}-row holdout minimum")
-            line = (
-                f"{worst.file} has {worst.rows} row(s) and a {worst.holdout_rows}-row "
-                f"holdout slice, under {' and '.join(missed)}, so a small score "
-                "movement would not be resolvable — grow and split it with "
-                "`traigent-dataset-curate`."
-            )
-        return {
-            "branch": "f",
-            "skills": ["traigent-dataset-curate"],
-            "line": line,
-        }
 
-    # Knob wiring that is partly broken or unconfirmed: concrete spend, but
-    # below the dataset faults that make a run worthless outright.
-    if knob is not None and knob["branch"] == "h":
-        return knob
+def _short_dataset_step(reports: list[DatasetReport]) -> dict | None:
+    short = [report for report in reports if _is_short(report)]
+    if not short:
+        return None
+    tuning_short = [r for r in short if not r.holdout_by_name]
+    worst = min(tuning_short or short, key=lambda report: report.rows)
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": _short_dataset_line(worst),
+    }
 
+
+def _dataset_step(
+    reports: list[DatasetReport],
+    skipped_files: list[str] | tuple[str, ...],
+    dataset_notes: list[str] | tuple[str, ...],
+    dataset_named: bool,
+) -> dict | None:
+    """The first dataset rung that applies, in priority order, or ``None``."""
+    step = _unread_dataset_step(reports, skipped_files, dataset_notes, dataset_named)
+    if step is not None:
+        return step
+    for rung in (
+        _no_dataset_step,
+        _unloadable_dataset_step,
+        _missing_gold_step,
+        _holdout_overlap_step,
+        _short_dataset_step,
+    ):
+        step = rung(reports)
+        if step is not None:
+            return step
+    return None
+
+
+def _inventory_gap_step(inventory: PythonInventory) -> dict | None:
     gap = inventory_gap(inventory)
-    if gap:
-        if inventory.files_unparsed:
-            pronoun = "it" if len(inventory.files_unparsed) == 1 else "them"
-            remedy = f"fix or exclude {pronoun} and re-run this audit."
-        else:
-            remedy = "narrow --root to the project's own code and re-run this audit."
-        return {
-            "branch": "i",
-            "skills": [],
-            "line": (
-                f"{_capitalised(gap)}, so the entry points and scorers above may be "
-                f"incomplete — {remedy}"
-            ),
-        }
+    if not gap:
+        return None
+    if inventory.files_unparsed:
+        pronoun = "it" if len(inventory.files_unparsed) == 1 else "them"
+        remedy = f"fix or exclude {pronoun} and re-run this audit."
+    else:
+        remedy = "narrow --root to the project's own code and re-run this audit."
+    return {
+        "branch": "i",
+        "skills": [],
+        "line": (
+            f"{_capitalised(gap)}, so the entry points and scorers above may be "
+            f"incomplete — {remedy}"
+        ),
+    }
 
+
+def _dataset_fact_step(
+    reports: list[DatasetReport],
+    skipped_files: list[str] | tuple[str, ...],
+    dataset_notes: list[str] | tuple[str, ...],
+) -> dict | None:
     facts = dataset_findings(reports, list(dataset_notes), list(skipped_files))
-    if facts:
-        if len(facts) == len(skipped_files):
-            line = (
-                f"{facts[0]}, so this audit cannot rule out an evaluation file it "
-                "did not read — repair it, or name your dataset with --dataset so "
-                "other files are not scanned, then re-run this audit."
-            )
-        else:
-            line = (
-                f"{facts[0]}, so this audit cannot call the dataset ready — resolve "
-                "it with `traigent-dataset-curate`, then re-run this audit."
-            )
-        return {"branch": "f", "skills": list(curate), "line": line}
+    if not facts:
+        return None
+    if len(facts) == len(skipped_files):
+        line = (
+            f"{facts[0]}, so this audit cannot rule out an evaluation file it "
+            "did not read — repair it, or name your dataset with --dataset so "
+            "other files are not scanned, then re-run this audit."
+        )
+    else:
+        line = (
+            f"{facts[0]}, so this audit cannot call the dataset ready — resolve "
+            "it with `traigent-dataset-curate`, then re-run this audit."
+        )
+    return {"branch": "f", "skills": ["traigent-dataset-curate"], "line": line}
 
-    # A probe on placeholder text measured repeatability only, so the Scorer
-    # area is not `ok` and `g` would claim more than was tested.
-    if probe is not None and probe.get("payload_source") == "synthetic":
-        return {
-            "branch": "e",
-            "skills": ["traigent-eval-audit"],
-            "line": (
-                f"`{probed.function}` at {probed.file}:{probed.line} is repeatable, "
-                "but it was probed with placeholder text because no dataset gave "
-                "two distinct usable gold values of the same kind, so whether it "
-                "separates a good answer for this task from a bad one is unknown — "
-                "assess it with `traigent-eval-audit`."
-            ),
-        }
 
+def _placeholder_probe_step(
+    probe: dict | None, probed: ScorerCandidate | None
+) -> dict | None:
+    """A probe on placeholder text measured repeatability only, so the Scorer
+    area is not `ok` and `g` would claim more than was tested."""
+    if probe is None or probe.get("payload_source") != "synthetic":
+        return None
+    return {
+        "branch": "e",
+        "skills": ["traigent-eval-audit"],
+        "line": (
+            f"`{probed.function}` at {probed.file}:{probed.line} is repeatable, "
+            "but it was probed with placeholder text because no dataset gave "
+            "two distinct usable gold values of the same kind, so whether it "
+            "separates a good answer for this task from a bad one is unknown — "
+            "assess it with `traigent-eval-audit`."
+        ),
+    }
+
+
+def _all_clear_step() -> dict:
     return {
         "branch": "g",
         "skills": ["traigent-optimize-run"],
@@ -3511,6 +3706,52 @@ def next_step(
             "then one small bounded run, with `traigent-optimize-run`."
         ),
     }
+
+
+def _knob_step_on(knob: dict | None, branch: str) -> dict | None:
+    return knob if knob is not None and knob["branch"] == branch else None
+
+
+def next_step(
+    inventory: PythonInventory,
+    reports: list[DatasetReport],
+    probe: dict | None,
+    probed: ScorerCandidate | None,
+    *,
+    skipped_files: list[str] | tuple[str, ...] = (),
+    dataset_notes: list[str] | tuple[str, ...] = (),
+    dataset_named: bool = False,
+) -> dict:
+    """Exactly one next step, chosen by the most blocking finding.
+
+    The Agent and Dataset rungs read the same `knob_wiring`, `inventory_gap`
+    and `dataset_findings` the area cards read, so `g` is reached only when
+    the Agent, Dataset and Scorer areas all read `ok`.
+    """
+    metrics = probe_metrics(probe)
+    wiring = knob_wiring(entry_point_records(inventory.entry_points))
+    knob = knob_step(wiring)
+
+    if not inventory.entry_points:
+        return _no_entry_point_step(inventory)
+
+    # Each rung is tried in priority order; the first that applies is the step.
+    # Knob wiring that is partly broken or unconfirmed (`h`) is concrete spend,
+    # but below the dataset faults that make a run worthless outright.
+    rungs = (
+        lambda: _knob_step_on(knob, "b"),
+        lambda: _scorer_step(inventory, metrics, probed),
+        lambda: _dataset_step(reports, skipped_files, dataset_notes, dataset_named),
+        lambda: _knob_step_on(knob, "h"),
+        lambda: _inventory_gap_step(inventory),
+        lambda: _dataset_fact_step(reports, skipped_files, dataset_notes),
+        lambda: _placeholder_probe_step(probe, probed),
+    )
+    for rung in rungs:
+        step = rung()
+        if step is not None:
+            return step
+    return _all_clear_step()
 
 
 def open_questions(areas: dict, datasets: list[DatasetReport]) -> list[str]:
