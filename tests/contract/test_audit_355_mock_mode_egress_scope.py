@@ -9,16 +9,62 @@ promised "zero-egress" and "No network calls at all" without those limits.
 
 from __future__ import annotations
 
-import os
+import json
 import subprocess
 import sys
-import textwrap
 from pathlib import Path
 
 import pytest
 
+from .test_runnable_snippets import _offline_mock_env
+
 ROOT = Path(__file__).resolve().parents[2]
 MOCK_MODE = ROOT / "skills" / "traigent-debugging" / "references" / "mock-mode.md"
+
+IMPORT_PROBE = """
+import json
+import socket
+lookups = []
+imported = False
+class ProbeNetworkAttempt(BaseException):
+    pass
+def _refuse_dns(host, *args, **kwargs):
+    lookups.append(str(host))
+    raise ProbeNetworkAttempt()
+def _refuse_connect(*args, **kwargs):
+    raise ProbeNetworkAttempt()
+socket.getaddrinfo = _refuse_dns
+socket.socket.connect = _refuse_connect
+socket.socket.connect_ex = _refuse_connect
+try:
+    IMPORT_STATEMENT
+except ProbeNetworkAttempt:
+    pass
+else:
+    imported = True
+print("EGRESS_JSON=" + json.dumps({"lookups": lookups, "imported": imported}), flush=True)
+"""
+
+
+def _import_probe(import_statement: str) -> str:
+    assert IMPORT_PROBE.count("IMPORT_STATEMENT") == 1
+    return IMPORT_PROBE.replace("IMPORT_STATEMENT", import_statement)
+
+
+def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: bool) -> list[str]:
+    """Only the probe's deliberate network interruption permits an incomplete import."""
+    output = completed.stdout + completed.stderr
+    assert completed.returncode == 0, output
+    lines = [line for line in completed.stdout.splitlines() if line.startswith("EGRESS_JSON=")]
+    assert len(lines) == 1, output
+    ledger = json.loads(lines[0].removeprefix("EGRESS_JSON="))
+    assert set(ledger) == {"lookups", "imported"}, output
+    assert isinstance(ledger["lookups"], list), output
+    assert all(isinstance(host, str) and host for host in ledger["lookups"]), output
+    assert isinstance(ledger["imported"], bool), output
+    assert bool(ledger["lookups"]) is expect_egress, output
+    assert ledger["imported"] is not expect_egress, output
+    return ledger["lookups"]
 
 
 def _text() -> str:
@@ -44,30 +90,14 @@ def test_reference_names_the_litellm_pricing_fetch_and_raw_clients() -> None:
 def test_litellm_import_fetches_its_pricing_map_unless_the_flag_is_set(
     tmp_path: Path, flag: str | None, expect_egress: bool
 ) -> None:
-    pytest.importorskip("litellm")
     script = tmp_path / "probe.py"
-    script.write_text(
-        textwrap.dedent(
-            """
-            import socket
-            seen = []
-            def _blocked(*args, **kwargs):
-                seen.append(args[0] if args else None)
-                raise OSError("blocked by probe")
-            socket.getaddrinfo = _blocked
-            socket.socket.connect = lambda self, addr: _blocked(addr)
-            import litellm  # noqa: F401
-            print("EGRESS=" + str(bool(seen)))
-            """
-        ),
-        encoding="utf-8",
-    )
-    env = {k: v for k, v in os.environ.items() if k != "LITELLM_LOCAL_MODEL_COST_MAP" and not k.endswith("_API_KEY")}
+    script.write_text(_import_probe("import litellm"), encoding="utf-8")
+    env = _offline_mock_env()
+    env.pop("LITELLM_LOCAL_MODEL_COST_MAP")
     if flag is not None:
         env["LITELLM_LOCAL_MODEL_COST_MAP"] = flag
     completed = subprocess.run(
         [sys.executable, str(script)], cwd=tmp_path, env=env, text=True,
         capture_output=True, timeout=120, check=False,
     )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
-    assert f"EGRESS={expect_egress}" in completed.stdout, completed.stdout + completed.stderr
+    _probe_lookups(completed, expect_egress)

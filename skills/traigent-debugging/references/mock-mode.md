@@ -69,8 +69,14 @@ When mock mode is active (`enable_mock_mode_for_quickstart()`, or the deprecated
 - LLM API calls return synthetic/mock responses instead of calling real providers
 - No API keys are required (OpenAI, Anthropic, etc.)
 - No network calls are made to LLM providers for the calls it intercepts (see "What Is NOT Mocked" below)
-- Cost tracking reports zero or minimal cost, but cost limits still apply: a very low
-  `TRAIGENT_RUN_COST_LIMIT` stops a mock run at 0 trials with `stop_reason="cost_limit"`
+- Runtime cost limits still apply. Released SDKs through 0.30.0 can reject every
+  trial at a very low `TRAIGENT_RUN_COST_LIMIT` because of their initial reservation.
+  On SDK develop after the observed-mean admission change (the 0.31 line), the
+  first sequential trial starts before a cost estimate exists. Reported zero-cost
+  trials can continue; positive reported costs can stop later trials with
+  `stop_reason="cost_limit"`. An explicit cap with a completed trial that reports
+  no cost is refused; unknown cost is different from reported zero. The cap does
+  not guarantee that the first trial's actual cost fits within it.
 - Response times are near-instant
 
 ### What Gets Mocked
