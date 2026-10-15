@@ -25,7 +25,6 @@ would pass for the wrong reason.
 
 from __future__ import annotations
 
-import os
 import re
 import subprocess
 import sys
@@ -34,21 +33,14 @@ from pathlib import Path
 from packaging.version import Version
 
 from .test_audit_349_fenced_blocks import skip_unless_current_released_sdk
+from .test_audit_355_mock_mode_egress_scope import _import_probe, _probe_lookups
+from .test_runnable_snippets import _offline_mock_env
 
 FIX_VERSION = "0.29.0"
 
 ENV_DOC = "skills/traigent-setup-quickstart/references/environment-variables.md"
 VAR = "LITELLM_LOCAL_MODEL_COST_MAP"
-SPY = """
-import socket
-def _refuse(host, *args, **kwargs):
-    print("DNS LOOKUP", host, flush=True)
-    raise OSError("network disabled by test")
-socket.getaddrinfo = _refuse
-import traigent
-import litellm
-print("IMPORTED", flush=True)
-"""
+SPY = _import_probe("import traigent; import litellm")
 
 
 def _documented_env(row: str) -> dict[str, str]:
@@ -66,12 +58,9 @@ def _table_row(text: str) -> str:
     return row.group(0)
 
 
-def _lookups(extra_env: dict[str, str]) -> list[str]:
-    env = {
-        k: v
-        for k, v in os.environ.items()
-        if k not in {VAR, "TRAIGENT_API_KEY", "OPENAI_API_KEY", "TRAIGENT_MOCK_LLM"}
-    }
+def _lookups(extra_env: dict[str, str], *, expect_egress: bool) -> list[str]:
+    env = _offline_mock_env()
+    env.pop(VAR)
     env.update(extra_env)
     env["TRAIGENT_OFFLINE_MODE"] = "true"
     result = subprocess.run(
@@ -82,8 +71,7 @@ def _lookups(extra_env: dict[str, str]) -> list[str]:
         timeout=300,
         check=False,
     )
-    assert "IMPORTED" in result.stdout, result.stdout + result.stderr
-    return [line for line in result.stdout.splitlines() if line.startswith("DNS")]
+    return _probe_lookups(result, expect_egress)
 
 
 def test_documented_environment_imports_litellm_without_a_lookup(
@@ -93,7 +81,7 @@ def test_documented_environment_imports_litellm_without_a_lookup(
         sync_map, sdk_version_label, "the LiteLLM cost-map guidance"
     )
     row = _table_row((repo_root / ENV_DOC).read_text(encoding="utf-8"))
-    lookups = _lookups(_documented_env(row))
+    lookups = _lookups(_documented_env(row), expect_egress=False)
     assert not lookups, (
         f"following {ENV_DOC} ({VAR} row), `import traigent, litellm` still "
         f"looks up the network: {lookups}"
@@ -112,14 +100,14 @@ def test_cost_map_egress_check_has_teeth(sdk_version_label: str) -> None:
     # TRAIGENT_LITELLM_LIVE_PRICES is SDK 0.29.0+'s own documented opt-out of the
     # pin; on every version it must still leak, so it works as the "has teeth"
     # proof whether or not the variable is set by default.
-    assert _lookups({"TRAIGENT_LITELLM_LIVE_PRICES": "1"}), (
+    assert _lookups({"TRAIGENT_LITELLM_LIVE_PRICES": "1"}, expect_egress=True), (
         "TRAIGENT_LITELLM_LIVE_PRICES=1 no longer triggers a lookup; the egress "
         "spy has lost teeth entirely - revisit #355"
     )
     if fixed:
-        assert not _lookups({}), (
+        assert not _lookups({}, expect_egress=False), (
             f"traigent >= {FIX_VERSION} is documented to set {VAR} itself on "
             "import; an unset variable triggers a lookup again - revisit #355"
         )
     else:
-        assert _lookups({}), "unset variable no longer triggers a lookup; revisit #355"
+        assert _lookups({}, expect_egress=True), "unset variable no longer triggers a lookup; revisit #355"

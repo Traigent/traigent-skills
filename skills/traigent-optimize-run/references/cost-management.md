@@ -95,14 +95,23 @@ For measured calls, tracking works like this:
 
 ## Adaptive Cost Estimation
 
-The cost enforcer uses adaptive estimation based on observed trial costs:
+Released SDKs through 0.30.0 seed admission with `estimated_cost_per_trial` and
+update it with an exponential moving average (EMA). On SDK develop after the
+observed-mean admission change (the 0.31 line), the estimate is the arithmetic
+mean of reported costs of completed trials. No estimate exists before the first
+trial completes, so the first sequential trial starts. Later trials are refused
+when accumulated cost plus reserved in-flight cost plus the estimate exceeds
+the cap. Concurrent trials dispatched before any completion still use the rough
+configured reservation to bound their batch.
 
-- **Initial estimates** use a configured `estimated_cost_per_trial` value.
-- **After trials complete**, estimates update via exponential moving average (EMA).
-- **Confidence levels** (0.0-1.0) indicate reliability of estimates.
-- **Divergence warnings** are logged when actual costs differ significantly from estimates (controlled by `TRAIGENT_COST_DIVERGENCE_THRESHOLD`).
+Reported zero is a known cost and can allow later trials. When a cap is explicit
+(a `cost_limit` argument or `TRAIGENT_RUN_COST_LIMIT`), a completed trial with no
+reported cost is refused on the observed-mean SDK. Only the inherited default cap
+retains the unknown-cost trial-count fallback. Confidence levels (0.0-1.0) describe
+estimate reliability; `TRAIGENT_COST_DIVERGENCE_THRESHOLD` controls warnings.
 
-This means the enforcer gets better at predicting costs as the optimization progresses, and can pre-emptively stop before exceeding the budget.
+Admission happens between trials. A trial can finish above the cap, including the
+first trial; this cap does not guarantee a hard provider billing ceiling.
 
 ## Unknown or Unpriced Models
 
@@ -181,7 +190,10 @@ traigent.testing.enable_mock_mode_for_quickstart()  # no provider calls, no spen
 
 Mock mode skips only the pre-run pricing estimate (so a pre-run `CostLimitExceeded` does not fire).
 The runtime CostEnforcer is always active: permits, `TRAIGENT_RUN_COST_LIMIT`, and
-`stop_reason="cost_limit"` apply in mock runs too, so a very low limit stops a mock run at 0 trials.
+`stop_reason="cost_limit"` apply in mock runs too. Released SDKs through 0.30.0 can
+stop at 0 trials because of their initial reservation. The observed-mean admission
+policy described above admits the first sequential trial: reported zero-cost
+work can continue, while positive reported costs can prevent later trials.
 Start a fresh interpreter for the real run: mock mode is process-local state.
 
 ```bash
