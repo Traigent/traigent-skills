@@ -33,7 +33,7 @@ permissions:
 
 concurrency:
   # github.event_name is part of the key so a push never cancels the weekly
-  # security-extended scan (both run against refs/heads/main).
+  # scheduled comprehensive scan (both run against refs/heads/main).
   group: codeql-${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
@@ -61,9 +61,9 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           build-mode: ${{ matrix.build-mode }}
-          # Deep taint suite (security-extended) only on the weekly schedule so
-          # PR/push scans stay fast and low-noise on the default suite.
-          queries: ${{ github.event_name == 'schedule' && 'security-extended' || '' }}
+          # Include default and extended security queries plus maintainability
+          # and reliability checks on every configured event.
+          queries: security-and-quality
 
       - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
