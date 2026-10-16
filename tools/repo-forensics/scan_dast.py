@@ -129,7 +129,7 @@ def find_hook_scripts(repo_path):
                             }
                         )
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # unreadable or malformed settings.json: nothing to report from this file
 
     # Check for standalone hook scripts in .claude/
     claude_dir = os.path.join(repo_path, ".claude")
@@ -148,7 +148,7 @@ def find_hook_scripts(repo_path):
                             }
                         )
                 except OSError:
-                    pass
+                    pass  # file vanished or is unreadable: skip this hook script
 
     return hooks
 
