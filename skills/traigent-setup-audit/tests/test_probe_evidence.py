@@ -19,8 +19,8 @@ MARKER = "<<<TRAIGENT_SETUP_AUDIT_RESULT>>>"
 @pytest.mark.parametrize(
     "line",
     [
-        '{"ran":true,"scores":{"good":[1,1,1,1,1],"partial":[0.5],"bad":[0]},'
-        '"errors":[{"case":"good","error_type":"RuntimeError"}],"errors":[]}',
+        ('{"ran":true,"scores":{"good":[1,1,1,1,1],"partial":[0.5],"bad":[0]},'
+        '"errors":[{"case":"good","error_type":"RuntimeError"}],"errors":[]}'),
         '{"ran":true,"scores":{"good":[1],"partial":[0.5],"bad":[0]},"errors":[]}',
         '{"ran":true,"scores":{"good":[1,1,1,1,1,1],"partial":[0.5],"bad":[0]},"errors":[]}',
         '{"ran":true,"scores":{"good":[0],"good":[1,1,1,1,1],"partial":[0.5],"bad":[0]},"errors":[]}',

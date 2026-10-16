@@ -850,7 +850,7 @@ def parse_package_lock_json(filepath, rel_path):
                 )
 
     except (json.JSONDecodeError, KeyError, TypeError, OSError):
-        pass
+        pass  # unparseable or unreadable manifest: skip typosquat check for it
     return findings
 
 
@@ -912,7 +912,7 @@ def parse_yarn_lock(filepath, rel_path):
                 )
 
     except (UnicodeDecodeError, OSError):
-        pass
+        pass  # undecodable or unreadable file: skip typosquat check for it
     return findings
 
 
@@ -968,7 +968,7 @@ def parse_poetry_lock(filepath, rel_path):
                 )
 
     except (UnicodeDecodeError, OSError):
-        pass
+        pass  # undecodable or unreadable file: skip typosquat check for it
     return findings
 
 
@@ -1020,7 +1020,7 @@ def parse_pipfile_lock(filepath, rel_path):
                 )
 
     except (json.JSONDecodeError, KeyError, TypeError, OSError):
-        pass
+        pass  # unparseable or unreadable manifest: skip typosquat check for it
     return findings
 
 

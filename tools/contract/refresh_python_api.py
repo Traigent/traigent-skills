@@ -67,7 +67,6 @@ _OPTIMIZE_DEFAULTS_NAME = "_OPTIMIZE_DEFAULTS"
 # optimize() but not part of the decorator DEFAULTS dict. These are public and teaching-relevant
 # (unlike ``_LEGACY_EXECUTION_OPTION_KEYS`` / ``_REMOVED_PARAMETERS``, which we exclude).
 _RUNTIME_OVERRIDE_NAME = "_ALLOWED_RUNTIME_OVERRIDE_KEYS"
-_OPTION_MODELS = ("EvaluationOptions", "InjectionOptions", "ExecutionOptions")
 
 
 def main() -> int:

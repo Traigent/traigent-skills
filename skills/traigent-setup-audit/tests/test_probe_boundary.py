@@ -170,7 +170,7 @@ class Listener:
                 connection.recv(4096)
                 connection.sendall(b"HTTP/1.1 204 No Content\r\n\r\n")
             except OSError:
-                pass
+                pass  # client may disconnect early; the fake server only needs best-effort reply
             finally:
                 connection.close()
 

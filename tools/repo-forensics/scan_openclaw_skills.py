@@ -171,7 +171,7 @@ def is_openclaw_skill(repo_path):
                 ):
                     return True
             except (json.JSONDecodeError, IndexError, TypeError):
-                pass
+                pass  # malformed manifest: not an MCP tool listing, fall through to False
     return False
 
 

@@ -101,14 +101,14 @@ _JS_REPO_DOC_PREFIX = "traigent-js/"
 _DOC_PATH_RE = re.compile(r"^[A-Za-z0-9_./*-]+$")
 
 
-@pytest.mark.parametrize("skill,doc_path", _doc_cases(), ids=lambda value: str(value))
+@pytest.mark.parametrize("skill,doc_path", _doc_cases(), ids=str)
 def test_sync_map_docs_entries_are_paths(skill: str, doc_path: str) -> None:
     assert _DOC_PATH_RE.match(doc_path), (
         f"{skill}: docs entry {doc_path!r} is not a file path or glob"
     )
 
 
-@pytest.mark.parametrize("skill,doc_path", _doc_cases(), ids=lambda value: str(value))
+@pytest.mark.parametrize("skill,doc_path", _doc_cases(), ids=str)
 def test_sync_map_docs_in_this_repo_exist(
     repo_root: Path, skill: str, doc_path: str
 ) -> None:
