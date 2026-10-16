@@ -161,7 +161,7 @@ def probe(request: dict) -> dict:
     root = request.get("root") or os.path.dirname(request["module"])
     try:
         target = load_callable(request["module"], request["function"])
-    except BaseException as exc:  # noqa: BLE001 - user code decides what it raises
+    except BaseException as exc:  # noqa: BLE001 - deliberate: user code may raise SystemExit or KeyboardInterrupt (e.g. sys.exit); the probe must report it as a fault, not die
         if is_guard_refusal(exc):
             return {
                 "ran": False,
@@ -193,7 +193,7 @@ def probe(request: dict) -> dict:
         for _ in range(times):
             try:
                 value = call_scorer(target, output_value, expected_value)
-            except BaseException as exc:  # noqa: BLE001
+            except BaseException as exc:  # noqa: BLE001 - deliberate: a scorer calling sys.exit() must be reported as a fault, not end the probe
                 if is_guard_refusal(exc):
                     return {
                         "ran": False,

@@ -249,6 +249,7 @@ def _module_source_paths(
     if module_file:
         return (Path(module_file),)
     pytest.skip(f"{module_name} has no readable source file")
+    raise AssertionError("unreachable: pytest.skip raises")
 
 
 def _assert_docstamp_module_imports(
