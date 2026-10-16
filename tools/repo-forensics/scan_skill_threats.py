@@ -248,7 +248,7 @@ PERSISTENCE_PATTERNS = [
 SCOPE_PATTERNS = [
     (re.compile(r"(?i)(/etc/passwd|/etc/shadow|/etc/hosts)"), "Accessing system files"),
     (
-        re.compile(r"(?i)(~/|\\$HOME/|/Users/|/home/)\w"),
+        re.compile(r"(?i)(~/|\$HOME/|/Users/|/home/)\w"),
         "Accessing user home directories",
     ),
     (
@@ -262,7 +262,7 @@ SCOPE_PATTERNS = [
         "Accessing macOS Keychain",
     ),
     (
-        re.compile(r"(?i)(~|\\$HOME)/\.claude/(skills|commands|settings)"),
+        re.compile(r"(?i)(~|\$HOME)/\.claude/(skills|commands|settings)"),
         "Accessing Claude configuration",
     ),
     (
