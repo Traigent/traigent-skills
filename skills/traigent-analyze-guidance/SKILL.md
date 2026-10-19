@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.6"
+  version: "1.2.7"
 ---
 
 # Traigent Analyze Guidance
@@ -313,8 +313,10 @@ and fetch a fresh brief.
 - Present the single backend recommendation and its `why` rationale. Do not
   reconstruct hidden evidence from local files, and do not expand the brief's
   evidence references into guessed internals.
-- Always include the portal link when available; as a fallback, build the
-  navigation-only link `https://portal.traigent.ai/p/<project_id>/runs/<run_id>`.
+- Always include the portal link when available; as a fallback, reuse the
+  SDK's printed `Portal URL:` / `results.cloud_url`, or build
+  `https://portal.traigent.ai/experiments/view/<experiment_id>?run_id=<run_id>`
+  (`experiment_id` comes from `results.cloud_url` or the run's experiment field).
   The portal is the durable record for best performers, tradeoffs, parameter
   importance, and decision context.
 - If the run is absent from the portal, treat that as a registration or

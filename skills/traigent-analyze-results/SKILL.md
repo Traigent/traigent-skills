@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.26"
+  version: "1.1.27"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -179,8 +179,9 @@ The tool returns an `ok` flag and a `decision_brief` object. Narrate the brief i
 4. **Backend-reported action fields** — `recommended_action.kind`, optional `config_id`, and
    `why`, if present. Report these fields as analysis output; do not turn them into this skill's
    decision.
-5. **Fallback** — build a navigation-only portal link:
-   `https://portal.traigent.ai/p/<project_id>/runs/<run_id>`.
+5. **Fallback** — reuse the SDK's printed `Portal URL:` / `results.cloud_url` instead of constructing a link; if you must build one, use
+   `https://portal.traigent.ai/experiments/view/<experiment_id>?run_id=<run_id>`
+   (`experiment_id` comes from `results.cloud_url` or the run's experiment field in the analytics payload).
 
 The brief knows the numbers, not where the data came from: a run whose dataset, evaluator, or agent
 was a generated substitute (check the project's own run record) is

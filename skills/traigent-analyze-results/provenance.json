@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "2f055dfa9705cd88",
+  "doc_hash": "451414db9d32e8a3",
   "reference_hashes": {
     "references/convergence-patterns.md": "1b074da6b72cce91",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/mcp-analytics-tools.md": "2ec821d7a13eaa1d",
+    "references/mcp-analytics-tools.md": "2f18b0b69d445ce6",
     "references/optimization-result-api.md": "0c7713bc50c16758"
   },
   "entries": [
@@ -386,6 +386,17 @@
         "note": "Issue #383: the analytics MCP prerequisite branches on observable state, not on which session registered the server: analytics_* tools listed -> proceed (confirm before calling the brief); not listed -> check the client's MCP config (e.g. claude mcp list / codex mcp list): not registered -> register, then one restart/reload/reconnect and re-run; registered but not listed -> not loaded yet (not unreachable), one restart/reload/reconnect and re-run. Never re-register a server that is already registered; the portal deep-link may be offered meanwhile. Still not listed after that one restart/reload/reconnect -> step 2's genuine-failure fallback (unchanged). Same branch in references/mcp-analytics-tools.md. Version 1.1.25 -> 1.1.26.",
         "source_type": "agent"
       }
+    },
+    {
+      "edit_id": "sweep-2026-10-19-428",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "2f055dfa9705cd88",
+      "doc_after_hash": "451414db9d32e8a3",
+      "note": "Replace the 404ing /p/<project_id>/runs/<run_id> portal template with /experiments/view/<experiment_id>?run_id=<run_id> and prefer the SDK's cloud_url (#428).",
+      "source_type": "agent"
     }
   ]
 }
