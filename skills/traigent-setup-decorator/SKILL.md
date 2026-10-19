@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.19"
+  version: "1.0.20"
 ---
 
 # Traigent Decorator Setup
@@ -543,6 +543,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

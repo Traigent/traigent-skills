@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "645cdb36123925fa",
+  "doc_hash": "85c074342bcdfb9e",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "808d5b88b589b32b",
@@ -378,6 +378,17 @@
       "doc_before_hash": "105739028e2b274b",
       "doc_after_hash": "645cdb36123925fa",
       "note": "Disclose trial-granular cost-limit overshoot, the interactive approval branch, and that provider enforcement must be verified separately; mirror in Setting a Cost Limit (#411).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "645cdb36123925fa",
+      "doc_after_hash": "85c074342bcdfb9e",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
       "source_type": "agent"
     }
   ]

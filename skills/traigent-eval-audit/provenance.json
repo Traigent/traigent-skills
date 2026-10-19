@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "2d2dbd94eeb141ac",
+  "doc_hash": "3cc5079a5e2c93e4",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/scorer-equivalence-check.md": "52ac774b94fc999f",
@@ -208,6 +208,17 @@
       "doc_before_hash": "664726f03ba21978",
       "doc_after_hash": "2d2dbd94eeb141ac",
       "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "2d2dbd94eeb141ac",
+      "doc_after_hash": "3cc5079a5e2c93e4",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
       "source_type": "agent"
     }
   ]

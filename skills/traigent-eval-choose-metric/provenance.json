@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "398e8891c2529863",
+  "doc_hash": "98414ee711107971",
   "entries": [
     {
       "edit_id": "genesis",
@@ -150,6 +150,17 @@
       "doc_before_hash": "8b0df2e822febdce",
       "doc_after_hash": "398e8891c2529863",
       "note": "Qualify the metric-function judge-call metering claim by SDK version and capture path (0.30.0 folds captured judge responses into recorded cost; uncaptured paths and the ledger-vs-provider distinction remain) (#417).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "398e8891c2529863",
+      "doc_after_hash": "98414ee711107971",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
       "source_type": "agent"
     }
   ]
