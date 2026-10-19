@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.10"
+  version: "1.0.11"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -541,7 +541,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 
 1. Check trial durations: `results.experiment_stats.average_trial_duration`
 2. Reduce dataset size for faster feedback
-3. Set a `timeout` on the run call (`func.optimize_sync(timeout=30)` / `await func.optimize(timeout=30)`) — it is not a decorator argument
+3. Set a generous `timeout` on the run call (`func.optimize_sync(timeout=600)` / `await func.optimize(timeout=600)`) — it is not a decorator argument. On the decorator path each example is also capped at this value, or 60 s when unset. A per-request timeout in your own call only helps below that cap, and a timed-out example counts as a wrong answer. Do not pick a small value such as 30: every call slower than that becomes a wrong answer
 4. Use smaller models for initial exploration
 5. Reduce `max_trials` or configuration space size
 

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.24"
+  version: "1.0.25"
 ---
 
 # Running Traigent Optimization
@@ -156,7 +156,7 @@ results = asyncio.run(main())
 |---|---|---|
 | `algorithm` | `str \| None` | Algorithm: `"auto"` (default cloud smart optimizer), `"grid"`/`"random"` (local search). Named smart algorithms such as `"bayesian"`/`"optuna"` are connected-only (SDK 0.20.1+) — see below. Falls back to decorator setting. |
 | `max_trials` | `int \| None` | Maximum number of trials to run. |
-| `timeout` | `float \| None` | Maximum wall-clock time in seconds. |
+| `timeout` | `float \| None` | Maximum wall-clock time in seconds. On the decorator path each example is also capped at this value, or 60 s when unset. A per-request timeout in your own call only helps below that cap, and a timed-out example counts as a wrong answer. |
 | `save_to` | `str \| None` | Path to save results to disk. |
 | `custom_evaluator` | `Callable \| None` | Override evaluator for this run. |
 | `callbacks` | `list[Callable] \| None` | Progress tracking callbacks. |

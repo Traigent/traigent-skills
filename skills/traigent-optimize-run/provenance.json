@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a06083cedbdba4b4",
+  "doc_hash": "9a7447b0a16704f8",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "808d5b88b589b32b",
@@ -345,6 +345,17 @@
       "doc_before_hash": "946a23c7a7e62b98",
       "doc_after_hash": "a06083cedbdba4b4",
       "note": "Stop Conditions table: add the safety_constraint row (since 0.28.0, see version-matrix: safety-constraints-impl): an in-run safety_constraints halt that also fires on too little evidence; not a trial filter or a safety verdict, best_config may be unsafe; promote only through traigent-ci-safety-gate.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-431",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "a06083cedbdba4b4",
+      "doc_after_hash": "9a7447b0a16704f8",
+      "note": "Disclose the 60 s per-example cap behind the run timeout in debugging, optimize-run and the structural spine reference; drop the timeout=30 suggestion (#431).",
       "source_type": "agent"
     }
   ]
