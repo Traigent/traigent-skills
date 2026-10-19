@@ -15,7 +15,7 @@ These skills work across **all major AI coding agents**: Claude Code, Cursor, Gi
 
 ## Interaction policy
 
-Every skill carries a shared **Traigent Interaction Policy** — a managed block that instructs the coding agent to track the user's expertise (`se` / `ds`) and autonomy preference (`delegate` / `guided` / `inspect`) and adapt verbosity, terminology, and how much it stops to ask accordingly. The policy also enforces that the agent always recommends the next Traigent skill or action to take at the end of each response. The canonical text lives in [`docs/shared/interaction-policy.v1.md`](docs/shared/interaction-policy.v1.md) and is propagated to all skills by `python tools/contract/sync_interaction_policy.py`.
+Every skill carries a shared **Traigent Interaction Policy** — a managed block that instructs the coding agent to track the user's expertise (`se` / `ds`) and autonomy preference (`delegate` / `guided` / `inspect`) and adapt verbosity, terminology, and how much it stops to ask accordingly. The policy also gates next-skill recommendations: only after a result-bearing step or at an explicit decision point, never during setup or mid-walkthrough, at most three per response, each with a one-line eligibility reason. The canonical text lives in [`docs/shared/interaction-policy.v1.md`](docs/shared/interaction-policy.v1.md) and is propagated to all skills by `python tools/contract/sync_interaction_policy.py`.
 
 ## Optimization economics
 
@@ -164,11 +164,11 @@ skills/<skill-name>/
   references/    # deeper API docs, loaded on demand
 ```
 
-These skills are Markdown, with two exceptions: `traigent-setup-audit` ships local scripts (standard library only; its free local tier does not read credentials, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) and `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read). The remaining skills are instructions and make no calls themselves.
+These skills are Markdown, with three skills that also ship a local script: `traigent-setup-audit` ships local scripts (standard library only; its free local tier does not read credentials, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read), and `traigent-eval-audit` ships a pure, offline stdlib helper (`equivalence_result.py`: no model calls, no network, no credential read). The remaining skills are instructions and make no calls themselves.
 
 ## Requirements
 
-**To use the skills themselves: nothing.** They're Markdown instructions your AI coding agent reads — no runtime, nothing to install (the `traigent-setup-audit` and `traigent-analyze-variable-importance` scripts run on any Python 3.11+ interpreter already present).
+**To use the skills themselves: nothing.** They're Markdown instructions your AI coding agent reads — no runtime, nothing to install (the `traigent-setup-audit`, `traigent-analyze-variable-importance` and `traigent-eval-audit` scripts run on any Python 3.11+ interpreter already present).
 
 The skills *teach your agent to drive the Traigent SDKs*, so to actually run an optimization you'll need the relevant SDK in your own project:
 
