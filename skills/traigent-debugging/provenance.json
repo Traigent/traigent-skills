@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a05b38b6bcc697e2",
+  "doc_hash": "318e7a992ed6ef04",
   "reference_hashes": {
     "references/error-reference.md": "40f0f28717aa6801",
     "references/logging-config.md": "158e07e3237bfb61",
@@ -166,6 +166,17 @@
       "doc_before_hash": "97d351227a6009e7",
       "doc_after_hash": "a05b38b6bcc697e2",
       "note": "Disclose the 60 s per-example cap behind the run timeout in debugging, optimize-run and the structural spine reference; drop the timeout=30 suggestion (#431).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-424",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "a05b38b6bcc697e2",
+      "doc_after_hash": "318e7a992ed6ef04",
+      "note": "Graceful fallback example now runs optimize_sync(apply=False), sets and keeps the incumbent explicitly, and promotes only a candidate passing a gate; removes the unused DEFAULT_CONFIG (#424).",
       "source_type": "agent"
     }
   ]

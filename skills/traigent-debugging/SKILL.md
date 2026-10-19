@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.11"
+  version: "1.0.12"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -574,13 +574,13 @@ print("traigent log level:", logging.getLevelName(logging.getLogger("traigent").
 
 ## Graceful Fallback Pattern
 
-When optimization might fail, use a try/except pattern with a known-good default:
+When optimization might fail, keep the serving incumbent explicit. `optimize()` / `optimize_sync()` apply a nonempty winner to the instance before returning (on 0.30.0; pass `apply=False` to get a candidate without applying it), so a score check *after* the run cannot undo it and a printed "using default" message changes nothing. Run with `apply=False` and promote only a candidate that passes your own gate:
 
 ```python
 import traigent
 from traigent.utils.exceptions import TraigentError, CostLimitExceeded
 
-DEFAULT_CONFIG = {"model": "gpt-4o-mini", "temperature": 0.0}
+INCUMBENT_CONFIG = {"model": "gpt-4o-mini", "temperature": 0.0}
 
 @traigent.optimize(
     eval_dataset="eval_data.jsonl",
@@ -596,28 +596,32 @@ def classify(text):
     # ... LLM call ...
     return result
 
-# Attempt optimization with fallback
-try:
-    results = classify.optimize_sync()
+# The function serves the incumbent until a candidate is explicitly promoted.
+classify.set_config(INCUMBENT_CONFIG)
 
-    if results.best_score is not None and results.best_score >= 0.7:
+try:
+    results = classify.optimize_sync(apply=False)
+
+    if results.best_config and results.best_score is not None and results.best_score >= 0.7:
+        # A search score is not an independent gate: confirm the candidate on held-out
+        # evidence (and any approval your process requires) before this line.
         classify.apply_best_config(results)
-        print(f"Applied optimized config: {results.best_config}")
+        print(f"Promoted candidate: {results.best_config}")
     else:
-        print(f"Score {results.best_score} too low, using default config")
+        print(f"Score {results.best_score} too low; incumbent {INCUMBENT_CONFIG} stays active")
 
 except CostLimitExceeded as e:
     # Pre-run decline only: nothing ran. A mid-run budget hit does not land here — it returns
     # normally with results.stop_reason == "cost_limit" and the paid trials kept.
-    print(f"Refused before spending (estimate ${e.estimated or 0:.2f} > ${e.limit:.2f}), using default config")
+    print(f"Refused before spending (estimate ${e.estimated or 0:.2f} > ${e.limit:.2f}); incumbent stays active")
 
 except TraigentError as e:
-    print(f"Optimization failed: {e.message}, using default config")
+    print(f"Optimization failed: {e.message}; incumbent stays active")
 
-# The function still works with either applied or default config
+# The active configuration now matches what was printed: the incumbent unless a gated candidate was promoted.
 ```
 
-This pattern ensures your application remains functional even when optimization encounters problems.
+For a stronger guarantee, run the search in a separate candidate process and export the result (see the analyze-results skill, "Exporting a Candidate and Promoting It Safely"); the serving process never shares memory with the search.
 
 ## Reference Files
 
