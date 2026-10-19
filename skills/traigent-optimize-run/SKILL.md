@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.26"
+  version: "1.0.27"
 ---
 
 # Running Traigent Optimization
@@ -330,7 +330,10 @@ Set the `TRAIGENT_RUN_COST_LIMIT` environment variable (in USD):
 export TRAIGENT_RUN_COST_LIMIT=5.00  # $5 max per optimization run
 ```
 
-The default limit is $2.00 per run.
+The default limit is $2.00 per run. It is enforced one trial at a time, so a large trial or parallel
+in-flight trials can overshoot it, and in an interactive terminal an over-limit estimate can prompt
+for approval instead of refusing; it is an SDK ledger, not a provider-side hard billing ceiling (see
+`references/run-cost-and-limits.md`).
 
 Several paid phases under one approved total (a baseline, then the search, then holdout scoring)
 can share one cumulative cap on SDK 0.26.0+ — see

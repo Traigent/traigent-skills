@@ -1,13 +1,13 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "105739028e2b274b",
+  "doc_hash": "645cdb36123925fa",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "808d5b88b589b32b",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/execution-budget.md": "23d17308f849017b",
     "references/parallel-config.md": "2938f82d7a778d5f",
-    "references/run-cost-and-limits.md": "8579f950b7e78af6"
+    "references/run-cost-and-limits.md": "2171222031bb8a5e"
   },
   "entries": [
     {
@@ -367,6 +367,17 @@
       "doc_before_hash": "9a7447b0a16704f8",
       "doc_after_hash": "105739028e2b274b",
       "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-411",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "105739028e2b274b",
+      "doc_after_hash": "645cdb36123925fa",
+      "note": "Disclose trial-granular cost-limit overshoot, the interactive approval branch, and that provider enforcement must be verified separately; mirror in Setting a Cost Limit (#411).",
       "source_type": "agent"
     }
   ]
