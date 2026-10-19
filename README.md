@@ -164,7 +164,7 @@ skills/<skill-name>/
   references/    # deeper API docs, loaded on demand
 ```
 
-These skills are Markdown, with three skills that also ship a local script: `traigent-setup-audit` ships local scripts (standard library only; its free local tier does not read credentials, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read), and `traigent-eval-audit` ships a pure, offline stdlib helper (`equivalence_result.py`: no model calls, no network, no credential read). The remaining skills are instructions and make no calls themselves.
+These skills are Markdown, with three skills that also ship a local script: `traigent-setup-audit` ships local scripts (standard library only; its free local tier reads `.env` text in memory only to detect which key names are set and never prints, stores or sends a value, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read), and `traigent-eval-audit` ships a pure, offline stdlib helper (`equivalence_result.py`: no model calls, no network, no credential read). The remaining skills are instructions and make no calls themselves.
 
 ## Requirements
 

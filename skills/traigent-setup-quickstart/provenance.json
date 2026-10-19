@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "5ab05170f93a8bfb",
+  "doc_hash": "12f71acb4be1f44c",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/environment-variables.md": "782609ee8121d971",
+    "references/environment-variables.md": "717d6986dba6141c",
     "references/first-value-fallback.md": "60b459fb82958bf7",
     "references/installation-extras.md": "1f85f18cdd0be60e",
     "references/run-cost-and-limits.md": "2171222031bb8a5e"
@@ -418,6 +418,17 @@
       "doc_before_hash": "261f04b654adebd6",
       "doc_after_hash": "5ab05170f93a8bfb",
       "note": "Editor launch verification: process liveness and launcher exit are advisory (pgrep -f matches the invoking shell); keep user confirmation and the absolute-path fallback (#409).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-sol-round-1",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "5ab05170f93a8bfb",
+      "doc_after_hash": "12f71acb4be1f44c",
+      "note": "Review round 1 corrections: typed SDK errors are not run-terminal (trial lifecycle records a failed trial); per-example timeout cap scoped to the default local evaluator; judge capture is isolated per evaluation (no concurrent-trial caveat); project .env loads at SDK import; README credential-read wording aligned (#429, #431, #417, #443, #427).",
       "source_type": "agent"
     }
   ]

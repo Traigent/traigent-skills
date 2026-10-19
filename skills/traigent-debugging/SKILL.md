@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.15"
+  version: "1.0.16"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -330,7 +330,7 @@ section has the full per-provider check list.
 
 ### InvocationError
 
-**When raised**: only on the paths that raise it explicitly (for example an SDK error your function or the invoker raises on purpose). An ordinary application exception inside the decorated function (a `RuntimeError`, a transport error) is **not** wrapped in `InvocationError` by the local evaluator: it is turned into a per-example failure (`output=None`, error `Function call failed: <message>`), the example scores as a failure, and `optimize_sync()` still returns normally. Typed SDK errors that are deliberately terminal (`InvocationError`, `NonRetryableError`) propagate as their own type.
+**When raised**: only on the paths that raise it explicitly (for example an SDK error your function or the invoker raises on purpose). An ordinary application exception inside the decorated function (a `RuntimeError`, a transport error) is **not** wrapped in `InvocationError` by the local evaluator: it is turned into a per-example failure (`output=None`, error `Function call failed: <message>`), the example scores as a failure, and `optimize_sync()` still returns normally. The evaluator rethrows typed SDK errors (`InvocationError`, `NonRetryableError`) as their own type, but on 0.30.0 the trial lifecycle (`traigent/core/trial_lifecycle.py`) catches a generic exception from a trial and records a failed trial, so neither is a guarantee that the whole run stops.
 
 ```
 traigent.utils.exceptions.InvocationError: Function 'classify' failed with config {'model': 'gpt-4o'}
@@ -350,7 +350,7 @@ except InvocationError as e:
 
 Do not print `original_error` text, headers or response bodies: they can carry keys or customer content. Print the exception type, or an allowlisted category you map yourself (timeout, TLS, connect, read, HTTP status, response schema).
 
-**A run with no exception can still be a failed comparison.** Because ordinary failures are per-example, check scored-example coverage before trusting a score: compare the number of examples that produced a scored output against the dataset size for each trial (the per-trial example counts in `results.trials`, plus `results.failed_trials` and `results.warnings`), and treat a trial with many failed examples as an operational failure, not a quality result. If your own wrapper needs a terminal budget or transport guard, raise a typed SDK error from it deliberately and verify it stops the run on the SDK version you use; do not assume a plain exception does.
+**A run with no exception can still be a failed comparison.** Because ordinary failures are per-example, check scored-example coverage before trusting a score: compare the number of examples that produced a scored output against the dataset size for each trial (the per-trial example counts in `results.trials`, plus `results.failed_trials` and `results.warnings`), and treat a trial with many failed examples as an operational failure, not a quality result. If your own wrapper needs a terminal budget or transport guard, do not assume that raising any exception, including a typed SDK error, stops the run: on 0.30.0 it can end up as one failed trial. Stop the run with a check of your own (for example `max_trials` or `cost_limit`, or an external abort) and verify that end to end first.
 
 ### EvaluationError
 
@@ -545,7 +545,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 
 1. Check trial durations: `results.experiment_stats.average_trial_duration`
 2. Reduce dataset size for faster feedback
-3. Set a generous `timeout` on the run call (`func.optimize_sync(timeout=600)` / `await func.optimize(timeout=600)`) — it is not a decorator argument. On the decorator path each example is also capped at this value, or 60 s when unset. A per-request timeout in your own call only helps below that cap, and a timed-out example counts as a wrong answer. Do not pick a small value such as 30: every call slower than that becomes a wrong answer
+3. Set a generous `timeout` on the run call (`func.optimize_sync(timeout=600)` / `await func.optimize(timeout=600)`) — it is not a decorator argument. With the default local evaluator (`eval_dataset` with `scoring_function` or `metric_functions`) each example is also capped at this value, or 60 s when unset; a `custom_evaluator` runs without that per-example cap on 0.30.0. A per-request timeout in your own call only helps below the cap, and a timed-out example counts as a wrong answer. Do not pick a small value such as 30: every call slower than that becomes a wrong answer
 4. Use smaller models for initial exploration
 5. Reduce `max_trials` or configuration space size
 

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.15"
+  version: "1.0.16"
 ---
 
 # Traigent Build Evaluator
@@ -20,7 +20,7 @@ Use this skill after the metric is chosen and the user needs concrete evaluator 
 - For metric selection first, use `traigent-eval-choose-metric`.
 - Mock/offline check before paid runs with `TRAIGENT_OFFLINE_MODE`, `enable_mock_mode_for_quickstart()`, and a tiny local dataset.
 - Ask for explicit approval and set `TRAIGENT_RUN_COST_LIMIT` before any evaluator calls paid LLMs or backend services. For custom evaluators that make several calls per row, see the cost-metering caveat in `references/evaluator-templates.md`: on traigent <= 0.29.0 only the first LLM call per row is metered, fixed in 0.30.0.
-- Whether a judge call placed inside `metric_functions` is in the SDK's cost ledger depends on the SDK version and on capture: on 0.27.0 the local evaluator settled an example's cost from the agent's captured responses before it called your metric functions, so a judge call there was **not** metered (Traigent/Traigent#2297); on 0.30.0 a judge response captured through the SDK's interceptor (for example a litellm call, evaluated sequentially within a trial) is folded into the example's recorded cost, while calls outside capture, and capture across concurrent trials, are still not guaranteed to be counted. `TRAIGENT_RUN_COST_LIMIT` admits trials on the recorded cost and is an SDK ledger, not provider enforcement. Budget judge calls as their own line (calls per scored row × price × rows × trials), cap them in your own code, and never rely on the SDK limit to stop judge spend.
+- Whether a judge call placed inside `metric_functions` is in the SDK's cost ledger depends on the SDK version and on capture: on 0.27.0 the local evaluator settled an example's cost from the agent's captured responses before it called your metric functions, so a judge call there was **not** metered (Traigent/Traigent#2297); on 0.30.0 a judge response captured through the SDK's interceptor (for example a litellm call) is folded into the example's recorded cost, with capture isolated per evaluation so concurrent trials do not drain each other's responses (ContextVar capture scopes, Traigent#2387); calls outside capture, such as an uninstrumented client, are still not counted. `TRAIGENT_RUN_COST_LIMIT` admits trials on the recorded cost and is an SDK ledger, not provider enforcement. Budget judge calls as their own line (calls per scored row × price × rows × trials), cap them in your own code, and never rely on the SDK limit to stop judge spend.
 - Disjointness invariant: any slice used to tune a threshold, rubric, or metric must be disjoint from the holdout used to claim the result (see `traigent-eval-audit`). The example dataset paths below stand for your *tuning* slice.
 - For full templates by method, read `references/evaluator-templates.md`.
 

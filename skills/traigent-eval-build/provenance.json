@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "48500a37956767e2",
+  "doc_hash": "cf8e8572c822ea9c",
   "reference_hashes": {
     "references/evaluator-templates.md": "b82fb09b9b98bbfe"
   },
@@ -217,6 +217,17 @@
       "doc_before_hash": "a998c66b60aa8f5b",
       "doc_after_hash": "48500a37956767e2",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-sol-round-1",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "48500a37956767e2",
+      "doc_after_hash": "cf8e8572c822ea9c",
+      "note": "Review round 1 corrections: typed SDK errors are not run-terminal (trial lifecycle records a failed trial); per-example timeout cap scoped to the default local evaluator; judge capture is isolated per evaluation (no concurrent-trial caveat); project .env loads at SDK import; README credential-read wording aligned (#429, #431, #417, #443, #427).",
       "source_type": "agent"
     }
   ]

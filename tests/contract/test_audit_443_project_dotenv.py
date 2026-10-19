@@ -21,6 +21,8 @@ def test_no_flat_claim_that_project_env_is_ignored() -> None:
         assert "does **not** read your project's `.env`" not in text
         assert "does not load your project's `.env`" not in text
         assert "0.28.0" in text and "TRAIGENT_SKIP_DOTENV" in text, page.name
+        assert "when you decorate" not in text and "on decoration" not in text
+        assert "import" in text.split("TRAIGENT_SKIP_DOTENV")[0][-400:], page.name
 
 
 def test_mock_not_offline_mentions_env_keys() -> None:

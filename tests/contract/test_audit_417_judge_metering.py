@@ -19,9 +19,12 @@ def test_no_unconditional_unmetered_claim() -> None:
     assert "captur" in choose and "0.30.0" in choose
     assert "depends on the SDK version and on capture" in build
     assert "not provider enforcement" in build
+    assert "concurrent trials are still" not in build and "ContextVar" in build
     assert "Budget judge calls as their own line" in build
 
 
 def test_sdk_folds_captured_metric_function_cost() -> None:
+    langchain = pytest.importorskip("traigent.utils.langchain_interceptor")
+    assert hasattr(langchain, "_capture_scope")
     local = pytest.importorskip("traigent.evaluators.local")
     assert hasattr(local.LocalEvaluator, "_fold_metric_function_llm_cost")

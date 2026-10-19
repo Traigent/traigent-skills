@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.33"
+  version: "1.0.34"
 ---
 
 # Traigent Quickstart
@@ -362,7 +362,7 @@ e.g. from a pytest fixture/conftest, for new setups.
 
 ### Using a .env File
 
-Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). On `traigent>=0.28.0` the SDK loads your project's `.env` itself when you decorate a function (found by walking up from the working directory to the nearest `.git`, `pyproject.toml`, `setup.cfg` or `setup.py`, then a `.env` beside the installed package): `TRAIGENT_API_KEY` and provider keys in it count as set, values already in the environment win, and `TRAIGENT_SKIP_DOTENV=1` turns the load off. On 0.24.0-0.27.0 only the `.env` beside the installed package is read, so keep the explicit `load_dotenv()` above; it is harmless on newer releases.
+Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). On `traigent>=0.28.0` the SDK loads your project's `.env` itself when it is imported (the load runs at module import of `traigent.utils.env_config`, which importing `traigent.optimize` pulls in before any decoration; found by walking up from the working directory to the nearest `.git`, `pyproject.toml`, `setup.cfg` or `setup.py`, then a `.env` beside the installed package): `TRAIGENT_API_KEY` and provider keys in it count as set, values already in the environment win, and `TRAIGENT_SKIP_DOTENV=1` turns the load off, but only if it is set before the SDK is first imported. On 0.24.0-0.27.0 only the `.env` beside the installed package is read, so keep the explicit `load_dotenv()` above; it is harmless on newer releases.
 
 Before writing any key, run this in the directory that will hold `.env`:
 

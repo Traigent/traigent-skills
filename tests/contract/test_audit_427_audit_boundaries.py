@@ -22,3 +22,9 @@ def test_receipt_file_is_described_as_optional() -> None:
     assert "every approved\n  run writes a receipt" not in text
     assert "only when you pass `--receipt <path>`" in " ".join(text.split())
     assert "written to disk only when `--receipt <path>` is passed" in text
+
+
+def test_readme_matches_the_corrected_credential_read_disclosure() -> None:
+    readme = " ".join((SKILL.parents[2] / "README.md").read_text(encoding="utf-8").split())
+    assert "free local tier does not read credentials" not in readme
+    assert "reads `.env` text in memory only to detect which key names are set" in readme
