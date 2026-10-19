@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "dfef2fdaee05a418",
+  "doc_hash": "57a7af005a109c6d",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
@@ -230,6 +230,17 @@
       "doc_before_hash": "0d3f4a0fcea336b2",
       "doc_after_hash": "dfef2fdaee05a418",
       "note": "Add a one-line pointer at the first mention of the example-insights MCP tool: it needs the analytics MCP server installed and registered (analyze-results skill, Prerequisites (one time)); the REST route works without it.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-449",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "dfef2fdaee05a418",
+      "doc_after_hash": "57a7af005a109c6d",
+      "note": "Drop the stale '<= 0.27.0' upper bound from the unfixed mock-synthesis and BaseEvaluator caveats; state the checked range (every release through 0.30.0) instead (#449).",
       "source_type": "agent"
     }
   ]
