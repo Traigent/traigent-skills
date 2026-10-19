@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "67bcd2f5fe0fd67c",
+  "doc_hash": "7a3b1393c25b62d0",
   "entries": [
     {
       "edit_id": "genesis",
@@ -95,6 +95,17 @@
       "doc_before_hash": "c9c17739441b422d",
       "doc_after_hash": "67bcd2f5fe0fd67c",
       "note": "Drop links to non-public repositories and the private tracker issue number from the JS skill's Node/npm note (#448).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "67bcd2f5fe0fd67c",
+      "doc_after_hash": "7a3b1393c25b62d0",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]

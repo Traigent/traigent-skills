@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "09d5f27081001d5d",
+  "doc_hash": "79bff7057d0e4ab8",
   "reference_hashes": {
     "references/evaluator-templates.md": "b82fb09b9b98bbfe"
   },
@@ -184,6 +184,17 @@
       "doc_before_hash": "1d79ccf7ce0a0182",
       "doc_after_hash": "09d5f27081001d5d",
       "note": "Drop the stale '<= 0.27.0' upper bound from the unfixed mock-synthesis and BaseEvaluator caveats; state the checked range (every release through 0.30.0) instead (#449).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "09d5f27081001d5d",
+      "doc_after_hash": "79bff7057d0e4ab8",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]

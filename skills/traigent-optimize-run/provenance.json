@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9a7447b0a16704f8",
+  "doc_hash": "105739028e2b274b",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "808d5b88b589b32b",
@@ -356,6 +356,17 @@
       "doc_before_hash": "a06083cedbdba4b4",
       "doc_after_hash": "9a7447b0a16704f8",
       "note": "Disclose the 60 s per-example cap behind the run timeout in debugging, optimize-run and the structural spine reference; drop the timeout=30 suggestion (#431).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "9a7447b0a16704f8",
+      "doc_after_hash": "105739028e2b274b",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]

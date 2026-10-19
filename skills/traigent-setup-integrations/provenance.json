@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "5a7ac03f4ad28455",
+  "doc_hash": "b0e6d7b5f2cf3b72",
   "reference_hashes": {
     "references/dspy.md": "2ade98532d63f1fa",
     "references/langchain.md": "cbcc76cfc81426bf",
@@ -155,6 +155,17 @@
       "doc_before_hash": "cb9f03056a01f9fa",
       "doc_after_hash": "5a7ac03f4ad28455",
       "note": "Widen the DSPy method=mipro crash caveat from <=0.27.0 to every release through 0.30.0 (fix is unreleased) (#444).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "5a7ac03f4ad28455",
+      "doc_after_hash": "b0e6d7b5f2cf3b72",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]

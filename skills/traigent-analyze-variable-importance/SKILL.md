@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.2.1"
+  version: "1.2.2"
 ---
 
 # Show Significant Tuned Variables
@@ -241,9 +241,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus

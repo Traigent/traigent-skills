@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "caf611675fbfb4ad",
+  "doc_hash": "8f169000b96fd066",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/environment-variables.md": "782609ee8121d971",
@@ -385,6 +385,17 @@
       "doc_before_hash": "667ccfc56bf71f03",
       "doc_after_hash": "caf611675fbfb4ad",
       "note": "Version-scope the project .env claim: 0.28.0+ loads it on decoration (TRAIGENT_SKIP_DOTENV opt-out, load order); mock-not-offline bullet notes .env keys count as set (#443).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "caf611675fbfb4ad",
+      "doc_after_hash": "8f169000b96fd066",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]

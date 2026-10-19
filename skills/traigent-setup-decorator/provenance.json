@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "518e1df95eb2414c",
+  "doc_hash": "4faeeb1efab6d9c6",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/evaluation-options.md": "f766d4df828a1ade",
@@ -253,6 +253,17 @@
       "doc_before_hash": "872de6c4103547a8",
       "doc_after_hash": "518e1df95eb2414c",
       "note": "document EvaluationOptions.task_type as supported from SDK 0.28.0 with the no-task_type path kept for older SDKs; add a floored runnable reference (#378; #270's 0.27.x rule preserved)",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "518e1df95eb2414c",
+      "doc_after_hash": "4faeeb1efab6d9c6",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]

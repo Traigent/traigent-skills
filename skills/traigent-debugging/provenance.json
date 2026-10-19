@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "2dab12a45a071c04",
+  "doc_hash": "712add1e328627c3",
   "reference_hashes": {
     "references/error-reference.md": "db41984f4cfff36a",
     "references/logging-config.md": "158e07e3237bfb61",
@@ -188,6 +188,17 @@
       "doc_before_hash": "318e7a992ed6ef04",
       "doc_after_hash": "2dab12a45a071c04",
       "note": "Narrow the InvocationError claim to paths that raise it; explain ordinary per-example failures, scored-example coverage, and a safe non-printing diagnostic (#429).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "2dab12a45a071c04",
+      "doc_after_hash": "712add1e328627c3",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]

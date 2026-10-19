@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6349d046ca542216",
+  "doc_hash": "8b0df2e822febdce",
   "entries": [
     {
       "edit_id": "genesis",
@@ -128,6 +128,17 @@
       "doc_before_hash": "2235f3c3a4f2129e",
       "doc_after_hash": "6349d046ca542216",
       "note": "Declare valid_schema's orientation with ObjectiveSchema and state that plain objective lists are for built-in names only; newer SDK builds refuse an undeclared custom name.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "6349d046ca542216",
+      "doc_after_hash": "8b0df2e822febdce",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]

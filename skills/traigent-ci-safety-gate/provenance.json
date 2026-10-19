@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e59d5644e1a48b7e",
+  "doc_hash": "9a78f5f75c56b8a1",
   "reference_hashes": {
     "references/gate-workflow.md": "1c682ea2f7f932aa",
     "references/in-run-safety.md": "3ac893a23defbd34"
@@ -163,6 +163,17 @@
       "doc_before_hash": "e59d5644e1a48b7e",
       "doc_after_hash": "e59d5644e1a48b7e",
       "note": "references/in-run-safety.md only (SKILL.md unchanged): each runnable block now asserts every trial's hallucination_rate metric value (0.5 violating / 0.0 compliant). Without it the compliant example passed with the metric unwired (traigent 0.30.0 offline probe: metric_functions without hallucination_rate -> trial metrics None, still stop_reason safety_constraint at 3 trials, because the preset defaults a missing value to 1.0).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "e59d5644e1a48b7e",
+      "doc_after_hash": "9a78f5f75c56b8a1",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]

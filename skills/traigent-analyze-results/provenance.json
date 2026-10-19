@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "451414db9d32e8a3",
+  "doc_hash": "9425d52072b97e03",
   "reference_hashes": {
     "references/convergence-patterns.md": "1b074da6b72cce91",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
@@ -396,6 +396,17 @@
       "doc_before_hash": "2f055dfa9705cd88",
       "doc_after_hash": "451414db9d32e8a3",
       "note": "Replace the 404ing /p/<project_id>/runs/<run_id> portal template with /experiments/view/<experiment_id>?run_id=<run_id> and prefer the SDK's cloud_url (#428).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "451414db9d32e8a3",
+      "doc_after_hash": "9425d52072b97e03",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
       "source_type": "agent"
     }
   ]
