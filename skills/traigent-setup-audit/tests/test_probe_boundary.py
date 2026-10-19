@@ -843,3 +843,70 @@ def test_the_env_file_check_runs_no_project_configured_git_hook(
     assert report["setup"]["env_file_git_status"] == (
         "ignored" if ignored else "not ignored"
     )
+
+
+# --------------------------------------------------------------------------
+# Issue #430 - a packaged scorer must be able to import its own project package
+# --------------------------------------------------------------------------
+
+
+def _packaged_project(tmp_path: Path, scoring_source: str, init_source: str = "") -> Path:
+    root = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", root)
+    package = root / "evalpkg"
+    package.mkdir()
+    (package / "__init__.py").write_text(init_source, encoding="utf-8")
+    (package / "helpers.py").write_text(
+        "def normalize(value):\n    return str(value).strip().lower()\n", encoding="utf-8"
+    )
+    (package / "scoring.py").write_text(scoring_source, encoding="utf-8")
+    return root
+
+
+PACKAGED_SCORER = (
+    "from evalpkg.helpers import normalize\n\n\n"
+    "def score(output, expected):\n"
+    "    return float(normalize(output) == normalize(expected))\n"
+)
+
+
+def test_a_packaged_scorer_with_an_absolute_package_import_is_measured(
+    tmp_path: Path,
+) -> None:
+    root = _packaged_project(tmp_path, PACKAGED_SCORER)
+    report, _ = _run(root, tmp_path / "out", "--scorer", "evalpkg/scoring.py:score")
+    probe = report["scorer_probe"]
+    assert probe["ran"] is True, probe
+    assert probe["scores"]["good"] == [1.0] * 5
+    assert probe["scores"]["bad"] == [0.0]
+
+
+def test_a_packaged_scorer_without_package_imports_skips_the_package_initializer(
+    tmp_path: Path,
+) -> None:
+    marker = tmp_path / "init-ran"
+    root = _packaged_project(
+        tmp_path,
+        "def score(output, expected):\n    return float(output == expected)\n",
+        init_source=f"open({str(marker)!r}, 'w').write('x')\n",
+    )
+    report, _ = _run(root, tmp_path / "out", "--scorer", "evalpkg/scoring.py:score")
+    assert report["scorer_probe"]["ran"] is True, report["scorer_probe"]
+    assert not marker.exists(), "run_path must not run the package initializer"
+
+
+def test_foreign_pythonpath_stays_excluded_from_the_probe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    foreign = tmp_path / "foreign"
+    foreign.mkdir()
+    (foreign / "foreignmod.py").write_text("VALUE = 1\n", encoding="utf-8")
+    monkeypatch.setenv("PYTHONPATH", str(foreign))
+    root = _packaged_project(
+        tmp_path,
+        "import foreignmod\n\n\ndef score(output, expected):\n    return 1.0\n",
+    )
+    report, _ = _run(root, tmp_path / "out", "--scorer", "evalpkg/scoring.py:score")
+    probe = report["scorer_probe"]
+    assert probe["ran"] is False
+    assert probe["error_type"] == "ModuleNotFoundError"
