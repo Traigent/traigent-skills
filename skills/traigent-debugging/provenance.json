@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "318e7a992ed6ef04",
+  "doc_hash": "2dab12a45a071c04",
   "reference_hashes": {
-    "references/error-reference.md": "40f0f28717aa6801",
+    "references/error-reference.md": "db41984f4cfff36a",
     "references/logging-config.md": "158e07e3237bfb61",
     "references/mock-mode.md": "94ebd85013f9dfb9"
   },
@@ -177,6 +177,17 @@
       "doc_before_hash": "a05b38b6bcc697e2",
       "doc_after_hash": "318e7a992ed6ef04",
       "note": "Graceful fallback example now runs optimize_sync(apply=False), sets and keeps the incumbent explicitly, and promotes only a candidate passing a gate; removes the unused DEFAULT_CONFIG (#424).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-429",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "318e7a992ed6ef04",
+      "doc_after_hash": "2dab12a45a071c04",
+      "note": "Narrow the InvocationError claim to paths that raise it; explain ordinary per-example failures, scored-example coverage, and a safe non-printing diagnostic (#429).",
       "source_type": "agent"
     }
   ]

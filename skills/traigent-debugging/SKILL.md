@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -330,13 +330,13 @@ section has the full per-provider check list.
 
 ### InvocationError
 
-**When raised**: The decorated function raised an exception during a trial.
+**When raised**: only on the paths that raise it explicitly (for example an SDK error your function or the invoker raises on purpose). An ordinary application exception inside the decorated function (a `RuntimeError`, a transport error) is **not** wrapped in `InvocationError` by the local evaluator: it is turned into a per-example failure (`output=None`, error `Function call failed: <message>`), the example scores as a failure, and `optimize_sync()` still returns normally. Typed SDK errors that are deliberately terminal (`InvocationError`, `NonRetryableError`) propagate as their own type.
 
 ```
 traigent.utils.exceptions.InvocationError: Function 'classify' failed with config {'model': 'gpt-4o'}
 ```
 
-Has `config`, `input_data`, and `original_error` attributes. Check the original error:
+Has `config`, `input_data`, and `original_error` attributes. Catching it only covers the raising paths:
 
 ```python
 from traigent.utils.exceptions import InvocationError
@@ -345,8 +345,12 @@ try:
     results = func.optimize_sync()
 except InvocationError as e:
     print(f"Config that caused failure: {e.config}")
-    print(f"Original error: {e.original_error}")
+    print(f"Original error category: {type(e.original_error).__name__}")
 ```
+
+Do not print `original_error` text, headers or response bodies: they can carry keys or customer content. Print the exception type, or an allowlisted category you map yourself (timeout, TLS, connect, read, HTTP status, response schema).
+
+**A run with no exception can still be a failed comparison.** Because ordinary failures are per-example, check scored-example coverage before trusting a score: compare the number of examples that produced a scored output against the dataset size for each trial (the per-trial example counts in `results.trials`, plus `results.failed_trials` and `results.warnings`), and treat a trial with many failed examples as an operational failure, not a quality result. If your own wrapper needs a terminal budget or transport guard, raise a typed SDK error from it deliberately and verify it stops the run on the SDK version you use; do not assume a plain exception does.
 
 ### EvaluationError
 
