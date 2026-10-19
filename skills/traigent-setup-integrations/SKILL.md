@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.6"
+  version: "1.0.7"
 ---
 
 # Traigent Framework Integrations
@@ -228,8 +228,8 @@ See [LiteLLM reference](references/litellm.md) for the full provider list and co
 Traigent provides a `DSPyPromptOptimizer` adapter that wraps DSPy's MIPROv2 and BootstrapFewShot optimizers for automatic prompt engineering:
 
 > `method="mipro"` (the constructor default) raises `TypeError: MIPROv2.__init__() got an unexpected
-> keyword argument 'requires_permission_to_run'` on `traigent<=0.27.0` with DSPy 2.6/3.x. Pass
-> `method="bootstrap"` explicitly until a fixed SDK release.
+> keyword argument 'requires_permission_to_run'` on every traigent release through 0.30.0 with DSPy 2.6/3.x. Pass
+> `method="bootstrap"` explicitly until a release that contains the fix (not yet released as of 0.30.0).
 
 ```python
 from traigent.integrations.dspy_adapter import DSPyPromptOptimizer
