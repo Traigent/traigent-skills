@@ -10,7 +10,7 @@ from traigent.config.parallel import ParallelConfig
 
 | Field | Type | Default | Description |
 |---|---|---|---|
-| `mode` | `"auto" \| "sequential" \| "parallel" \| None` | `None` | Execution mode. `None` means inherit from parent scope. `"auto"` lets Traigent decide. |
+| `mode` | `"auto" \| "sequential" \| "parallel" \| None` | `None` | Execution mode. `None` means inherit from parent scope. `"auto"` runs in parallel only when you set `trial_concurrency > 1` or `example_concurrency > 1`; otherwise it runs sequentially. |
 | `trial_concurrency` | `int \| None` | `None` | Maximum number of trials to run concurrently. `None` means inherit. |
 | `example_concurrency` | `int \| None` | `None` | Maximum number of examples to evaluate concurrently within a single trial. `None` means inherit. |
 | `thread_workers` | `int \| None` | `None` | Size of the thread pool for parallel execution. `None` means inherit. |
@@ -168,7 +168,7 @@ def batch_process(items: list) -> list:
 |---|---|
 | `"sequential"` | Trials run one at a time. Examples within a trial also run sequentially. Simplest, no concurrency concerns. |
 | `"parallel"` | Trials and/or examples run concurrently up to the configured concurrency limits. |
-| `"auto"` | Traigent decides based on the config space size, dataset size, and available resources. |
+| `"auto"` | The effective default. Runs in parallel only if you set `trial_concurrency > 1` or `example_concurrency > 1`, and otherwise runs sequentially (it does not look at dataset size or available resources). Once parallel, a missing `trial_concurrency` is derived from the config-space size and the thread-worker count. To get parallel trials, set a concurrency above 1, for example `ParallelConfig(trial_concurrency=4)`. |
 
 ## Practical Guidelines
 

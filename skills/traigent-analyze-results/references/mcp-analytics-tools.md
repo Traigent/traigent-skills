@@ -182,8 +182,10 @@ The portal deep-link remains a **fallback for interactive exploration** (hover /
 or for any view that has no registered tool — not because these tools are missing:
 
 ```text
-https://portal.traigent.ai/p/<project_id>/runs/<run_id>
+https://portal.traigent.ai/experiments/view/<experiment_id>?run_id=<run_id>
 ```
+
+Prefer the SDK's printed `Portal URL:` / `results.cloud_url` over constructing the link; `experiment_id` comes from `results.cloud_url` or the run's experiment field in the analytics payload.
 
 Treat every tool response as authoritative. If a tool returns `ok: false`, report the failure
 at a high level. Never print invented rankings, example ids, chart captions, or field shapes.

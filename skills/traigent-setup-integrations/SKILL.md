@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.6"
+  version: "1.0.9"
 ---
 
 # Traigent Framework Integrations
@@ -228,8 +228,8 @@ See [LiteLLM reference](references/litellm.md) for the full provider list and co
 Traigent provides a `DSPyPromptOptimizer` adapter that wraps DSPy's MIPROv2 and BootstrapFewShot optimizers for automatic prompt engineering:
 
 > `method="mipro"` (the constructor default) raises `TypeError: MIPROv2.__init__() got an unexpected
-> keyword argument 'requires_permission_to_run'` on `traigent<=0.27.0` with DSPy 2.6/3.x. Pass
-> `method="bootstrap"` explicitly until a fixed SDK release.
+> keyword argument 'requires_permission_to_run'` on every traigent release through 0.30.0 with DSPy 2.6/3.x. Pass
+> `method="bootstrap"` explicitly until a release that contains the fix (not yet released as of 0.30.0).
 
 ```python
 from traigent.integrations.dspy_adapter import DSPyPromptOptimizer
@@ -391,9 +391,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
@@ -419,6 +424,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

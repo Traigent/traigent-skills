@@ -92,7 +92,7 @@ python my_optimization.py
 
 ## .env File Support
 
-The SDK does not load your project's `.env`: at import it looks only for a `.env` beside its own installed package. `python-dotenv` ships with `litellm` (a core dependency), so load the file yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` — rather than relying on `litellm`'s own import-time lookup, which searches upward from wherever the venv sits.
+Load order on `traigent>=0.28.0`: variables already exported in the environment win, then your project's `.env` (found by walking up from the working directory to the nearest `.git`, `pyproject.toml`, `setup.cfg` or `setup.py`), then a `.env` beside the installed package; this happens at import time, when `traigent.utils.env_config` is first imported (importing `traigent.optimize` pulls it in before any decoration), and `TRAIGENT_SKIP_DOTENV=1` disables it only if set before that first import. On 0.24.0-0.27.0 only the `.env` beside the installed package is read. `python-dotenv` ships with `litellm` (a core dependency), so keep loading the file yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` — which is required below 0.28.0 and harmless above it (it does not override existing values).
 
 Before writing any key into `.env`, run the block under [Using a .env File](../SKILL.md#using-a-env-file) from the directory that will hold it and continue only if it exits 0. It adds the adjacent `.gitignore` rule, refuses an already tracked `.env`, and leaves the file at mode 0600. Never type a key into an `export` at a shell prompt.
 

@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "97d351227a6009e7",
+  "doc_hash": "b2ec076f92ede299",
   "reference_hashes": {
-    "references/error-reference.md": "40f0f28717aa6801",
+    "references/error-reference.md": "db41984f4cfff36a",
     "references/logging-config.md": "158e07e3237bfb61",
     "references/mock-mode.md": "94ebd85013f9dfb9"
   },
@@ -155,6 +155,72 @@
       "doc_before_hash": "d0102f9dd59ed35e",
       "doc_after_hash": "97d351227a6009e7",
       "note": "PR-stack rebase reconciliation: final merge of PR #367's debugging edits (audit-2026-09-23-321/322/343, #321/#322/#343, plus reference-only #355) with main's tip; doc_hash recomputed over the fully merged SKILL.md (same pattern as merge-main-taxonomy-into-econ-wi-a-2026-07-18). See GAP_EXCEPTIONS in tests/contract/test_provenance.py for the parallel-branch gap this closes on one side.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-431",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "97d351227a6009e7",
+      "doc_after_hash": "a05b38b6bcc697e2",
+      "note": "Disclose the 60 s per-example cap behind the run timeout in debugging, optimize-run and the structural spine reference; drop the timeout=30 suggestion (#431).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-424",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "a05b38b6bcc697e2",
+      "doc_after_hash": "318e7a992ed6ef04",
+      "note": "Graceful fallback example now runs optimize_sync(apply=False), sets and keeps the incumbent explicitly, and promotes only a candidate passing a gate; removes the unused DEFAULT_CONFIG (#424).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-429",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "318e7a992ed6ef04",
+      "doc_after_hash": "2dab12a45a071c04",
+      "note": "Narrow the InvocationError claim to paths that raise it; explain ordinary per-example failures, scored-example coverage, and a safe non-printing diagnostic (#429).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "2dab12a45a071c04",
+      "doc_after_hash": "712add1e328627c3",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "712add1e328627c3",
+      "doc_after_hash": "71604ec0069f228d",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-sol-round-1",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "71604ec0069f228d",
+      "doc_after_hash": "b2ec076f92ede299",
+      "note": "Review round 1 corrections: typed SDK errors are not run-terminal (trial lifecycle records a failed trial); per-example timeout cap scoped to the default local evaluator; judge capture is isolated per evaluation (no concurrent-trial caveat); project .env loads at SDK import; README credential-read wording aligned (#429, #431, #417, #443, #427).",
       "source_type": "agent"
     }
   ]

@@ -1,13 +1,13 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a06083cedbdba4b4",
+  "doc_hash": "e3f4f78563a57207",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "808d5b88b589b32b",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/execution-budget.md": "23d17308f849017b",
-    "references/parallel-config.md": "11c81d1d28d3e97f",
-    "references/run-cost-and-limits.md": "8579f950b7e78af6"
+    "references/parallel-config.md": "2938f82d7a778d5f",
+    "references/run-cost-and-limits.md": "2171222031bb8a5e"
   },
   "entries": [
     {
@@ -345,6 +345,61 @@
       "doc_before_hash": "946a23c7a7e62b98",
       "doc_after_hash": "a06083cedbdba4b4",
       "note": "Stop Conditions table: add the safety_constraint row (since 0.28.0, see version-matrix: safety-constraints-impl): an in-run safety_constraints halt that also fires on too little evidence; not a trial filter or a safety verdict, best_config may be unsafe; promote only through traigent-ci-safety-gate.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-431",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "a06083cedbdba4b4",
+      "doc_after_hash": "9a7447b0a16704f8",
+      "note": "Disclose the 60 s per-example cap behind the run timeout in debugging, optimize-run and the structural spine reference; drop the timeout=30 suggestion (#431).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "9a7447b0a16704f8",
+      "doc_after_hash": "105739028e2b274b",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-411",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "105739028e2b274b",
+      "doc_after_hash": "645cdb36123925fa",
+      "note": "Disclose trial-granular cost-limit overshoot, the interactive approval branch, and that provider enforcement must be verified separately; mirror in Setting a Cost Limit (#411).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "645cdb36123925fa",
+      "doc_after_hash": "85c074342bcdfb9e",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-sol-round-1",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "85c074342bcdfb9e",
+      "doc_after_hash": "e3f4f78563a57207",
+      "note": "Review round 1 corrections: typed SDK errors are not run-terminal (trial lifecycle records a failed trial); per-example timeout cap scoped to the default local evaluator; judge capture is isolated per evaluation (no concurrent-trial caveat); project .env loads at SDK import; README credential-read wording aligned (#429, #431, #417, #443, #427).",
       "source_type": "agent"
     }
   ]

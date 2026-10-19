@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.24"
+  version: "1.0.29"
 ---
 
 # Running Traigent Optimization
@@ -156,7 +156,7 @@ results = asyncio.run(main())
 |---|---|---|
 | `algorithm` | `str \| None` | Algorithm: `"auto"` (default cloud smart optimizer), `"grid"`/`"random"` (local search). Named smart algorithms such as `"bayesian"`/`"optuna"` are connected-only (SDK 0.20.1+) — see below. Falls back to decorator setting. |
 | `max_trials` | `int \| None` | Maximum number of trials to run. |
-| `timeout` | `float \| None` | Maximum wall-clock time in seconds. |
+| `timeout` | `float \| None` | Maximum wall-clock time in seconds. With the default local evaluator (`eval_dataset` with `scoring_function` or `metric_functions`) each example is also capped at this value, or 60 s when unset; a `custom_evaluator` runs without that per-example cap on 0.30.0. A per-request timeout in your own call only helps below the cap, and a timed-out example counts as a wrong answer. |
 | `save_to` | `str \| None` | Path to save results to disk. |
 | `custom_evaluator` | `Callable \| None` | Override evaluator for this run. |
 | `callbacks` | `list[Callable] \| None` | Progress tracking callbacks. |
@@ -330,7 +330,10 @@ Set the `TRAIGENT_RUN_COST_LIMIT` environment variable (in USD):
 export TRAIGENT_RUN_COST_LIMIT=5.00  # $5 max per optimization run
 ```
 
-The default limit is $2.00 per run.
+The default limit is $2.00 per run. It is enforced one trial at a time, so a large trial or parallel
+in-flight trials can overshoot it, and in an interactive terminal an over-limit estimate can prompt
+for approval instead of refusing; it is an SDK ledger, not a provider-side hard billing ceiling (see
+`references/run-cost-and-limits.md`).
 
 Several paid phases under one approved total (a baseline, then the search, then holdout scoring)
 can share one cumulative cap on SDK 0.26.0+ — see
@@ -685,9 +688,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
@@ -713,6 +721,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

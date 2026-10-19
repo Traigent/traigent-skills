@@ -26,7 +26,14 @@ of every trial that uses it.
 2. **A spending cap.** Pass `cost_limit` in USD to `.optimize()` (or set
    `TRAIGENT_RUN_COST_LIMIT`; the default is $2.00). A pre-run estimate over the cap stops the
    run before anything is spent; a cap hit mid-run stops the run and keeps the finished trials
-   (`stop_reason == "cost_limit"`).
+   (`stop_reason == "cost_limit"`). The cap is **not a hard billing ceiling**: it is enforced
+   one trial at a time, so a single large trial, or trials already in flight in parallel, can
+   push actual spend past it before the check runs. In an interactive terminal an over-cap
+   estimate can also ask you to approve and raise the limit instead of refusing, while a
+   non-interactive process refuses unless the run was already approved. If you need a billing
+   guarantee, verify what your model provider can actually enforce (a project budget or an
+   alert threshold is usually advisory, not an admission cap) and state any residual exposure.
+   Never paste credential values into the coding-agent conversation.
 3. **A size cap.** `max_trials` limits the number of trials; `max_total_examples` limits the
    examples summed over all trials. Start small.
 

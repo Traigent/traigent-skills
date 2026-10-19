@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3e0d039cad94061b",
+  "doc_hash": "6862fe75c3efe7bc",
   "entries": [
     {
       "edit_id": "genesis",
@@ -183,6 +183,28 @@
       "doc_before_hash": "d3ca6b370b7f3526",
       "doc_after_hash": "3e0d039cad94061b",
       "note": "Valid-Unicode check on knob names and string values now applies to measured trials only: a row the ranking skips (not completed, or no objective value) is counted and never encoded, so a lone surrogate there no longer stops a run that main completed.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "3e0d039cad94061b",
+      "doc_after_hash": "6ce1cf8f90afdaf5",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "6ce1cf8f90afdaf5",
+      "doc_after_hash": "6862fe75c3efe7bc",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
       "source_type": "agent"
     }
   ]

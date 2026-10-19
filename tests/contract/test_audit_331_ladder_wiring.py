@@ -64,8 +64,8 @@ def test_tier_example_wires_or_is_marked_not_wireable(
 def test_tier5_wording_is_version_scoped() -> None:
     tier5 = LADDER_ROWS["5"] + TIER_SECTIONS["5"]
     assert "released SDK" not in tier5, "scope the claim to a version, not 'released'"
-    assert "traigent <= 0.27.0" in LADDER_ROWS["5"]
-    assert "traigent <= 0.27.0" in TIER_SECTIONS["5"]
+    assert "through 0.30.0" in LADDER_ROWS["5"]
+    assert "through 0.30.0" in TIER_SECTIONS["5"]
     assert "custom_evaluator must be callable" in TIER_SECTIONS["5"]
 
 

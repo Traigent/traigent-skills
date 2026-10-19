@@ -94,7 +94,7 @@ When the example-insights surface flags rows, map each `suspicious_flag` to a cu
 | suspicious_flag | Next action |
 |---|---|
 | `possible_mislabel` | Re-check the expected answer / rubric before any dataset change |
-| `redundant_pattern` | Remove or dedupe; broaden coverage elsewhere in the dataset |
+| `redundant_pattern` | Review; broaden coverage elsewhere in the dataset. Do not delete rows based on this flag: pruning by an observed signal biases your own measurement (the SDK retired `remove_redundant` for this reason) |
 | `anomalous_low_success` | Clarify the expected output, or mark as a deliberate hard case |
 | `high_response_variance` | Clarify acceptable answers or increase repetitions |
 | `low_agent_strength_correlation` | Review the example label or the evaluator for this example |

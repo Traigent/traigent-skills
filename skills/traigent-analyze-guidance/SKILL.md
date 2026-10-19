@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.6"
+  version: "1.2.9"
 ---
 
 # Traigent Analyze Guidance
@@ -313,8 +313,10 @@ and fetch a fresh brief.
 - Present the single backend recommendation and its `why` rationale. Do not
   reconstruct hidden evidence from local files, and do not expand the brief's
   evidence references into guessed internals.
-- Always include the portal link when available; as a fallback, build the
-  navigation-only link `https://portal.traigent.ai/p/<project_id>/runs/<run_id>`.
+- Always include the portal link when available; as a fallback, reuse the
+  SDK's printed `Portal URL:` / `results.cloud_url`, or build
+  `https://portal.traigent.ai/experiments/view/<experiment_id>?run_id=<run_id>`
+  (`experiment_id` comes from `results.cloud_url` or the run's experiment field).
   The portal is the durable record for best performers, tradeoffs, parameter
   importance, and decision context.
 - If the run is absent from the portal, treat that as a registration or
@@ -556,9 +558,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
@@ -584,6 +591,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

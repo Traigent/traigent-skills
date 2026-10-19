@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.29"
+  version: "1.0.34"
 ---
 
 # Traigent Quickstart
@@ -348,7 +348,7 @@ enable_mock_mode_for_quickstart()
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.19"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.19"`.)
-- **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local.
+- **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local. A `TRAIGENT_API_KEY` in the project `.env` counts as set on 0.28.0+ (see "Using a .env File"); use `TRAIGENT_OFFLINE_MODE=true` or `offline=True` for zero egress.
 - **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer).
 
 ### Legacy Env-Var Path
@@ -362,7 +362,7 @@ e.g. from a pytest fixture/conftest, for new setups.
 
 ### Using a .env File
 
-Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). The SDK does **not** read your project's `.env` (it only looks beside its own installed package); whether `litellm`'s import happens to find yours depends on where the venv sits.
+Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). On `traigent>=0.28.0` the SDK loads your project's `.env` itself when it is imported (the load runs at module import of `traigent.utils.env_config`, which importing `traigent.optimize` pulls in before any decoration; found by walking up from the working directory to the nearest `.git`, `pyproject.toml`, `setup.cfg` or `setup.py`, then a `.env` beside the installed package): `TRAIGENT_API_KEY` and provider keys in it count as set, values already in the environment win, and `TRAIGENT_SKIP_DOTENV=1` turns the load off, but only if it is set before the SDK is first imported. On 0.24.0-0.27.0 only the `.env` beside the installed package is read, so keep the explicit `load_dotenv()` above; it is harmless on newer releases.
 
 Before writing any key, run this in the directory that will hold `.env`:
 
@@ -438,8 +438,12 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
      nested instance that *crashes*, and it hijacks whichever IDE window is focused — so
      `.env` can pop up inside an unrelated project.
    - **Don't** trust the launcher's exit code as "opened" — a crashed window can still exit 0.
-     Verify the editor process is actually alive (e.g. `pgrep`) **and ask the user to confirm
-     the window appeared.**
+     Treat the launcher exit code and any process check as advisory only: a full-command search such as `pgrep -f <editor>` also matches the invoking shell or wrapper (it reports success even
+     when no editor by that name exists), and a single-instance editor can reuse an existing window with
+     an older buffer. Prefer a verified child identity when you have one; otherwise rely on the user. **Ask
+     the user to confirm the intended window appeared**, ask for a reload only if it shows stale content
+     (never discarding unsaved changes), and when the launch is uncertain or fails (including a known
+     headless session) fall back to the printed absolute path so they can open the file themselves.
 4. **Pick the provider key by detecting the vendor from the project** (its
    `openai` / `anthropic` / `litellm` / Bedrock imports or config). If the vendor is
    ambiguous, undetectable, or the project uses **multiple** providers (e.g. OpenAI *and*
@@ -735,9 +739,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
@@ -763,6 +772,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

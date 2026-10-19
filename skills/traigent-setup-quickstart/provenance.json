@@ -1,12 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "667ccfc56bf71f03",
+  "doc_hash": "12f71acb4be1f44c",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/environment-variables.md": "84bbd07054919956",
+    "references/environment-variables.md": "717d6986dba6141c",
     "references/first-value-fallback.md": "60b459fb82958bf7",
     "references/installation-extras.md": "1f85f18cdd0be60e",
-    "references/run-cost-and-limits.md": "8579f950b7e78af6"
+    "references/run-cost-and-limits.md": "2171222031bb8a5e"
   },
   "entries": [
     {
@@ -374,6 +374,61 @@
       "doc_before_hash": "c8f6fb412441c70a",
       "doc_after_hash": "667ccfc56bf71f03",
       "note": "The .env key-entry block checks external GIT_* locations whether or not git is installed.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-443",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "667ccfc56bf71f03",
+      "doc_after_hash": "caf611675fbfb4ad",
+      "note": "Version-scope the project .env claim: 0.28.0+ loads it on decoration (TRAIGENT_SKIP_DOTENV opt-out, load order); mock-not-offline bullet notes .env keys count as set (#443).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "caf611675fbfb4ad",
+      "doc_after_hash": "8f169000b96fd066",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "8f169000b96fd066",
+      "doc_after_hash": "261f04b654adebd6",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-409",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "261f04b654adebd6",
+      "doc_after_hash": "5ab05170f93a8bfb",
+      "note": "Editor launch verification: process liveness and launcher exit are advisory (pgrep -f matches the invoking shell); keep user confirmation and the absolute-path fallback (#409).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-sol-round-1",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "5ab05170f93a8bfb",
+      "doc_after_hash": "12f71acb4be1f44c",
+      "note": "Review round 1 corrections: typed SDK errors are not run-terminal (trial lifecycle records a failed trial); per-example timeout cap scoped to the default local evaluator; judge capture is isolated per evaluation (no concurrent-trial caveat); project .env loads at SDK import; README credential-read wording aligned (#429, #431, #417, #443, #427).",
       "source_type": "agent"
     }
   ]

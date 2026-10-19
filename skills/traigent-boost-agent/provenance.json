@@ -1,12 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "08911536100f8563",
+  "doc_hash": "037fd971a9c3ce60",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/insights-and-iteration.md": "8f7cd2450d5bb2be",
+    "references/insights-and-iteration.md": "e864e5ed0254be8c",
     "references/instrument-recipe.md": "db2c3f40e4327736",
-    "references/run-cost-and-limits.md": "8579f950b7e78af6"
+    "references/run-cost-and-limits.md": "2171222031bb8a5e"
   },
   "entries": [
     {
@@ -289,6 +289,39 @@
       "doc_before_hash": "f317d8a46c768e90",
       "doc_after_hash": "08911536100f8563",
       "note": "Step 12: 'PromotionGate complements in-run constraints' replaced with: PromotionGate on a holdout is the safety gate on every SDK version; in-run constraints only end a run early and never certify a config.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-449",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "08911536100f8563",
+      "doc_after_hash": "c3f05343a147a3c1",
+      "note": "Drop the stale '<= 0.27.0' upper bound from the unfixed mock-synthesis and BaseEvaluator caveats; state the checked range (every release through 0.30.0) instead (#449).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "c3f05343a147a3c1",
+      "doc_after_hash": "7d62965892aec024",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "7d62965892aec024",
+      "doc_after_hash": "037fd971a9c3ce60",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
       "source_type": "agent"
     }
   ]

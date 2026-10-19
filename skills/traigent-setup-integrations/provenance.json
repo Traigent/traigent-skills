@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "cb9f03056a01f9fa",
+  "doc_hash": "62115b62cc29f7d7",
   "reference_hashes": {
-    "references/dspy.md": "e11976aa2edc9075",
+    "references/dspy.md": "2ade98532d63f1fa",
     "references/langchain.md": "cbcc76cfc81426bf",
-    "references/litellm.md": "f86dd6d1ff187af8"
+    "references/litellm.md": "9b38e000c36c9e3c"
   },
   "entries": [
     {
@@ -144,6 +144,39 @@
       "doc_before_hash": "99c6a7f4c3c533f2",
       "doc_after_hash": "cb9f03056a01f9fa",
       "note": "Correct the dspy.configure note: a trial fails only when all of its examples land on a non-configuring thread; otherwise its accuracy is silently deflated.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-444",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "cb9f03056a01f9fa",
+      "doc_after_hash": "5a7ac03f4ad28455",
+      "note": "Widen the DSPy method=mipro crash caveat from <=0.27.0 to every release through 0.30.0 (fix is unreleased) (#444).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "5a7ac03f4ad28455",
+      "doc_after_hash": "b0e6d7b5f2cf3b72",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "b0e6d7b5f2cf3b72",
+      "doc_after_hash": "62115b62cc29f7d7",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
       "source_type": "agent"
     }
   ]

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.16"
+  version: "2.1.19"
 ---
 
 # Traigent Boost Agent
@@ -213,7 +213,7 @@ assert my_metric(known_bad, expected_output) <= 0.1, (
 )
 ```
 
-For a `custom_evaluator`, call it directly on the known-good and the known-bad example (`my_evaluator(my_function, config, example)` returns an `ExampleResult`) and assert the returned `metrics` separate. (`BaseEvaluator` is not wireable through `@traigent.optimize` on traigent <= 0.27.0: an instance passed as `custom_evaluator` fails with `ValueError: custom_evaluator must be callable`; see `traigent-eval-build`.) Use **one known-good + one known-bad example only** — this is a smoke gate, not a full audit.
+For a `custom_evaluator`, call it directly on the known-good and the known-bad example (`my_evaluator(my_function, config, example)` returns an `ExampleResult`) and assert the returned `metrics` separate. (`BaseEvaluator` is not wireable through `@traigent.optimize` (every traigent release through 0.30.0): an instance passed as `custom_evaluator` fails with `ValueError: custom_evaluator must be callable`; see `traigent-eval-build`.) Use **one known-good + one known-bad example only** — this is a smoke gate, not a full audit.
 
 > **If both assertions pass:** the metric wires correctly — proceed to Step 4.
 >
@@ -378,7 +378,7 @@ answer = my_function("What is Python?")
    - DELEGATE (required): `traigent-eval-choose-metric` owns the metric interview and objective vocabulary.
 
 4. WIRE OR BUILD the evaluator.
-   - Use the wire-first ladder: `eval_dataset` -> `scoring_function` -> `metric_functions` -> `custom_evaluator` (`BaseEvaluator` is not wireable through `@traigent.optimize` on traigent <= 0.27.0; see `traigent-eval-build`).
+   - Use the wire-first ladder: `eval_dataset` -> `scoring_function` -> `metric_functions` -> `custom_evaluator` (`BaseEvaluator` is not wireable through `@traigent.optimize` (every traigent release through 0.30.0); see `traigent-eval-build`).
    - Start deterministic when the task has ground truth or checkable domain logic; use LLM judges only when deterministic scoring cannot express the quality target.
    - Audit any LLM judge before trusting it to drive optimization.
    - DELEGATE (required): `traigent-eval-build` owns evaluator code. DELEGATE (deep-dive, optional — only when an LLM judge is used): `traigent-eval-audit` owns judge reliability checks.
@@ -549,9 +549,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
@@ -577,6 +582,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

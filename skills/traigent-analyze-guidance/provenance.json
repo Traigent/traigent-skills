@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3a46e403ffbf8cf8",
+  "doc_hash": "77b09333b3c94a4a",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -356,6 +356,39 @@
       "doc_before_hash": "9073e3ef9cd6cdbb",
       "doc_after_hash": "3a46e403ffbf8cf8",
       "note": "Issue #383: Mode B's prerequisite pointer follows analyze-results' state-keyed branch: when the analytics_* tools are not listed, check whether traigent-analytics is already registered in the client's MCP config; register only if it is not (never re-register), then one restart/reload/reconnect and re-run. Registered but not listed is not loaded yet, not a fetch failure (don't retry the fetch; the portal deep-link may be offered meanwhile). Still not listed after that one restart/reload/reconnect -> the brief cannot be fetched. Genuine fetch-failure handling is unchanged. Version 1.2.5 -> 1.2.6.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-428",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "3a46e403ffbf8cf8",
+      "doc_after_hash": "010adda2c57c4417",
+      "note": "Replace the 404ing /p/<project_id>/runs/<run_id> portal template with /experiments/view/<experiment_id>?run_id=<run_id> and prefer the SDK's cloud_url (#428).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "010adda2c57c4417",
+      "doc_after_hash": "32138acf6e5d26a1",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "32138acf6e5d26a1",
+      "doc_after_hash": "77b09333b3c94a4a",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
       "source_type": "agent"
     }
   ]
