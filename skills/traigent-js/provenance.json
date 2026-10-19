@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c9c17739441b422d",
+  "doc_hash": "67bcd2f5fe0fd67c",
   "entries": [
     {
       "edit_id": "genesis",
@@ -84,6 +84,17 @@
       "doc_before_hash": "b54e62aad87dc656",
       "doc_after_hash": "c9c17739441b422d",
       "note": "Name each removed option's replacement as its error does (hybridApiOptions points at the unsupported externalServiceEvaluator), and warn that an exported TRAIGENT_REQUIRE_CLOUD=1 makes grid/random/offline runs throw unless requireCloud: false is passed.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-448",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "c9c17739441b422d",
+      "doc_after_hash": "67bcd2f5fe0fd67c",
+      "note": "Drop links to non-public repositories and the private tracker issue number from the JS skill's Node/npm note (#448).",
       "source_type": "agent"
     }
   ]

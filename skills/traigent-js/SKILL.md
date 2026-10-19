@@ -8,7 +8,7 @@ metadata:
   traigent-stage: javascript
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.8"
+  version: "1.0.9"
 ---
 
 # Traigent JS/TS SDK
@@ -34,7 +34,7 @@ Then consume the local build from your project. Under **plain npm**, `npm link` 
 failure. Under pnpm specifically, prefer **`link:../traigent-js`** over `file:` — pnpm's `file:`
 protocol hard-links/copies the package at install time, so it goes stale after every rebuild until
 you reinstall, while `link:` is a live symlink that always picks up your latest `npm run build`.
-Supported Node: 18, 20, 22. (Public npm publishing is tracked in Traigent/traigent-js#165.)
+Supported Node: 18, 20, 22. (Use this flow until the JS SDK is published to npm.)
 
 ## Core Pattern
 

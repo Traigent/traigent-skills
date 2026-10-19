@@ -40,7 +40,7 @@ def render(data: dict[str, Any]) -> str:
         "",
         "# Skill-to-SDK Sync Map",
         "",
-        "When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Traigent) Python SDK repo or [`traigent-js`](https://github.com/Traigent/traigent-js) JavaScript/TypeScript SDK repo), review the corresponding skills here for accuracy.",
+        "When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Traigent) Python SDK repo or the JavaScript/TypeScript SDK source), review the corresponding skills here for accuracy.",
         "",
         "| Skill | SDK Source Dependencies |",
         "|-------|----------------------|",

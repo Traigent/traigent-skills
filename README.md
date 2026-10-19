@@ -4,7 +4,7 @@ User-facing [Agent Skills](https://agentskills.io/) for the **Traigent SDKs** �
 
 These skills work across **all major AI coding agents**: Claude Code, Cursor, GitHub Copilot, Gemini CLI, OpenAI Codex, Windsurf, Junie, and [30+ more](https://skills.sh/).
 
-> Looking for internal dev/CI/design skills (code review, PR automation, security forensics, UI/UX)? Those live in the internal [`Traigent/agents-skills`](https://github.com/Traigent/agents-skills) repo. **This repo holds only the user-facing SDK skills.**
+> Looking for internal dev tooling? **This repo holds only the user-facing SDK skills.**
 
 ## Interface identity
 
@@ -12,8 +12,6 @@ These skills work across **all major AI coding agents**: Claude Code, Cursor, Gi
 - Plugin: `traigent` — the installed product boundary; the shorter ID avoids `traigent-skills:traigent-*` repetition.
 - Skills: `traigent-<lifecycle>-<capability>` — portable names for clients that flatten or install individual skills.
 - Metadata: `catalog/skills.json` plus `traigent-audience`, `traigent-topic`, `traigent-stage`, and `traigent-maturity` in every skill.
-
-The related internal plugins are `traigent-coding-agents` and `traigent-spine`; their skills are not copied into this public interface.
 
 ## Interaction policy
 
@@ -178,7 +176,7 @@ The skills *teach your agent to drive the Traigent SDKs*, so to actually run an 
 - Traigent SDK — `pip install "traigent>=0.19"` (the floor avoids the PyPI placeholder 0.0.1)
 - Node.js 18, 20, or 22
 - Traigent JS SDK — not published on public npm yet; use the source/link flow in
-  `skills/traigent-js` until Traigent/traigent-js#165 lands.
+  `skills/traigent-js` until the JS SDK is published to npm.
 
 ## Maintenance
 
