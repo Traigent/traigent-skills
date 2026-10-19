@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.7"
+  version: "1.1.8"
 ---
 
 # Traigent Choose Metric
@@ -51,8 +51,11 @@ and do not force an exact-match metric. Route onto the judge track:
    between you and optimizing noise.
 4. Budget the judge itself: every trial example costs a judge call on top of the agent call.
    Flag judge cost as its own line in the run budget (and consider `cost` as a secondary
-   objective so expensive judge-pleasing configs don't win by default). The SDK cost limit
-   does not see judge calls made inside a metric function — see `traigent-eval-build`.
+   objective so expensive judge-pleasing configs don't win by default). On SDK 0.30.0 a judge call
+   inside a metric function is folded into the recorded cost only when the SDK captures its provider
+   response (an intercepted litellm call, evaluated sequentially within a trial); older SDKs and
+   uncaptured client paths leave it outside the SDK cost limit, which is never a hard billing ceiling —
+   see `traigent-eval-build`.
 
 ## Measure-type grounding
 
