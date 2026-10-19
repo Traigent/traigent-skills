@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.10"
+  version: "1.1.11"
 ---
 
 # Traigent Curate Dataset
@@ -303,8 +303,10 @@ outputs, and actual outputs, then takes one server-suggested action.
 The server selects the examples and recommends the next action. This skill
 does not decide which examples are hard.
 
-- Fetch flagged ids and coarse categories from the example-scoring
-  dataset-quality output (see "Score examples after a run" above). Do not
+- Fetch flagged ids, coarse categories and recommended actions from the
+  example-insights rows (`analytics_get_example_insights`, see "Examples to
+  review" above), not from `get_dataset_quality`, which returns only the run
+  id, algorithm version and a scored flag and never returns recommendations. Do not
   reach for `traigent next-steps`: it was retired from the SDK on 2026-08-03
   and is absent from 0.26.0, so any instruction to run it is dead on a current
   install.
@@ -320,9 +322,9 @@ does not decide which examples are hard.
 
 ### Protocol
 
-1. Fetch the server payload from the example-scoring dataset-quality or
-   curation output (see "Score examples after a run" above). Record the
-   returned ids, coarse categories, and recommended actions exactly.
+1. Fetch the server payload from the example-insights rows
+   (`analytics_get_example_insights`, see "Examples to review" above). Record
+   the returned ids, coarse categories, and recommended actions exactly.
 2. Build a local example-content map: use `traigent report-example-map` for a
    local-only file map from dataset rows to stable example ids, or the SDK
    helper `build_example_content_map` when already inside Python automation.
@@ -451,10 +453,11 @@ When a run completes, the `analytics_get_example_insights` MCP tool (or `GET /ap
 | Field | Values |
 |---|---|
 | `safe_example_ref` | Opaque hashed ref (`exref_...`) — not a raw id or content |
+| `example_id` | Optional client-owned id you submitted in the evaluation dataset: the join key for the local content join (identity only, never content) |
 | `review_priority` | critical \| high \| medium \| low — review urgency, not a quality score |
 | `difficulty_bucket` | low \| medium \| high \| unknown — coarse bucket only |
 | `suspicious_flags` | See flag-to-action table in the improve loop below |
-| `recommended_action` | review_label \| clarify_expected_output \| increase_repetitions \| replace_or_rewrite \| keep_as_hard_case \| remove_redundant \| inspect_evaluator |
+| `recommended_action` | review_label \| clarify_expected_output \| increase_repetitions \| replace_or_rewrite \| keep_as_hard_case \| inspect_evaluator |
 
 ## The improve loop
 
@@ -472,7 +475,7 @@ Flag-to-curation-action guide for step 3:
 | Flag | Curation action |
 |---|---|
 | `possible_mislabel` | Re-check the expected answer / rubric |
-| `redundant_pattern` | Remove or dedupe; broaden coverage elsewhere |
+| `redundant_pattern` | Review; broaden coverage elsewhere. Do not delete rows based on this flag: pruning by an observed signal biases your own measurement (the SDK retired `remove_redundant` for this reason) |
 | `anomalous_low_success` | Clarify the expected output, or keep as a deliberate hard case |
 | `high_response_variance` | Separate the cause first: agent temperature > 0 with a strict scorer (pin 0 or add repetitions); a configuration that structurally fails (empty/erroring outputs — exclude it, do not repeat it); a brittle exact match on a correct-but-rephrased answer (equivalence-aware match). Repetitions fix only the first. |
 | `low_agent_strength_correlation` | Review the label or the evaluator for this example |
