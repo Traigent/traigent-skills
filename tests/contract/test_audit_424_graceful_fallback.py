@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 DEBUGGING = Path(__file__).resolve().parents[2] / "skills" / "traigent-debugging" / "SKILL.md"
 
@@ -33,6 +34,9 @@ def test_search_runs_without_applying_and_restores_the_incumbent() -> None:
 def test_sdk_supports_apply_false_and_set_config() -> None:
     import inspect
 
+    traigent = pytest.importorskip("traigent")
+    if Version(traigent.__version__) < Version("0.30.0"):
+        pytest.skip("the example is verified on 0.30.0; apply=False is not asserted below it")
     optimized_function = pytest.importorskip("traigent.core.optimized_function")
     cls = optimized_function.OptimizedFunction
     assert "apply" in inspect.signature(cls.optimize_sync).parameters

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.13"
+  version: "1.1.14"
 ---
 
 # Traigent Curate Dataset
@@ -304,8 +304,8 @@ The server selects the examples and recommends the next action. This skill
 does not decide which examples are hard.
 
 - Fetch flagged ids, coarse categories and recommended actions from the
-  example-insights rows (`analytics_get_example_insights`, see "Examples to
-  review" above), not from `get_dataset_quality`, which returns only the run
+  example-insights rows (see "Examples to review" below for the tool and
+  its prerequisite), not from `get_dataset_quality`, which returns only the run
   id, algorithm version and a scored flag and never returns recommendations. Do not
   reach for `traigent next-steps`: it was retired from the SDK on 2026-08-03
   and is absent from 0.26.0, so any instruction to run it is dead on a current
@@ -323,7 +323,7 @@ does not decide which examples are hard.
 ### Protocol
 
 1. Fetch the server payload from the example-insights rows
-   (`analytics_get_example_insights`, see "Examples to review" above). Record
+   (see "Examples to review" below). Record
    the returned ids, coarse categories, and recommended actions exactly.
 2. Build a local example-content map: use `traigent report-example-map` for a
    local-only file map from dataset rows to stable example ids, or the SDK

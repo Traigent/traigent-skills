@@ -42,8 +42,9 @@ def test_flagged_protocol_names_example_insights_not_dataset_quality() -> None:
     text = CURATE.read_text(encoding="utf-8")
     boundary = text.split("### Boundary", 1)[1].split("### Protocol", 1)[0]
     protocol = text.split("### Protocol", 1)[1][:600]
-    assert "analytics_get_example_insights" in boundary
-    assert "analytics_get_example_insights" in protocol
+    # The tool name itself first appears next to its prerequisite pointer (#314/#335).
+    assert "example-insights rows" in boundary
+    assert "example-insights rows" in protocol
     assert "from the example-scoring\n  dataset-quality" not in boundary
 
 

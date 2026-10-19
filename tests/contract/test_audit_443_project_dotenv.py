@@ -9,6 +9,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 ROOT = Path(__file__).resolve().parents[2] / "skills" / "traigent-setup-quickstart"
 SKILL = ROOT / "SKILL.md"
@@ -33,7 +34,12 @@ def test_mock_not_offline_mentions_env_keys() -> None:
 
 
 def test_sdk_loader_and_opt_out_exist() -> None:
+    traigent = pytest.importorskip("traigent")
     env_config = pytest.importorskip("traigent.utils.env_config")
-    assert hasattr(env_config, "_find_bounded_project_dotenv")
     source = Path(env_config.__file__).read_text(encoding="utf-8")
-    assert "TRAIGENT_SKIP_DOTENV" in source
+    if Version(traigent.__version__) >= Version("0.28.0"):
+        assert hasattr(env_config, "_find_bounded_project_dotenv")
+        assert "TRAIGENT_SKIP_DOTENV" in source
+    else:
+        # The documented boundary: below 0.28.0 the project .env is not loaded.
+        assert not hasattr(env_config, "_find_bounded_project_dotenv")

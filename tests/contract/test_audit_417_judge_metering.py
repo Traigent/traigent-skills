@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 SKILLS = Path(__file__).resolve().parents[2] / "skills"
 CHOOSE = SKILLS / "traigent-eval-choose-metric" / "SKILL.md"
@@ -24,6 +25,9 @@ def test_no_unconditional_unmetered_claim() -> None:
 
 
 def test_sdk_folds_captured_metric_function_cost() -> None:
+    traigent = pytest.importorskip("traigent")
+    if Version(traigent.__version__) < Version("0.30.0"):
+        pytest.skip("captured judge cost is folded into recorded cost from 0.30.0")
     langchain = pytest.importorskip("traigent.utils.langchain_interceptor")
     assert hasattr(langchain, "_capture_scope")
     local = pytest.importorskip("traigent.evaluators.local")
