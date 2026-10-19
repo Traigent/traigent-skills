@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "261f04b654adebd6",
+  "doc_hash": "5ab05170f93a8bfb",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/environment-variables.md": "782609ee8121d971",
@@ -407,6 +407,17 @@
       "doc_before_hash": "8f169000b96fd066",
       "doc_after_hash": "261f04b654adebd6",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-409",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "261f04b654adebd6",
+      "doc_after_hash": "5ab05170f93a8bfb",
+      "note": "Editor launch verification: process liveness and launcher exit are advisory (pgrep -f matches the invoking shell); keep user confirmation and the absolute-path fallback (#409).",
       "source_type": "agent"
     }
   ]

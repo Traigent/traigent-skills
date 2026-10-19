@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.32"
+  version: "1.0.33"
 ---
 
 # Traigent Quickstart
@@ -438,8 +438,12 @@ never touches the chat) and **better UX** (they see exactly where it goes). Proc
      nested instance that *crashes*, and it hijacks whichever IDE window is focused — so
      `.env` can pop up inside an unrelated project.
    - **Don't** trust the launcher's exit code as "opened" — a crashed window can still exit 0.
-     Verify the editor process is actually alive (e.g. `pgrep`) **and ask the user to confirm
-     the window appeared.**
+     Treat the launcher exit code and any process check as advisory only: a full-command search such as `pgrep -f <editor>` also matches the invoking shell or wrapper (it reports success even
+     when no editor by that name exists), and a single-instance editor can reuse an existing window with
+     an older buffer. Prefer a verified child identity when you have one; otherwise rely on the user. **Ask
+     the user to confirm the intended window appeared**, ask for a reload only if it shows stale content
+     (never discarding unsaved changes), and when the launch is uncertain or fails (including a known
+     headless session) fall back to the printed absolute path so they can open the file themselves.
 4. **Pick the provider key by detecting the vendor from the project** (its
    `openai` / `anthropic` / `litellm` / Bedrock imports or config). If the vendor is
    ambiguous, undetectable, or the project uses **multiple** providers (e.g. OpenAI *and*
