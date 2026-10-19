@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.29"
+  version: "1.0.30"
 ---
 
 # Traigent Quickstart
@@ -348,7 +348,7 @@ enable_mock_mode_for_quickstart()
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.19"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.19"`.)
-- **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local.
+- **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local. A `TRAIGENT_API_KEY` in the project `.env` counts as set on 0.28.0+ (see "Using a .env File"); use `TRAIGENT_OFFLINE_MODE=true` or `offline=True` for zero egress.
 - **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer).
 
 ### Legacy Env-Var Path
@@ -362,7 +362,7 @@ e.g. from a pytest fixture/conftest, for new setups.
 
 ### Using a .env File
 
-Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). The SDK does **not** read your project's `.env` (it only looks beside its own installed package); whether `litellm`'s import happens to find yours depends on where the venv sits.
+Load `.env` yourself at the top of the script — `from dotenv import load_dotenv; load_dotenv()` (`python-dotenv` ships with `litellm`, so no extra is needed). On `traigent>=0.28.0` the SDK loads your project's `.env` itself when you decorate a function (found by walking up from the working directory to the nearest `.git`, `pyproject.toml`, `setup.cfg` or `setup.py`, then a `.env` beside the installed package): `TRAIGENT_API_KEY` and provider keys in it count as set, values already in the environment win, and `TRAIGENT_SKIP_DOTENV=1` turns the load off. On 0.24.0-0.27.0 only the `.env` beside the installed package is read, so keep the explicit `load_dotenv()` above; it is harmless on newer releases.
 
 Before writing any key, run this in the directory that will hold `.env`:
 

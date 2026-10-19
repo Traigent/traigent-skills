@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "667ccfc56bf71f03",
+  "doc_hash": "caf611675fbfb4ad",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/environment-variables.md": "84bbd07054919956",
+    "references/environment-variables.md": "782609ee8121d971",
     "references/first-value-fallback.md": "60b459fb82958bf7",
     "references/installation-extras.md": "1f85f18cdd0be60e",
     "references/run-cost-and-limits.md": "8579f950b7e78af6"
@@ -374,6 +374,17 @@
       "doc_before_hash": "c8f6fb412441c70a",
       "doc_after_hash": "667ccfc56bf71f03",
       "note": "The .env key-entry block checks external GIT_* locations whether or not git is installed.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-443",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "667ccfc56bf71f03",
+      "doc_after_hash": "caf611675fbfb4ad",
+      "note": "Version-scope the project .env claim: 0.28.0+ loads it on decoration (TRAIGENT_SKIP_DOTENV opt-out, load order); mock-not-offline bullet notes .env keys count as set (#443).",
       "source_type": "agent"
     }
   ]
