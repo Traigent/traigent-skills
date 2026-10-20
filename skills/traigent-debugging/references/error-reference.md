@@ -98,9 +98,13 @@ or `ValueError` for those.
 
 ### ProviderValidationError
 
-**API key validation failure.**
+**API key validation failure — opt-in, never raised by the SDK on its own.**
 
-Raised before optimization starts when provider API keys are invalid or missing.
+`@traigent.optimize` runs no automatic provider validation, so nothing in the SDK raises this.
+It exists for you to raise from your own pre-run check: call
+`validate_providers(...)` (`from traigent.providers import validate_providers` — a plain
+`import traigent` does not expose the submodule), inspect the results, and raise
+`ProviderValidationError` yourself if you want a hard failure before any paid trial.
 
 | Attribute | Type | Description |
 |---|---|---|
@@ -110,7 +114,7 @@ Raised before optimization starts when provider API keys are invalid or missing.
 
 **Resolution**:
 1. Set correct API keys in environment variables
-2. Or skip validation by setting `TRAIGENT_SKIP_PROVIDER_VALIDATION=true` (there is no `validate_providers` decorator argument)
+2. Or let your own pre-run check honour `TRAIGENT_SKIP_PROVIDER_VALIDATION`. Setting it switches nothing off on its own: `validate_providers()` does not read it and the decorator never validates keys. Branch on `traigent.utils.env_config.skip_provider_validation()` before calling (there is no `validate_providers` decorator argument)
 
 ### CostLimitExceeded
 
@@ -211,7 +215,7 @@ Base class for validation-related errors. Subclasses include:
 | `plugin_name` | `str \| None` | Required plugin name. |
 | `install_hint` | `str \| None` | pip install command to fix. |
 
-**Resolution**: Run the `install_hint` command (e.g., `pip install "traigent[integrations]>=0.19"`).
+**Resolution**: Run the `install_hint` command (e.g., `pip install "traigent[integrations]>=0.24.0"`).
 
 ### DataIntegrityError
 
@@ -275,6 +279,8 @@ try:
 except CostLimitExceeded as e:
     print(f"Pre-run estimate ${e.estimated} exceeds the ${e.limit:.2f} limit — approve or lower it")
 except ProviderValidationError as e:
+    # Only reachable if YOUR pre-run validate_providers() check raises it;
+    # the SDK never raises this itself (see the entry above).
     print(f"Bad API keys: {e.failed_providers}")
 except ConfigurationError as e:
     print(f"Config problem: {e.message}")

@@ -122,8 +122,9 @@ for exploration, but it is not acceptable for production accounting.
 
 Before a real run:
 
-1. Verify model IDs with `traigent models --provider <provider> --check <model_id>`
-   or the provider's live catalog.
+1. Verify model IDs with `traigent models --provider <provider> --check <model_id>` as a shape
+   preflight, then confirm liveness against the provider's live catalog — keyless the CLI cannot
+   see a delisting.
 2. Keep `TRAIGENT_STRICT_COST_ACCOUNTING=true` for production runs that must fail
    when cost cannot be extracted.
 3. If a genuinely custom/unpriced model is intentional, use an explicit approval

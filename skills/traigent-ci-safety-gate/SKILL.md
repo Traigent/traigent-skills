@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.10"
+  version: "1.0.11"
 ---
 
 # CI Safety Gate
@@ -110,9 +110,13 @@ Validate TVL specs in CI before running the gate:
 python -m traigent.tvl path/to/promotion-gate.tvl.yml --strict
 ```
 
-Name specs `*.tvl.yml` (or `*.tvl.yaml`): the validator discovers only those in a directory, and it
-exits 0 when it finds no spec at all, even after printing `ERROR: File not found` for a missing
-path. So a CI step must assert that at least one spec exists, as the workflows below do.
+Name specs `*.tvl.yml` (or `*.tvl.yaml`): the validator discovers only those in a directory. On
+SDK **0.30.0 and earlier** it exits 0 when it finds no spec at all, even after printing
+`ERROR: File not found` for a missing path. The SDK's development branch changes this — a missing
+path becomes a failure and an empty selection exits 1 unless `--allow-empty` is passed — but no
+release contains it yet, so re-check the behaviour (and this note) against the first release after
+0.30.0. Either way a CI step must assert that at least one spec exists, as the workflows below do:
+that assertion is correct on both sides of the change.
 
 ## Applying the Winning Config
 
@@ -178,9 +182,21 @@ jobs:
   safety-gate:
     runs-on: ubuntu-latest
     env:
-      TRAIGENT_RUN_COST_LIMIT: "0.00"
       TRAIGENT_OFFLINE_MODE: "true"
       TRAIGENT_RUN_APPROVED: "1"
+      # TRAIGENT_RUN_COST_LIMIT is deliberately NOT set here. The SDK rejects a
+      # non-positive limit (`ConfigurationError: ... must be > 0 USD`) as soon as
+      # the cost enforcer is built, so "0.00" would red-fail the first offline
+      # optimize()/optimize_sync() call this job reaches. The YAML never calls
+      # it directly -- only your own run_holdout_eval.py would, and the
+      # reference implementation in references/gate-workflow.md does not, which
+      # is the only reason "0.00" was ever green here. A token cap such as
+      # "0.01" can fail too, because the pre-run check uses a conservative
+      # estimate even offline -- measured at $0.32 for a two-row dataset and
+      # two grid trials, so scale the figure to your job before trusting it.
+      # Leave it unset (the $2.00 default) and rely on
+      # TRAIGENT_OFFLINE_MODE for zero spend; set a cap only in the paid job,
+      # above the estimate for its dataset and trial count.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

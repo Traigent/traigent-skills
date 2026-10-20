@@ -56,7 +56,7 @@ def test_pareto_recipe_names_the_pandas_extra(repo_root: Path) -> None:
     text = (repo_root / MCP_SKILLS[0]).read_text(encoding="utf-8")
     section = text.split("## The Quality / Cost / Latency Trade-off", 1)[1]
     recipe_at = section.index("to_aggregated_dataframe(primary_objective")
-    assert 'pip install "traigent[analytics]>=0.19"' in section[:recipe_at]
+    assert 'pip install "traigent[analytics]>=0.24.0"' in section[:recipe_at]
 
 
 def test_mcp_unreachable_fallback_is_unchanged(repo_root: Path) -> None:

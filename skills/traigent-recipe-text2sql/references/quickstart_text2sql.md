@@ -17,7 +17,15 @@ it runs end-to-end with only a Traigent key + an LLM key, in minutes.
     python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 
 Env (from .env): TRAIGENT_API_KEY, and an LLM key (OPENROUTER_API_KEY is easiest).
-Requires: pip install -U "traigent>=0.19" litellm  (Python 3.12).
+Requires: pip install -U "traigent>=0.24.0" "litellm>=1.106.0"  (Python 3.12).
+`litellm>=1.106.0` is the pricing map the cost objective reads, and **which map** matters here:
+LiteLLM's bundled map prices this recipe's `openrouter/openai/gpt-4o-mini` and
+`openrouter/deepseek/deepseek-chat`, while its remote map carries no `openrouter/` prices at all.
+`import traigent` sets `LITELLM_LOCAL_MODEL_COST_MAP=True` for you (SDK 0.29.0+) — but by
+`setdefault`, so it is too late if `litellm` was imported first. That is why the script below
+imports `traigent` first; keep that order, or export the variable yourself. Setting
+`TRAIGENT_LITELLM_LIVE_PRICES=1` opts back out. If the remote map is in force,
+`unpriced_models()` below refuses the `--real` run rather than scoring those models $0.
 
 To scale up: swap the embedded DB + questions for the real SPIDER dev set (each
 example carries a db_id; resolve schema/connection per db_id) — the wiring below
@@ -35,9 +43,14 @@ import tempfile
 import time
 from pathlib import Path
 
+# `import traigent` FIRST, before litellm: it sets LITELLM_LOCAL_MODEL_COST_MAP=True with
+# setdefault, and that only takes effect if litellm has not already built its map. With
+# litellm imported first (the order isort would produce) the bundled map is never used and
+# every `openrouter/` price disappears, so unpriced_models() below refuses the --real run.
+import traigent  # isort: split
+
 import litellm
 
-import traigent
 from traigent.api.decorators import EvaluationOptions, ExecutionOptions
 from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 from traigent.evaluators.base import ExampleResult

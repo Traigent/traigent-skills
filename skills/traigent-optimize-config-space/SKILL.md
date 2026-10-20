@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.11"
+  version: "1.0.12"
 ---
 
 # Traigent Configuration Space
@@ -146,7 +146,7 @@ regularization = LogRange(0.001, 10.0)
 
 ```python
 # String choices
-model = Choices(["gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet-20241022"])
+model = Choices(["gpt-4o-mini", "gpt-4o", "claude-sonnet-5-5"])
 
 # Boolean choices
 use_cot = Choices([True, False], default=True)
@@ -155,7 +155,7 @@ use_cot = Choices([True, False], default=True)
 temperature = Choices([0.0, 0.3, 0.7, 1.0])
 
 # With a default
-model = Choices(["gpt-4o-mini", "gpt-4o"], default="gpt-4o-mini")
+model = Choices(["gpt-6-luna", "gpt-5.6-sol"], default="gpt-6-luna")
 ```
 
 See `references/parameter-types.md` for complete API details.
@@ -319,7 +319,7 @@ Use `&` (and), `|` (or), `~` (not) operators to combine conditions:
 ```python
 from traigent import Range, Choices, implies
 
-model = Choices(["gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet-20241022"])
+model = Choices(["gpt-4o-mini", "gpt-4o", "claude-sonnet-5-5"])
 temp = Range(0.0, 1.5)
 max_tokens = IntRange(100, 4096)
 
@@ -336,7 +336,7 @@ constraints = [
     ),
     # If model is gpt-4o OR claude, limit temperature
     implies(
-        model.equals("gpt-4o") | model.equals("claude-3-5-sonnet-20241022"),
+        model.equals("gpt-4o") | model.equals("claude-sonnet-5-5"),
         temp.lte(0.9),
     ),
 ]

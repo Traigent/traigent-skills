@@ -8,15 +8,31 @@ export LITELLM_LOCAL_MODEL_COST_MAP=True
 python -m venv .venv
 source .venv/bin/activate
 
-python -m pip install --upgrade --timeout 60 --retries 5 "traigent>=0.19"
+python -m pip install --upgrade --timeout 60 --retries 5 "traigent>=0.24.0"
 python - <<'PY'
 import importlib.metadata as md
 import traigent
+
+FLOOR = "0.24.0"  # the floor these skills are written against
 v = md.version("traigent")
 if v == "0.0.1" or not hasattr(traigent, "optimize"):
     raise SystemExit(
         f"Bad Traigent install: traigent {v}. "
-        'You likely got the PyPI placeholder — reinstall with: python -m pip install --upgrade "traigent>=0.19"'
+        'You likely got the PyPI placeholder — reinstall with: python -m pip install --upgrade "traigent>=0.24.0"'
+    )
+
+# Imported only after the placeholder check: the 0.0.1 placeholder declares no
+# dependencies, so in a fresh venv this import would raise ModuleNotFoundError
+# and hide the message above -- in exactly the case that message exists for.
+# A real install always has it (traigent -> litellm -> packaging>=24.0).
+from packaging.version import Version
+
+if Version(v) < Version(FLOOR):
+    raise SystemExit(
+        f"Traigent {v} is below the {FLOOR} floor these skills are written against "
+        "(cost/latency metric units changed in 0.23.0, `traigent plan` URL resolution in "
+        "0.20.0, and the `auto`/smart selector names in 0.20.1). "
+        'Upgrade with: python -m pip install --upgrade "traigent>=0.24.0"'
     )
 print(f"traigent {v} OK")
 PY

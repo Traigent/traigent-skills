@@ -1,6 +1,6 @@
 # Gate Workflow
 
-Copy this workflow into `.github/workflows/traigent-safety-gate.yml` and adapt the two `scripts/run_holdout_eval.py` calls to your project (a reference implementation is provided below — the gate does not work without it). The config files are the export artifacts from the lifecycle skill: `configs/baseline.json` is the pinned incumbent, and `configs/candidate.json` is the `export_config("candidate_config.json")` artifact from the winning run, committed by the PR under review. Each run should write JSON with this shape:
+Copy this workflow into `.github/workflows/traigent-safety-gate.yml` and adapt the two `scripts/run_holdout_eval.py` calls to your project (a reference implementation is provided below — the gate does not work without it). The config files are the export artifacts from the lifecycle skill: `configs/baseline.json` is the pinned incumbent, and `configs/candidate.json` is the `export_config("candidate_config.json")` artifact from the winning run, committed by the PR under review — note that `export_config` writes a wrapper (`{"config": {...}, ...}`), not a flat configuration, so the reference script below unwraps it. Each run should write JSON with this shape:
 
 ```json
 {
@@ -38,10 +38,23 @@ jobs:
     runs-on: ubuntu-latest
     env:
       TRAIGENT_OFFLINE_MODE: "true"
-      TRAIGENT_RUN_COST_LIMIT: "0.00"
-      # Required for ANY offline/mock optimize() under CI=true — without it
-      # the SDK raises OptimizationError and this job red-fails on every PR.
+      # Required for ANY offline/mock optimize() under CI=true — without it,
+      # any such call your run_holdout_eval.py makes raises OptimizationError
+      # and red-fails the job.
       TRAIGENT_RUN_APPROVED: "1"
+      # TRAIGENT_RUN_COST_LIMIT is deliberately NOT set here. The SDK rejects a
+      # non-positive limit (`ConfigurationError: ... must be > 0 USD`) as soon as
+      # the cost enforcer is built, so "0.00" would red-fail the first offline
+      # optimize()/optimize_sync() call this job reaches. The YAML never calls
+      # it directly -- only your own run_holdout_eval.py would, and the
+      # reference implementation in references/gate-workflow.md does not, which
+      # is the only reason "0.00" was ever green here. A token cap such as
+      # "0.01" can fail too, because the pre-run check uses a conservative
+      # estimate even offline -- measured at $0.32 for a two-row dataset and
+      # two grid trials, so scale the figure to your job before trusting it.
+      # Leave it unset (the $2.00 default) and rely on
+      # TRAIGENT_OFFLINE_MODE for zero spend; set a cap only in the paid job,
+      # above the estimate for its dataset and trial count.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -115,24 +128,136 @@ import time
 from pathlib import Path
 
 
+# `export_config(...)` does NOT write a flat configuration: it writes a wrapper.
+# format="slim" (the default) writes {"config", "function_name", "exported_at",
+# "traigent_version", "metrics"}; format="full" adds "trials", "optimization"
+# and "configuration_space"; include_metadata=False writes a bare
+# {"config": {...}} with no "exported_at", so never key the unwrap on that field.
+_EXPORT_WRAPPER_KEYS = {
+    "config", "function_name", "exported_at", "traigent_version", "metrics",
+    "trials", "optimization", "configuration_space",
+}
+# Keys only an export carries. A document with any of these is a wrapper, even
+# if its "config" is missing -- which is what tells us to refuse rather than
+# hand the envelope to the agent. "metrics" and "config" are excluded: both are
+# plausible knob names in a genuinely flat configuration.
+_EXPORT_MARKER_KEYS = _EXPORT_WRAPPER_KEYS - {"config", "metrics"}
+
+# The SDK accepts several label keys and resolves them in this order
+# (traigent.evaluators.base._EXPECTED_OUTPUT_FIELDS). The datasets the other
+# skills teach use "output", so read the same keys in the same order.
+_EXPECTED_OUTPUT_FIELDS = ("output", "expected", "expected_output", "answer", "target", "label")
+# Same for the input side: the SDK takes "input", else "input_data", and
+# `traigent-dataset-curate` tells readers both are accepted.
+_INPUT_FIELDS = ("input", "input_data")
+
+
+def unwrap_config(doc: object) -> dict:
+    """Accept either an export_config artifact or an already-flat config.
+
+    Fails closed on an unrecognised wrapper key instead of guessing. Silently
+    treating an unknown wrapper as a flat config is the original defect wearing
+    a new shape: the agent is handed the envelope, applies none of the tuned
+    values, and the gate still emits a promotion decision.
+
+    An EMPTY config is allowed -- a pinned incumbent may legitimately mean
+    "the agent's own defaults". If you want to refuse a candidate that applies
+    nothing, assert it in the workflow, not here.
+
+    Known limit: a genuinely flat config whose own knobs are named only from
+    the wrapper vocabulary (a knob called `config` holding a dict, beside one
+    called `metrics`) is indistinguishable from a wrapper and will be
+    unwrapped. Rename such a knob, or pass the config already unwrapped.
+    """
+    if not isinstance(doc, dict):
+        raise SystemExit(f"config file must contain a JSON object, got {type(doc).__name__}")
+    # Wrapper-ness is decided by a marker only an export carries, never by the
+    # presence of a readable `config`. Keying on `config` alone let a wrapper
+    # whose config key was absent, null or renamed fall through as a flat
+    # config, which is the same silent pass-through in a new costume.
+    markers = sorted(set(doc) & _EXPORT_MARKER_KEYS)
+    # include_metadata=False writes a bare {"config": {...}} with no marker at
+    # all, so that exact shape counts as a wrapper too -- and only that shape,
+    # since any extra key would make it indistinguishable from a flat config.
+    bare = set(doc) == {"config"} and isinstance(doc.get("config"), dict)
+    if not markers and not bare:
+        return doc
+    unknown = sorted(set(doc) - _EXPORT_WRAPPER_KEYS)
+    if unknown:
+        raise SystemExit(
+            f"config file looks like an export_config wrapper (has {markers}) but carries "
+            f"unrecognised keys {unknown}; refusing to guess. Re-export it, or pass the "
+            "inner config."
+        )
+    if not isinstance(doc.get("config"), dict):
+        raise SystemExit(
+            f"config file looks like an export_config wrapper (has {markers}) but its "
+            "'config' key is missing or not an object; refusing to run the agent on the "
+            "envelope. Re-export it, or pass the inner config."
+        )
+    return doc["config"]
+
+
+def expected_output(example: dict):
+    """Return the row's label, using the SDK's own key precedence."""
+    for key in _EXPECTED_OUTPUT_FIELDS:
+        if key in example:
+            return example[key]
+    raise SystemExit(
+        f"holdout row has no label key; expected one of {list(_EXPECTED_OUTPUT_FIELDS)}, got {sorted(example)}"
+    )
+
+
+def model_input(example: dict):
+    """Return the row's input, using the SDK's own key precedence."""
+    for key in _INPUT_FIELDS:
+        if key in example:
+            return example[key]
+    raise SystemExit(
+        f"holdout row has no input key; expected one of {list(_INPUT_FIELDS)}, got {sorted(example)}"
+    )
+
+
+def matches(output, expected) -> float:
+    """A deliberately simple exact match: case-insensitive and
+    whitespace-trimmed when BOTH sides are strings, plain equality otherwise.
+
+    This is NOT the SDK's optimizer-side accuracy, which additionally coerces a
+    string output toward the label's type and compares containers element-wise.
+    The gap matters whenever the value is numeric or structured in any
+    representation. The optimizer coerces a JSON-text output toward a dict/list
+    label, and coerces a numeric string pair ("4.0" vs "4") to numbers; this
+    gate scores both 0.0, so it would reject a candidate that genuinely won.
+    If your labels are dicts, lists or numbers -- including numbers stored as
+    strings, the common JSONL habit -- parse both sides here before comparing."""
+    if isinstance(output, str) and isinstance(expected, str):
+        return 1.0 if output.strip().lower() == expected.strip().lower() else 0.0
+    return 1.0 if output == expected else 0.0
+
+
 def evaluate_one(example: dict, config: dict, mode: str) -> tuple[float, float, float | None]:
     """Return (accuracy, latency_ms, cost) for one holdout example.
 
-    ADAPT THIS: apply `config` to your agent and call it. In --mode mock
-    return canned values without touching any provider (zero spend).
-    In --mode real, cost must be the MEASURED USD of this call (for a
-    LiteLLM agent: `litellm.completion_cost(response)`; otherwise price the
-    usage the provider returned) or None when it could not be measured —
-    never a 0.0 placeholder, which would make the budget check pass on nothing.
+    ADAPT THIS: apply `config` to your agent and call it. In --mode real, cost
+    must be the MEASURED USD of this call (for a LiteLLM agent:
+    `litellm.completion_cost(response)`; otherwise price the usage the provider
+    returned) or None when it could not be measured — never a 0.0 placeholder,
+    which would make the budget check pass on nothing.
+
+    --mode mock still reads the row's input and label before returning canned
+    values (and main() has already validated the config shape for both modes),
+    so the zero-spend PR job catches a bad config shape or a bad row key -- the
+    two that used to surface only at 03:00. It does NOT call run_my_agent, so a
+    broken adapter still surfaces first in the paid job.
     """
+    expected = expected_output(example)
+    value = model_input(example)
     if mode == "mock":
         return 1.0, 0.0, 0.0
     start = time.perf_counter()
-    output, cost = run_my_agent(example["input"], config)  # <- your agent call; return its measured cost too
+    output, cost = run_my_agent(value, config)  # <- your agent call; return its measured cost too
     latency_ms = (time.perf_counter() - start) * 1000.0
-    # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
-    accuracy = 1.0 if output.strip().lower() == example["expected_output"].strip().lower() else 0.0
-    return accuracy, latency_ms, cost
+    return matches(output, expected), latency_ms, cost
 
 
 def main() -> None:
@@ -143,7 +268,7 @@ def main() -> None:
     parser.add_argument("--mode", choices=["real", "mock"], default="real")
     args = parser.parse_args()
 
-    config = json.loads(args.config.read_text(encoding="utf-8"))
+    config = unwrap_config(json.loads(args.config.read_text(encoding="utf-8")))
     accuracy: list[float] = []
     latency: list[float] = []
     total_cost = 0.0

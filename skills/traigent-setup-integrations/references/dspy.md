@@ -12,7 +12,7 @@ Traigent provides the `DSPyPromptOptimizer` adapter for integrating DSPy's autom
 ## Installation
 
 ```bash
-pip install "traigent>=0.19" "dspy==3.3.1"  # the version these examples were verified on
+pip install "traigent>=0.24.0" "dspy==3.3.1"  # the version these examples were verified on
 ```
 
 ## DSPyPromptOptimizer
@@ -147,7 +147,7 @@ import dspy
 @traigent.optimize(
     eval_dataset="qa_eval.jsonl",
     configuration_space={
-        "model": ["gpt-4o-mini", "gpt-4o", "claude-3-haiku-20240307"],
+        "model": ["gpt-4o-mini", "gpt-4o", "claude-haiku-5-5"],
         "temperature": [0.0, 0.3, 0.7],
     },
     objectives=["accuracy"],

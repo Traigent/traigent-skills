@@ -1,6 +1,6 @@
 # Traigent Installation Extras
 
-Full reference of optional dependency groups available via `pip install 'traigent[extra_name]>=0.19'`.
+Full reference of optional dependency groups available via `pip install 'traigent[extra_name]>=0.24.0'`.
 
 ## Extras Table
 
@@ -29,27 +29,27 @@ Full reference of optional dependency groups available via `pip install 'traigen
 
 ```bash
 # Individual extras
-pip install "traigent[analytics]>=0.19"
-pip install "traigent[bayesian]>=0.19"
-pip install "traigent[integrations]>=0.19"
-pip install "traigent[pydanticai]>=0.19"
-pip install "traigent[security]>=0.19"
-pip install "traigent[visualization]>=0.19"
-pip install "traigent[hybrid]>=0.19"
-pip install "traigent[tracing]>=0.19"
-pip install "traigent[test]>=0.19"
-pip install "traigent[dev]>=0.19"
-pip install "traigent[docs]>=0.19"
-pip install "traigent[ml]>=0.19"
-pip install "traigent[cloud]>=0.19"
+pip install "traigent[analytics]>=0.24.0"
+pip install "traigent[bayesian]>=0.24.0"
+pip install "traigent[integrations]>=0.24.0"
+pip install "traigent[pydanticai]>=0.24.0"
+pip install "traigent[security]>=0.24.0"
+pip install "traigent[visualization]>=0.24.0"
+pip install "traigent[hybrid]>=0.24.0"
+pip install "traigent[tracing]>=0.24.0"
+pip install "traigent[test]>=0.24.0"
+pip install "traigent[dev]>=0.24.0"
+pip install "traigent[docs]>=0.24.0"
+pip install "traigent[ml]>=0.24.0"
+pip install "traigent[cloud]>=0.24.0"
 
 # Combined bundles
-pip install "traigent[recommended]>=0.19"
-pip install "traigent[all]>=0.19"
-pip install "traigent[enterprise]>=0.19"
+pip install "traigent[recommended]>=0.24.0"
+pip install "traigent[all]>=0.24.0"
+pip install "traigent[enterprise]>=0.24.0"
 
 # Multiple extras at once
-pip install "traigent[integrations,analytics,visualization]>=0.19"
+pip install "traigent[integrations,analytics,visualization]>=0.24.0"
 ```
 
 DSPy is not a Traigent extra: requesting a `dspy` extra only makes pip warn `does not provide the extra`
@@ -57,12 +57,12 @@ and installs Traigent without DSPy. Install DSPy alongside Traigent and pin it â
 examples were verified on:
 
 ```bash
-pip install "traigent>=0.19" "dspy==3.3.1"
+pip install "traigent>=0.24.0" "dspy==3.3.1"
 ```
 
 ## Core Dependencies (Always Installed)
 
-The base `pip install "traigent>=0.19"` includes `litellm`, so keyless mock-mode
+The base `pip install "traigent>=0.24.0"` includes `litellm`, so keyless mock-mode
 examples can intercept `litellm.completion(...)` without an integrations extra. It also
 includes core SDK/runtime packages such as `pydantic`, `click`, and `httpx`.
 

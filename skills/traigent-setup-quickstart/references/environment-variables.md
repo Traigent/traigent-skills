@@ -17,9 +17,9 @@ Common environment variables for Traigent quickstart workflows.
 | `TRAIGENT_LOG_EXAMPLE_CONTENT`    | `true`          | The SDK writes per-example prompt/response/expected text to its local run logs by default; set to `false` to keep ids and metrics only. |
 | `TRAIGENT_BACKEND_URL`            | `https://portal.traigent.ai` | Backend the SDK talks to. Set only for a dev or self-hosted backend; a key issued by one backend is a 401 on another. |
 | `TRAIGENT_DATASET_ROOT`           | (cwd)           | Directory every `eval_dataset` path must sit under (offline runs included); a path elsewhere is rejected when the run loads the dataset. |
-| `TRAIGENT_VALIDATION_TIMEOUT`     | `5.0`           | Timeout in seconds for provider API key validation checks.                                          |
-| `TRAIGENT_STRICT_COST_ACCOUNTING` | `false`         | When `true`, enables strict cost tracking. Cost overruns raise errors instead of warnings.          |
-| `TRAIGENT_LOG_LEVEL`              | `INFO`          | Logging verbosity. Options: `DEBUG`, `INFO`, `WARNING`, `ERROR`. |
+| `TRAIGENT_VALIDATION_TIMEOUT`     | `5.0`           | Timeout in seconds for provider API key validation checks — i.e. for your own `validate_providers(...)` call; the SDK runs none of its own. |
+| `TRAIGENT_STRICT_COST_ACCOUNTING` | `false`, but see note | When `true`, fail fast (raise `CostTrackingRequiredError`) when a call's cost cannot be determined, instead of recording $0. It is **not** a budget guard — a budget overrun is governed by `TRAIGENT_RUN_COST_LIMIT`. **Unset is not the same as `false`:** a run whose `objectives` include `cost` turns strict accounting on for itself, so an unpriced model raises there even with the variable unset. An explicit value always wins. |
+| `TRAIGENT_LOG_LEVEL`              | `INFO`          | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) for `traigent.configure(...)`, `traigent.initialize()` and the `traigent` CLI; when set it overrides the level they are given. It does **not** enable Traigent logs in a script that only uses `@traigent.optimize`. |
 | `TRAIGENT_DEBUG`                  | (unset)         | When set to `1`, shows full tracebacks for `ConfigurationError` instead of user-friendly messages.  |
 | `TRAIGENT_STRICT_VALIDATION`      | `true`          | When `true`, DTO schema validation raises exceptions. When `false`, logs warnings only.             |
 | `ENVIRONMENT`                      | `development`   | Execution environment. Set to `production` for production deployments.                              |
@@ -55,9 +55,13 @@ enable_mock_mode_for_quickstart()
 
 ```bash
 export LITELLM_LOCAL_MODEL_COST_MAP=True   # no pricing-map download when your script imports litellm
-export TRAIGENT_LOG_LEVEL=DEBUG
+export TRAIGENT_LOG_LEVEL=DEBUG            # applied only once configure()/initialize()/the CLI runs
 python my_optimization.py
 ```
+
+The script above uses `@traigent.optimize` only, so `TRAIGENT_LOG_LEVEL` alone changes LiteLLM's
+verbosity, not Traigent's — see [Debug Mode](#debug-mode) for the call that turns Traigent's own
+logs on.
 
 ### CI/CD Pipeline
 
@@ -65,9 +69,13 @@ CI environments typically already have a conftest or fixture that calls `enable_
 
 ```bash
 export TRAIGENT_RUN_APPROVED=1            # CI approval gate: GitHub Actions requires it even for mock/offline runs
-export TRAIGENT_SKIP_PROVIDER_VALIDATION=true
 pytest tests/
 ```
+
+`TRAIGENT_SKIP_PROVIDER_VALIDATION` is not needed here: the SDK runs no provider validation of its
+own, so there is nothing for it to skip. It is a signal your own pre-run check reads (via
+`traigent.utils.env_config.skip_provider_validation()`); setting it does not stop
+`validate_providers()` from running if your suite calls that directly.
 
 ### Production with Cost Controls
 
@@ -84,9 +92,20 @@ python optimize_production.py
 
 ### Debug Mode
 
+Neither variable turns on Traigent debug logs in a script that only uses
+`@traigent.optimize`: `TRAIGENT_LOG_LEVEL` is applied by `traigent.configure(...)`,
+`traigent.initialize()` and the `traigent` CLI, and `TRAIGENT_DEBUG=1` only shows raw
+`ConfigurationError` tracebacks. Call `configure()` in the script to get the logs.
+
+```python
+import traigent
+
+traigent.configure(logging_level="DEBUG")  # Traigent debug logs; note it reconfigures the ROOT logger
+```
+
 ```bash
-export TRAIGENT_LOG_LEVEL=DEBUG
-export TRAIGENT_DEBUG=1
+export TRAIGENT_LOG_LEVEL=DEBUG   # honoured by configure()/initialize()/the CLI
+export TRAIGENT_DEBUG=1           # raw ConfigurationError tracebacks only
 python my_optimization.py
 ```
 
@@ -103,3 +122,7 @@ TRAIGENT_API_KEY=sk_...
 OPENAI_API_KEY=sk-...
 TRAIGENT_LOG_LEVEL=DEBUG
 ```
+
+`TRAIGENT_LOG_LEVEL` here is read by `traigent.configure(...)`, `traigent.initialize()` and the
+`traigent` CLI — and when it is set it **overrides** the level passed to `configure()`. On its own,
+in a script that only uses `@traigent.optimize`, it does not enable Traigent debug logs.
