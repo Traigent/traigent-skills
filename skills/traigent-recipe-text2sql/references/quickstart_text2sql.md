@@ -24,7 +24,7 @@ LiteLLM's bundled map prices this recipe's `openrouter/openai/gpt-4o-mini` and
 `import traigent` sets `LITELLM_LOCAL_MODEL_COST_MAP=True` for you (SDK 0.29.0+) — but by
 `setdefault`, so it is too late if `litellm` was imported first. That is why the script below
 imports `traigent` first; keep that order, or export the variable yourself. Setting
-`TRAIGENT_LITELLM_LIVE_PRICES=1` opts back out. If the remote map is in force,
+`TRAIGENT_LITELLM_LIVE_PRICES=1` (SDK 0.29.0+) opts back out. If the remote map is in force,
 `unpriced_models()` below refuses the `--real` run rather than scoring those models $0.
 
 To scale up: swap the embedded DB + questions for the real SPIDER dev set (each
