@@ -23,16 +23,20 @@ of every trial that uses it.
 1. **Dry run for $0.** Call `enable_mock_mode_for_quickstart()` (from `traigent.testing`) and
    declare `offline=True` on the decorated function. No model calls, no provider spend, no
    backend traffic. It proves the wiring, not the quality.
-2. **A spending cap.** Pass `cost_limit` in USD to `.optimize()` (or set
-   `TRAIGENT_RUN_COST_LIMIT`; the default is $2.00). A pre-run estimate over the cap stops the
-   run before anything is spent; a cap hit mid-run stops the run and keeps the finished trials
-   (`stop_reason == "cost_limit"`).
+2. **An SDK admission budget.** Pass `cost_limit` in USD to `.optimize()` (or set
+   `TRAIGENT_RUN_COST_LIMIT`; the default is $2.00). Without prior approval, an over-limit
+   pre-run estimate is refused when stdin is non-TTY; a TTY prompts to abort, approve at the
+   current limit, or raise it. Assistant-launched processes may be either kind. Never silently
+   raise the limit or set `TRAIGENT_COST_APPROVED=true` to bypass the user's decision.
+   Runtime admission reserves estimated cost per trial and reconciles actual cost afterwards.
+   A large admitted trial and parallel in-flight work can overshoot the approved limit before
+   the next admission is denied. A mid-run stop keeps finished trials (`stop_reason == "cost_limit"`).
 3. **A size cap.** `max_trials` limits the number of trials; `max_total_examples` limits the
    examples summed over all trials. Start small.
 
 ## Cost you can't see is still billed
 
-`cost_limit` only bounds the cost Traigent measures. Traigent measures calls made through:
+`cost_limit` applies only to the cost Traigent measures and is not a hard billing ceiling. Traigent measures calls made through:
 
 - LangChain chat models called with synchronous `.invoke`
 - non-streaming `litellm.completion` / `litellm.acompletion`
@@ -42,6 +46,16 @@ It does not reliably measure streaming calls, async LangChain (`ainvoke`, `abatc
 OpenAI, Anthropic or Google SDK calls, or plain HTTP requests. Calls your evaluator or an LLM
 judge makes directly may not be counted either. Your provider bills all of them, but Traigent
 reports them as `$0` or as not measured (`None`), so the cap cannot stop them.
+
+## Judge accounting (SDK 0.28.0+)
+
+On SDK 0.28.0+, metric-function judge calls through intercepted clients
+(non-streaming LiteLLM or synchronous LangChain `.invoke`) with usable usage and pricing are
+folded into trial cost and the cost-limit ledger, with a separate `evaluation_cost` metric.
+That breakdown can be dropped at the metric-key ceiling; folded cost remains counted.
+SDK <= 0.27.x, unintercepted provider-SDK/HTTP judges and uncaptured streams are outside this fold.
+The pre-run estimator does not include judge calls: keep judge cost as a separate
+budget line (calls per scored row × price × rows × trials).
 
 Fix: route the model call through a measured client above. For a gateway or custom model name,
 give it a price with `TRAIGENT_CUSTOM_MODEL_PRICING_JSON`.
@@ -68,6 +82,15 @@ From SDK 0.30.0 (see version-matrix: `unmeasured-cost-cap`) an unmeasured call s
   `COST_UNMEASURED_TRIALS_RAN`.
 - Partial capture: `COST_OBJECTIVE_PARTIAL_USAGE_CAPTURED`; nothing captured with a cost
   objective: `COST_OBJECTIVE_NO_USAGE_CAPTURED` (this one exists from 0.29.0).
+
+## If you need a hard billing ceiling
+
+Independently verify the chosen provider's enforcement: what limit is enforced, whether it
+blocks new calls, which keys/projects it covers, and residual concurrent/in-flight exposure.
+A project budget or notification threshold may be advisory; its name does not prove enforcement.
+If the provider cannot enforce the requested ceiling, state that the guarantee is unavailable.
+SDK/account funds availability, application size limits, provider enforcement, model-call approval
+and private-data destination approval are separate checks. Never collect credential values in chat.
 
 ## Before a real run, check
 

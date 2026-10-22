@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1d79ccf7ce0a0182",
+  "doc_hash": "48859653f53d7268",
   "reference_hashes": {
     "references/evaluator-templates.md": "b82fb09b9b98bbfe"
   },
@@ -73,7 +73,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "cc9f6f6cf32aeae7",
       "doc_after_hash": "01152520c709ad2f",
-      "note": "a judge inside metric_functions is outside the SDK cost ledger on 0.27.0 (local evaluator settles example cost before metric functions run) so judge spend must be budgeted and capped in user code; the Tier-3 example no longer converts a data-shape exception into an ordinary 0.0 (an objective metric that raises fails the trial closed with EvaluationError); nested explicit metadata object pitfall; new pitfall on scoring what the evaluator is handed (fence strip seam, all-0.0/all-1.0 first paid run is a scorer suspect); claim-scope line that a 0.0 must mean a wrong answer; See Also points at traigent-boost-agent (the bare traigent skill was merged).",
+      "note": "historical SDK 0.27.0 claim (fixed in 0.28.0): a judge inside metric_functions is outside the SDK cost ledger (local evaluator settles example cost before metric functions run) so judge spend must be budgeted and capped in user code; the Tier-3 example no longer converts a data-shape exception into an ordinary 0.0 (an objective metric that raises fails the trial closed with EvaluationError); nested explicit metadata object pitfall; new pitfall on scoring what the evaluator is handed (fence strip seam, all-0.0/all-1.0 first paid run is a scorer suspect); claim-scope line that a 0.0 must mean a wrong answer; See Also points at traigent-boost-agent (the bare traigent skill was merged).",
       "source_type": "agent"
     },
     {
@@ -174,6 +174,16 @@
       "doc_after_hash": "1d79ccf7ce0a0182",
       "note": "Scope the multi-call cost-metering caveat (SKILL.md cost-limit pointer and references/evaluator-templates.md) to traigent <= 0.29.0 and name 0.30.0 as the release that fixed it (Traigent 0.30.0 meters every captured call per row, Traigent/Traigent#2441); restamp the caveat's docstamp from the removed literal `response = captured_responses[0]` to `_has_llm_measurement` @ SDK 0.30.0, proving the fix instead of the historical bug.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "customer-guidance-2026-10-06-904518c69db7b02d",
+      "op": "manual_edit",
+      "status": "accepted",
+      "source_type": "agent",
+      "timestamp": "2026-10-06T00:00:00Z",
+      "doc_before_hash": "1d79ccf7ce0a0182",
+      "doc_after_hash": "48859653f53d7268",
+      "note": "Version-scope captured metric-function judge cost from SDK 0.28.0; keep capture, pricing and estimator boundaries."
     }
   ]
 }
