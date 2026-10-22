@@ -47,7 +47,7 @@ def test_quick_diagnostic_produces_traigent_debug_lines_on_a_decorated_run(tmp_p
             from traigent.testing import enable_mock_mode_for_quickstart
             enable_mock_mode_for_quickstart()
 
-            @traigent.optimize(eval_dataset="eval_data.jsonl", configuration_space={"model": ["a", "b"]},
+            @traigent.optimize(eval_dataset="eval_data.jsonl", configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
                                objectives=["accuracy"], offline=True)
             def f(text):
                 return traigent.get_config()["model"]
@@ -60,7 +60,7 @@ def test_quick_diagnostic_produces_traigent_debug_lines_on_a_decorated_run(tmp_p
     env = {
         k: v
         for k, v in os.environ.items()
-        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "TRAIGENT_LOG_LEVEL", "CI", "GITHUB_ACTIONS"}
+        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "TRAIGENT_LOG_LEVEL", "TRAIGENT_SCHEMA_REPO", "CI", "GITHUB_ACTIONS"}
     }
     env.update(
         {

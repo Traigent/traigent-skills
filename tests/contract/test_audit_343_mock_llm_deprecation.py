@@ -124,6 +124,7 @@ def test_mock_zero_cost_admission_matches_sdk_version(
     script.write_text(
         textwrap.dedent(
             """
+            import os
             import traigent
             from pathlib import Path
             from traigent.testing import enable_mock_mode_for_quickstart
@@ -136,6 +137,8 @@ def test_mock_zero_cost_admission_matches_sdk_version(
                                                     "temperature": [0.1, 0.5]})
             def f(question: str) -> str:
                 traigent.get_config()
+                if os.environ.get("MEASURED_ZERO") == "1":
+                    return traigent.with_usage("4", total_cost=0)
                 return "4"
 
             r = f.optimize_sync(max_trials=4, algorithm="grid")
@@ -147,7 +150,7 @@ def test_mock_zero_cost_admission_matches_sdk_version(
     env = {
         k: v
         for k, v in os.environ.items()
-        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "CI", "GITHUB_ACTIONS"}
+        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "TRAIGENT_SCHEMA_REPO", "CI", "GITHUB_ACTIONS"}
     }
     env.update(
         {
@@ -158,6 +161,13 @@ def test_mock_zero_cost_admission_matches_sdk_version(
             "TRAIGENT_RUN_COST_LIMIT": "0.0001",
         }
     )
+    if _uses_observed_mean_admission(sdk_version_label):
+        # SDK develop (#2498): the dataset-sampled pre-run estimate is declined
+        # non-interactively under this tiny limit before any trial; the approval
+        # acknowledges only that estimate. A call with no captured usage is unknown
+        # cost on develop, so the no-model-call probe states a measured $0.
+        env["TRAIGENT_COST_APPROVED"] = "true"
+        env["MEASURED_ZERO"] = "1"
     completed = subprocess.run(
         [sys.executable, str(script)], cwd=tmp_path, env=env, text=True,
         capture_output=True, timeout=180, check=False,

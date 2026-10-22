@@ -47,7 +47,7 @@ with open("eval.jsonl", "w") as fh:
 @traigent.optimize(
     eval_dataset="eval.jsonl", objectives=["accuracy"], algorithm="grid",
     max_trials=2, offline=True,
-    configuration_space={"model": ["small", "large"], "system_prompt": ["Answer briefly."]},
+    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"], "system_prompt": ["Answer briefly."]},
 )
 def answer(text):
     return "a" + text[1:]

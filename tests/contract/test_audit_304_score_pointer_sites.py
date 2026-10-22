@@ -43,7 +43,11 @@ Path("qa.jsonl").write_text(
                    configuration_space={"m": ["x", "y"]})
 def answer(q):
     traigent.get_config()
-    return q.upper() if q != "c" else "wrong"   # 2 of 3 correct
+    out = q.upper() if q != "c" else "wrong"   # 2 of 3 correct
+    # No model call and "cost" is an objective: SDK develop refuses unmeasured cost, so
+    # state a measured $0 (older SDKs ignore it).
+    with_usage = getattr(traigent, "with_usage", None)
+    return with_usage(out, total_cost=0) if with_usage else out
 
 r = answer.optimize_sync(max_trials=1, algorithm="grid")
 t = r.trials[0]

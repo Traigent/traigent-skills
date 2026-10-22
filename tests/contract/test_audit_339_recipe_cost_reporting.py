@@ -78,7 +78,7 @@ def test_recipe_cost_reaches_total_cost_without_reserved_key_warning(tmp_path: P
     env = {
         k: v
         for k, v in os.environ.items()
-        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "CI", "GITHUB_ACTIONS"}
+        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "TRAIGENT_SCHEMA_REPO", "CI", "GITHUB_ACTIONS"}
     }
     env.update(
         {
@@ -145,7 +145,7 @@ def test_with_usage_scoring_contract_on_the_installed_sdk(tmp_path: Path) -> Non
 
             def accuracy(**deco):
                 @traigent.optimize(eval_dataset="qa.jsonl", objectives=["accuracy", "cost"],
-                                   offline=True, configuration_space={"model": ["m"]}, **deco)
+                                   offline=True, configuration_space={"model": ["gpt-4o-mini"]}, **deco)
                 def f(question: str):
                     traigent.get_config()
                     return traigent.with_usage("4", total_cost=0.01), {"latency_ms": 1.0}
@@ -166,7 +166,7 @@ def test_with_usage_scoring_contract_on_the_installed_sdk(tmp_path: Path) -> Non
     env = {
         k: v
         for k, v in os.environ.items()
-        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "CI", "GITHUB_ACTIONS"}
+        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "TRAIGENT_SCHEMA_REPO", "CI", "GITHUB_ACTIONS"}
     }
     env.update(
         {
