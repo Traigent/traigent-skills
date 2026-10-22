@@ -41,7 +41,9 @@ the installed `traigent.__version__` before pointing a user at this recipe.
   at `min_samples`; constrain a 0..1 metric or ratio instead.
   This includes a run where every trial complied but there is not yet enough
   evidence: "not yet shown safe" halts the run the same way "shown unsafe"
-  does.
+  does. On SDK 0.31.0 and later that case reports the distinct
+  `stop_reason == "safety_constraint_insufficient_evidence"`; treat both
+  values as a safety halt, and neither as a pass.
 - **Missing metric.** A trial that does not produce the constrained metric
   falls back to the metric's default. The `hallucination_rate()` preset
   defaults to `1.0`, so the trial counts as non-compliant. A custom
@@ -148,7 +150,8 @@ def answer(q: str) -> str:
 
 
 result = answer.optimize_sync()
-assert result.stop_reason == "safety_constraint", result.stop_reason
+# SDK 0.31.0+ names the not-yet-shown-safe halt "safety_constraint_insufficient_evidence"
+assert result.stop_reason in {"safety_constraint", "safety_constraint_insufficient_evidence"}, result.stop_reason
 assert len(result.trials) == 3  # halted although every trial complied
 assert [t.metrics.get("hallucination_rate") for t in result.trials] == [0.0] * len(result.trials)  # the metric reached the SDK
 assert result.best_config  # still populated
