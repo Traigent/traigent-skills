@@ -46,12 +46,15 @@ def guard(config, metrics):
     return metrics.get("response_time_ms", float("inf")) <= 5   # 5 ms cap vs ~50 ms
 
 @traigent.optimize(eval_dataset="qa.jsonl", objectives=["accuracy"], offline=True,
-                   configuration_space={"model": ["a", "b", "c"]}, constraints=[guard])
+                   configuration_space={"model": ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"]}, constraints=[guard])
 def f(question: str) -> str:
     traigent.get_config()
     examples_run.append(question)
     time.sleep(0.05)
-    return "4"
+    # Report a cost the way a real model call would: SDK develop records a call with
+    # no captured usage as unmeasured, so no "cost" key would reach the constraint.
+    with_usage = getattr(traigent, "with_usage", None)
+    return with_usage("4", total_cost=0.0001) if with_usage else "4"
 
 r = f.optimize_sync(max_trials=3, algorithm="grid")
 print("PROBE_JSON=" + json.dumps({

@@ -53,6 +53,10 @@ Path("qa.jsonl").write_text('{"input": {"question": "q"}, "output": "4"}\n')
                                         "temperature": [0.1, 0.5]})
 def f(question: str) -> str:
     traigent.get_config()
+    if os.environ.get("MEASURED_ZERO") == "1":
+        # SDK develop treats a call with no captured usage as unknown cost (refused
+        # under a cap); a no-model-call path says so with a measured $0.
+        return traigent.with_usage("4", total_cost=0)
     return "4"
 
 r = f.optimize_sync(max_trials=4, algorithm="grid")
@@ -122,11 +126,18 @@ else:
 
 
 def _run(
-    tmp_path: Path, extra_env: dict[str, str], probe: str = PROBE
+    tmp_path: Path, extra_env: dict[str, str], probe: str = PROBE, *, preapprove: bool = False
 ) -> tuple[dict, str]:
     (tmp_path / "probe.py").write_text(probe, encoding="utf-8")
     env = _offline_mock_env()
     env.update({"HOME": str(tmp_path), "TRAIGENT_RUN_COST_LIMIT": "0.0001"})
+    if preapprove:
+        # SDK develop (#2498) runs a dataset-sampled pre-run estimate that, under this
+        # deliberately tiny limit, is declined non-interactively before any trial. The
+        # recorded owner approval acknowledges only that estimate; the runtime
+        # observed-mean enforcement these tests pin still applies per trial.
+        env["TRAIGENT_COST_APPROVED"] = "true"
+        env["MEASURED_ZERO"] = "1"
     env.update(extra_env)
     completed = subprocess.run(
         [sys.executable, "-W", "always::DeprecationWarning", "probe.py"],
@@ -147,7 +158,9 @@ def test_mock_zero_cost_admission_matches_sdk_version(
 ) -> None:
     if sdk_version_label != "develop" and Version(sdk_version_label) < Version("0.27.0"):
         pytest.skip("mock-mode cost enforcement verified on SDK 0.27.0+")
-    data, stderr = _run(tmp_path, extra_env)
+    data, stderr = _run(
+        tmp_path, extra_env, preapprove=_uses_observed_mean_admission(sdk_version_label)
+    )
     expected = (
         {"stop_reason": "max_trials_reached", "trials": 4}
         if _uses_observed_mean_admission(sdk_version_label)
@@ -167,7 +180,10 @@ def test_mock_zero_cost_admission_matches_sdk_version(
 def test_mock_reported_cost_admission_contract(
     tmp_path: Path, sdk_version_label: str, extra_env: dict[str, str], case: str
 ) -> None:
-    data, stderr = _run(tmp_path, {**extra_env, "COST_CASE": case}, TRACKED_COST_PROBE)
+    data, stderr = _run(
+        tmp_path, {**extra_env, "COST_CASE": case}, TRACKED_COST_PROBE,
+        preapprove=_uses_observed_mean_admission(sdk_version_label),
+    )
     if not _uses_observed_mean_admission(sdk_version_label):
         # Preserve the released SDK's seeded cold-start rejection.
         assert data == {"stop_reason": "cost_limit", "trials": 0,

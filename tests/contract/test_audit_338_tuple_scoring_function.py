@@ -53,7 +53,7 @@ def test_scoring_function_receives_unpacked_output_on_tuple_return(tmp_path: Pat
                 return 0.11 if isinstance(output, tuple) else (0.77 if output == "4" else 0.05)
 
             @traigent.optimize(eval_dataset="qa.jsonl", objectives=["accuracy"], offline=True,
-                               scoring_function=scorer, configuration_space={"model": ["m"]})
+                               scoring_function=scorer, configuration_space={"model": ["gpt-4o-mini"]})
             def answer(question: str):
                 traigent.get_config()
                 return "4", {"side_metric": 1.0}
@@ -69,7 +69,7 @@ def test_scoring_function_receives_unpacked_output_on_tuple_return(tmp_path: Pat
     env = {
         k: v
         for k, v in os.environ.items()
-        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "CI", "GITHUB_ACTIONS"}
+        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "TRAIGENT_SCHEMA_REPO", "CI", "GITHUB_ACTIONS"}
     }
     env.update(
         {
