@@ -53,7 +53,7 @@ def custom_objective(name):
 
 def run(objectives, fn_return, **deco):
     @traigent.optimize(eval_dataset="qa.jsonl", objectives=objectives, offline=True,
-                       configuration_space={"model": ["m"]}, **deco)
+                       configuration_space={"model": ["gpt-4o-mini"]}, **deco)
     def answer(question: str):
         return fn_return
     return answer.optimize_sync(max_trials=1, algorithm="grid").trials[0].metrics

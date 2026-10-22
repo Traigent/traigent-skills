@@ -151,7 +151,14 @@ def test_documented_cost_forms_reach_results_total_cost(tmp_path: Path, sdk_027)
 
 
 def test_function_side_cost_reaches_the_cost_cap(tmp_path: Path, sdk_027) -> None:
-    data = _run(tmp_path, CAP_DRIVER, {"TRAIGENT_RUN_COST_LIMIT": "0.05"})
+    # SDK develop (#2498) declines a non-interactive run up front when its dataset-sampled
+    # pre-run estimate (which cannot see function-side cost) exceeds the limit. The
+    # approval acknowledges only that estimate; the runtime cap this test pins still stops
+    # the run on the cost the function reports.
+    data = _run(
+        tmp_path, CAP_DRIVER,
+        {"TRAIGENT_RUN_COST_LIMIT": "0.05", "TRAIGENT_COST_APPROVED": "true"},
+    )
     assert data["stop_reason"] == "cost_limit"
     assert data["trials"] < 5
 

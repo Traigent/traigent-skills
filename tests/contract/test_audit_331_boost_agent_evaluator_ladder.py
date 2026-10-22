@@ -92,7 +92,7 @@ def test_base_evaluator_instance_cannot_be_wired_on_the_installed_sdk(tmp_path: 
     env = {
         k: v
         for k, v in os.environ.items()
-        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "CI", "GITHUB_ACTIONS"}
+        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "TRAIGENT_SCHEMA_REPO", "CI", "GITHUB_ACTIONS"}
     }
     env.update({"HOME": str(tmp_path / "home"), "TRAIGENT_OFFLINE_MODE": "true",
                 "LITELLM_LOCAL_MODEL_COST_MAP": "True", "ENVIRONMENT": "test"})

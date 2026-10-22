@@ -91,7 +91,7 @@ def _run_after_block(tmp_path: Path, *, stubs: str, env_extra: dict[str, str]) -
     env = {
         key: value
         for key, value in os.environ.items()
-        if not key.endswith("_API_KEY") and key not in {"TRAIGENT_MOCK_LLM", "CI", "GITHUB_ACTIONS"}
+        if not key.endswith("_API_KEY") and key not in {"TRAIGENT_MOCK_LLM", "TRAIGENT_SCHEMA_REPO", "CI", "GITHUB_ACTIONS"}
     }
     env.update(
         {
