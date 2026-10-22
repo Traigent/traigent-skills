@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "1d79ccf7ce0a0182",
+  "doc_hash": "cf8e8572c822ea9c",
   "reference_hashes": {
     "references/evaluator-templates.md": "b82fb09b9b98bbfe"
   },
@@ -173,6 +173,61 @@
       "doc_before_hash": "283249089d05c914",
       "doc_after_hash": "1d79ccf7ce0a0182",
       "note": "Scope the multi-call cost-metering caveat (SKILL.md cost-limit pointer and references/evaluator-templates.md) to traigent <= 0.29.0 and name 0.30.0 as the release that fixed it (Traigent 0.30.0 meters every captured call per row, Traigent/Traigent#2441); restamp the caveat's docstamp from the removed literal `response = captured_responses[0]` to `_has_llm_measurement` @ SDK 0.30.0, proving the fix instead of the historical bug.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-449",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "1d79ccf7ce0a0182",
+      "doc_after_hash": "09d5f27081001d5d",
+      "note": "Drop the stale '<= 0.27.0' upper bound from the unfixed mock-synthesis and BaseEvaluator caveats; state the checked range (every release through 0.30.0) instead (#449).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "09d5f27081001d5d",
+      "doc_after_hash": "79bff7057d0e4ab8",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-417",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "79bff7057d0e4ab8",
+      "doc_after_hash": "a998c66b60aa8f5b",
+      "note": "Qualify the metric-function judge-call metering claim by SDK version and capture path (0.30.0 folds captured judge responses into recorded cost; uncaptured paths and the ledger-vs-provider distinction remain) (#417).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "a998c66b60aa8f5b",
+      "doc_after_hash": "48500a37956767e2",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-sol-round-1",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "48500a37956767e2",
+      "doc_after_hash": "cf8e8572c822ea9c",
+      "note": "Review round 1 corrections: typed SDK errors are not run-terminal (trial lifecycle records a failed trial); per-example timeout cap scoped to the default local evaluator; judge capture is isolated per evaluation (no concurrent-trial caveat); project .env loads at SDK import; README credential-read wording aligned (#429, #431, #417, #443, #427).",
       "source_type": "agent"
     }
   ]

@@ -1,8 +1,9 @@
 """Mock mode does not bypass runtime cost enforcement; the env var is deprecated.
 
-Pins the documented mock-mode cost behaviour on the installed SDK: with a tiny
-`TRAIGENT_RUN_COST_LIMIT`, a mock run (in-code API or the legacy env var) stops
-at 0 trials with `stop_reason="cost_limit"`. Lints the optimize skill files so
+Pins versioned mock-mode admission and reported-cost enforcement on the installed
+SDK. The observed-mean policy first admits a trial and distinguishes reported
+zero cost from unknown cost. Positive controls report synthetic telemetry, never
+provider spend. Lints the optimize skill files so
 a `TRAIGENT_MOCK_LLM=true` recipe always sits next to its deprecation note.
 """
 from __future__ import annotations
@@ -52,6 +53,10 @@ Path("qa.jsonl").write_text('{"input": {"question": "q"}, "output": "4"}\n')
                                         "temperature": [0.1, 0.5]})
 def f(question: str) -> str:
     traigent.get_config()
+    if os.environ.get("MEASURED_ZERO") == "1":
+        # SDK develop treats a call with no captured usage as unknown cost (refused
+        # under a cap); a no-model-call path says so with a measured $0.
+        return traigent.with_usage("4", total_cost=0)
     return "4"
 
 r = f.optimize_sync(max_trials=4, algorithm="grid")
@@ -59,10 +64,80 @@ print("PROBE_JSON=" + json.dumps({"stop_reason": r.stop_reason, "trials": len(r.
 '''
 
 
-def _run(tmp_path: Path, extra_env: dict[str, str]) -> tuple[dict, str]:
-    (tmp_path / "probe.py").write_text(PROBE, encoding="utf-8")
+def _uses_observed_mean_admission(sdk_version_label: str) -> bool:
+    """SDK #2561: observed mean replaces the seeded estimate after 0.30.0."""
+    return sdk_version_label == "develop" or Version(sdk_version_label) >= Version("0.31.0.dev0")
+
+
+TRACKED_COST_PROBE = r'''
+import json
+import os
+import socket
+
+def deny_network(*args, **kwargs):
+    raise RuntimeError("mock-cost contract probe refuses network")
+
+socket.socket.connect = deny_network
+socket.socket.connect_ex = deny_network
+socket.create_connection = deny_network
+socket.getaddrinfo = deny_network
+
+import traigent
+from traigent.evaluators.base import Dataset, EvaluationExample, ExampleResult
+from traigent.utils.exceptions import OptimizationError
+
+if os.environ.get("USE_IN_CODE_MOCK") == "1":
+    from traigent.testing import enable_mock_mode_for_quickstart
+    enable_mock_mode_for_quickstart()
+
+case = os.environ["COST_CASE"]
+seen = []
+
+def evaluator(func, config, example):
+    seen.append(config["variant"])
+    metrics = {"accuracy": 1.0}
+    if case != "unknown":
+        # Deterministic reported telemetry, not billed provider usage.
+        metrics["cost"] = 0.00006 if case == "positive" else 0.0
+    return ExampleResult(
+        example_id="one", input_data=example.input_data,
+        expected_output=example.expected_output, actual_output="4",
+        metrics=metrics, execution_time=0.001, success=True,
+    )
+
+@traigent.optimize(
+    eval_dataset=Dataset([EvaluationExample({"question": "q"}, "4")]),
+    objectives=["accuracy"], offline=True, injection_mode="parameter",
+    custom_evaluator=evaluator, configuration_space={"variant": [0, 1, 2, 3]},
+)
+def f(question, config):
+    return "4"
+
+try:
+    r = f.optimize_sync(max_trials=4, algorithm="grid")
+except OptimizationError as exc:
+    print("PROBE_JSON=" + json.dumps({"error": type(exc).__name__,
+        "message": str(exc), "seen": seen}))
+else:
+    print("PROBE_JSON=" + json.dumps({"stop_reason": r.stop_reason,
+        "trials": len(r.trials), "seen": seen,
+        "trial_costs": [t.metrics.get("total_cost") for t in r.trials]}))
+'''
+
+
+def _run(
+    tmp_path: Path, extra_env: dict[str, str], probe: str = PROBE, *, preapprove: bool = False
+) -> tuple[dict, str]:
+    (tmp_path / "probe.py").write_text(probe, encoding="utf-8")
     env = _offline_mock_env()
     env.update({"HOME": str(tmp_path), "TRAIGENT_RUN_COST_LIMIT": "0.0001"})
+    if preapprove:
+        # SDK develop (#2498) runs a dataset-sampled pre-run estimate that, under this
+        # deliberately tiny limit, is declined non-interactively before any trial. The
+        # recorded owner approval acknowledges only that estimate; the runtime
+        # observed-mean enforcement these tests pin still applies per trial.
+        env["TRAIGENT_COST_APPROVED"] = "true"
+        env["MEASURED_ZERO"] = "1"
     env.update(extra_env)
     completed = subprocess.run(
         [sys.executable, "-W", "always::DeprecationWarning", "probe.py"],
@@ -78,15 +153,64 @@ def _run(tmp_path: Path, extra_env: dict[str, str]) -> tuple[dict, str]:
     [{"USE_IN_CODE_MOCK": "1"}, {"TRAIGENT_MOCK_LLM": "true"}],
     ids=["in-code-mock", "legacy-env-var"],
 )
-def test_mock_run_still_enforces_the_cost_limit(
+def test_mock_zero_cost_admission_matches_sdk_version(
     tmp_path: Path, sdk_version_label: str, extra_env: dict[str, str]
 ) -> None:
     if sdk_version_label != "develop" and Version(sdk_version_label) < Version("0.27.0"):
         pytest.skip("mock-mode cost enforcement verified on SDK 0.27.0+")
-    data, stderr = _run(tmp_path, extra_env)
-    assert data == {"stop_reason": "cost_limit", "trials": 0}
+    data, stderr = _run(
+        tmp_path, extra_env, preapprove=_uses_observed_mean_admission(sdk_version_label)
+    )
+    expected = (
+        {"stop_reason": "max_trials_reached", "trials": 4}
+        if _uses_observed_mean_admission(sdk_version_label)
+        else {"stop_reason": "cost_limit", "trials": 0}
+    )
+    assert data == expected
     if "TRAIGENT_MOCK_LLM" in extra_env:
         assert "TRAIGENT_MOCK_LLM is deprecated" in stderr
+
+
+@pytest.mark.parametrize(
+    "extra_env",
+    [{"USE_IN_CODE_MOCK": "1"}, {"TRAIGENT_MOCK_LLM": "true"}],
+    ids=["in-code-mock", "legacy-env-var"],
+)
+@pytest.mark.parametrize("case", ["zero", "positive", "unknown"])
+def test_mock_reported_cost_admission_contract(
+    tmp_path: Path, sdk_version_label: str, extra_env: dict[str, str], case: str
+) -> None:
+    data, stderr = _run(
+        tmp_path, {**extra_env, "COST_CASE": case}, TRACKED_COST_PROBE,
+        preapprove=_uses_observed_mean_admission(sdk_version_label),
+    )
+    if not _uses_observed_mean_admission(sdk_version_label):
+        # Preserve the released SDK's seeded cold-start rejection.
+        assert data == {"stop_reason": "cost_limit", "trials": 0,
+                        "seen": [], "trial_costs": []}
+    elif case == "unknown":
+        assert data["error"] == "OptimizationError"
+        assert "completed without a reported cost" in data["message"]
+        assert data["seen"] == [0]
+    elif case == "positive":
+        # One observed 0.00006 cost plus the same next-trial mean exceeds 0.0001.
+        assert data == {"stop_reason": "cost_limit", "trials": 1,
+                        "seen": [0], "trial_costs": [0.00006]}
+    else:
+        assert data == {"stop_reason": "max_trials_reached", "trials": 4,
+                        "seen": [0, 1, 2, 3], "trial_costs": [0.0] * 4}
+    if "TRAIGENT_MOCK_LLM" in extra_env and (
+        sdk_version_label == "develop" or Version(sdk_version_label) >= Version("0.27.0")
+    ):
+        assert "TRAIGENT_MOCK_LLM is deprecated" in stderr
+
+
+@pytest.mark.parametrize(
+    ("label", "expected"),
+    [("0.30.0", False), ("0.31.0.dev0", True), ("0.31.0", True), ("develop", True)],
+)
+def test_observed_mean_admission_version_boundary(label: str, expected: bool) -> None:
+    assert _uses_observed_mean_admission(label) is expected
 
 
 def test_skill_files_do_not_claim_a_mock_cost_bypass() -> None:

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9ec28313539e9246",
+  "doc_hash": "d1d769046d2af99c",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "59998518e556f1b1",
@@ -122,6 +122,28 @@
       "doc_before_hash": "80afdbac5d72964e",
       "doc_after_hash": "9ec28313539e9246",
       "note": "Replace the retired 'scoring_function is not invoked on the tuple path / score is also 0.0' warning: custom scorers receive the unpacked output; keep the reserved-key drop-with-WARNING rule.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "9ec28313539e9246",
+      "doc_after_hash": "d7987a3a9138e23b",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "d7987a3a9138e23b",
+      "doc_after_hash": "d1d769046d2af99c",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
       "source_type": "agent"
     }
   ]

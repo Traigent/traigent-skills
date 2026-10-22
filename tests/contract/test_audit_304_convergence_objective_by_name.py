@@ -50,7 +50,11 @@ def test_best_score_curve_tracks_the_objective_on_a_multi_objective_run(
 
             def answer(q):
                 m = traigent.get_config()["m"]
-                return q.upper() if (q != "c" or m == "y") else "wrong"
+                out = q.upper() if (q != "c" or m == "y") else "wrong"
+                # No model call here, and "cost" is an objective: SDK develop refuses
+                # unmeasured cost, so state a measured $0 (older SDKs ignore it).
+                with_usage = getattr(traigent, "with_usage", None)
+                return with_usage(out, total_cost=0) if with_usage else out
 
             fn = traigent.optimize(
                 configuration_space={"m": ["x", "y"]}, algorithm="grid", offline=True,

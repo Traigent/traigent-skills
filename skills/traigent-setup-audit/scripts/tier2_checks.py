@@ -1667,9 +1667,9 @@ def render_offer(tier1: Tier1, args: argparse.Namespace, backend_url: str, guard
         f"Offer mode. No network call was made: the network guard is installed "
         f"and reports `{guard}`, which is a measurement of this process, not a "
         f"claim about it.",
-        "No process was spawned either — that half is by construction, not by "
+        ("No process was spawned either — that half is by construction, not by "
         "the guard, which covers sockets only: the two checks that shell out are "
-        "reachable only through `--approve`, and nothing here passed one.",
+        "reachable only through `--approve`, and nothing here passed one."),
         f"Read from `{tier1.path}` ({TIER1_SCHEMA}, project `{tier1.root}`).",
         f"Backend that an approved check would call: {backend_url}",
         f"`{KEY_ENV_NAME}` is "
@@ -1677,8 +1677,8 @@ def render_offer(tier1: Tier1, args: argparse.Namespace, backend_url: str, guard
            if KEY_ENV_NAME in os.environ else
            "NOT set. A backend check cannot run without it."),
         "",
-        "Each card below is an offer, not a plan. Approve the ones you want, one "
-        "`--approve <check-id>` each.",
+        ("Each card below is an offer, not a plan. Approve the ones you want, one "
+        "`--approve <check-id>` each."),
         "",
     ]
     for check, blocked, is_recommended in cards:
@@ -1698,16 +1698,16 @@ def render_offer(tier1: Tier1, args: argparse.Namespace, backend_url: str, guard
     out.append("")
     out.extend(
         [
-            "- Verdicts are relayed exactly as the service returns them. An "
+            ("- Verdicts are relayed exactly as the service returns them. An "
             "abstain is printed as an abstain and is not a pass; a `low` "
-            "confidence stays `low`.",
-            "- No budget is computed here. Every number printed is the service's "
-            "own or the cap you passed.",
-            "- No lift is promised by any of this. A flat or negative result is a "
-            "real outcome.",
-            "- Every approved run writes a receipt (`--receipt <path>`) listing "
+            "confidence stays `low`."),
+            ("- No budget is computed here. Every number printed is the service's "
+            "own or the cap you passed."),
+            ("- No lift is promised by any of this. A flat or negative result is a "
+            "real outcome."),
+            ("- Every approved run writes a receipt (`--receipt <path>`) listing "
             "each request and each process. Keep it: it is the record of what "
-            "left this machine.",
+            "left this machine."),
             f"- {STOP_SENTENCE}",
         ]
     )

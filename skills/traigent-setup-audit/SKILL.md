@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: experimental
   author: Nimrod
-  version: "0.2.5"
+  version: "0.2.8"
 ---
 
 # Traigent Setup Audit
@@ -170,8 +170,10 @@ Every near-miss is counted on the card and listed in the JSON, so a real scorer
 ruled out this way is visible rather than silently dropped; point `--scorer` at
 it if the filter got it wrong.
 
-The key check reads names only. No key value is read, printed or written, in the
-card or in the JSON.
+The key check reports names only. The audit does read the text of the declared `.env`
+files in memory to extract variable names, but no key value is printed, written or
+placed in the card or the JSON; only the names and the file that declares them leave
+the check.
 
 ## Report the findings as evidence
 
@@ -269,7 +271,9 @@ python3 <skill-dir>/scripts/tier2_checks.py --from-audit /tmp/traigent-setup-aud
 ```
 
 **Run mode.** Runs only the checks named with `--approve`, each touching only the
-endpoints its card named, and writes a receipt of every request and every process.
+endpoints its card named, and records every request and every process. The record is
+written to a file only when you pass `--receipt <path>`; without it the run prints a
+note asking you to pass one. Pass `--receipt` for any run you will cite as evidence.
 
 ```bash
 python3 <skill-dir>/scripts/tier2_checks.py \
@@ -579,8 +583,9 @@ that its zero-network property stays provable rather than inherited.
   carry is shown as "an error" with its location. When some probe calls score
   and others raise, the next step names the probe's own conditions before the
   scorer, without claiming which caused it.
-- A key value is never read, shown or stored — only whether a known key **name**
-  is set, and in which file it is declared.
+- A key value is never shown or stored — only whether a known key **name**
+  is set, and in which file it is declared (the audit reads the `.env` text in memory
+  to find names, and reports nothing but the names).
 - The scorer probe runs with only an allowlisted environment: `PATH`, `HOME`,
   locale (`LANG`, `LANGUAGE`, `LC_*`), `TZ` and temp-dir variables. Every other
   variable, credentials included, is withheld, so a scorer that needs one fails
@@ -597,7 +602,7 @@ that its zero-network property stays provable rather than inherited.
   runs under the same network guard as Tier 1 and reports the level it had, so
   "no socket was opened" is measured rather than asserted; "no process was
   spawned" is a property of the code path, not of that guard, and every approved
-  run writes a receipt with both counts in it.
+  run records both counts in its receipt, which is written to disk only when `--receipt <path>` is passed.
 
 ## See Also
 
@@ -622,9 +627,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
@@ -650,6 +660,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

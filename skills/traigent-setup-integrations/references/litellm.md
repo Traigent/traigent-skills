@@ -41,9 +41,9 @@ LiteLLM uses model name prefixes to route to the correct provider. Common provid
 | Azure OpenAI | `azure/` | `azure/my-deployment` |
 | Together AI | `together_ai/` | `together_ai/meta-llama/Llama-3-70b-chat-hf` |
 | Groq | `groq/` | `groq/llama3-70b-8192` |
-| OpenRouter | `openrouter/` | `openrouter/openai/gpt-4o-mini`, `openrouter/anthropic/claude-3-haiku`, `openrouter/google/gemini-2.5-flash-lite` |
+| OpenRouter | `openrouter/` | `openrouter/openai/gpt-4o-mini`, `openrouter/anthropic/claude-haiku-4.5`, `openrouter/google/gemini-2.5-flash-lite` |
 
-The example IDs above were live when written; **re-verify them** before use (see the next
+The example IDs above were live when written (the OpenRouter row was checked against its public model catalog on 2026-10-19; listing in a catalog does not prove LiteLLM prices it or that it suits your task); **re-verify them** before use (see the next
 section). Prefer a specific versioned ID (e.g. `claude-3-haiku-20240307`) over a moving
 `-latest` alias — pinned versions price reliably, whereas an alias can resolve to a model
 whose pricing isn't in the table yet (unpriced `$0.00` cost). See the LiteLLM documentation

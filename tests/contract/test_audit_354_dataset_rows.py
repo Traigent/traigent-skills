@@ -41,7 +41,7 @@ def _validate(rows: str, workdir: Path) -> subprocess.CompletedProcess[str]:
     dataset.write_text(rows, encoding="utf-8")
     cli = Path(sys.executable).with_name("traigent")
     assert cli.exists(), f"traigent CLI not installed next to {sys.executable}"
-    env = {k: v for k, v in os.environ.items() if k != "TRAIGENT_API_KEY"}
+    env = {k: v for k, v in os.environ.items() if k not in {"TRAIGENT_API_KEY", "TRAIGENT_SCHEMA_REPO"}}
     return subprocess.run(
         [str(cli), "validate", dataset.name],
         cwd=workdir,

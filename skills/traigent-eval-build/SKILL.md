@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.11"
+  version: "1.0.16"
 ---
 
 # Traigent Build Evaluator
@@ -20,7 +20,7 @@ Use this skill after the metric is chosen and the user needs concrete evaluator 
 - For metric selection first, use `traigent-eval-choose-metric`.
 - Mock/offline check before paid runs with `TRAIGENT_OFFLINE_MODE`, `enable_mock_mode_for_quickstart()`, and a tiny local dataset.
 - Ask for explicit approval and set `TRAIGENT_RUN_COST_LIMIT` before any evaluator calls paid LLMs or backend services. For custom evaluators that make several calls per row, see the cost-metering caveat in `references/evaluator-templates.md`: on traigent <= 0.29.0 only the first LLM call per row is metered, fixed in 0.30.0.
-- A judge call placed inside `metric_functions` is **not** in the SDK's cost ledger: on 0.27.0 the local evaluator settles an example's cost from the agent's captured responses before it calls your metric functions, and `TRAIGENT_RUN_COST_LIMIT` admits trials on that recorded cost (Traigent/Traigent#2297). Budget judge calls as their own line (calls per scored row × price × rows × trials), cap them in your own code, and never rely on the SDK limit to stop judge spend.
+- Whether a judge call placed inside `metric_functions` is in the SDK's cost ledger depends on the SDK version and on capture: on 0.27.0 the local evaluator settled an example's cost from the agent's captured responses before it called your metric functions, so a judge call there was **not** metered (Traigent/Traigent#2297); on 0.30.0 a judge response captured through the SDK's interceptor (for example a litellm call) is folded into the example's recorded cost, with capture isolated per evaluation so concurrent trials do not drain each other's responses (ContextVar capture scopes, Traigent#2387); calls outside capture, such as an uninstrumented client, are still not counted. `TRAIGENT_RUN_COST_LIMIT` admits trials on the recorded cost and is an SDK ledger, not provider enforcement. Budget judge calls as their own line (calls per scored row × price × rows × trials), cap them in your own code, and never rely on the SDK limit to stop judge spend.
 - Disjointness invariant: any slice used to tune a threshold, rubric, or metric must be disjoint from the holdout used to claim the result (see `traigent-eval-audit`). The example dataset paths below stand for your *tuning* slice.
 - For full templates by method, read `references/evaluator-templates.md`.
 
@@ -34,7 +34,7 @@ Prefer the smallest evaluator surface that measures the chosen objective.
 | 2 | `scoring_function` | `scoring_function(output, expected) -> float` | One numeric score per example is enough. |
 | 3 | `metric_functions` | `{name: (output, expected, input_data) -> float}` | Multiple named metrics or input-aware checks are needed. |
 | 4 | `custom_evaluator` | `custom_evaluator(func, config, example) -> ExampleResult` | The evaluator must call the function itself, collect timing/cost, run a judge, repeat samples, or fail closed. |
-| 5 | `BaseEvaluator` subclass | not wireable through `@traigent.optimize` on traigent <= 0.27.0 | The `custom_evaluator=` evaluation option accepts only a `(func, config, example)` callable and the decorator's `evaluator=` accepts only an external-service evaluator. Tier 4 is the highest tier you can wire today. |
+| 5 | `BaseEvaluator` subclass | not wireable through `@traigent.optimize` (every traigent release through 0.30.0) | The `custom_evaluator=` evaluation option accepts only a `(func, config, example)` callable and the decorator's `evaluator=` accepts only an external-service evaluator. Tier 4 is the highest tier you can wire today. |
 
 The built-in `latency` metric uses the bare key `latency`, reported in milliseconds on SDKs after 0.22.0 (see version-matrix: `latency-unit`).
 
@@ -217,7 +217,7 @@ def answer(question: str) -> str:
 
 ### Tier 5: BaseEvaluator subclass (not wireable today)
 
-Do not write a `BaseEvaluator` subclass to plug into `@traigent.optimize`: no public option accepts one on traigent <= 0.27.0. Passing an instance as the `custom_evaluator=` evaluation option fails validation with `Input should be callable`, and passing the class fails with `custom_evaluator must accept (func, config, example)`. The top-level `custom_evaluator=` argument of `@traigent.optimize` and of `optimize_sync()` accepts an instance at first, then fails when the run starts with `custom_evaluator must be callable`. The decorator's `evaluator=` takes only an external-service evaluator. Use a Tier 4 `custom_evaluator` for per-row control (calling the function, timing, judges, repeats, fail-closed handling).
+Do not write a `BaseEvaluator` subclass to plug into `@traigent.optimize`: no public option accepts one (every traigent release through 0.30.0). Passing an instance as the `custom_evaluator=` evaluation option fails validation with `Input should be callable`, and passing the class fails with `custom_evaluator must accept (func, config, example)`. The top-level `custom_evaluator=` argument of `@traigent.optimize` and of `optimize_sync()` accepts an instance at first, then fails when the run starts with `custom_evaluator must be callable`. The decorator's `evaluator=` takes only an external-service evaluator. Use a Tier 4 `custom_evaluator` for per-row control (calling the function, timing, judges, repeats, fail-closed handling).
 
 ## The EvaluationExample input contract
 
@@ -330,9 +330,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
@@ -358,6 +363,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

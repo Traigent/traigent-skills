@@ -248,7 +248,7 @@ key and the value is dropped.
 2. Set one approved cap for this run — `cost_limit=<approved USD>` on `.optimize()` or `TRAIGENT_RUN_COST_LIMIT` in the launching process, never in `.env` (litellm auto-loads it into every later run). Set `TRAIGENT_COST_APPROVED=true` only after the user approved that figure, and only in that process: it silences the SDK's own prompt, whose `[r]` key would set the cap to 1.5× the *estimate*.
 3. A rerun over the same function and dataset repeats configurations by default (`cache_policy="allow_repeats"`); pass `cache_policy="prefer_new"` to skip ones already evaluated — and know that it can then stop early with fewer trials than `max_trials`.
 4. Read trials from `result.to_dataframe()`, not from `custom_evaluator` callbacks.
-5. Leave `timeout=` unset (the run-level default is no wall-clock cap). Bound a paid search by `max_trials` and the cost cap; a clock cut a 12-trial search at 7 in the field. Keep a per-request timeout inside your own LLM call instead.
+5. Leave `timeout=` unset (the run-level default is no wall-clock cap). Bound a paid search by `max_trials` and the cost cap; a clock cut a 12-trial search at 7 in the field. With the default local evaluator each example is capped at 60 s (or at `timeout=` when set) whatever your call allows, so a per-request timeout inside your own LLM call only helps below that cap; a slower call is cut and counts as a wrong answer. A `custom_evaluator` runs without the per-example cap on 0.30.0.
 
 ## After the run
 

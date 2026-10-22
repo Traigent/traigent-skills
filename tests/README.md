@@ -137,8 +137,8 @@ Public installability is checked in two ways:
   contract suite, then `test_public_installability.py` verifies the installed
   distribution matches the selected bucket.
 - `@traigent/sdk` is not on public npm yet, so public docs must not teach
-  `npm install @traigent/sdk` as an install path while Traigent/traigent-js#165
-  remains open.
+  `npm install @traigent/sdk` as an install path until the JS SDK
+  is published to npm.
 
 `sync_map.yml` assigns each skill to an SDK-version bucket. The default floor is
 `default_min_sdk_version`; a skill can override it with `min_sdk_version`.

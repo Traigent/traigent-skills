@@ -4247,17 +4247,17 @@ def open_questions(areas: dict, datasets: list[DatasetReport]) -> list[str]:
 
 def not_established(guard_level: str) -> list[str]:
     items = [
-        "Repeat-scoring measures repeatability, not correctness. A scorer that "
-        "returns the same wrong number every time passes this probe.",
-        "No lift is promised. This audit says nothing about whether optimization "
-        "will improve your agent, and a flat or negative result is a real outcome.",
-        "Knob wiring is detected statically. A knob read through a mapping the "
+        ("Repeat-scoring measures repeatability, not correctness. A scorer that "
+        "returns the same wrong number every time passes this probe."),
+        ("No lift is promised. This audit says nothing about whether optimization "
+        "will improve your agent, and a flat or negative result is a real outcome."),
+        ("Knob wiring is detected statically. A knob read through a mapping the "
         "parser cannot follow is reported as possibly read, and a configuration "
-        "space the parser cannot read is reported as unread, never as absent.",
-        "Model ids are collected, not validated. Checking an id against a provider "
-        "is a network call, which this tier does not make.",
-        "Only Python is inventoried in this version. A JavaScript or TypeScript "
-        "project is not searched for entry points or scorers.",
+        "space the parser cannot read is reported as unread, never as absent."),
+        ("Model ids are collected, not validated. Checking an id against a provider "
+        "is a network call, which this tier does not make."),
+        ("Only Python is inventoried in this version. A JavaScript or TypeScript "
+        "project is not searched for entry points or scorers."),
     ]
     if guard_level == GUARD_PYTHON:
         items.insert(

@@ -138,7 +138,7 @@ def find_critical_files(repo_path):
                         rp = os.path.relpath(resolved_child, repo_path)
                         found[rp] = resolved_child
             except OSError:
-                pass
+                pass  # unreadable directory entry: skip it
 
     # Find hook scripts referenced in settings.json
     settings_path = os.path.join(repo_path, ".claude/settings.json")
@@ -185,7 +185,7 @@ def find_critical_files(repo_path):
                 _skip_out_of_root_finding(".claude/settings.json", settings_path, str(e))
             )
         except (json.JSONDecodeError, OSError):
-            pass
+            pass  # malformed or unreadable settings.json: nothing more to check
 
     return found, findings
 
@@ -245,7 +245,7 @@ def check_hooks_in_settings(repo_path, filepath, rel_path):
                                 break
 
     except (json.JSONDecodeError, OSError, KeyError, ValueError):
-        pass
+        pass  # malformed or unreadable file: skip remaining checks for it
     return findings
 
 
@@ -271,7 +271,7 @@ def check_executable_configs(repo_path, critical_files):
                         )
                     )
             except OSError:
-                pass
+                pass  # stat failed (file vanished): skip permission check
     return findings
 
 

@@ -18,6 +18,7 @@ from pathlib import Path
 import pytest
 
 from .extract import _iter_fenced_blocks
+from .test_audit_343_mock_mode_cost import _uses_observed_mean_admission
 
 ROOT = Path(__file__).resolve().parents[2]
 # Skills this check owns; widen as the other skills that teach the env var are updated.
@@ -114,13 +115,16 @@ def test_mock_mode_reference_states_cost_limits_still_apply() -> None:
     assert "bypass cost tracking" not in text and "bypasses cost tracking" not in text
 
 
-def test_mock_run_still_enforces_the_cost_limit(tmp_path: Path) -> None:
+def test_mock_zero_cost_admission_matches_sdk_version(
+    tmp_path: Path, sdk_version_label: str
+) -> None:
     pytest.importorskip("traigent")
     (tmp_path / "home").mkdir()
     script = tmp_path / "probe.py"
     script.write_text(
         textwrap.dedent(
             """
+            import os
             import traigent
             from pathlib import Path
             from traigent.testing import enable_mock_mode_for_quickstart
@@ -133,6 +137,8 @@ def test_mock_run_still_enforces_the_cost_limit(tmp_path: Path) -> None:
                                                     "temperature": [0.1, 0.5]})
             def f(question: str) -> str:
                 traigent.get_config()
+                if os.environ.get("MEASURED_ZERO") == "1":
+                    return traigent.with_usage("4", total_cost=0)
                 return "4"
 
             r = f.optimize_sync(max_trials=4, algorithm="grid")
@@ -144,7 +150,7 @@ def test_mock_run_still_enforces_the_cost_limit(tmp_path: Path) -> None:
     env = {
         k: v
         for k, v in os.environ.items()
-        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "CI", "GITHUB_ACTIONS"}
+        if not k.endswith("_API_KEY") and k not in {"TRAIGENT_MOCK_LLM", "TRAIGENT_SCHEMA_REPO", "CI", "GITHUB_ACTIONS"}
     }
     env.update(
         {
@@ -155,6 +161,13 @@ def test_mock_run_still_enforces_the_cost_limit(tmp_path: Path) -> None:
             "TRAIGENT_RUN_COST_LIMIT": "0.0001",
         }
     )
+    if _uses_observed_mean_admission(sdk_version_label):
+        # SDK develop (#2498): the dataset-sampled pre-run estimate is declined
+        # non-interactively under this tiny limit before any trial; the approval
+        # acknowledges only that estimate. A call with no captured usage is unknown
+        # cost on develop, so the no-model-call probe states a measured $0.
+        env["TRAIGENT_COST_APPROVED"] = "true"
+        env["MEASURED_ZERO"] = "1"
     completed = subprocess.run(
         [sys.executable, str(script)], cwd=tmp_path, env=env, text=True,
         capture_output=True, timeout=180, check=False,
@@ -162,4 +175,9 @@ def test_mock_run_still_enforces_the_cost_limit(tmp_path: Path) -> None:
     assert completed.returncode == 0, completed.stdout + completed.stderr
     line = next(ln for ln in completed.stdout.splitlines() if ln.startswith("RESULT="))
     stop_reason, trials = line.removeprefix("RESULT=").split("|")
-    assert (stop_reason, trials) == ("cost_limit", "0")
+    expected = (
+        ("max_trials_reached", "4")
+        if _uses_observed_mean_admission(sdk_version_label)
+        else ("cost_limit", "0")
+    )
+    assert (stop_reason, trials) == expected

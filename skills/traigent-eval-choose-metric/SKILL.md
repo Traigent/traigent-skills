@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.6"
+  version: "1.1.10"
 ---
 
 # Traigent Choose Metric
@@ -51,8 +51,11 @@ and do not force an exact-match metric. Route onto the judge track:
    between you and optimizing noise.
 4. Budget the judge itself: every trial example costs a judge call on top of the agent call.
    Flag judge cost as its own line in the run budget (and consider `cost` as a secondary
-   objective so expensive judge-pleasing configs don't win by default). The SDK cost limit
-   does not see judge calls made inside a metric function — see `traigent-eval-build`.
+   objective so expensive judge-pleasing configs don't win by default). On SDK 0.30.0 a judge call
+   inside a metric function is folded into the recorded cost only when the SDK captures its provider
+   response (an intercepted litellm call); older SDKs and
+   uncaptured client paths leave it outside the SDK cost limit, which is never a hard billing ceiling —
+   see `traigent-eval-build`.
 
 ## Measure-type grounding
 
@@ -197,9 +200,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
@@ -225,6 +233,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

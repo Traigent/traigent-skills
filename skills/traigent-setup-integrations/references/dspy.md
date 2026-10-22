@@ -21,8 +21,8 @@ The adapter wraps DSPy's MIPROv2 and BootstrapFewShot optimizers.
 
 > **Use `method="bootstrap"` on released SDKs.** `method="mipro"` (the constructor default) raises
 > `TypeError: MIPROv2.__init__() got an unexpected keyword argument 'requires_permission_to_run'`
-> on `traigent<=0.27.0` with DSPy 2.6/3.x. Pass `method="bootstrap"` explicitly until a fixed SDK
-> release.
+> on every traigent release through 0.30.0 with DSPy 2.6/3.x. Pass `method="bootstrap"` explicitly until a fixed SDK
+> release (not yet released as of 0.30.0).
 
 ### Import
 
@@ -132,9 +132,9 @@ answer = optimized_qa(question="What is the speed of light?")
 ## MIPRO Method
 
 MIPROv2 optimizes both the instruction text and the few-shot demonstrations. It is selected with
-`method="mipro"` (plus `teacher_model=` and `auto_setting=` if needed), but on `traigent<=0.27.0`
+`method="mipro"` (plus `teacher_model=` and `auto_setting=` if needed), but on every traigent release through 0.30.0
 it fails with the `TypeError` in the note above with DSPy 2.6/3.x (checked on 2.6.27 and 3.3.1).
-Until a fixed SDK release, use `method="bootstrap"`.
+Until a release that contains the fix, use `method="bootstrap"`.
 
 ## Combining DSPy with Traigent Model Optimization
 
@@ -182,7 +182,7 @@ best_temp = model_results.best_config["temperature"]
 lm = dspy.LM(best_model, temperature=best_temp)
 dspy.configure(lm=lm)
 
-optimizer = DSPyPromptOptimizer(method="bootstrap")  # "mipro" fails on traigent<=0.27.0
+optimizer = DSPyPromptOptimizer(method="bootstrap")  # "mipro" fails on every release through 0.30.0
 prompt_result = optimizer.optimize_prompt(
     module=QAModule(),
     trainset=trainset,
@@ -195,7 +195,7 @@ final_module = prompt_result.optimized_module
 
 ## Tips
 
-- MIPRO is more powerful but slower; BootstrapFewShot is faster for demo-only optimization (and is the method that runs on `traigent<=0.27.0`)
+- MIPRO is more powerful but slower; BootstrapFewShot is faster for demo-only optimization (and is the method that runs on every release through 0.30.0)
 - Use a stronger teacher model (e.g., `gpt-4o`) when the student model is smaller
 - DSPy requires structured inputs/outputs; define your module's signature clearly
 - Training set quality matters more than quantity for few-shot optimization

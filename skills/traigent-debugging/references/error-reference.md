@@ -169,7 +169,7 @@ persistently to make the decline go away.
 
 ### InvocationError
 
-**Function raised an exception during a trial.**
+**Raised only on explicit paths, not for ordinary function exceptions.** The local evaluator converts an ordinary exception in your function into a per-example failure (`Function call failed: ...`) and keeps going, so a run with no `InvocationError` can still have many failed examples; check scored-example coverage.
 
 | Attribute | Type | Description |
 |---|---|---|

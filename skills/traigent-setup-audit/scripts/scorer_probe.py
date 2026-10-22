@@ -124,18 +124,24 @@ def fault(exc: BaseException, root: str) -> dict:
     return {"error_type": type(exc).__name__, "error_site": site}
 
 
-def load_callable(module_path: str, function_name: str):
+def load_callable(module_path: str, function_name: str, root: str | None = None):
     """Load the user's module in a fresh namespace and return the named callable.
 
     ``runpy.run_path`` is deliberate: it keeps the module out of ``sys.modules``
     and does not run it as ``__main__``, so a script guard in the user's file
     stays unexecuted.
+
+    The module's own directory and the audit root the parent already validated
+    are put on ``sys.path`` so a scorer inside a project package can import its
+    siblings by absolute name. Nothing is inherited from ``PYTHONPATH`` and no
+    other ancestor directory is added.
     """
     import runpy
 
     parent = os.path.dirname(os.path.abspath(module_path))
-    if parent not in sys.path:
-        sys.path.insert(0, parent)
+    for entry in ([os.path.abspath(root)] if root else []) + [parent]:
+        if entry not in sys.path:
+            sys.path.insert(0, entry)
     namespace = runpy.run_path(module_path)
     target = namespace.get(function_name)
     if target is None or not callable(target):
@@ -160,8 +166,8 @@ def probe(request: dict) -> dict:
     guard = verify_network_guard()
     root = request.get("root") or os.path.dirname(request["module"])
     try:
-        target = load_callable(request["module"], request["function"])
-    except BaseException as exc:  # noqa: BLE001 - user code decides what it raises
+        target = load_callable(request["module"], request["function"], root)
+    except BaseException as exc:  # noqa: BLE001 - deliberate: user code may raise SystemExit or KeyboardInterrupt (e.g. sys.exit); the probe must report it as a fault, not die
         if is_guard_refusal(exc):
             return {
                 "ran": False,
@@ -193,7 +199,7 @@ def probe(request: dict) -> dict:
         for _ in range(times):
             try:
                 value = call_scorer(target, output_value, expected_value)
-            except BaseException as exc:  # noqa: BLE001
+            except BaseException as exc:  # noqa: BLE001 - deliberate: a scorer calling sys.exit() must be reported as a fault, not end the probe
                 if is_guard_refusal(exc):
                     return {
                         "ran": False,

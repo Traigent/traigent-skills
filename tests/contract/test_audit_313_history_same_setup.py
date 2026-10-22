@@ -63,21 +63,21 @@ def test_history_guard_detects_a_different_search_space(
             @traigent.optimize(
                 eval_dataset="eval.jsonl", objectives=["accuracy"], algorithm="grid",
                 max_trials=4, offline=True,
-                configuration_space={"model": ["small", "large"], "temperature": [0.0, 0.5]},
+                configuration_space={"model": ["gpt-4o-mini", "gpt-4o"], "temperature": [0.0, 0.5]},
             )
             def classify(text):
-                return "a" + text[1:] if traigent.get_config()["model"] == "large" else "wrong"
+                return "a" + text[1:] if traigent.get_config()["model"] == "gpt-4o" else "wrong"
 
             BLOCK = %r
             verdicts = {}
             classify.optimize_sync()
             classify.optimize_sync(
-                configuration_space={"model": ["small"], "temperature": [0.0, 0.2]}, max_trials=2
+                configuration_space={"model": ["gpt-4o-mini"], "temperature": [0.0, 0.2]}, max_trials=2
             )
             exec(BLOCK)
             verdicts["different_space"] = same_setup
             classify.optimize_sync(
-                configuration_space={"model": ["small"], "temperature": [0.0, 0.2]}, max_trials=2
+                configuration_space={"model": ["gpt-4o-mini"], "temperature": [0.0, 0.2]}, max_trials=2
             )
             exec(BLOCK)
             verdicts["same_space"] = same_setup

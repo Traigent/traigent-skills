@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.10"
+  version: "1.0.16"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -330,13 +330,13 @@ section has the full per-provider check list.
 
 ### InvocationError
 
-**When raised**: The decorated function raised an exception during a trial.
+**When raised**: only on the paths that raise it explicitly (for example an SDK error your function or the invoker raises on purpose). An ordinary application exception inside the decorated function (a `RuntimeError`, a transport error) is **not** wrapped in `InvocationError` by the local evaluator: it is turned into a per-example failure (`output=None`, error `Function call failed: <message>`), the example scores as a failure, and `optimize_sync()` still returns normally. The evaluator rethrows typed SDK errors (`InvocationError`, `NonRetryableError`) as their own type, but on 0.30.0 the trial lifecycle (`traigent/core/trial_lifecycle.py`) catches a generic exception from a trial and records a failed trial, so neither is a guarantee that the whole run stops.
 
 ```
 traigent.utils.exceptions.InvocationError: Function 'classify' failed with config {'model': 'gpt-4o'}
 ```
 
-Has `config`, `input_data`, and `original_error` attributes. Check the original error:
+Has `config`, `input_data`, and `original_error` attributes. Catching it only covers the raising paths:
 
 ```python
 from traigent.utils.exceptions import InvocationError
@@ -345,8 +345,12 @@ try:
     results = func.optimize_sync()
 except InvocationError as e:
     print(f"Config that caused failure: {e.config}")
-    print(f"Original error: {e.original_error}")
+    print(f"Original error category: {type(e.original_error).__name__}")
 ```
+
+Do not print `original_error` text, headers or response bodies: they can carry keys or customer content. Print the exception type, or an allowlisted category you map yourself (timeout, TLS, connect, read, HTTP status, response schema).
+
+**A run with no exception can still be a failed comparison.** Because ordinary failures are per-example, check scored-example coverage before trusting a score: compare the number of examples that produced a scored output against the dataset size for each trial (the per-trial example counts in `results.trials`, plus `results.failed_trials` and `results.warnings`), and treat a trial with many failed examples as an operational failure, not a quality result. If your own wrapper needs a terminal budget or transport guard, do not assume that raising any exception, including a typed SDK error, stops the run: on 0.30.0 it can end up as one failed trial. Stop the run with a check of your own (for example `max_trials` or `cost_limit`, or an external abort) and verify that end to end first.
 
 ### EvaluationError
 
@@ -541,7 +545,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 
 1. Check trial durations: `results.experiment_stats.average_trial_duration`
 2. Reduce dataset size for faster feedback
-3. Set a `timeout` on the run call (`func.optimize_sync(timeout=30)` / `await func.optimize(timeout=30)`) — it is not a decorator argument
+3. Set a generous `timeout` on the run call (`func.optimize_sync(timeout=600)` / `await func.optimize(timeout=600)`) — it is not a decorator argument. With the default local evaluator (`eval_dataset` with `scoring_function` or `metric_functions`) each example is also capped at this value, or 60 s when unset; a `custom_evaluator` runs without that per-example cap on 0.30.0. A per-request timeout in your own call only helps below the cap, and a timed-out example counts as a wrong answer. Do not pick a small value such as 30: every call slower than that becomes a wrong answer
 4. Use smaller models for initial exploration
 5. Reduce `max_trials` or configuration space size
 
@@ -574,13 +578,13 @@ print("traigent log level:", logging.getLevelName(logging.getLogger("traigent").
 
 ## Graceful Fallback Pattern
 
-When optimization might fail, use a try/except pattern with a known-good default:
+When optimization might fail, keep the serving incumbent explicit. `optimize()` / `optimize_sync()` apply a nonempty winner to the instance before returning (on 0.30.0; pass `apply=False` to get a candidate without applying it), so a score check *after* the run cannot undo it and a printed "using default" message changes nothing. Run with `apply=False` and promote only a candidate that passes your own gate:
 
 ```python
 import traigent
 from traigent.utils.exceptions import TraigentError, CostLimitExceeded
 
-DEFAULT_CONFIG = {"model": "gpt-4o-mini", "temperature": 0.0}
+INCUMBENT_CONFIG = {"model": "gpt-4o-mini", "temperature": 0.0}
 
 @traigent.optimize(
     eval_dataset="eval_data.jsonl",
@@ -596,28 +600,32 @@ def classify(text):
     # ... LLM call ...
     return result
 
-# Attempt optimization with fallback
-try:
-    results = classify.optimize_sync()
+# The function serves the incumbent until a candidate is explicitly promoted.
+classify.set_config(INCUMBENT_CONFIG)
 
-    if results.best_score is not None and results.best_score >= 0.7:
+try:
+    results = classify.optimize_sync(apply=False)
+
+    if results.best_config and results.best_score is not None and results.best_score >= 0.7:
+        # A search score is not an independent gate: confirm the candidate on held-out
+        # evidence (and any approval your process requires) before this line.
         classify.apply_best_config(results)
-        print(f"Applied optimized config: {results.best_config}")
+        print(f"Promoted candidate: {results.best_config}")
     else:
-        print(f"Score {results.best_score} too low, using default config")
+        print(f"Score {results.best_score} too low; incumbent {INCUMBENT_CONFIG} stays active")
 
 except CostLimitExceeded as e:
     # Pre-run decline only: nothing ran. A mid-run budget hit does not land here — it returns
     # normally with results.stop_reason == "cost_limit" and the paid trials kept.
-    print(f"Refused before spending (estimate ${e.estimated or 0:.2f} > ${e.limit:.2f}), using default config")
+    print(f"Refused before spending (estimate ${e.estimated or 0:.2f} > ${e.limit:.2f}); incumbent stays active")
 
 except TraigentError as e:
-    print(f"Optimization failed: {e.message}, using default config")
+    print(f"Optimization failed: {e.message}; incumbent stays active")
 
-# The function still works with either applied or default config
+# The active configuration now matches what was printed: the incumbent unless a gated candidate was promoted.
 ```
 
-This pattern ensures your application remains functional even when optimization encounters problems.
+For a stronger guarantee, run the search in a separate candidate process and export the result (see the analyze-results skill, "Exporting a Candidate and Promoting It Safely"); the serving process never shares memory with the search.
 
 ## Reference Files
 
@@ -641,9 +649,14 @@ At session or skill start, if a configured Traigent client is available, seed th
 backend with the skill name:
 
 ```python
+import asyncio
 policy = None
-try: policy = await client.get_interaction_policy(skill="<this skill>")
-except Exception: pass
+try:
+    policy = asyncio.run(client.get_interaction_policy(skill="<this skill>"))
+except Exception:
+    pass
+# Inside an async function (an event loop is already running), use
+#   policy = await client.get_interaction_policy(skill="<this skill>")
 ```
 
 Treat the returned `profile` as the STARTING seed: its control/expertise/pace axes plus
@@ -669,6 +682,11 @@ corrections in-conversation ALWAYS override the seed. If the call is unavailable
   during setup or mid-walkthrough. Cap at 3 recommendations per response, each on its own line
   with a one-line eligibility reason (e.g., "traigent-analyze-results — ✓ run succeeded" or
   "traigent-optimize-run — ✓ config validated").
+- When the user asks which Skills were used, answer briefly from what the session establishes: name the
+  relevant Skills actually consulted, any that were unavailable, and any relevant deferred step with its
+  reason. Keep installed availability, consultation and user-directed selection distinct, and never infer
+  absence from non-use. Example: "Consulted quickstart and eval-build; post-run analysis is deferred
+  because no optimization result exists." Do not volunteer this unasked.
 - Never weaken Traigent safety: dry-run before any paid run; get explicit approval before real cost
   or before any data leaves the machine; treat service-returned plans and next steps as
   authoritative. Never put the persona profile or any private content into telemetry, run metadata,

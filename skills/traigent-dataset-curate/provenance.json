@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "dfef2fdaee05a418",
+  "doc_hash": "bb9becbbb88d01bd",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
@@ -230,6 +230,61 @@
       "doc_before_hash": "0d3f4a0fcea336b2",
       "doc_after_hash": "dfef2fdaee05a418",
       "note": "Add a one-line pointer at the first mention of the example-insights MCP tool: it needs the analytics MCP server installed and registered (analyze-results skill, Prerequisites (one time)); the REST route works without it.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-449",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "dfef2fdaee05a418",
+      "doc_after_hash": "57a7af005a109c6d",
+      "note": "Drop the stale '<= 0.27.0' upper bound from the unfixed mock-synthesis and BaseEvaluator caveats; state the checked range (every release through 0.30.0) instead (#449).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-446",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "57a7af005a109c6d",
+      "doc_after_hash": "c7ae21dc43a0bcfb",
+      "note": "Stop teaching the retired remove_redundant action; redundant_pattern now says review/broaden, never delete; flagged ids and actions come from the example-insights rows (with the client-owned example_id join key), not get_dataset_quality (#446).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-362",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "c7ae21dc43a0bcfb",
+      "doc_after_hash": "375a5f276be70c74",
+      "note": "Interaction-policy profile-seed snippet no longer uses a module-level await: asyncio.run for scripts, await shown for async callers; re-synced into every skill (#362).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-416",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "375a5f276be70c74",
+      "doc_after_hash": "7816c4731f10572e",
+      "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-10-19-ci-335",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-19T00:00:00Z",
+      "doc_before_hash": "7816c4731f10572e",
+      "doc_after_hash": "bb9becbbb88d01bd",
+      "note": "Move the example-insights tool name out of the flagged-example boundary/protocol so the analytics MCP prerequisite pointer stays at its first mention (#446, #335 contract).",
       "source_type": "agent"
     }
   ]
