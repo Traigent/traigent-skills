@@ -6,6 +6,7 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 
 | Skill | SDK Source Dependencies |
 |-------|----------------------|
+| `traigent-build-agent` | `traigent/cloud/analytics_client.py` |
 | `traigent-setup-quickstart` | `traigent/utils/cost_calculator.py`, `traigent/core/cost_estimator.py`, `docs/getting-started/*`, `docs/features/safety-gates.md`, `pyproject.toml`, `examples/quickstart/` |
 | `traigent-js` | `traigent-js/src/optimization/*`, `traigent-js/src/core/context.ts`, `traigent-js/src/seamless/*`, `traigent-js/src/integrations/*`, `traigent-js/README.md`, `traigent-js/docs/*` |
 | `traigent-optimize-config-space` | `traigent/api/parameter_ranges.py`, `traigent/api/constraint_builders.py`, `docs/user-guide/tuned_variables.md` |

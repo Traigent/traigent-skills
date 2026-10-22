@@ -25,12 +25,13 @@ The eight skills that propose, size, or judge a run also carry a shared **econom
 
 ## Skills
 
-These 19 skills guide your agent through the full Traigent optimization lifecycle, grouped by the stage where you'd reach for them:
+These 20 skills guide your agent through the full Traigent optimization lifecycle, grouped by the stage where you'd reach for them:
 
 | Stage | Skill | Description |
 | ----- | ----- | ----------- |
 | Front door | [traigent-boost-agent](skills/traigent-boost-agent/) | 12-step lifecycle orchestrator for adding Traigent to an existing client agent codebase end-to-end — analyze code, curate the evaluation dataset, choose metrics, wire or audit evaluators, select TVARs and composites, instrument minimally, validate in mock mode, run approved real optimization, inspect configuration and example insights, iterate, and recommend safety/CI gates. Start here to add Traigent to an existing agent codebase or to continue after a completed first run. |
 | Front door | [traigent-setup-audit](skills/traigent-setup-audit/) | Free five-minute local audit of an existing agent project before anything is spent — finds the `@traigent.optimize` entry points and which declared knobs the code never reads, checks project evaluation-dataset row counts, duplicates, missing gold keys and holdout disjointness against the documented minimums, classifies the scorer and repeat-scores a deterministic one, and reports SDK, key-name and `.env` setup. Generated `traigent-runs/` walkthrough artifacts, including the guided first run's two-file `tuning`/`holdout` layout, are intentionally excluded from dataset discovery. Makes no model calls and no Traigent calls. Your scorer runs in a separate process inside a Linux network namespace where one is available (`network_guard: isolated`); where none is, the guard is Python-level — it stops ordinary socket use but not ctypes, a subprocess or `_socket`, so scorers reaching for those are classified executing and never run; that classification is a static read of the module, not a sandbox. The card always names the level it had. Ends by naming what code alone could not settle and which skill settles it. A second, approval-gated tier then offers one named Traigent check per open question — an approval card each, naming what runs, what leaves the machine, where the API key travels and what the same check returned on our own dogfood run; nothing is called until `--approve` names it, the analytics checks read and never compute, and every approved run writes a receipt. |
+| Front door | [traigent-build-agent](skills/traigent-build-agent/) | Build a new customer-owned agent through eight stages, deliver code/data/evaluator evidence, and verify connected decision briefs without upgrading their confidence. Experimental instructional workflow; independent qualification remains separate. |
 | Setup | [traigent-setup-quickstart](skills/traigent-setup-quickstart/) | Install and wire the Traigent SDK in an existing project — `pip install`, environment variables (`TRAIGENT_API_KEY`), mock mode, evaluation dataset creation in JSONL, and a first `@traigent.optimize` decorated function. A brand-new user with an agent to optimize is pointed at the guided first run (`Traigent/traigent-first-run`). |
 | Setup | [traigent-setup-decorator](skills/traigent-setup-decorator/) | Configure `@traigent.optimize()` beyond the basics — `EvaluationOptions` (datasets, custom evaluators, scoring), `InjectionOptions` (how optimized configs reach your function), `ExecutionOptions` (sync/async, timeouts, local-only), and multi-objective optimization. |
 | Setup | [traigent-setup-integrations](skills/traigent-setup-integrations/) | Integrate Traigent with AI frameworks — LangChain, LiteLLM, and DSPy adapter patterns, multi-provider model testing (OpenAI + Anthropic + Google), `auto_override_frameworks`, and observability via MLflow and Weights & Biases. |
@@ -76,7 +77,7 @@ These skills were renamed or merged as part of a taxonomy consolidation. No prio
 ### As a plugin (recommended — one step)
 
 This repo is a plugin marketplace for Claude Code, OpenAI Codex CLI, and GitHub Copilot CLI.
-Installing the `traigent` plugin gives you all 19 skills at once,
+Installing the `traigent` plugin gives you all 20 skills at once,
 namespaced as `traigent:<skill-name>`. On Claude Code and Copilot CLI, updates
 arrive through the agent's normal plugin-update flow.
 

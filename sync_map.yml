@@ -7,6 +7,15 @@ default_min_sdk_version: "0.24.0"
 # per-PR released-contracts. Do not resolve PyPI live in PR CI.
 current_released_sdk_version: "0.30.0"
 skills:
+  traigent-build-agent:
+    min_sdk_version: "0.24.0"
+    backend_prefixes:
+      - /api/v1/analytics/runs
+    modules:
+      - traigent.cloud.analytics_client
+    sdk_paths:
+      - traigent/cloud/analytics_client.py
+
   traigent-setup-quickstart:
     # the `traigent plan` command taught below ships in traigent>=0.17.0.
     min_sdk_version: "0.24.0"
