@@ -7,7 +7,7 @@ analytics, rank trials, fit Pareto frontiers, infer hidden fields, or run auth/t
 ## Install and Register
 
 The server is the SDK's `traigent-analytics-mcp` console command. It needs the `mcp` extra
-(`pip install "traigent[mcp]>=0.19"`; the `recommended` and `all` extras include it) and reuses the SDK
+(`pip install "traigent[mcp]>=0.24.0"`; the `recommended` and `all` extras include it) and reuses the SDK
 credentials from `traigent auth login` or `TRAIGENT_API_KEY`. Register it with the coding
 assistant as a stdio server named `traigent-analytics`:
 

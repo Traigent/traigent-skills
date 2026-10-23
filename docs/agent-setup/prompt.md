@@ -72,9 +72,13 @@ python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\act
 pip install "traigent[recommended]"
 ```
 
-Pin the floor to avoid the PyPI placeholder release: `pip install "traigent[recommended]>=0.19"`.
+Pin the floor the skills are written against: `pip install "traigent[recommended]>=0.24.0"`.
+It also rules out the PyPI placeholder release. A lower floor leaves an older install in place
+(pip prints `Requirement already satisfied`) while the guidance assumes 0.24.0 behaviour; older
+releases differ in cost and latency units, `traigent plan` URL resolution and the `auto`
+algorithm.
 If pip prints `traigent 0.0.1 does not provide the extra ...`, that is **fatal** — you installed
-the placeholder package; reinstall with `python -m pip install --upgrade "traigent>=0.19"`.
+the placeholder package; reinstall with `python -m pip install --upgrade "traigent>=0.24.0"`.
 
 Building in JavaScript/TypeScript instead? The Traigent JS SDK is **not published on public npm
 yet** — use the source/link flow in the `traigent-js` skill until it ships.

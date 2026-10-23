@@ -893,8 +893,8 @@ def _scan_unfloored_pip_installs(
             f"  teaches : {line.strip()}\n"
             f"  problem : pip can resolve the PyPI placeholder package unless Traigent "
             f"installs carry an explicit >= floor.\n"
-            f"  fix     : use `pip install \"traigent>=0.19\"` or "
-            f"`pip install \"traigent[recommended]>=0.19\"`."
+            f"  fix     : use `pip install \"traigent>=0.24.0\"` or "
+            f"`pip install \"traigent[recommended]>=0.24.0\"`."
         )
     return violations
 
@@ -1405,8 +1405,8 @@ def test_install_contract_lints_have_teeth(tmp_path: Path) -> None:
     good.parent.mkdir(parents=True)
     good.write_text(
         "```bash\n"
-        "pip install 'traigent[recommended]>=0.19'\n"
-        "python -m pip install --upgrade \"traigent>=0.19\"\n"
+        "pip install 'traigent[recommended]>=0.24.0'\n"
+        "python -m pip install --upgrade \"traigent>=0.24.0\"\n"
         "```\n",
         encoding="utf-8",
     )

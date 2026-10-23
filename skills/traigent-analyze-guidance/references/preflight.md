@@ -91,7 +91,9 @@ run.
 
 ## Checklist
 
-1. Python 3.11/3.12 venv; `pip install "traigent>=0.19" litellm scikit-learn scipy`.
+1. Python 3.11/3.12 venv; `pip install "traigent>=0.21.3" "litellm>=1.106.0" scikit-learn scipy`
+   (`litellm>=1.106.0` is the bundled pricing map that prices the OpenAI and Anthropic IDs these
+   skills use; confirm any other provider's ID is priced before relying on a cost objective).
 2. String-encode discrete knobs; `int()` at the call site.
 3. Custom pricing for gateway models; emit real accuracy/cost/latency metrics.
 4. `ExecutionOptions(offline=False)` (DEFAULT = online/cloud; `offline=True` local-only if chosen) + `algorithm` arg; cost cap set.

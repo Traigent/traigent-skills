@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.14"
+  version: "1.1.15"
 ---
 
 # Traigent Curate Dataset
@@ -140,7 +140,7 @@ flat `{"input": "...", "output": "..."}` is just this contract with scalar value
 |---|---|---|
 | `input` (or `input_data`) | `example.input_data` | required; the value can be a scalar **or a nested dict**. Called as `func(**input_data)` when it is a dict. |
 | **gold key** (first match) | `example.expected_output` | the value can be a scalar **or a nested dict** (then index it, e.g. `expected["sql"]`). |
-| every **other top-level key** | `example.metadata[<key>]` | this is how a **per-example side field** (e.g. `db_path`) reaches a scorer. A row that carries its own `metadata` object lands one level down — `example.metadata["metadata"]["split"]` — because 0.27.0 does not flatten it (Traigent/Traigent#1768); a scorer must read both shapes. |
+| every **other top-level key** | `example.metadata[<key>]` | this is how a **per-example side field** (e.g. `db_path`) reaches a scorer. A row that carries its own `metadata` object is **merged** into `example.metadata` on `traigent>=0.28.0` (so `example.metadata["split"]` works, and on a key collision the nested value wins over the row's top-level key); on 0.24.0-0.27.0 it lands one level down at `example.metadata["metadata"]["split"]` (Traigent/Traigent#1768). A scorer that must run on both sides of 0.28.0 reads both shapes. |
 
 **Accepted gold-key aliases**, in first-match order (SDK `evaluators/base.py` `_EXPECTED_OUTPUT_FIELDS`):
 `output`, `expected`, `expected_output`, `answer`, `target`, `label`. Pick **one** per row.
@@ -193,7 +193,7 @@ def private_llm(prompt: str) -> str:
     )
     return response.choices[0].message.content or ""
 
-seed_dataset = Dataset.from_jsonl("eval/tune.jsonl")
+seed_dataset = Dataset.from_jsonl("eval/tuning.jsonl")
 
 growth_options = DatasetGrowthOptions(
     examples_per_round=6,
@@ -227,7 +227,7 @@ from traigent.evaluators import Dataset
 from traigent.evaluators.base import EvaluationExample
 from traigent.generation import ExampleSynthesizer, GuidanceAction
 
-# A tiny in-memory seed stands in for Dataset.from_jsonl("eval/tune.jsonl").
+# A tiny in-memory seed stands in for Dataset.from_jsonl("eval/tuning.jsonl").
 seed_dataset = Dataset(
     examples=[EvaluationExample(input_data={"question": "Seed question"}, expected_output="seed answer")],
     name="seed",
@@ -264,7 +264,7 @@ def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
     return response.choices[0].message.content or ""
 
 @traigent.optimize(
-    evaluation=EvaluationOptions(eval_dataset="eval/tune.jsonl"),
+    evaluation=EvaluationOptions(eval_dataset="eval/tuning.jsonl"),
     objectives=["accuracy", "cost"],
     configuration_space={"temperature": [0.0, 0.3, 0.7]},
 )

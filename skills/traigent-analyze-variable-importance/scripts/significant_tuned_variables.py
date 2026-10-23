@@ -326,43 +326,13 @@ def _read_trial_file_with_counts(
             stripped = line.strip()
             if not stripped:
                 continue
-            try:
-                record = load_json_text(stripped, f"{path}:{line_number}")
-            except json.JSONDecodeError as exc:
-                raise ValueError(
-                    f"{path}:{line_number}: invalid JSONL record: {exc}"
-                ) from exc
-            if not isinstance(record, dict):
-                raise ValueError(f"{path}:{line_number}: trial must be a JSON object")
-            config = record.get("config")
-            if not isinstance(config, dict):
-                raise ValueError(f"{path}:{line_number}: missing object field 'config'")
-            status = record.get("status")
-            if isinstance(status, str) and status.lower() != "completed":
+            read = _read_trial_line(path, line_number, stripped, objective)
+            if read == SKIPPED_NON_COMPLETED:
                 skipped_non_completed += 1
-                continue
-            try:
-                metric = extract_metric(record, objective)
-                cost = extract_cost(record) if metric is not None else None
-            except ValueError as exc:
-                raise ValueError(f"{path}:{line_number}: {exc}") from exc
-            if metric is None:
+            elif read == SKIPPED_MISSING_OBJECTIVE:
                 skipped_missing_objective += 1
-                continue
-            # Only a measured row's config reaches a report; a skipped row
-            # (failed, or no objective value) is counted and never encoded.
-            check_input_nesting(config, f"{path}:{line_number}: config")
-            text_error = invalid_text_error(config, "config")
-            if text_error is not None:
-                raise ValueError(f"{path}:{line_number}: {text_error}")
-            trials.append(
-                Trial(
-                    objective=metric,
-                    config=dict(config),
-                    cost=cost,
-                    raw=record,
-                )
-            )
+            else:
+                trials.append(read)
     if not trials:
         raise ValueError(
             f"No completed trials with numeric objective '{objective}' found in {path}"
@@ -371,6 +341,57 @@ def _read_trial_file_with_counts(
             f" with no value for '{objective}' skipped)"
         )
     return trials, skipped_non_completed, skipped_missing_objective
+
+
+SKIPPED_NON_COMPLETED = "non-completed"
+SKIPPED_MISSING_OBJECTIVE = "missing-objective"
+
+
+def _read_trial_line(
+    path: Path, line_number: int, stripped: str, objective: str
+) -> Trial | str:
+    """The measured trial on one non-blank line, or why it was skipped
+    (``SKIPPED_NON_COMPLETED`` or ``SKIPPED_MISSING_OBJECTIVE``)."""
+    record, config = _trial_record(path, line_number, stripped)
+    status = record.get("status")
+    if isinstance(status, str) and status.lower() != "completed":
+        return SKIPPED_NON_COMPLETED
+    try:
+        metric = extract_metric(record, objective)
+        cost = extract_cost(record) if metric is not None else None
+    except ValueError as exc:
+        raise ValueError(f"{path}:{line_number}: {exc}") from exc
+    if metric is None:
+        return SKIPPED_MISSING_OBJECTIVE
+    # Only a measured row's config reaches a report; a skipped row
+    # (failed, or no objective value) is counted and never encoded.
+    check_input_nesting(config, f"{path}:{line_number}: config")
+    text_error = invalid_text_error(config, "config")
+    if text_error is not None:
+        raise ValueError(f"{path}:{line_number}: {text_error}")
+    return Trial(
+        objective=metric,
+        config=dict(config),
+        cost=cost,
+        raw=record,
+    )
+
+
+def _trial_record(
+    path: Path, line_number: int, stripped: str
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """``(record, config)`` of one line; raise unless it is a JSON object with
+    an object ``config``."""
+    try:
+        record = load_json_text(stripped, f"{path}:{line_number}")
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{path}:{line_number}: invalid JSONL record: {exc}") from exc
+    if not isinstance(record, dict):
+        raise ValueError(f"{path}:{line_number}: trial must be a JSON object")
+    config = record.get("config")
+    if not isinstance(config, dict):
+        raise ValueError(f"{path}:{line_number}: missing object field 'config'")
+    return record, config
 
 
 def read_config_space(path: Path | None) -> dict[str, list[Any]] | None:
@@ -503,40 +524,58 @@ def permutation_spread_pvalue(
     reach the observed spread (add-one smoothed). A small p-value means the observed
     spread is larger than label-shuffled noise; a large one means it is not.
     """
-    relevant = [trial for trial in trials if knob in trial.config]
-    if len(relevant) < 2 or draws <= 0:
+    inputs = _permutation_inputs(trials, knob, draws)
+    if inputs is None:
         return 1.0
-    labels = [canonical_value(trial.config[knob]) for trial in relevant]
-    if len(set(labels)) < 2:
-        return 1.0
-    observed = spread_for_groups(grouped_trials(relevant, knob))
-    if observed <= 0.0:
-        return 1.0
-    objectives = [trial.objective for trial in relevant]
+    labels, objectives, observed = inputs
     rng = random.Random(seed)
     at_or_above = 0
     for _ in range(draws):
         shuffled = objectives[:]
         rng.shuffle(shuffled)
-        groups: dict[str, list[float]] = defaultdict(list)
-        for label_key, value in zip(labels, shuffled):
-            groups[label_key].append(value)
-        group_means = [mean(values) for values in groups.values() if values]
-        null_spread = (
-            max(group_means) - min(group_means) if len(group_means) >= 2 else 0.0
-        )
-        # Roundoff can make a mathematical tie slightly smaller. Use a relative
-        # tolerance (as in scipy.stats.permutation_test), so tiny-scale metrics
-        # do not collapse every permutation into a tie.
-        if null_spread >= observed or math.isclose(
-            null_spread, observed, rel_tol=100 * sys.float_info.epsilon,
-            # Roundoff in the spread grows with the group means, not the spread:
-            # large-offset objectives (token counts, latency in ms) need an
-            # absolute term scaled by the means, or true ties are dropped.
-            abs_tol=100 * sys.float_info.epsilon * max(abs(m) for m in group_means),
-        ):
+        if _shuffled_spread_reaches(labels, shuffled, observed):
             at_or_above += 1
     return (at_or_above + 1) / (draws + 1)
+
+
+def _permutation_inputs(
+    trials: list[Trial], knob: str, draws: int
+) -> tuple[list[str], list[float], float] | None:
+    """``(value labels, objectives, observed spread)`` of the trials carrying
+    the knob, or ``None`` when there is nothing to test: fewer than two trials
+    or values, no draws, or no observed spread."""
+    relevant = [trial for trial in trials if knob in trial.config]
+    if len(relevant) < 2 or draws <= 0:
+        return None
+    labels = [canonical_value(trial.config[knob]) for trial in relevant]
+    if len(set(labels)) < 2:
+        return None
+    observed = spread_for_groups(grouped_trials(relevant, knob))
+    if observed <= 0.0:
+        return None
+    return labels, [trial.objective for trial in relevant], observed
+
+
+def _shuffled_spread_reaches(
+    labels: list[str], shuffled: list[float], observed: float
+) -> bool:
+    """Whether the per-value mean spread of one shuffle reaches the observed
+    spread, ties within roundoff included."""
+    groups: dict[str, list[float]] = defaultdict(list)
+    for label_key, value in zip(labels, shuffled):
+        groups[label_key].append(value)
+    group_means = [mean(values) for values in groups.values() if values]
+    null_spread = max(group_means) - min(group_means) if len(group_means) >= 2 else 0.0
+    # Roundoff can make a mathematical tie slightly smaller. Use a relative
+    # tolerance (as in scipy.stats.permutation_test), so tiny-scale metrics
+    # do not collapse every permutation into a tie.
+    return null_spread >= observed or math.isclose(
+        null_spread, observed, rel_tol=100 * sys.float_info.epsilon,
+        # Roundoff in the spread grows with the group means, not the spread:
+        # large-offset objectives (token counts, latency in ms) need an
+        # absolute term scaled by the means, or true ties are dropped.
+        abs_tol=100 * sys.float_info.epsilon * max(abs(m) for m in group_means),
+    )
 
 
 def chi2_survival(statistic: float, dof: int) -> float:
@@ -652,18 +691,7 @@ def analyze_knob(
     }
     best_key = max(group_means, key=lambda key: (group_means[key], key))
     worst_key = min(group_means, key=lambda key: (group_means[key], key))
-    best_group = groups[best_key]
-    worst_group = groups[worst_key]
-    best_costs = [trial.cost for trial in best_group if trial.cost is not None]
-    worst_costs = [trial.cost for trial in worst_group if trial.cost is not None]
-    cost_effect: float | None = None
-    cost_effect_pct: float | None = None
-    if best_costs and worst_costs:
-        best_cost = mean(best_costs)
-        worst_cost = mean(worst_costs)
-        cost_effect = best_cost - worst_cost
-        if worst_cost != 0.0:
-            cost_effect_pct = (cost_effect / worst_cost) * 100.0
+    cost_effect, cost_effect_pct = _cost_effect(groups[best_key], groups[worst_key])
 
     spread = max(group_means.values()) - min(group_means.values())
     ci_low, ci_high = bootstrap_spread_ci(
@@ -682,6 +710,7 @@ def analyze_knob(
     )
     relevant_trials = sum(len(group) for group in groups.values())
     min_group_size = min(len(group) for group in groups.values())
+    value_means, group_sizes = _value_tables(groups, group_means, knob)
 
     return KnobImportance(
         knob=knob,
@@ -696,14 +725,8 @@ def analyze_knob(
         cost_effect_pct=cost_effect_pct,
         worst_value=value_from_key(groups, worst_key, knob),
         worst_value_mean_acc=group_means[worst_key],
-        value_means={
-            display_value(value_from_key(groups, key, knob)): round_float(value)
-            for key, value in sorted(group_means.items())
-        },
-        group_sizes={
-            display_value(value_from_key(groups, key, knob)): len(group)
-            for key, group in sorted(groups.items())
-        },
+        value_means=value_means,
+        group_sizes=group_sizes,
         p_value=p_value,
         p_adjusted=p_value,
         correction="holm",
@@ -717,6 +740,39 @@ def analyze_knob(
     )
 
 
+def _cost_effect(
+    best_group: list[Trial], worst_group: list[Trial]
+) -> tuple[float | None, float | None]:
+    """``(best minus worst mean cost, that as a % of worst)``; ``None`` where a
+    group has no cost, and no percentage against a zero worst cost."""
+    best_costs = [trial.cost for trial in best_group if trial.cost is not None]
+    worst_costs = [trial.cost for trial in worst_group if trial.cost is not None]
+    cost_effect: float | None = None
+    cost_effect_pct: float | None = None
+    if best_costs and worst_costs:
+        best_cost = mean(best_costs)
+        worst_cost = mean(worst_costs)
+        cost_effect = best_cost - worst_cost
+        if worst_cost != 0.0:
+            cost_effect_pct = (cost_effect / worst_cost) * 100.0
+    return cost_effect, cost_effect_pct
+
+
+def _value_tables(
+    groups: dict[str, list[Trial]], group_means: dict[str, float], knob: str
+) -> tuple[dict[str, float], dict[str, int]]:
+    """Per displayed value: the rounded mean objective and the trial count."""
+    value_means = {
+        display_value(value_from_key(groups, key, knob)): round_float(value)
+        for key, value in sorted(group_means.items())
+    }
+    group_sizes = {
+        display_value(value_from_key(groups, key, knob)): len(group)
+        for key, group in sorted(groups.items())
+    }
+    return value_means, group_sizes
+
+
 def analyze_importance(
     trials: list[Trial],
     config_space: dict[str, list[Any]] | None,
@@ -725,16 +781,7 @@ def analyze_importance(
     sampling_design: str = "unknown",
     alpha: float = DEFAULT_ALPHA,
 ) -> list[KnobImportance]:
-    if not 0.0 < alpha <= MAX_ALPHA:
-        raise ValueError(f"alpha must satisfy 0 < alpha <= {MAX_ALPHA}")
-    if sampling_design not in {"randomized", "adaptive", "unknown"}:
-        raise ValueError(
-            "sampling_design must be 'randomized', 'adaptive', or 'unknown'"
-        )
-    for trial in trials:
-        if measured_number(trial.objective, "objective") is None:
-            raise ValueError("objective must be a finite number")
-        measured_number(trial.cost, "cost", nonnegative=True)
+    _check_importance_inputs(trials, sampling_design, alpha)
     total_n = len(trials)
     rows: list[KnobImportance] = []
     for knob in infer_knobs(trials, config_space):
@@ -757,27 +804,14 @@ def analyze_importance(
         if sampling_design == "randomized"
         else set()
     )
-    required_draws_plus_one = (
-        math.ceil(PERMUTATION_RESOLUTION_MULTIPLIER * family_size / alpha)
-        if family_size
-        else 0
-    )
+    resolved = bootstrap_draws + 1 >= _required_draws_plus_one(family_size, alpha)
     for row, p_adjusted in zip(rows, adjusted):
         row.p_adjusted = p_adjusted
         row.family_size = family_size
         row.alpha = alpha
-        if row.relevant_trials < MIN_TRIALS_PER_KNOB or row.min_group_size < MIN_TRIALS_PER_VALUE:
-            row.inference_status = "insufficient_per_knob_samples"
-        elif bootstrap_draws + 1 < required_draws_plus_one:
-            row.inference_status = "insufficient_permutation_resolution"
-        elif sampling_design == "adaptive":
-            row.inference_status = "adaptive_sampling"
-        elif sampling_design == "unknown":
-            row.inference_status = "exchangeability_unknown"
-        elif row.knob in coupled:
-            row.inference_status = "knobs_not_independent"
-        else:
-            row.inference_status = "tested"
+        row.inference_status = _inference_status(
+            row, resolved, sampling_design, row.knob in coupled
+        )
         row.label = (
             "significant"
             if row.inference_status == "tested"
@@ -789,6 +823,47 @@ def analyze_importance(
     return rows
 
 
+def _check_importance_inputs(
+    trials: list[Trial], sampling_design: str, alpha: float
+) -> None:
+    """Raise ``ValueError`` for an alpha out of range, an unknown sampling
+    design, or a trial whose objective or cost is not a valid measurement."""
+    if not 0.0 < alpha <= MAX_ALPHA:
+        raise ValueError(f"alpha must satisfy 0 < alpha <= {MAX_ALPHA}")
+    if sampling_design not in {"randomized", "adaptive", "unknown"}:
+        raise ValueError(
+            "sampling_design must be 'randomized', 'adaptive', or 'unknown'"
+        )
+    for trial in trials:
+        if measured_number(trial.objective, "objective") is None:
+            raise ValueError("objective must be a finite number")
+        measured_number(trial.cost, "cost", nonnegative=True)
+
+
+def _required_draws_plus_one(family_size: int, alpha: float) -> int:
+    """Permutation draws + 1 needed to resolve ``family_size`` knobs at alpha."""
+    if not family_size:
+        return 0
+    return math.ceil(PERMUTATION_RESOLUTION_MULTIPLIER * family_size / alpha)
+
+
+def _inference_status(
+    row: KnobImportance, resolved: bool, sampling_design: str, coupled: bool
+) -> str:
+    """The first reason the knob's test cannot be trusted, else ``tested``."""
+    if row.relevant_trials < MIN_TRIALS_PER_KNOB or row.min_group_size < MIN_TRIALS_PER_VALUE:
+        return "insufficient_per_knob_samples"
+    if not resolved:
+        return "insufficient_permutation_resolution"
+    if sampling_design == "adaptive":
+        return "adaptive_sampling"
+    if sampling_design == "unknown":
+        return "exchangeability_unknown"
+    if coupled:
+        return "knobs_not_independent"
+    return "tested"
+
+
 def sdk_cross_check_payload(results: dict[Any, Any]) -> dict[str, Any]:
     """Validate SDK importance output before it can reach a report artifact.
 
@@ -796,14 +871,6 @@ def sdk_cross_check_payload(results: dict[Any, Any]) -> dict[str, Any]:
     measurements, checked before rounding (which would turn a boolean into 1.0).
     Every field is type-checked by name, so an error says which one is invalid.
     """
-    missing = object()
-
-    def field(result: Any, name: str) -> Any:
-        value = getattr(result, name, missing)
-        if value is missing:
-            raise ValueError(f"{name} is missing")
-        return value
-
     for name in results:
         # Knob names become JSON object keys and are sorted below.
         if not isinstance(name, str):
@@ -811,24 +878,7 @@ def sdk_cross_check_payload(results: dict[Any, Any]) -> dict[str, Any]:
     payload: dict[str, Any] = {}
     for name, result in sorted(results.items()):
         try:
-            score = field(result, "importance_score")
-            interval = field(result, "confidence_interval")
-            if not isinstance(interval, (list, tuple)) or len(interval) != 2:
-                raise ValueError("confidence_interval is not a pair of endpoints")
-            measurements = (
-                ("importance_score", score),
-                ("confidence_interval[0]", interval[0]),
-                ("confidence_interval[1]", interval[1]),
-            )
-            for label, value in measurements:
-                if measured_number(value, label) is None:
-                    raise ValueError(f"{label} is missing")
-            method = field(result, "method")
-            if not isinstance(method, str):
-                raise ValueError("method is not a string")
-            sample_size = field(result, "sample_size")
-            if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size < 0:
-                raise ValueError("sample_size is not a nonnegative integer")
+            score, interval, method, sample_size = _checked_sdk_result(result)
         except ValueError as exc:
             raise ValueError(f"{name}: {exc}") from exc
         payload[name] = {
@@ -838,6 +888,40 @@ def sdk_cross_check_payload(results: dict[Any, Any]) -> dict[str, Any]:
             "sample_size": sample_size,
         }
     return payload
+
+
+_MISSING = object()
+
+
+def _sdk_field(result: Any, name: str) -> Any:
+    value = getattr(result, name, _MISSING)
+    if value is _MISSING:
+        raise ValueError(f"{name} is missing")
+    return value
+
+
+def _checked_sdk_result(result: Any) -> tuple[Any, Sequence[Any], str, int]:
+    """``(score, interval, method, sample_size)`` of one SDK result, each
+    checked in that order; ``ValueError`` names the first invalid field."""
+    score = _sdk_field(result, "importance_score")
+    interval = _sdk_field(result, "confidence_interval")
+    if not isinstance(interval, (list, tuple)) or len(interval) != 2:
+        raise ValueError("confidence_interval is not a pair of endpoints")
+    measurements = (
+        ("importance_score", score),
+        ("confidence_interval[0]", interval[0]),
+        ("confidence_interval[1]", interval[1]),
+    )
+    for label, value in measurements:
+        if measured_number(value, label) is None:
+            raise ValueError(f"{label} is missing")
+    method = _sdk_field(result, "method")
+    if not isinstance(method, str):
+        raise ValueError("method is not a string")
+    sample_size = _sdk_field(result, "sample_size")
+    if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size < 0:
+        raise ValueError("sample_size is not a nonnegative integer")
+    return score, interval, method, sample_size
 
 
 def attempt_sdk_importance(
@@ -935,26 +1019,34 @@ def heldout_card_metrics(
         acc_delta = opt_acc - base_acc
     accuracy_pp = acc_delta * 100.0 if acc_delta is not None else None
 
-    costs = {
-        key: (
+    costs = [
+        (
             number("baseline", key, nonnegative=True),
             number("optimized", key, nonnegative=True),
             number("delta", key),
         )
         for key in ("cost", "mock_cost")
-    }
-    cost_delta_pct = None
-    for base_cost, opt_cost, cost_delta in costs.values():
+    ]
+    return (accuracy_pp, _heldout_cost_delta_pct(costs))
+
+
+def _heldout_cost_delta_pct(
+    costs: list[tuple[float | None, float | None, float | None]],
+) -> float | None:
+    """The optimized-vs-baseline cost change in %, from the first cost key
+    with a baseline or optimized value; ``None`` when that key has no nonzero
+    baseline or nothing to compare it with."""
+    for base_cost, opt_cost, cost_delta in costs:
         if base_cost is None and opt_cost is None:
             continue
-        if base_cost is not None and base_cost != 0.0:
-            if opt_cost is not None:
-                cost_delta_pct = ((opt_cost - base_cost) / base_cost) * 100.0
-            elif cost_delta is not None:
-                cost_delta_pct = (cost_delta / base_cost) * 100.0
-        break
-
-    return (accuracy_pp, cost_delta_pct)
+        if base_cost is None or base_cost == 0.0:
+            return None
+        if opt_cost is not None:
+            return ((opt_cost - base_cost) / base_cost) * 100.0
+        if cost_delta is not None:
+            return (cost_delta / base_cost) * 100.0
+        return None
+    return None
 
 
 def strict_json_text(payload: Any, artifact: str) -> str:
@@ -1264,6 +1356,48 @@ def write_insights_md(
         f"On {slice_label}, in this run, {len(rows)} tuned variables had at least two observed values across {n_trials} trials.",
         "",
     ]
+    lines += _skipped_trial_lines(
+        skipped_non_completed, skipped_missing_objective, n_trials, objective
+    )
+    if nonfinite_trials:
+        paragraph = _nonfinite_paragraph(
+            nonfinite_trials, nonfinite_knobs, nonfinite_collisions, nonfinite_has_nan
+        )
+        lines.extend([paragraph, ""])
+    lines += [
+        f"Honesty rule: `significant` requires randomized assignment with each knob assigned independently of the others, at least 20 observations for that knob and 5 per observed value, adequate permutation resolution, and a Holm-adjusted p-value below alpha={alpha:g}. Adaptive or unknown sampling stays `directional` because label exchangeability is not established, and so does a knob whose values were assigned together with another knob's (`knobs_not_independent`). The bootstrap CI is a scale annotation, not the significance test.",
+        "",
+    ]
+    if heldout_accuracy_pp is not None or heldout_cost_delta_pct is not None:
+        lines.extend(
+            [
+                f"Heldout optimized-vs-baseline context: {format_pp(heldout_accuracy_pp)} {objective}, {format_pct(heldout_cost_delta_pct)} cost.",
+                "",
+            ]
+        )
+    lines += _resolution_lines(rows, alpha)
+    lines.extend(["## Ranking", ""])
+    lines += _ranking_lines(rows, confidence, objective)
+    lines.extend(
+        [
+            "",
+            "## Method Note",
+            "",
+            "The primary ranking uses per-value mean objective spread, with variance-decomposition share reported as a companion statistic. Bootstrap intervals resample trials with replacement using seed 55.",
+            "",
+            sdk_note,
+            "",
+        ]
+    )
+    lines += _sdk_table_lines(sdk_payload)
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def _skipped_trial_lines(
+    skipped_non_completed: int, skipped_missing_objective: int, n_trials: int, objective: str
+) -> list[str]:
+    """One paragraph per kind of skipped trial, when any were skipped."""
+    lines: list[str] = []
     if skipped_non_completed:
         lines.extend(
             [
@@ -1278,92 +1412,91 @@ def write_insights_md(
                 "",
             ]
         )
-    if nonfinite_trials:
-        knob_list = ", ".join(f"`{knob}`" for knob in nonfinite_knobs)
-        paragraph = (
-            f"{nonfinite_trials} measured trial(s) carry a NaN or Infinity knob value ({knob_list}); "
-            'wherever such a value appears in JSON outputs, it is written as the string "NaN", '
-            '"Infinity" or "-Infinity".'
+    return lines
+
+
+def _nonfinite_paragraph(
+    nonfinite_trials: int,
+    nonfinite_knobs: Sequence[str],
+    nonfinite_collisions: Sequence[str],
+    nonfinite_has_nan: bool,
+) -> str:
+    """How NaN/Infinity knob values are spelled, grouped and kept apart."""
+    knob_list = ", ".join(f"`{knob}`" for knob in nonfinite_knobs)
+    paragraph = (
+        f"{nonfinite_trials} measured trial(s) carry a NaN or Infinity knob value ({knob_list}); "
+        'wherever such a value appears in JSON outputs, it is written as the string "NaN", '
+        '"Infinity" or "-Infinity".'
+    )
+    if nonfinite_has_nan:
+        paragraph += (
+            " Every NaN value is grouped as one value; if NaN marks a knob that does not apply "
+            "to a trial, omit the key instead — each knob is ranked over the trials that carry it."
         )
-        if nonfinite_has_nan:
-            paragraph += (
-                " Every NaN value is grouped as one value; if NaN marks a knob that does not apply "
-                "to a trial, omit the key instead — each knob is ranked over the trials that carry it."
-            )
-        for knob in nonfinite_collisions:
-            paragraph += (
-                f" On `{knob}`, a number and a string share one spelling in the outputs; "
-                "they are ranked as separate values."
-            )
-        lines.extend([paragraph, ""])
-    lines += [
-        f"Honesty rule: `significant` requires randomized assignment with each knob assigned independently of the others, at least 20 observations for that knob and 5 per observed value, adequate permutation resolution, and a Holm-adjusted p-value below alpha={alpha:g}. Adaptive or unknown sampling stays `directional` because label exchangeability is not established, and so does a knob whose values were assigned together with another knob's (`knobs_not_independent`). The bootstrap CI is a scale annotation, not the significance test.",
+    for knob in nonfinite_collisions:
+        paragraph += (
+            f" On `{knob}`, a number and a string share one spelling in the outputs; "
+            "they are ranked as separate values."
+        )
+    return paragraph
+
+
+def _resolution_lines(rows: list[KnobImportance], alpha: float) -> list[str]:
+    """The rerun advice when the permutation draws cannot resolve the family."""
+    short = [row for row in rows if row.inference_status == "insufficient_permutation_resolution"]
+    if not short:
+        return []
+    needed = math.ceil(PERMUTATION_RESOLUTION_MULTIPLIER * short[0].family_size / alpha)
+    return [
+        f"Permutation resolution is too low for {short[0].family_size} eligible knobs at alpha={alpha:g}: rerun with `--bootstrap-draws {needed}` or more (draws + 1 must be at least 10 x knobs / alpha).",
         "",
     ]
-    if heldout_accuracy_pp is not None or heldout_cost_delta_pct is not None:
-        lines.extend(
-            [
-                f"Heldout optimized-vs-baseline context: {format_pp(heldout_accuracy_pp)} {objective}, {format_pct(heldout_cost_delta_pct)} cost.",
-                "",
-            ]
+
+
+def _ranking_lines(
+    rows: list[KnobImportance], confidence: float, objective: str
+) -> list[str]:
+    """One numbered line per ranked knob, or the no-ranking line."""
+    if not rows:
+        return ["No multi-value tuned variables were available to rank."]
+    lines: list[str] = []
+    for index, row in enumerate(rows, 1):
+        cost_clause = (
+            "cost unavailable"
+            if row.cost_effect is None
+            else f"cost effect vs worst value {row.cost_effect:+.6f}"
         )
-    short = [row for row in rows if row.inference_status == "insufficient_permutation_resolution"]
-    if short:
-        needed = math.ceil(PERMUTATION_RESOLUTION_MULTIPLIER * short[0].family_size / alpha)
-        lines.extend(
-            [
-                f"Permutation resolution is too low for {short[0].family_size} eligible knobs at alpha={alpha:g}: rerun with `--bootstrap-draws {needed}` or more (draws + 1 must be at least 10 x knobs / alpha).",
-                "",
-            ]
+        lines.append(
+            f"{index}. `{row.knob}`: {row.spread * 100:.2f} pp spread, "
+            f"variance share {row.variance_share:.3f}, "
+            f"{int(confidence * 100)}% CI [{row.ci_low * 100:.2f}, {row.ci_high * 100:.2f}] pp, "
+            f"raw p={row.p_value:.6g}, Holm-adjusted p={row.p_adjusted:.6g} "
+            f"across {row.family_size} eligible knobs, `{row.label}` "
+            f"(`{row.inference_status}`). Best observed value: `{display_value(row.best_value)}` "
+            f"({row.best_value_mean_acc:.3f} mean {objective}); {cost_clause}."
         )
-    lines.extend(["## Ranking", ""])
-    if rows:
-        for index, row in enumerate(rows, 1):
-            cost_clause = (
-                "cost unavailable"
-                if row.cost_effect is None
-                else f"cost effect vs worst value {row.cost_effect:+.6f}"
-            )
-            lines.append(
-                f"{index}. `{row.knob}`: {row.spread * 100:.2f} pp spread, "
-                f"variance share {row.variance_share:.3f}, "
-                f"{int(confidence * 100)}% CI [{row.ci_low * 100:.2f}, {row.ci_high * 100:.2f}] pp, "
-                f"raw p={row.p_value:.6g}, Holm-adjusted p={row.p_adjusted:.6g} "
-                f"across {row.family_size} eligible knobs, `{row.label}` "
-                f"(`{row.inference_status}`). Best observed value: `{display_value(row.best_value)}` "
-                f"({row.best_value_mean_acc:.3f} mean {objective}); {cost_clause}."
-            )
-    else:
-        lines.append("No multi-value tuned variables were available to rank.")
-    lines.extend(
-        [
-            "",
-            "## Method Note",
-            "",
-            "The primary ranking uses per-value mean objective spread, with variance-decomposition share reported as a companion statistic. Bootstrap intervals resample trials with replacement using seed 55.",
-            "",
-            sdk_note,
-            "",
-        ]
-    )
-    if sdk_payload:
-        lines.extend(
-            [
-                "## SDK cross-check",
-                "",
-                "Traigent SDK `ParameterImportanceAnalyzer` variance-based output (also in `sdk_cross_check.json`); it does not change the ranking or labels above.",
-                "",
-                "| knob | importance_score | confidence_interval | sample_size |",
-                "| --- | --- | --- | --- |",
-            ]
+    return lines
+
+
+def _sdk_table_lines(sdk_payload: dict[str, Any] | None) -> list[str]:
+    """The SDK cross-check table, when the SDK produced one."""
+    if not sdk_payload:
+        return []
+    lines = [
+        "## SDK cross-check",
+        "",
+        "Traigent SDK `ParameterImportanceAnalyzer` variance-based output (also in `sdk_cross_check.json`); it does not change the ranking or labels above.",
+        "",
+        "| knob | importance_score | confidence_interval | sample_size |",
+        "| --- | --- | --- | --- |",
+    ]
+    for name, result in sdk_payload.items():
+        low, high = result["confidence_interval"]
+        lines.append(
+            f"| `{name}` | {result['importance_score']:.6g} | [{low:.6g}, {high:.6g}] | {result['sample_size']} |"
         )
-        for name, result in sdk_payload.items():
-            low, high = result["confidence_interval"]
-            lines.append(
-                f"| `{name}` | {result['importance_score']:.6g} | [{low:.6g}, {high:.6g}] | {result['sample_size']} |"
-            )
-        lines.append("")
-    path.write_text("\n".join(lines), encoding="utf-8")
+    lines.append("")
+    return lines
 
 
 def parse_args() -> argparse.Namespace:

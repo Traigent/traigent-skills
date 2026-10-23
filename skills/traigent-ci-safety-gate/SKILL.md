@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.10"
+  version: "1.0.11"
 ---
 
 # CI Safety Gate
@@ -41,7 +41,10 @@ can still be `best_config`. One sample is one completed trial. Below
 `min_samples` completed trials (default 30) it never halts; at or after that
 floor the run stops with `stop_reason == "safety_constraint"` when the
 confidence lower bound on per-trial compliance is below the required rate —
-including when every trial complied but there is not yet enough evidence. The
+including when every trial complied but there is not yet enough evidence (on
+SDK 0.31.0 and later that case reports the distinct
+`stop_reason == "safety_constraint_insufficient_evidence"`; treat both values
+as a safety halt, and neither as a pass). The
 check runs after the `max_trials` check, so a failing constraint on the trial
 that reaches `max_trials` (or on a run that ends below `min_samples`) leaves a
 non-safety `stop_reason` such as `"max_trials_reached"`; that is not a pass,
@@ -110,9 +113,13 @@ Validate TVL specs in CI before running the gate:
 python -m traigent.tvl path/to/promotion-gate.tvl.yml --strict
 ```
 
-Name specs `*.tvl.yml` (or `*.tvl.yaml`): the validator discovers only those in a directory, and it
-exits 0 when it finds no spec at all, even after printing `ERROR: File not found` for a missing
-path. So a CI step must assert that at least one spec exists, as the workflows below do.
+Name specs `*.tvl.yml` (or `*.tvl.yaml`): the validator discovers only those in a directory. On
+SDK **0.30.0 and earlier** it exits 0 when it finds no spec at all, even after printing
+`ERROR: File not found` for a missing path. The SDK's development branch changes this — a missing
+path becomes a failure and an empty selection exits 1 unless `--allow-empty` is passed — but no
+release contains it yet, so re-check the behaviour (and this note) against the first release after
+0.30.0. Either way a CI step must assert that at least one spec exists, as the workflows below do:
+that assertion is correct on both sides of the change.
 
 ## Applying the Winning Config
 
@@ -135,7 +142,7 @@ answer = my_function("What is Python?")
 
 SAFETY: run a holdout regression check against a pinned baseline config.
 
-- Pull request job: run offline/mock under `TRAIGENT_OFFLINE_MODE=true` to verify wiring, script shape, and fail-closed behavior without spending.
+- Pull request job: run offline/mock under `TRAIGENT_OFFLINE_MODE=true` to verify wiring, script shape, and fail-closed behavior. Offline mode stops only Traigent backend communication; real LLM calls still happen, so add `TRAIGENT_MOCK_LLM=true` (or a stub) for zero model spend.
 - Scheduled job: run the real holdout evaluation under `TRAIGENT_RUN_COST_LIMIT` with account credentials and compare candidate vs incumbent. That limit bounds only calls placed through the SDK; the holdout script's own provider calls are bounded by the script (rows × configs × a per-call cap), and it must write the **measured** `total_cost` — a `0.0` placeholder or a missing field would make `--max-cost` pass vacuously, so the holdout script refuses a `0.0` total after real calls (cost is not wired) and the gate script refuses a missing, NaN or negative field.
 
 Any CI workflow that executes `optimize()` or `optimize_sync()` in local/offline mode, including
@@ -172,15 +179,30 @@ permissions:
   contents: read
 
 jobs:
-  # PR job: offline wiring check only — static env, zero spend. The paid
+  # PR job: offline wiring check only — static env; zero model spend needs the
+  # mock (TRAIGENT_MOCK_LLM=true) or a stub, not offline mode alone. The paid
   # nightly job is a separate job with its own static env; see
   # references/gate-workflow.md for the full two-job workflow.
   safety-gate:
     runs-on: ubuntu-latest
     env:
-      TRAIGENT_RUN_COST_LIMIT: "0.00"
       TRAIGENT_OFFLINE_MODE: "true"
       TRAIGENT_RUN_APPROVED: "1"
+      # TRAIGENT_RUN_COST_LIMIT is deliberately NOT set here. The SDK rejects a
+      # non-positive limit (`ConfigurationError: ... must be > 0 USD`) as soon as
+      # the cost enforcer is built, so "0.00" would red-fail the first offline
+      # optimize()/optimize_sync() call this job reaches. The YAML never calls
+      # it directly -- only your own run_holdout_eval.py would, and the
+      # reference implementation in references/gate-workflow.md does not, which
+      # is the only reason "0.00" was ever green here. A token cap such as
+      # "0.01" can fail too, because the pre-run check uses a conservative
+      # estimate even offline -- measured at $0.32 for a two-row dataset and
+      # two grid trials, so scale the figure to your job before trusting it.
+      # Offline mode alone does NOT give zero spend: it stops only Traigent
+      # backend communication, and real LLM calls still happen. Zero model
+      # spend requires mocking the model (TRAIGENT_MOCK_LLM=true or a stub).
+      # In a mocked job leave the cap unset (the $2.00 default); in the paid
+      # job set a cap above the estimate for its dataset and trial count.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

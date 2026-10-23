@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.16"
+  version: "1.0.17"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -166,18 +166,18 @@ traigent.utils.exceptions.CostLimitExceeded: Cost limit exceeded: estimated $0.5
 # Option 1: Increase the cost limit (only after the user approves the higher ceiling;
 # it does not help when cost was not measured -- see the next entry)
 @traigent.optimize(
-    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
+    configuration_space={"model": ["gpt-6-luna", "gpt-5.6-sol"]},
     cost_limit=2.0,  # $2.00 USD
 )
 
 # Option 2: Use cheaper models
 @traigent.optimize(
-    configuration_space={"model": ["gpt-4o-mini"]},  # Cheaper than gpt-4o
+    configuration_space={"model": ["gpt-6-luna"]},  # Cheaper than gpt-5.6-sol
 )
 
 # Option 3: Reduce trials
 @traigent.optimize(
-    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
+    configuration_space={"model": ["gpt-6-luna", "gpt-5.6-sol"]},
     max_trials=5,  # Fewer trials = lower cost
 )
 ```
@@ -253,7 +253,14 @@ my_func("hello")  # Works - get_config() returns the applied config
 
 ### ProviderValidationError
 
-**When raised**: API key validation fails before optimization starts. Extends ConfigurationError.
+**When raised**: never by the SDK on its own. `@traigent.optimize` runs no automatic provider
+validation and has no `validate_providers=` parameter. Provider key validation is opt-in: call
+`validate_providers(...)` yourself before the run (`from traigent.providers import
+validate_providers` — a plain `import traigent` does not expose the submodule) and raise this
+exception
+from your own code if you want a hard failure. Extends `ConfigurationError`.
+
+The shape of the error you raise yourself:
 
 ```
 traigent.utils.exceptions.ProviderValidationError: Provider validation failed:
@@ -270,13 +277,22 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
 ```bash
-# Skip provider validation (if you know keys are valid but validation is failing)
+# Signal that your own pre-run check should be skipped (keys are valid, the check is failing)
 export TRAIGENT_SKIP_PROVIDER_VALIDATION=true
 ```
 
-Provider validation is controlled by the `TRAIGENT_SKIP_PROVIDER_VALIDATION`
-environment variable, not a decorator argument (there is no `validate_providers`
-keyword on `@traigent.optimize`).
+`TRAIGENT_SKIP_PROVIDER_VALIDATION` does **not** switch anything off by itself. It is not a
+decorator argument (there is no `validate_providers` keyword on `@traigent.optimize`), the
+decorator never validates provider keys, and `validate_providers()` does not read it either.
+It is a signal your own wrapper reads — branch on it before you call:
+
+```python
+from traigent.providers import validate_providers
+from traigent.utils.env_config import skip_provider_validation
+
+if not skip_provider_validation():          # also true when mock mode is on
+    statuses = validate_providers(["gpt-6-luna"])
+```
 
 The `failed_providers` attribute contains a list of `(provider, error_type)` tuples.
 
@@ -310,10 +326,14 @@ endpoint → degraded run).
 verified live one:
 
 ```bash
-# SDK-native shape preflight (no spend): checks ID shape vs a shipped snapshot w/ pattern fallback;
-# catches typos/unknown shapes but a retired-but-well-formed ID still passes -- can't detect delisting
+# SDK-native shape preflight (no spend): checks ID shape vs a shipped snapshot w/ pattern fallback.
+# Keyless it catches an unknown prefix/shape (gtp-4o) but NOT a misspelling after a known prefix
+# (gpt-4o-mnii is reported valid), a retired-but-well-formed ID still passes, and it sees no
+# provider-side delisting. The snapshot also lags upstream additions: on 0.30.0 claude-haiku-5-5
+# reports valid: false although Anthropic lists it active, so a false means "not in this SDK's
+# snapshot", not "retired".
 traigent models --provider openai
-traigent models --provider anthropic --check claude-3-haiku-20240307
+traigent models --provider anthropic --check claude-haiku-5-5
 ```
 
 ```bash
@@ -322,9 +342,11 @@ traigent models --provider anthropic --check claude-3-haiku-20240307
 curl -s https://openrouter.ai/api/v1/models | grep -o '"id":"[^"]*"' | sort
 ```
 
-Prefer a specific versioned ID (e.g. `claude-3-haiku-20240307`) over a moving `-latest` alias —
-versioned IDs price reliably; an alias can resolve to a model whose pricing isn't recognized yet,
-leaving cost untracked. The `traigent-setup-integrations` skill's
+Prefer the most specific ID the provider publishes — a dated snapshot where one exists, otherwise
+the generation ID (e.g. `claude-haiku-5-5`) — over a moving `-latest` alias. A pinned ID prices
+reliably; an alias can resolve to a model whose pricing isn't recognized yet, leaving cost
+untracked. Re-verify whichever ID you pick against the provider's live catalog: a pinned ID can
+still be retired. The `traigent-setup-integrations` skill's
 [Verifying model availability](../traigent-setup-integrations/references/litellm.md#verifying-model-availability)
 section has the full per-provider check list.
 
@@ -399,7 +421,7 @@ The backend's canonical signal is HTTP **429** with `error_code: "quota_exceeded
 
 ```
 traigent.utils.exceptions.FeatureNotAvailableError: Feature 'LangChain integration' is not available.
-  Requires the 'traigent-langchain' plugin. Install with: pip install "traigent[integrations]>=0.19"
+  Requires the 'traigent-langchain' plugin. Install with: pip install "traigent[integrations]>=0.24.0"
 ```
 
 **Fix**: Install the indicated package.
@@ -416,9 +438,9 @@ ModuleNotFoundError: No module named 'langchain_openai'
 
 ```bash
 # Install with specific extras
-pip install "traigent[integrations]>=0.19"    # LangChain, LiteLLM support
-pip install "traigent[all]>=0.19"             # Everything
-pip install "traigent[dev]>=0.19"             # Development tools
+pip install "traigent[integrations]>=0.24.0"    # LangChain, LiteLLM support
+pip install "traigent[all]>=0.24.0"             # Everything
+pip install "traigent[dev]>=0.24.0"             # Development tools
 ```
 
 ## Mock Mode
@@ -512,7 +534,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
    ```
 3. Test your function standalone (outside optimization) with a sample config
 4. Check provider status pages for outages
-5. Check for a stale/dead model ID (404 or `$0.00` unpriced trials) — verify with `traigent models --provider <p> --check <id>` and swap any delisted/renamed ID (see "Model 404 / Retired Provider Endpoint" above)
+5. Check for a stale/dead model ID (404 or `$0.00` unpriced trials) — confirm it against the provider's live catalog and swap any delisted/renamed ID. Keyless, `traigent models --check` cannot see a delisting, so it is a shape preflight here, not the answer (see "Model 404 / Retired Provider Endpoint" above)
 
 ### Wrong results (low scores)
 
@@ -537,7 +559,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 
 1. Reduce `max_trials` to limit total API calls
 2. Set a `cost_limit` on the decorator
-3. Use cheaper models in the configuration space (e.g., `gpt-4o-mini` instead of `gpt-4o`)
+3. Use cheaper models in the configuration space (e.g., `gpt-6-luna` instead of `gpt-5.6-sol`)
 4. Reduce dataset size for initial exploration
 5. Check `results.experiment_stats.cost_per_configuration` to identify expensive configs
 

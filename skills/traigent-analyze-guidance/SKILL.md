@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.9"
+  version: "1.2.10"
 ---
 
 # Traigent Analyze Guidance
@@ -206,7 +206,7 @@ This mode is a thin client. Fetch the post-run brief through the
 action verbatim, then send that direction into Mode A as context for a fresh
 service plan.
 
-The server needs a one-time setup: `pip install "traigent[mcp]>=0.19"` (already included
+The server needs a one-time setup: `pip install "traigent[mcp]>=0.21.3"` (already included
 in `traigent[recommended]`), then register the stdio command `traigent-analytics-mcp`
 with your coding assistant under the name `traigent-analytics`. The full steps are in
 `traigent-analyze-results` → "Prerequisites (one time)", including what to do when the

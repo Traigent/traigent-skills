@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.16"
+  version: "1.0.17"
 ---
 
 # Traigent Build Evaluator
@@ -66,7 +66,7 @@ def exact_match_score(output, expected) -> float:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    import litellm  # pip install "traigent[integrations]>=0.19"
+    import litellm  # pip install "traigent[integrations]>=0.24.0"
     resp = litellm.completion(model=cfg.get("model", "gpt-4o-mini"), temperature=cfg["temperature"],
                               messages=[{"role": "user", "content": question}])
     return resp.choices[0].message.content
@@ -119,7 +119,7 @@ def expected_field_metric(output, expected, input_data) -> float:
 )
 def extract(text: str) -> str:
     cfg = traigent.get_config()
-    import litellm  # pip install "traigent[integrations]>=0.19"
+    import litellm  # pip install "traigent[integrations]>=0.24.0"
     resp = litellm.completion(model=cfg.get("model", "gpt-4o-mini"), temperature=cfg["temperature"],
                               messages=[{"role": "user", "content": text}])
     return resp.choices[0].message.content
@@ -209,7 +209,7 @@ def evaluate_answer(func, config, example) -> ExampleResult:
 )
 def answer(question: str) -> str:
     cfg = traigent.get_config()
-    import litellm  # pip install "traigent[integrations]>=0.19"
+    import litellm  # pip install "traigent[integrations]>=0.24.0"
     resp = litellm.completion(model=cfg.get("model", "gpt-4o-mini"), temperature=cfg["temperature"],
                               messages=[{"role": "user", "content": question}])
     return resp.choices[0].message.content
@@ -234,7 +234,7 @@ The `example` argument passed to `custom_evaluator(func, config, example)` is an
 - `example.input` does not exist — the attribute is `.input_data` (name differs from the JSONL key).
 - `example.output` does not exist — use `.expected_output`.
 - Extra JSONL keys (e.g. `db_id`) are in `example.metadata["db_id"]`, not top-level attributes.
-- A row that carries its own `metadata` object is nested one level down on 0.27.0 (Traigent/Traigent#1768): `db_id` is at `example.metadata["metadata"]["db_id"]`; `example.metadata.get("db_id")` reads `None` and `example.metadata["db_id"]` raises `KeyError`. Read both shapes.
+- A row that carries its own `metadata` object changes shape at 0.28.0 (Traigent/Traigent#1768). On `traigent>=0.28.0` it is **merged** into `example.metadata`, so `example.metadata["db_id"]` works — and on a key collision the nested value silently wins over the row's top-level key of the same name. On 0.24.0-0.27.0 it nests one level down: `db_id` is at `example.metadata["metadata"]["db_id"]`, `example.metadata.get("db_id")` reads `None` and `example.metadata["db_id"]` raises `KeyError`. Read both shapes if your code must run on both sides of 0.28.0.
 
 ## The ExampleResult contract
 

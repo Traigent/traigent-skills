@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.29"
+  version: "1.0.30"
 ---
 
 # Running Traigent Optimization
@@ -96,7 +96,8 @@ See `traigent-analyze-results` for the full field reference.
 
 > **Verify model IDs are live first.** Catalogs change — a delisted/renamed ID causes a 404 or a
 > degraded, unpriced trial that wastes the run. Preflight with
-> `traigent models --provider <p> --check <id>` (or the provider's live catalog endpoint). See
+> `traigent models --provider <p> --check <id>` as a shape preflight, then confirm liveness
+> against the provider's live catalog — keyless the CLI cannot see a delisting. See
 > the `traigent-setup-integrations` skill for multi-provider verification.
 
 <!-- PROTECTED -->
@@ -121,7 +122,7 @@ See `traigent-analyze-results` for the full field reference.
 import asyncio
 
 import traigent
-import litellm  # pip install "traigent>=0.19" — the canonical runnable LLM call
+import litellm  # pip install "traigent>=0.24.0" — the canonical runnable LLM call
 
 @traigent.optimize(
     eval_dataset="qa_test.jsonl",
@@ -474,7 +475,7 @@ from traigent.api.decorators import ExecutionOptions
     configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
 )
 def my_func(query: str) -> str:
-    import litellm  # pip install "traigent>=0.19"
+    import litellm  # pip install "traigent>=0.24.0"
     cfg = traigent.get_config()
     resp = litellm.completion(model=cfg["model"], messages=[{"role": "user", "content": query}])
     return resp.choices[0].message.content
@@ -605,7 +606,7 @@ def exact_match(output: str, expected: str) -> float:
     },
 )
 def answer_question(question: str) -> str:
-    import litellm  # pip install "traigent>=0.19"
+    import litellm  # pip install "traigent>=0.24.0"
     cfg = traigent.get_config()
     resp = litellm.completion(
         model=cfg["model"],

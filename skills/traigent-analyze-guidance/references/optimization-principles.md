@@ -14,8 +14,9 @@ re-scored with it.
 
 Expose **high + mid + low** capability tiers so the optimizer can route easy work
 to cheap models and reserve a premium model for the hard cases. Include the
-**full tier ladder of at least one vendor** (e.g. OpenAI `gpt-4o` / `gpt-4.1-mini`
-/ `gpt-4o-mini`, or Anthropic `claude-sonnet` / `claude-haiku`) so you can
+**full tier ladder of at least one vendor** (e.g. OpenAI `gpt-5.6-sol` /
+`gpt-5.6-terra` / `gpt-6-luna`, or Anthropic `claude-sonnet-5-5` /
+`claude-haiku-5-5`) so you can
 isolate the *capability* effect while holding vendor quirks constant -- then add
 other vendors and open-source for breadth. Variety is the single biggest cost
 lever.

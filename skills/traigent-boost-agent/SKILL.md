@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.19"
+  version: "2.1.20"
 ---
 
 # Traigent Boost Agent
@@ -94,7 +94,7 @@ The user's function needs four things: dataset, objectives, config space, and th
 
 ```python
 import traigent
-import litellm  # pip install "traigent[integrations]>=0.19" — the canonical runnable LLM call
+import litellm  # pip install "traigent[integrations]>=0.24.0" — the canonical runnable LLM call
 from traigent import Choices, Range
 
 @traigent.optimize(
@@ -186,7 +186,7 @@ Score interpretation depends on evaluator type: a config-aware scorer (reads `tr
 > scorer (delete it for the real run) — see `traigent-setup-quickstart` (`mock_demo_accuracy`)
 > for the recipe.
 
-If mock fails, set `export TRAIGENT_DEBUG=1` for debug logging, fix decorator args for `ConfigurationError` (see mistakes table above), and see `traigent-debugging` (`references/mock-mode.md`) for the full mock failure diagnosis (evaluation errors, `get_config()` outside optimization context, missing integrations extra, all-trials-failed).
+If mock fails, call `traigent.configure(logging_level="DEBUG")` in the script for Traigent debug logs (`TRAIGENT_DEBUG=1` is separate — it only shows raw `ConfigurationError` tracebacks, and `TRAIGENT_LOG_LEVEL` on its own does nothing in a decorator-only script), fix decorator args for `ConfigurationError` (see mistakes table above), and see `traigent-debugging` (`references/mock-mode.md`) for the full mock failure diagnosis (evaluation errors, `get_config()` outside optimization context, missing integrations extra, all-trials-failed).
 
 <!-- PROTECTED -->
 **Do not proceed to real mode until mock passes cleanly.**
@@ -247,7 +247,7 @@ Example:
 When the user explicitly says to proceed:
 <!-- /PROTECTED -->
 
-Verify API keys first — models in the config space need corresponding provider keys, and Traigent auto-validates them before starting, raising `ProviderValidationError` with details if validation fails:
+Verify API keys first — models in the config space need corresponding provider keys. Traigent does **not** validate them for you: `@traigent.optimize` runs no automatic provider check, and the SDK never raises `ProviderValidationError` on its own. Call `validate_providers(...)` yourself before the run — `from traigent.providers import validate_providers`, since a plain `import traigent` does not expose the submodule — and raise `ProviderValidationError` from your own code if you want a hard failure. Or just confirm the keys are present:
 
 ```bash
 export OPENAI_API_KEY="sk-..."         # For gpt-* models

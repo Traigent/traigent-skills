@@ -43,7 +43,7 @@ These 19 skills guide your agent through the full Traigent optimization lifecycl
 | Analyze | [traigent-analyze-results](skills/traigent-analyze-results/) | Inspect `OptimizationResult` objects — best config and score, individual trial comparison, stop-reason interpretation, the SDK's `best_config_margin` winner verdict (SDK 0.26.0+) and free `eval_audit`, cost/token usage tracking, and isolated candidate export followed by candidate-vs-incumbent holdout gating. `optimize()` auto-applies a nonempty winner to that `OptimizedFunction` instance, so a serving instance stays unchanged only when optimization runs in a separate candidate process; promotion remains gated by `traigent-ci-safety-gate`. |
 | Analyze | [traigent-analyze-variable-importance](skills/traigent-analyze-variable-importance/) | Rank which tuned variables actually drove observed optimization gains — per-value objective spread, variance-decomposition share, bootstrap confidence intervals, honest `significant` vs `directional` labels, and a one-glance SVG summary card. |
 | Gate & Debug | [traigent-ci-safety-gate](skills/traigent-ci-safety-gate/) | Gate an optimized agent — candidate-vs-incumbent `PromotionGate`, TVL spec validation, in-run `safety_constraints` (SDK 0.28.0+: a statistical run halt, not a trial filter), and GitHub Actions checks for safety (holdout regression) and efficiency (cost/latency budgets). |
-| Gate & Debug | [traigent-debugging](skills/traigent-debugging/) | Troubleshoot optimization failures — mock mode for CI/CD without API keys, `TRAIGENT_LOG_LEVEL=DEBUG` logging, error-class reference (`CostLimitExceeded`, `ConfigurationError`, `OptimizationStateError`), portal / local-fallback diagnosis for a connected run that ended local-only, and missing-dependency diagnosis. |
+| Gate & Debug | [traigent-debugging](skills/traigent-debugging/) | Troubleshoot optimization failures — mock mode for CI/CD without API keys, `traigent.configure(logging_level="DEBUG")` logging, error-class reference (`CostLimitExceeded`, `ConfigurationError`, `OptimizationStateError`), portal / local-fallback diagnosis for a connected run that ended local-only, and missing-dependency diagnosis. |
 | JS/TS | [traigent-js](skills/traigent-js/) | Set up and run native JavaScript/TypeScript optimization with `@traigent/sdk` — `optimize(spec)(agentFn)`, `param.*` search spaces, evaluation blocks, trial context, budgets, injection modes, and hybrid config-space authoring. |
 | Recipes | [traigent-recipe-text2sql](skills/traigent-recipe-text2sql/) | End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 20/30 -> 27/30 on its tuning slice on the cheap model (counts that predate the recipe's result_eq comparator and were not re-scored with it). |
 
@@ -173,7 +173,9 @@ These skills are Markdown, with three skills that also ship a local script: `tra
 The skills *teach your agent to drive the Traigent SDKs*, so to actually run an optimization you'll need the relevant SDK in your own project:
 
 - Python 3.11–3.13
-- Traigent SDK — `pip install "traigent>=0.19"` (the floor avoids the PyPI placeholder 0.0.1)
+- Traigent SDK — `pip install "traigent>=0.24.0"` (the default floor; a few skills declare their
+  own in [`sync_map.yml`](sync_map.yml), in either direction — `traigent-setup-audit` needs 0.27.0,
+  `traigent-analyze-guidance` only 0.21.3. The default also rules out the PyPI placeholder 0.0.1)
 - Node.js 18, 20, or 22
 - Traigent JS SDK — not published on public npm yet; use the source/link flow in
   `skills/traigent-js` until the JS SDK is published to npm.

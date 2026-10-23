@@ -1,6 +1,6 @@
 {
   "schema": "agent-setup-prompt-provenance/v1",
-  "doc_hash": "7e32112d72b63552",
+  "doc_hash": "a48447deaac28e94",
   "entries": [
     {
       "edit_id": "genesis",
@@ -99,6 +99,17 @@
       "doc_before_hash": "a50f3c621c02be74",
       "doc_after_hash": "7e32112d72b63552",
       "note": "Key-entry guard stops on a set GIT_DIR, GIT_WORK_TREE, GIT_COMMON_DIR or GIT_INDEX_FILE whenever no usable repository was found, with or without git installed.",
+      "source_type": "human"
+    },
+    {
+      "edit_id": "prompt-edit-2026-10-20-a48447de",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-20T00:00:00Z",
+      "doc_before_hash": "7e32112d72b63552",
+      "doc_after_hash": "a48447deaac28e94",
+      "note": "Raise the install floor to the 0.24.0 the skills declare (traigent-skills#442); the previous >=0.19 left an older install in place while the guidance assumed 0.24.0 behaviour.",
       "source_type": "human"
     }
   ]

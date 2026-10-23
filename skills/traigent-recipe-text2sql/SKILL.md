@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.11"
+  version: "1.0.12"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -39,8 +39,8 @@ and when you report results. Repeat it every time; it's how the user sees the sp
 the optimizer is searching.
 
 **Run 1 — the raw model/cost picture (~100 perms, 3 model tiers, MINOR knobs only).**
-- **Models: span 3 tiers** — high/premium (e.g. `gpt-4o`), mid (e.g. `claude-3-haiku`),
-  low/cheap (e.g. `gpt-4o-mini`).
+- **Models: span 3 tiers** — high/premium (e.g. `gpt-5.6-sol`), mid (e.g. `gpt-5.6-terra`),
+  low/cheap (e.g. `gpt-6-luna` or `claude-haiku-5-5`).
 - **Vary only MINOR knobs:** temperature{0,0.2,0.4} · fewshot_k{0,2,4} · repair{off,on} ·
   output_mode{sql_only, allow_prose}. **Hold the high-impact STRUCTURAL levers at basic
   defaults** — `generation_path=direct`, `schema_context=ddl_fk`, `fewshot_selector=fixed`.
@@ -144,9 +144,12 @@ results constrain the permutation space per-column as test-suite eval's
 ## 2. Multi-field inputs (db_id + gold)
 Traigent maps only `input`/`output` dataset fields. Put the gold SQL under
 `output` and carry `db_id` as an extra **top-level** field, which lands in
-`example.metadata["db_id"]`; a row that wraps it in its own `metadata` object lands
-one level down (`example.metadata["metadata"]["db_id"]`) on 0.27.0 (Traigent/Traigent#1768), so read both
-shapes. Read everything in a **custom_evaluator** `(func, config, example) ->
+`example.metadata["db_id"]`. A row that wraps it in its own `metadata` object behaves
+differently either side of 0.28.0 (Traigent/Traigent#1768): on `traigent>=0.28.0` the row's
+`metadata` dict is **merged** into `example.metadata`, and on a key collision the nested value
+wins over the top-level key; on 0.24.0-0.27.0 it nests under
+`example.metadata["metadata"]["db_id"]`. Read both shapes if your code must run on both sides
+of 0.28.0. Read everything in a **custom_evaluator** `(func, config, example) ->
 ExampleResult` (it can call the agent with both `question` and `db_id`). See
 `traigent-eval-build`.
 

@@ -13,7 +13,12 @@ LiteLLM provides a unified `completion()` API that works across 100+ LLM provide
 ## Installation
 
 ```bash
-pip install "traigent>=0.19" litellm
+# litellm>=1.106.0 is the bundled pricing map a cost objective reads. Of the example IDs below
+# it prices the OpenAI, Anthropic, Mistral and openrouter/ rows; the Gemini, Cohere, Bedrock,
+# Together AI and Groq examples are NOT in it (it carries gemini-3-flash-preview, not
+# gemini/gemini-3-flash, and command-r-08-2024, not command-r). Price-check whichever ID you
+# actually use -- an unpriced model is scored $0 and wins a cost objective for free.
+pip install "traigent>=0.24.0" "litellm>=1.106.0"
 ```
 
 Set API keys for each provider you want to test:
@@ -33,7 +38,7 @@ LiteLLM uses model name prefixes to route to the correct provider. Common provid
 | Provider | Model Prefix | Example |
 |---|---|---|
 | OpenAI | (none) | `gpt-4o-mini`, `gpt-4o` |
-| Anthropic | `anthropic/` or none | `claude-3-haiku-20240307`, `claude-3-5-sonnet-20241022` |
+| Anthropic | `anthropic/` or none | `claude-haiku-5-5`, `claude-sonnet-5-5` |
 | Google Gemini | `gemini/` | `gemini/gemini-3-flash`, `gemini/gemini-3.1-pro` |
 | Mistral | `mistral/` | `mistral/mistral-small-latest` |
 | Cohere | `command-r` | `command-r`, `command-r-plus` |
@@ -44,9 +49,11 @@ LiteLLM uses model name prefixes to route to the correct provider. Common provid
 | OpenRouter | `openrouter/` | `openrouter/openai/gpt-4o-mini`, `openrouter/anthropic/claude-haiku-4.5`, `openrouter/google/gemini-2.5-flash-lite` |
 
 The example IDs above were live when written (the OpenRouter row was checked against its public model catalog on 2026-10-19; listing in a catalog does not prove LiteLLM prices it or that it suits your task); **re-verify them** before use (see the next
-section). Prefer a specific versioned ID (e.g. `claude-3-haiku-20240307`) over a moving
-`-latest` alias — pinned versions price reliably, whereas an alias can resolve to a model
-whose pricing isn't in the table yet (unpriced `$0.00` cost). See the LiteLLM documentation
+section). Prefer the most specific ID the provider publishes — a dated snapshot where one
+exists, otherwise the generation ID (e.g. `claude-haiku-5-5`) — over a moving `-latest`
+alias: a pinned ID prices reliably, whereas an alias can resolve to a model whose pricing
+isn't in the table yet (unpriced `$0.00` cost). A pinned ID can still be retired, so
+re-verify it against the provider's catalog before a paid run. See the LiteLLM documentation
 for the full provider list.
 
 ## Verifying model availability
@@ -61,22 +68,34 @@ actually work). Two real-world failures we have hit:
   endpoint; the trial degrades instead of erroring cleanly.
 
 **SDK-native preflight (shape check, no spend).** The CLI checks an ID against a shipped model
-snapshot with pattern-based fallback — it catches typos and unknown ID shapes without spending
-anything, but a retired-but-well-formed ID still passes; it does **not** detect provider-side
-delisting, so treat it as a first pass, not proof the ID is still served:
+snapshot with pattern-based fallback, without spending anything. It catches an ID whose prefix or
+shape is unknown but not a misspelling after a known prefix: keyless, `gpt-4o-mnii` is reported
+`valid: true`, while `gtp-4o` is caught. **Keyless** it also cannot see a provider-side delisting,
+and a retired-but-well-formed ID still passes. (With a provider key the CLI can query the live catalog for OpenAI, Gemini, Mistral, Nous,
+Azure and Bedrock — but only when that provider's own Python SDK is importable. OpenAI, Nous,
+Azure and Bedrock work on a plain `pip install "traigent>=0.24.0"` with no extras, because
+`litellm` is a core dependency
+and pulls `openai`, `httpx` and `boto3`. **Gemini** needs `traigent[integrations]`, and
+**Mistral** needs `pip install mistralai` — it is in no Traigent extra. When one of those
+imports fails the lookup falls back to the shipped snapshot without saying so; only Bedrock
+fails loudly (it errors out asking for `boto3`). For Anthropic it is always the snapshot.) The snapshot also **lags upstream additions**: on SDK 0.30.0
+`--check claude-haiku-5-5` reports `valid: false` even though Anthropic lists that model as active,
+so read a `false` as "not in this SDK's snapshot", never as "retired". Treat it as a first pass,
+not proof the ID is still served:
 
 ```bash
 # List a provider's known model IDs, or validate a specific one (valid: true/false)
 traigent models --provider openai
-traigent models --provider anthropic --check claude-3-haiku-20240307
+traigent models --provider anthropic --check claude-haiku-5-5
 traigent models --provider gemini --check gemini-3-flash --json
 ```
 
-**Query the provider catalog directly (authoritative liveness check).** Because the preflight
-above can't detect delisting, confirm the ID is actually served against the provider's live
-catalog — required for any provider `traigent models` doesn't cover (e.g. OpenRouter), and the
-only way to catch a delisted-but-well-formed ID for the providers it does. Hit the live catalog
-endpoint and grep for the exact ID:
+**Query the provider catalog directly (authoritative liveness check).** Because the keyless
+preflight above cannot detect delisting, confirm the ID is actually served against the provider's
+live catalog — required for any provider `traigent models` doesn't cover (e.g. OpenRouter), and
+the only way to catch a delisted-but-well-formed ID for Anthropic and for any provider the
+keyless check answers from the shipped snapshot. Hit the live catalog endpoint and grep for the
+exact ID:
 
 ```bash
 # OpenRouter: the slug after "openrouter/" must appear in the live catalog
@@ -103,11 +122,10 @@ import litellm
         "model": [
             "gpt-4o-mini",
             "gpt-4o",
-            "claude-3-haiku-20240307",
-            "claude-3-5-sonnet-20241022",
+            "claude-haiku-5-5",
+            "claude-sonnet-5-5",
             "gemini/gemini-3-flash",
         ],
-        "temperature": [0.0, 0.3, 0.7],
         "max_tokens": [1024, 2048],  # headroom-safe: the pool includes a reasoning model (see note above)
     },
     objectives=["accuracy"],
@@ -119,13 +137,14 @@ def answer(question):
     response = litellm.completion(
         model=config["model"],
         messages=[{"role": "user", "content": question}],
-        temperature=config["temperature"],
         max_tokens=config["max_tokens"],
     )
     return response.choices[0].message.content
 
 results = answer.optimize_sync()
 ```
+
+> Claude Haiku 5.5 and Sonnet 5.5 reject the `temperature` parameter (LiteLLM 1.106.0 raises `UnsupportedParamsError`), so this example tunes `model` and `max_tokens` only and never passes `temperature`; add `temperature` to a space only for models that accept it.
 
 ## Cost Tracking
 
@@ -189,12 +208,11 @@ import litellm
         "model": [
             "gpt-4o-mini",
             "gpt-4o",
-            "claude-3-haiku-20240307",
-            "claude-3-5-sonnet-20241022",
+            "claude-haiku-5-5",
+            "claude-sonnet-5-5",
             "gemini/gemini-3-flash",
             "gemini/gemini-3.1-pro",
         ],
-        "temperature": [0.0, 0.3, 0.5, 0.7],
         "max_tokens": [1024, 2048],  # headroom-safe: the pool includes reasoning models (see note above)
     },
     objectives=["accuracy"],
@@ -209,7 +227,6 @@ def generate_response(prompt):
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
         ],
-        temperature=config["temperature"],
         max_tokens=config["max_tokens"],
     )
     return response.choices[0].message.content
@@ -220,7 +237,7 @@ results = generate_response.optimize_sync()
 
 # Analyze results
 print(f"Best model: {results.best_config['model']}")
-print(f"Best temperature: {results.best_config['temperature']}")
+print(f"Best max_tokens: {results.best_config['max_tokens']}")
 print(f"Best score: {results.best_score:.3f}")
 print(f"Total cost: ${results.total_cost:.4f}" if results.total_cost else "Cost not tracked")
 print(f"Trials: {len(results.successful_trials)}/{len(results.trials)} successful")
@@ -228,7 +245,7 @@ print(f"Trials: {len(results.successful_trials)}/{len(results.trials)} successfu
 # Apply best config
 if results.best_score is not None and results.best_score >= 0.8:
     generate_response.apply_best_config(results)
-    # Now generate_response() uses the best model/temperature/max_tokens
+    # Now generate_response() uses the best model/max_tokens
 ```
 
 ## Tips

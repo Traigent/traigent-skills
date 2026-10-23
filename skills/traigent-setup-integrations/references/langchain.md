@@ -15,7 +15,7 @@ Traigent integrates with LangChain to optimize model selection, temperature, and
 ## Installation
 
 ```bash
-pip install "traigent[integrations]>=0.19"
+pip install "traigent[integrations]>=0.24.0"
 
 # Plus the LangChain provider packages you need
 pip install langchain-openai langchain-anthropic langchain-google-genai

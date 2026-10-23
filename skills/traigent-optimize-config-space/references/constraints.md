@@ -75,12 +75,12 @@ temp.not_in([0.0, 1.0])   # temp not in [0.0, 1.0]
 ### Categorical Type (Choices)
 
 ```python
-model = Choices(["gpt-4o-mini", "gpt-4o", "claude-3-5-sonnet-20241022"])
+model = Choices(["gpt-4o-mini", "gpt-4o", "claude-sonnet-5-5"])
 
 model.equals("gpt-4o")                          # model == "gpt-4o"
 model.not_equals("gpt-4o")                      # model != "gpt-4o"
 model.is_in(["gpt-4o", "gpt-4o-mini"])          # model in ["gpt-4o", "gpt-4o-mini"]
-model.not_in(["claude-3-5-sonnet-20241022"])     # model not in [...]
+model.not_in(["claude-sonnet-5-5"])     # model not in [...]
 ```
 
 ---
