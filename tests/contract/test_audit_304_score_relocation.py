@@ -257,11 +257,12 @@ def test_relations_have_teeth() -> None:
         "trial_score": 0.5,
         "best_score": 0.6,
     }
-    assert not _single_builtin(single) and _single_builtin(weighted)
-    assert not _multi_objective(weighted) and _multi_objective(single)
+    assert not _single_builtin(single)
+    assert _single_builtin(weighted)
+    assert not _multi_objective(weighted)
+    assert _multi_objective(single)
     custom_ok = {"metrics": {"exec_acc": 1.0, "score": EXACT_MATCH}, "trial_score": 1.0}
     custom_bad = {"metrics": {"exec_acc": 1.0, "score": 1.0}, "trial_score": 1.0}
-    assert not _custom_metric_function(custom_ok) and _custom_metric_function(
-        custom_bad
-    )
+    assert not _custom_metric_function(custom_ok)
+    assert _custom_metric_function(custom_bad)
     assert _custom_scoring_function({"metrics": {"accuracy": 1.0, "score": 1.0}})

@@ -405,7 +405,8 @@ def test_a_file_over_the_byte_cap_is_named_not_vanished(
         [root / "big.jsonl"], root
     )
     assert reports == []
-    assert skipped and skipped[0].startswith("big.jsonl is")
+    assert skipped
+    assert skipped[0].startswith("big.jsonl is")
     area = audit.dataset_area(reports, candidates, notes, skipped)
     assert area["status"] == "attention"
     assert any("not analysed" in line for line in area["evidence"])
@@ -448,7 +449,8 @@ def test_a_utf8_bom_does_not_discard_the_file(tmp_path: Path) -> None:
         encoding="utf-8-sig",
     )
     raw = audit.load_rows(csv_path)
-    assert raw.rows and "input" in raw.rows[0]
+    assert raw.rows
+    assert "input" in raw.rows[0]
 
     jsonl_path = root / "data.jsonl"
     jsonl_path.write_text(_rows(3), encoding="utf-8-sig")

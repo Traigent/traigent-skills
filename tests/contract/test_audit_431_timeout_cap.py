@@ -25,4 +25,5 @@ def test_debugging_does_not_suggest_timeout_30() -> None:
 def test_spine_does_not_promise_long_per_request_timeouts_work() -> None:
     text = SPINE.read_text(encoding="utf-8")
     assert "Keep a per-request timeout inside your own LLM call instead." not in text
-    assert "capped at 60 s" in text and "`custom_evaluator` runs without the per-example cap" in text
+    assert "capped at 60 s" in text
+    assert "`custom_evaluator` runs without the per-example cap" in text

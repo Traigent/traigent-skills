@@ -27,8 +27,8 @@ def test_mcp_tool_mention_carries_the_setup_pointer() -> None:
             break
         paragraph.append(line)
     text = " ".join(paragraph)
-    assert POINTER in text and "analyze-results skill" in text, (
-        f"{REFERENCE.name}:{first + 1}: first mention of {TOOL} has no install/registration "
-        "pointer to the analyze-results skill's \"Prerequisites (one time)\""
-    )
+    assert POINTER in text, (f"{REFERENCE.name}:{first + 1}: first mention of {TOOL} has no install/registration "
+        "pointer to the analyze-results skill's \"Prerequisites (one time)\"")
+    assert "analyze-results skill" in text, (f"{REFERENCE.name}:{first + 1}: first mention of {TOOL} has no install/registration "
+        "pointer to the analyze-results skill's \"Prerequisites (one time)\"")
     assert "REST route works without it" in text, text

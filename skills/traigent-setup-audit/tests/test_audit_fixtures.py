@@ -172,7 +172,8 @@ def test_bare_reports_what_was_searched_for_rather_than_what_is_absent(bare) -> 
 def test_bare_still_finds_the_provider_call_site(bare) -> None:
     report, _ = bare
     sites = report["llm_call_sites"]
-    assert sites and sites[0]["function"] == "ask"
+    assert sites
+    assert sites[0]["function"] == "ask"
     assert sites[0]["providers"] == ["openai"]
 
 

@@ -112,7 +112,8 @@ def test_mock_mode_reference_states_cost_limits_still_apply() -> None:
         .split()
     )
     assert 'stop_reason="cost_limit"' in text
-    assert "bypass cost tracking" not in text and "bypasses cost tracking" not in text
+    assert "bypass cost tracking" not in text
+    assert "bypasses cost tracking" not in text
 
 
 def test_mock_zero_cost_admission_matches_sdk_version(

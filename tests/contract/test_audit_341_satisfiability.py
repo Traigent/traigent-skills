@@ -76,7 +76,8 @@ def _remedied_example(example: str) -> str:
     assert match, "the UNKNOWN branch no longer names a concrete remedy"
     old_t = 'Range(0.0, 1.0, name="temperature"'
     old_k = 'IntRange(100, 4096, name="max_tokens"'
-    assert example.count(old_t) == 1 and example.count(old_k) == 1
+    assert example.count(old_t) == 1
+    assert example.count(old_k) == 1
     return example.replace(
         old_t, f'Range(0.0, 1.0, step={match["t"]}, name="temperature"'
     ).replace(old_k, f'IntRange(100, 4096, step={match["k"]}, name="max_tokens"')

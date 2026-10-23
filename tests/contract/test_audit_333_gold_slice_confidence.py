@@ -31,9 +31,8 @@ def test_margin_rule_is_gone_and_floor_reaches_the_bar() -> None:
     assert "5+ points" not in TEXT
     assert "20-50 example" not in TEXT
     floor = re.search(r"gold slice of at least (\d+) examples", TEXT)
-    assert floor and int(floor.group(1)) >= 30, (
-        "slice floor must make the 85% bar reachable"
-    )
+    assert floor, "slice floor must make the 85% bar reachable"
+    assert int(floor.group(1)) >= 30, "slice floor must make the 85% bar reachable"
     assert "Wilson lower bound" in TEXT
 
 
@@ -80,7 +79,8 @@ def test_minimums_apply_to_reporting_rows_and_kfold_below_sixty(
         r"(\d+)-row slice split in half leaves (\d+) reporting rows, where even (\d+)/(\d+) cannot clear",
         TEXT,
     )
-    assert lower_claims and split_claims
+    assert lower_claims
+    assert split_claims
     body = f"""
     ns = load_block(sys.argv[1])
     wilson = ns["wilson_interval"]

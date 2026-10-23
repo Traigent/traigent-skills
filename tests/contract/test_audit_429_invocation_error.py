@@ -18,7 +18,8 @@ def test_docs_do_not_claim_every_function_exception_is_an_invocation_error() -> 
     assert "Function call failed:" in skill
     assert "propagate as their own type" not in skill
     assert "catches a generic exception from a trial" in skill
-    assert "scored-example coverage" in skill and "scored-example coverage" in ref
+    assert "scored-example coverage" in skill
+    assert "scored-example coverage" in ref
     assert "print(f\"Original error: {e.original_error}\")" not in skill
 
 

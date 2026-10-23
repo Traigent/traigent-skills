@@ -143,7 +143,8 @@ def test_row_package_lint_has_teeth() -> None:
         "| `ml` | d | bayesian + numpy (+ extras) |\n"
     )
     found = _scan_row_packages(row, wheel)
-    assert len(found) == 1 and "`ragas`" in found[0], found
+    assert len(found) == 1, found
+    assert "`ragas`" in found[0], found
     assert _norm("Python_Multipart") == "python-multipart"
 
 
@@ -151,7 +152,9 @@ def test_extras_lints_have_teeth() -> None:
     declared = {"integrations", "all"}
     bad = 'pip install "traigent[dspy]>=0.19"\npip install "traigent[integrations,nope]"\n'
     found = _scan_unknown_extras("bad.md", bad, declared)
-    assert len(found) == 2 and "dspy" in found[0] and "nope" in found[1]
+    assert len(found) == 2
+    assert "dspy" in found[0]
+    assert "nope" in found[1]
     assert not _scan_unknown_extras(
         "ok.md", 'pip install "traigent[extra_name]" "traigent[all]"', declared
     )

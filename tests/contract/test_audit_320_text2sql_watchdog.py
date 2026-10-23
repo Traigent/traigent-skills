@@ -60,7 +60,8 @@ def test_correct_sql_on_a_real_size_table_is_not_interrupted(
     _big_db(db, rows)
     recipe._run.__globals__["DB_PATH"] = db
     ok, result = recipe._run(sql)
-    assert ok and result, f"{rows}-row table: {sql!r} was aborted and would score 0"
+    assert ok, f"{rows}-row table: {sql!r} was aborted and would score 0"
+    assert result, f"{rows}-row table: {sql!r} was aborted and would score 0"
 
 
 def test_runaway_query_is_stopped_within_the_budget_and_reported(

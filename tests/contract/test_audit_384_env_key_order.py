@@ -39,7 +39,8 @@ def shell_env(tmp_path: Path) -> dict[str, str]:
     for parent in tmp_path.parents:
         if (parent / ".git").exists():
             pytest.skip(f"stray {parent / '.git'} above the scratch dir; use --basetemp elsewhere")
-    assert shutil.which("git") and shutil.which("bash"), "git and bash must be installed"
+    assert shutil.which("git"), "git and bash must be installed"
+    assert shutil.which("bash"), "git and bash must be installed"
     home = tmp_path / "home"
     home.mkdir()
     return {

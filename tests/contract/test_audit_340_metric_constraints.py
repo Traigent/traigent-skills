@@ -105,7 +105,8 @@ def test_metric_constraint_runs_after_each_trial_and_fails_it(probe: dict) -> No
 def test_docs_describe_a_post_trial_fail_closed_check() -> None:
     for path in DOCS:
         text = path.read_text(encoding="utf-8")
-        assert "past trials" not in text and "previous trials" not in text, path
+        assert "past trials" not in text, path
+        assert "previous trials" not in text, path
         assert "post-trial" in text, path
         for line in text.splitlines():
             if "lambda config, metrics:" in line:

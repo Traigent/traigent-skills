@@ -1520,7 +1520,8 @@ def test_option_prose_kwargs_lint_has_teeth(tmp_path: Path) -> None:
         assert violations, (
             "prose kwarg lint missed definitely_not_an_option_field_zz= taught as runnable"
         )
-        assert "definitely_not_an_option_field_zz" in violations[0] and ":3" in violations[0]
+        assert "definitely_not_an_option_field_zz" in violations[0]
+        assert ":3" in violations[0]
 
     # Same bad kwarg, but documented as failing -- must NOT be flagged. This
     # fixture preserves the pre-0.28.0 warning shape that
@@ -1672,7 +1673,8 @@ def test_option_field_table_lint_reads_a_class_named_in_the_title(
         encoding="utf-8",
     )
     violations = _scan_option_field_tables("demo", skill, skill.read_text(), tmp_path)
-    assert violations and "definitely_not_an_option_field_zz" in violations[0]
+    assert violations
+    assert "definitely_not_an_option_field_zz" in violations[0]
 
 
 class _FakeSdkVersionConfig:

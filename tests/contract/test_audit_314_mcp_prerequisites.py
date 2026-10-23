@@ -97,6 +97,9 @@ def test_installed_sdk_packaging_matches_the_prerequisites() -> None:
     )
     bundled = set(recommended.split("[", 1)[1].split("]", 1)[0].split(","))
     assert "analytics" in bundled
-    assert "hybrid" in bundled and needs("hybrid", "mcp"), (
+    assert "hybrid" in bundled, (
+        "the prerequisites say traigent[recommended] includes the MCP dependency"
+    )
+    assert needs("hybrid", "mcp"), (
         "the prerequisites say traigent[recommended] includes the MCP dependency"
     )

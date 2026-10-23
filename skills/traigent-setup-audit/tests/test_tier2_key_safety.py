@@ -53,7 +53,8 @@ def test_the_key_is_absent_from_every_run_mode_output(
         )
     assert completed.returncode == 0, completed.stderr
     assert sentinel_key not in all_output(completed, receipt, record)
-    assert receipt.exists() and record.exists()
+    assert receipt.exists()
+    assert record.exists()
 
 
 def test_a_server_that_echoes_the_key_back_is_not_relayed(
@@ -85,7 +86,8 @@ def test_the_sentinel_check_is_not_vacuous(
             "--approve", "evaluator-quality",
         )
         assert completed.returncode == 0, completed.stderr
-        assert backend.log and backend.log[0]["has_api_key"]
+        assert backend.log
+        assert backend.log[0]["has_api_key"]
 
 
 def test_no_key_reaches_a_command_line(

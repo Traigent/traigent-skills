@@ -26,7 +26,8 @@ def test_sync_map_has_bidirectional_skill_completeness(
 
 def test_sync_map_declares_current_released_sdk(sync_map: dict) -> None:
     current_release = sync_map.get("current_released_sdk_version")
-    assert isinstance(current_release, str) and current_release
+    assert isinstance(current_release, str)
+    assert current_release
     assert Version(current_release) >= Version(str(sync_map["default_min_sdk_version"]))
 
 

@@ -155,7 +155,8 @@ def test_budget_too_small_for_the_run_is_refused_before_spending(
     result = _run_template(
         tmp_path, case, "emit(run(rows=4, max_trials=2, cap_usd=0.01))\n"
     )
-    assert result["raised"] and result["raised"].startswith("ValueError"), result
+    assert result["raised"], result
+    assert result["raised"].startswith("ValueError"), result
     assert result["judge_calls"] == 0, result
     assert result["budgets"] == [[0, 0]], result
 
@@ -169,7 +170,8 @@ def test_exhaustion_mid_run_raises_instead_of_ranking(
         tmp_path, case, "emit(run(rows=2, max_trials=2, cap_usd=2 * 2 * price))\n"
     )
     assert result["judge_calls"] == 4, result  # the cap still holds: 4 of 8 calls
-    assert result["raised"] and result["raised"].startswith("RuntimeError"), result
+    assert result["raised"], result
+    assert result["raised"].startswith("RuntimeError"), result
     assert "4 judge call(s) refused" in result["raised"], result
     # The SDK scored with the evaluator bound to this run's budget.
     assert result["budgets"] == [[4, 4]], result
@@ -211,7 +213,8 @@ def test_unset_budget_raises_instead_of_scoring_zero(case: str, tmp_path: Path) 
         emit({{"raised": str(exc)}})
     """
     result = _run_template(tmp_path, case, body)
-    assert result["raised"] and "run_with_judge_budget" in result["raised"], result
+    assert result["raised"], result
+    assert "run_with_judge_budget" in result["raised"], result
 
 
 @pytest.mark.parametrize("case", sorted(TEMPLATE_CASES))

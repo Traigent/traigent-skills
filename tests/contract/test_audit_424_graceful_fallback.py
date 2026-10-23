@@ -40,4 +40,5 @@ def test_sdk_supports_apply_false_and_set_config() -> None:
     optimized_function = pytest.importorskip("traigent.core.optimized_function")
     cls = optimized_function.OptimizedFunction
     assert "apply" in inspect.signature(cls.optimize_sync).parameters
-    assert callable(cls.set_config) and callable(cls.apply_best_config)
+    assert callable(cls.set_config)
+    assert callable(cls.apply_best_config)

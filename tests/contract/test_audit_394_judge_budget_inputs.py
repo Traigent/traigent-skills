@@ -477,7 +477,8 @@ def test_the_sdk_scores_with_the_evaluator_bound_to_the_run(matrix: dict) -> Non
     assert lifecycle["success"]["budgets"] == [[price, 1, 0]], lifecycle
     assert lifecycle["optimizer_raises"]["raised"].startswith("KeyError"), lifecycle
     refused = lifecycle["judge_call_refused"]["raised"]
-    assert refused and refused.startswith("RuntimeError"), lifecycle
+    assert refused, lifecycle
+    assert refused.startswith("RuntimeError"), lifecycle
     assert "2 judge call(s) refused" in refused, lifecycle
     assert lifecycle["judge_call_refused"]["budgets"] == [[price, 1, 2]], lifecycle
     for name, run in lifecycle.items():
@@ -553,7 +554,8 @@ def test_overlapping_runs_each_spend_only_their_own_budget(
         matrix["overlap"][overlap]["second"],
     )
     for run in (first, second):
-        assert run["raised"] is None and run["returned"] == "optimized", (first, second)
+        assert run["raised"] is None, (first, second)
+        assert run["returned"] == "optimized", (first, second)
         assert run["calls"] == [{"max_trials": 1, "bound": True}], (first, second)
         assert run["budgets"] == [[2 * price, 2, 0]], (first, second)
 
@@ -572,7 +574,8 @@ def test_run_refuses_an_evaluator_that_would_bypass_the_budget(
     """A custom_evaluator in the optimize kwargs would replace the budgeted evaluator."""
     run = matrix["bypass"][label]
     assert _names(run["raised"], name), run
-    assert run["calls"] == [] and run["built"] == 0, run
+    assert run["calls"] == [], run
+    assert run["built"] == 0, run
 
 
 def test_allowance_is_the_exact_quotient_of_the_decimals(matrix: dict) -> None:
@@ -640,7 +643,8 @@ def test_prose_does_not_size_the_cap_as_a_float_product() -> None:
     # The cost caveat tells users to multiply calls by price; it must point the
     # judge cap at the decimal-literal rule instead of at that float product.
     caveat = text.split("## Cost metering caveat", 1)[1].split("\n## ", 1)[0]
-    assert "calls_per_row" in caveat and "decimal literal" in caveat, caveat
+    assert "calls_per_row" in caveat, caveat
+    assert "decimal literal" in caveat, caveat
 
 
 def test_prose_bounds_the_exact_allowance_to_fifteen_digits() -> None:
@@ -668,7 +672,8 @@ def test_both_templates_carry_the_same_budget_code() -> None:
         shared = _shared_budget_code(block)
         assert "custom_evaluator=budgeted_evaluator" in shared, shared
         # No module-level budget: a leftover evaluator thread must not see another run's.
-        assert "JUDGE_BUDGET" not in block and "global " not in block, case
+        assert "JUDGE_BUDGET" not in block, case
+        assert "global " not in block, case
         fn, evaluator = USAGE[case]
         assert f"# results = run_with_judge_budget({fn}, {evaluator}, rows=" in block, (
             case

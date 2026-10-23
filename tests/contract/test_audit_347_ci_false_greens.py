@@ -163,6 +163,7 @@ def test_snippet_env_does_not_inherit_the_callers_shell(
     assert "TRAIGENT_MOCK_LLM" not in env
     assert "TRAIGENT_BACKEND_URL" not in env
     assert "OPENAI_API_KEY" not in env
-    assert "CI" not in env and "GITHUB_ACTIONS" not in env
+    assert "CI" not in env
+    assert "GITHUB_ACTIONS" not in env
     assert env["TRAIGENT_OFFLINE_MODE"] == "true"
     assert env["PATH"] == os.environ["PATH"]

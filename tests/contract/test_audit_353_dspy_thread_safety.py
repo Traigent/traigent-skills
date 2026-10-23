@@ -73,7 +73,8 @@ def test_dspy_configure_lint_has_teeth() -> None:
         "    dspy.configure(lm=dspy.LM('m'))\n    return q\n```\n"
     )
     found = _scan("bad.md", bad)
-    assert len(found) == 1 and "bad.md:7" in found[0], found
+    assert len(found) == 1, found
+    assert "bad.md:7" in found[0], found
     good = bad.replace(
         "    dspy.configure(lm=dspy.LM('m'))\n    return q",
         "    with dspy.context(lm=dspy.LM('m')):\n        return q",

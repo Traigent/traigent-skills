@@ -17,8 +17,10 @@ EQ, NE, UN = "equivalent", "not-equivalent", "unsure"
 
 def test_frozen_prompt_hashes():
     assert mod.prompt_hashes_ok()
-    assert mod.SYSTEM_PROMPT_SHA256.startswith("a0f97d50") and mod.SYSTEM_PROMPT_SHA256.endswith("0d01")
-    assert mod.USER_TEMPLATE_SHA256.startswith("90694fa8") and mod.USER_TEMPLATE_SHA256.endswith("3102")
+    assert mod.SYSTEM_PROMPT_SHA256.startswith("a0f97d50")
+    assert mod.SYSTEM_PROMPT_SHA256.endswith("0d01")
+    assert mod.USER_TEMPLATE_SHA256.startswith("90694fa8")
+    assert mod.USER_TEMPLATE_SHA256.endswith("3102")
 
 
 def test_messages_collapse_to_one_line_and_swap_order():
@@ -26,7 +28,8 @@ def test_messages_collapse_to_one_line_and_swap_order():
     rev = mod.build_messages("Who\nwas  he?", "Bob", "Robert", "reference_first")
     assert fwd[1]["content"] == "Question: Who was he?\nReference answer: Bob\nCandidate answer: Robert\n\nVerdict:"
     assert rev[1]["content"] == "Question: Who was he?\nReference answer: Robert\nCandidate answer: Bob\n\nVerdict:"
-    assert fwd[0]["role"] == "system" and fwd[0]["content"] == mod.SYSTEM_PROMPT
+    assert fwd[0]["role"] == "system"
+    assert fwd[0]["content"] == mod.SYSTEM_PROMPT
     with pytest.raises(ValueError):
         mod.build_messages("q", "r", "c", "sideways")
 
@@ -254,9 +257,11 @@ def test_cli_verify_selection(tmp_path):
     (tmp_path / "s.json").write_text(json.dumps(sel))
     ok = subprocess.run([sys.executable, str(SCRIPT), "verify-selection", "--selection", str(tmp_path / "s.json")],
                         capture_output=True, text=True)
-    assert ok.returncode == 0 and json.loads(ok.stdout)["example_ids"] == ["h1", "h2"]
+    assert ok.returncode == 0
+    assert json.loads(ok.stdout)["example_ids"] == ["h1", "h2"]
     sel["count"] = 9
     (tmp_path / "s.json").write_text(json.dumps(sel))
     bad = subprocess.run([sys.executable, str(SCRIPT), "verify-selection", "--selection", str(tmp_path / "s.json")],
                          capture_output=True, text=True)
-    assert bad.returncode == 1 and json.loads(bad.stdout)["ok"] is False
+    assert bad.returncode == 1
+    assert json.loads(bad.stdout)["ok"] is False

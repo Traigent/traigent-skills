@@ -19,7 +19,8 @@ def test_doc_describes_the_real_auto_rule() -> None:
     text = DOC.read_text(encoding="utf-8")
     assert "Traigent decides based on" not in text
     assert "lets Traigent decide" not in text
-    assert "trial_concurrency > 1" in text and "otherwise it runs sequentially" in text
+    assert "trial_concurrency > 1" in text
+    assert "otherwise it runs sequentially" in text
     assert "ParallelConfig(trial_concurrency=4)" in text
 
 

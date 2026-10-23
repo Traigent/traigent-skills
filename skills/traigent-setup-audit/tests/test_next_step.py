@@ -736,7 +736,8 @@ def test_a_non_ascii_exception_class_is_kept_and_routes_to_d(tmp_path: Path) -> 
     )
     report, card = _run(_variant(tmp_path, source), tmp_path)
     errors = report["scorer_probe"].get("errors")
-    assert isinstance(errors, list) and len(errors) == 1, report["scorer_probe"]
+    assert isinstance(errors, list), report["scorer_probe"]
+    assert len(errors) == 1, report["scorer_probe"]
     assert errors[0]["case"] == "partial"
     assert errors[0]["error_type"] is None
     assert re.fullmatch(r"scorer\.py:\d+", errors[0]["error_site"] or "")
@@ -1523,7 +1524,8 @@ def test_a_wrapped_or_holdout_named_rowless_file_still_blocks_the_all_clear(
     assert report["next_step"]["branch"] != "g"
     assert "all check out" not in card
     listed = report["files"]["dataset_files_not_analysed"]
-    assert len(listed) == 1 and listed[0].startswith(f"{name} {reason}"), listed
+    assert len(listed) == 1, listed
+    assert listed[0].startswith(f"{name} {reason}"), listed
     assert report["next_step"]["line"].startswith(listed[0]), report["next_step"]["line"]
 
 

@@ -59,7 +59,8 @@ def test_guided_growth_snippet_warns_about_review_bypass() -> None:
     section = text.split("## Synthesize examples client-side", 1)[1].split("\n## ", 1)[
         0
     ]
-    assert "in the same call" in section and "before any human review" in section
+    assert "in the same call" in section
+    assert "before any human review" in section
     assert "across datasets of different sizes" in section
     assert 'plan_kind="prompt_rewrite"' in section
 

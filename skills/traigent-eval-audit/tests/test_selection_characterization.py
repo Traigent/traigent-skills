@@ -137,7 +137,9 @@ def test_subclasses_duplicates_empty_strings_and_copy_identity():
     check = DictSubclass({key: response[key] for key in CHECK_KEYS})
     before = copy.deepcopy((response, check))
     result = mod.verify_selection(response, check)
-    assert type(result) is list and result == ids and result is not ids
+    assert type(result) is list
+    assert result == ids
+    assert result is not ids
     assert result[0] is ids[0]
     assert (response, check) == before
     result.append("new")

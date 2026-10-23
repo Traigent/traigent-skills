@@ -71,6 +71,7 @@ def test_every_trial_uses_the_same_reps_and_per_sample_accuracy(
         assert abs(metrics["accuracy"] - 0.6) < 1e-9, result
     # The diagnostics are documented as readable per row from the trial metadata.
     diagnostics = result["example_diagnostics"]
-    assert diagnostics and all(
+    assert diagnostics, result
+    assert all(
         row == {"agreement": 0.6, "majority_accuracy": 1.0} for row in diagnostics
     ), result

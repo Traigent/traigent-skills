@@ -17,10 +17,12 @@ def test_no_unconditional_unmetered_claim() -> None:
     build = BUILD.read_text(encoding="utf-8")
     assert "does not see judge calls made inside a metric function" not in choose
     assert "is **not** in the SDK's cost ledger" not in build
-    assert "captur" in choose and "0.30.0" in choose
+    assert "captur" in choose
+    assert "0.30.0" in choose
     assert "depends on the SDK version and on capture" in build
     assert "not provider enforcement" in build
-    assert "concurrent trials are still" not in build and "ContextVar" in build
+    assert "concurrent trials are still" not in build
+    assert "ContextVar" in build
     assert "Budget judge calls as their own line" in build
 
 

@@ -34,7 +34,8 @@ RUNNABLE_BLOCKS = re.findall(
 
 def test_synthesis_section_warns_mock_mode_does_not_cover_it() -> None:
     assert "Mock mode does not cover this snippet" in SECTION
-    assert "ExampleSynthesizer" in SECTION and "stub" in SECTION
+    assert "ExampleSynthesizer" in SECTION
+    assert "stub" in SECTION
 
 
 def test_stub_smoke_test_runs_with_zero_provider_calls(tmp_path: Path) -> None:

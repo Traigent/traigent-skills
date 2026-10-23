@@ -103,7 +103,10 @@ def _run_driver(tmp_path: Path, block: str, body: str) -> dict:
         for line in completed.stdout.splitlines()
         if line.startswith("RESULT ")
     ]
-    assert completed.returncode == 0 and results, (
+    assert completed.returncode == 0, (
+        f"driver failed (exit {completed.returncode})\nstdout:\n{completed.stdout[-4000:]}\nstderr:\n{completed.stderr[-4000:]}"
+    )
+    assert results, (
         f"driver failed (exit {completed.returncode})\nstdout:\n{completed.stdout[-4000:]}\nstderr:\n{completed.stderr[-4000:]}"
     )
     return json.loads(results[-1])
@@ -174,15 +177,13 @@ def test_tier2_scoring_function_accepts_case_variant(tmp_path: Path) -> None:
     result = _run_driver(
         tmp_path, _python_block(EVAL_BUILD, "def exact_match_score"), RUN_TIER
     )
-    assert result["accuracy"] and all(value == 1.0 for value in result["accuracy"]), (
-        result
-    )
+    assert result["accuracy"], result
+    assert all(value == 1.0 for value in result["accuracy"]), result
 
 
 def test_tier4_custom_evaluator_accepts_case_variant(tmp_path: Path) -> None:
     result = _run_driver(
         tmp_path, _python_block(EVAL_BUILD, "def evaluate_answer"), RUN_TIER
     )
-    assert result["accuracy"] and all(value == 1.0 for value in result["accuracy"]), (
-        result
-    )
+    assert result["accuracy"], result
+    assert all(value == 1.0 for value in result["accuracy"]), result

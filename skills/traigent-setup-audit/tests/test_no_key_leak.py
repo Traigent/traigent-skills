@@ -99,7 +99,8 @@ def test_stderr_text_is_reduced_to_a_byte_count(sentinel_key, tmp_path: Path) ->
     probe = report["scorer_probe"]
     assert probe["ran"] is False
     assert probe["stage"] == "no-result"
-    assert isinstance(probe["stderr_bytes"], int) and probe["stderr_bytes"] > 0
+    assert isinstance(probe["stderr_bytes"], int)
+    assert probe["stderr_bytes"] > 0
     assert "stderr_tail" not in probe
     assert "fatal" not in card
 

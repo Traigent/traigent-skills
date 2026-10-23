@@ -136,7 +136,8 @@ def test_extracted_run_helper_accepts_read_only_sql_features(recipe, tmp_path, s
     recipe._run.__globals__["DB_PATH"] = tmp_path / "store.sqlite"
     recipe.build_db()
     ok, rows = recipe._run(sql)
-    assert ok and len(rows) == 4, sql
+    assert ok, sql
+    assert len(rows) == 4, sql
 
 
 @pytest.mark.parametrize(("real", "success"), [(True, False), (False, True)])

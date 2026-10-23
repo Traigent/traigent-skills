@@ -21,8 +21,10 @@ def test_no_flat_claim_that_project_env_is_ignored() -> None:
         text = page.read_text(encoding="utf-8")
         assert "does **not** read your project's `.env`" not in text
         assert "does not load your project's `.env`" not in text
-        assert "0.28.0" in text and "TRAIGENT_SKIP_DOTENV" in text, page.name
-        assert "when you decorate" not in text and "on decoration" not in text
+        assert "0.28.0" in text, page.name
+        assert "TRAIGENT_SKIP_DOTENV" in text, page.name
+        assert "when you decorate" not in text
+        assert "on decoration" not in text
         assert "import" in text.split("TRAIGENT_SKIP_DOTENV")[0][-400:], page.name
 
 
@@ -30,7 +32,8 @@ def test_mock_not_offline_mentions_env_keys() -> None:
     line = next(
         row for row in SKILL.read_text(encoding="utf-8").splitlines() if row.startswith("- **Mock ≠ offline.**")
     )
-    assert ".env" in line and "TRAIGENT_OFFLINE_MODE=true" in line
+    assert ".env" in line
+    assert "TRAIGENT_OFFLINE_MODE=true" in line
 
 
 def test_sdk_loader_and_opt_out_exist() -> None:

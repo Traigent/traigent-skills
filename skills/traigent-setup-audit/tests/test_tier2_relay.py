@@ -76,7 +76,8 @@ def test_a_forged_html_body_produces_no_verdict(
     assert "unexpected payload" in completed.stdout
     assert "not the api you are looking for" not in completed.stdout
     rows = json.loads(receipt.read_text(encoding="utf-8"))["requests"]
-    assert rows[0]["status"] == 200 and rows[0]["response_bytes"] > 0
+    assert rows[0]["status"] == 200
+    assert rows[0]["response_bytes"] > 0
 
 
 def test_a_json_body_that_is_not_the_envelope_produces_no_verdict(

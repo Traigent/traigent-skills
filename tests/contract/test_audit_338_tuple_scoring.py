@@ -127,7 +127,8 @@ def test_skill_does_not_teach_the_retired_not_invoked_warning() -> None:
     text = SKILL.read_text(encoding="utf-8")
     assert "NOT invoked" not in text
     assert "is also 0.0" not in text
-    assert "known SDK\nissue" not in text and "known SDK issue" not in text
+    assert "known SDK\nissue" not in text
+    assert "known SDK issue" not in text
     # The still-true reserved-key rule stays.
     assert "RESERVED_METRIC_KEYS" in text
     assert "Skipping user metric" in text

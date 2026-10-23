@@ -42,7 +42,8 @@ def _section(text: str, heading: str) -> str:
 def test_caveat_sits_next_to_every_multi_call_template() -> None:
     text = TEMPLATES.read_text(encoding="utf-8")
     caveat = _section(text, CAVEAT_HEADING)
-    assert "only the **first**" in caveat and "TRAIGENT_RUN_COST_LIMIT" in caveat
+    assert "only the **first**" in caveat
+    assert "TRAIGENT_RUN_COST_LIMIT" in caveat
     assert "<!-- contract: literal" in caveat, (
         "the caveat must carry a docstamp so an SDK change re-checks it"
     )
@@ -64,7 +65,8 @@ def test_skill_cost_limit_advice_links_the_caveat() -> None:
         for line in skill.splitlines()
         if "set `TRAIGENT_RUN_COST_LIMIT` before any evaluator" in line
     )
-    assert "cost-metering caveat" in advice and "evaluator-templates.md" in advice
+    assert "cost-metering caveat" in advice
+    assert "evaluator-templates.md" in advice
 
 
 def test_sdk_still_meters_only_the_first_call_per_row(
@@ -84,7 +86,8 @@ def test_sdk_still_meters_only_the_first_call_per_row(
     costs = _run_driver(
         tmp_path, _python_block(TEMPLATES, "def statistical_agreement_evaluator"), body
     )
-    assert costs["1"] and costs["1"] > 0, costs
+    assert costs["1"], costs
+    assert costs["1"] > 0, costs
 
     fixed = sdk_version_label == "develop" or Version(sdk_version_label) >= Version(
         FIX_VERSION

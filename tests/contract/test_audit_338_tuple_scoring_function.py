@@ -86,7 +86,8 @@ def test_scoring_function_receives_unpacked_output_on_tuple_return(tmp_path: Pat
     assert completed.returncode == 0, completed.stdout + completed.stderr
     line = next(ln for ln in completed.stdout.splitlines() if ln.startswith("RESULT="))
     result = json.loads(line.removeprefix("RESULT="))
-    assert result["received"] and set(result["received"]) == {"str"}, result
+    assert result["received"], result
+    assert set(result["received"]) == {"str"}, result
     # 0.77 is a value only this scorer produces: the objective is the scorer's.
     assert result["accuracy"] == pytest.approx(0.77), result
     assert result["side_metric"] == pytest.approx(1.0), result
