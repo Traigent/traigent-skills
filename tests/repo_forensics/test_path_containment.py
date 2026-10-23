@@ -169,6 +169,24 @@ def test_scan_integrity_malformed_settings_json_is_not_reported_out_of_root(
     critical_files, findings = scan_integrity.find_critical_files(str(repo))
 
     # json.JSONDecodeError subclasses ValueError; it must not be mistaken for
-    # the out-of-root ValueError raised by the containment helpers.
-    assert findings == []
-    assert ".claude/settings.json" in critical_files or critical_files == {}
+    # the out-of-root ValueError, but a scanner must not pass silently either.
+    assert [f.category for f in findings] == ["parse-error"]
+    assert findings[0].file == ".claude/settings.json"
+    assert findings[0].severity == "medium"
+    assert "integrity-containment" not in {f.category for f in findings}
+    assert ".claude/settings.json" in critical_files
+
+
+def test_check_hooks_in_settings_reports_malformed_json(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    (repo / ".claude").mkdir(parents=True)
+    settings = repo / ".claude" / "settings.json"
+    settings.write_text("{not json", encoding="utf-8")
+
+    findings = scan_integrity.check_hooks_in_settings(
+        str(repo), str(settings), ".claude/settings.json"
+    )
+
+    assert [f.category for f in findings] == ["parse-error"]
+    assert findings[0].file == ".claude/settings.json"
+    assert findings[0].severity == "medium"

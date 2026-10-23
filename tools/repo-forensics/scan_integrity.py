@@ -75,6 +75,24 @@ def _skip_out_of_root_finding(display_path, filepath, reason):
     )
 
 
+def _settings_parse_error_finding(rel_path, error):
+    """Incomplete-scan finding: a security scanner must not pass silently on a
+    file it could not parse (same category as scan_dependencies parse errors)."""
+    return core.Finding(
+        scanner=SCANNER_NAME,
+        severity="medium",
+        title=f"{rel_path} could not be parsed; integrity checks incomplete",
+        description=(
+            f"{rel_path} is not valid JSON, so hook registrations in it were "
+            "not inspected. Manual review required."
+        ),
+        file=rel_path,
+        line=0,
+        snippet=str(error)[:120],
+        category="parse-error",
+    )
+
+
 def sha256_file(filepath, repo_path):
     """Compute SHA256 hash of a file inside the repo root."""
     try:
@@ -176,8 +194,9 @@ def find_critical_files(repo_path):
                             if os.path.isfile(resolved_script):
                                 rp = os.path.relpath(resolved_script, repo_path)
                                 found[rp] = resolved_script
-        except json.JSONDecodeError:
-            pass  # malformed settings.json (a ValueError subclass): nothing more to check
+        except json.JSONDecodeError as e:
+            # JSONDecodeError subclasses ValueError: not an out-of-root case.
+            findings.append(_settings_parse_error_finding(".claude/settings.json", e))
         except ValueError as e:
             print(
                 f"[!] {SCANNER_NAME}: Skipping out-of-root file {settings_path}: {e}",
@@ -246,8 +265,10 @@ def check_hooks_in_settings(repo_path, filepath, rel_path):
                                 )
                                 break
 
-    except (json.JSONDecodeError, OSError, KeyError, ValueError):
-        pass  # malformed or unreadable file: skip remaining checks for it
+    except json.JSONDecodeError as e:
+        findings.append(_settings_parse_error_finding(rel_path, e))
+    except (OSError, KeyError, ValueError):
+        pass  # unreadable or out-of-root file: skip remaining checks for it
     return findings
 
 
@@ -480,10 +501,13 @@ def main():
     # Check for hooks in settings.json
     settings_path = os.path.join(repo_path, ".claude/settings.json")
     if os.path.exists(settings_path):
+        seen = {(f.category, f.file) for f in all_findings}
         all_findings.extend(
-            check_hooks_in_settings(
+            f
+            for f in check_hooks_in_settings(
                 repo_path, settings_path, ".claude/settings.json"
             )
+            if (f.category, f.file) not in seen or f.category != "parse-error"
         )
 
     # Check for executable config files
