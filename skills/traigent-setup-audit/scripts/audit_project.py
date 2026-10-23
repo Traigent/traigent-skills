@@ -34,10 +34,12 @@ import re
 import subprocess
 import sys
 from collections import Counter, defaultdict
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import NoReturn
 
-SCHEMA = "traigent-setup-audit/v1"
+SCHEMA ="traigent-setup-audit/v1"
 GUARD_MESSAGE = "traigent-setup-audit: network disabled in the free audit"
 GUARD_PYTHON = "python-level"
 
@@ -343,34 +345,57 @@ class _RefusingSocket:
     which the first version of this audit then reported as scorer instability.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: object, **kwargs: object) -> None:
         raise NetworkDisabled(GUARD_MESSAGE)
+
+
+def _replace_entry_points(
+    module: object, names: tuple[str, ...], refuse: Callable[..., NoReturn]
+) -> None:
+    """Replace each of ``names`` the module has: ``socket`` with the refusing
+    class, every other name with ``refuse``. A name the module lacks stays
+    absent."""
+    for name in names:
+        if hasattr(module, name):
+            setattr(module, name, _RefusingSocket if name == "socket" else refuse)
 
 
 def install_network_guard() -> None:
     """Replace the socket entry points, in both ``socket`` and ``_socket``."""
     import socket
 
-    def _refuse(*args, **kwargs):
+    def _refuse(*args: object, **kwargs: object) -> NoReturn:
         raise NetworkDisabled(GUARD_MESSAGE)
 
-    for name in ("socket", "socketpair", "fromfd"):
-        if hasattr(socket, name):
-            setattr(socket, name, _RefusingSocket if name == "socket" else _refuse)
-    for name in ("create_connection", "getaddrinfo", "gethostbyname"):
-        if hasattr(socket, name):
-            setattr(socket, name, _refuse)
+    _replace_entry_points(
+        socket,
+        (
+            "socket",
+            "socketpair",
+            "fromfd",
+            "create_connection",
+            "getaddrinfo",
+            "gethostbyname",
+        ),
+        _refuse,
+    )
 
     try:
         import _socket
     except ImportError:  # pragma: no cover - _socket is always present on CPython
         return
-    for name in ("socket", "socketpair", "dup"):
-        if hasattr(_socket, name):
-            setattr(_socket, name, _RefusingSocket if name == "socket" else _refuse)
-    for name in ("getaddrinfo", "gethostbyname", "create_connection"):
-        if hasattr(_socket, name):
-            setattr(_socket, name, _refuse)
+    _replace_entry_points(
+        _socket,
+        (
+            "socket",
+            "socketpair",
+            "dup",
+            "getaddrinfo",
+            "gethostbyname",
+            "create_connection",
+        ),
+        _refuse,
+    )
 
 
 def verify_network_guard() -> str:
@@ -571,18 +596,35 @@ def _traigent_aliases(tree: ast.AST) -> tuple[set[str], set[str]]:
     optimize_names: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            for alias in node.names:
-                if alias.name == "traigent" or alias.name.startswith("traigent."):
-                    modules.add(alias.asname or alias.name.split(".", 1)[0])
+            _add_import_aliases(node, modules)
         elif isinstance(node, ast.ImportFrom):
-            module = node.module or ""
-            if module == "traigent" or module.startswith("traigent."):
-                for alias in node.names:
-                    if alias.name == "optimize":
-                        optimize_names.add(alias.asname or alias.name)
-                    else:
-                        modules.add(alias.asname or alias.name)
+            _add_import_from_aliases(node, modules, optimize_names)
     return modules, optimize_names
+
+
+def _is_traigent_module(name: str) -> bool:
+    return name == "traigent" or name.startswith("traigent.")
+
+
+def _add_import_aliases(node: ast.Import, modules: set[str]) -> None:
+    """``import traigent[.x] [as y]`` binds a module alias."""
+    for alias in node.names:
+        if _is_traigent_module(alias.name):
+            modules.add(alias.asname or alias.name.split(".", 1)[0])
+
+
+def _add_import_from_aliases(
+    node: ast.ImportFrom, modules: set[str], optimize_names: set[str]
+) -> None:
+    """``from traigent[.x] import optimize`` binds the decorator itself; any
+    other imported name is recorded as a module alias."""
+    if not _is_traigent_module(node.module or ""):
+        return
+    for alias in node.names:
+        if alias.name == "optimize":
+            optimize_names.add(alias.asname or alias.name)
+        else:
+            modules.add(alias.asname or alias.name)
 
 
 def _decorator_is_traigent_optimize(
@@ -636,14 +678,30 @@ def resolve_config_space(
         found = constants.get(node.id)
         return (found, None) if found is not None else (None, None)
     if isinstance(node, ast.Call):
-        callee = node.func.attr if isinstance(node.func, ast.Attribute) else None
-        if isinstance(node.func, ast.Name):
-            callee = node.func.id
-        if callee in CONFIG_SPACE_WRAPPERS and node.args:
-            return resolve_config_space(node.args[0], constants)
-        if callee == "dict" and node.keywords:
-            pairs = [(kw.arg, kw.value) for kw in node.keywords if kw.arg]
-            return None, pairs
+        return _resolve_config_space_call(node, constants)
+    return None, None
+
+
+def _callee_name(func: ast.expr) -> str | None:
+    """``f`` for ``f(...)`` and ``attr`` for ``obj.attr(...)``; else ``None``."""
+    if isinstance(func, ast.Name):
+        return func.id
+    if isinstance(func, ast.Attribute):
+        return func.attr
+    return None
+
+
+def _resolve_config_space_call(
+    node: ast.Call, constants: dict[str, ast.Dict]
+) -> tuple[ast.Dict | None, list[tuple[str, ast.expr]] | None]:
+    """A ``ConfigurationSpace(...)`` / ``ConfigSpace(...)`` wrapper is unwrapped;
+    ``dict(a=[...])`` gives its keyword pairs; any other call is unreadable."""
+    callee = _callee_name(node.func)
+    if callee in CONFIG_SPACE_WRAPPERS and node.args:
+        return resolve_config_space(node.args[0], constants)
+    if callee == "dict" and node.keywords:
+        pairs = [(kw.arg, kw.value) for kw in node.keywords if kw.arg]
+        return None, pairs
     return None, None
 
 
@@ -680,21 +738,34 @@ def knob_values(node: ast.expr) -> tuple[list[object], bool]:
     if isinstance(literal, (list, tuple, set)) and _reportable_knob_values(list(literal)):
         return list(literal), True
     if isinstance(node, ast.Call):
-        callee = node.func
-        name = None
-        if isinstance(callee, ast.Name):
-            name = callee.id
-        elif isinstance(callee, ast.Attribute) and isinstance(callee.value, ast.Name):
-            name = callee.value.id
-        if name in CHOICES_FACTORIES:
-            values = [_literal(arg) for arg in node.args]
-            if (
-                values
-                and all(value is not None for value in values)
-                and _reportable_knob_values(values)
-            ):
-                return values, True
+        values = _choices_values(node)
+        if values is not None:
+            return values, True
     return [], False
+
+
+def _factory_name(callee: ast.expr) -> str | None:
+    """``Choices`` for ``Choices(...)`` and for ``Choices.model(...)``."""
+    if isinstance(callee, ast.Name):
+        return callee.id
+    if isinstance(callee, ast.Attribute) and isinstance(callee.value, ast.Name):
+        return callee.value.id
+    return None
+
+
+def _choices_values(node: ast.Call) -> list[object] | None:
+    """The literal arguments of a choices factory call, or ``None`` when the
+    call is not one or any argument is not a reportable literal."""
+    if _factory_name(node.func) not in CHOICES_FACTORIES:
+        return None
+    values = [_literal(arg) for arg in node.args]
+    if (
+        values
+        and all(value is not None for value in values)
+        and _reportable_knob_values(values)
+    ):
+        return values
+    return None
 
 
 def function_read_surface(node: ast.AST) -> tuple[set[str], set[str], bool]:
@@ -707,46 +778,62 @@ def function_read_surface(node: ast.AST) -> tuple[set[str], set[str], bool]:
     space, and every declared knob name would then look like a literal the body
     reads — the exact defect this check exists to catch.
     """
-    parameters: set[str] = set()
     literals: set[str] = set()
     dynamic = False
     mapping_names = set(CONFIG_MAPPING_NAMES)
-
-    body: list[ast.stmt] = []
-    if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-        args = node.args
-        for arg in [*args.posonlyargs, *args.args, *args.kwonlyargs]:
-            parameters.add(arg.arg)
-        if args.vararg:
-            parameters.add(args.vararg.arg)
-        if args.kwarg:
-            parameters.add(args.kwarg.arg)
-            mapping_names.add(args.kwarg.arg)
-        body = list(node.body)
-
-    def _is_mapping(value: ast.AST) -> bool:
-        return isinstance(value, ast.Name) and value.id in mapping_names
+    parameters, body = _signature_surface(node, mapping_names)
 
     for child in (sub for stmt in body for sub in ast.walk(stmt)):
         if isinstance(child, ast.Constant) and isinstance(child.value, str):
             literals.add(child.value)
-        # Any use of a config mapping at all: `kwargs["k"]`, `kwargs.get("k")`,
-        # `kwargs.items()`, `f(**kwargs)`. Requiring a Subscript missed the
-        # commonest form and reported a read knob as never read.
-        if isinstance(child, (ast.Subscript, ast.Attribute)) and _is_mapping(
-            child.value
-        ):
+        if _reads_config_mapping(child, mapping_names):
             dynamic = True
-        if isinstance(child, ast.Call):
-            for keyword in child.keywords:
-                if keyword.arg is None and _is_mapping(keyword.value):
-                    dynamic = True
-            callee = child.func
-            if isinstance(callee, ast.Attribute) and callee.attr in CONFIG_READ_FUNCS:
-                dynamic = True
-            if isinstance(callee, ast.Name) and callee.id in CONFIG_READ_FUNCS:
-                dynamic = True
     return parameters, literals, dynamic
+
+
+def _signature_surface(
+    node: ast.AST, mapping_names: set[str]
+) -> tuple[set[str], list[ast.stmt]]:
+    """``(parameter names, body statements)`` of a function; empty for any
+    other node. A ``**kwargs`` name is added to ``mapping_names``."""
+    parameters: set[str] = set()
+    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return parameters, []
+    args = node.args
+    for arg in [*args.posonlyargs, *args.args, *args.kwonlyargs]:
+        parameters.add(arg.arg)
+    if args.vararg:
+        parameters.add(args.vararg.arg)
+    if args.kwarg:
+        parameters.add(args.kwarg.arg)
+        mapping_names.add(args.kwarg.arg)
+    return parameters, list(node.body)
+
+
+def _reads_config_mapping(child: ast.AST, mapping_names: set[str]) -> bool:
+    """Whether one node reads knobs in a way the parser cannot follow.
+
+    Any use of a config mapping at all: `kwargs["k"]`, `kwargs.get("k")`,
+    `kwargs.items()`, `f(**kwargs)`. Requiring a Subscript missed the
+    commonest form and reported a read knob as never read. A call to a
+    config reader (`get_config()`, `traigent.get_current_config()`) counts too.
+    """
+
+    def _is_mapping(value: ast.AST) -> bool:
+        return isinstance(value, ast.Name) and value.id in mapping_names
+
+    if isinstance(child, (ast.Subscript, ast.Attribute)) and _is_mapping(child.value):
+        return True
+    if not isinstance(child, ast.Call):
+        return False
+    if any(
+        keyword.arg is None and _is_mapping(keyword.value) for keyword in child.keywords
+    ):
+        return True
+    callee = child.func
+    if isinstance(callee, ast.Attribute) and callee.attr in CONFIG_READ_FUNCS:
+        return True
+    return isinstance(callee, ast.Name) and callee.id in CONFIG_READ_FUNCS
 
 
 def knob_status(key: str, parameters: set[str], literals: set[str], dynamic: bool) -> str:
@@ -778,52 +865,88 @@ def collect_entry_points(tree: ast.AST, rel_path: str) -> list[EntryPoint]:
         if decorator is None:
             continue
         entry = EntryPoint(function=node.name, file=rel_path, line=node.lineno)
-        parameters, literals, dynamic = function_read_surface(node)
+        surface = function_read_surface(node)
         if isinstance(decorator, ast.Call):
-            for keyword in decorator.keywords:
-                if keyword.arg not in {"configuration_space", "config_space"}:
-                    continue
-                space, pairs = resolve_config_space(keyword.value, constants)
-                if space is not None:
-                    pairs = [
-                        (_literal(k), v)
-                        for k, v in zip(space.keys, space.values)
-                        if k is not None
-                    ]
-                    pairs = [(k, v) for k, v in pairs if isinstance(k, str)]
-                    key_nodes = {
-                        _literal(k): k for k in space.keys if k is not None
-                    }
-                elif pairs is None:
-                    entry.config_space_note = (
-                        f"configuration_space is passed as `{_expr_text(keyword.value)}` "
-                        f"at {rel_path}:{getattr(keyword.value, 'lineno', node.lineno)}; "
-                        "the audit reads only a dict literal, a module-level constant, "
-                        "a ConfigurationSpace(...) wrapper or dict(...), so its knobs "
-                        "were not inventoried"
-                    )
-                    continue
-                else:
-                    key_nodes = {}
-                for key, value_node in pairs:
-                    values, readable = knob_values(value_node)
-                    key_node = key_nodes.get(key)
-                    entry.knobs.append(
-                        Knob(
-                            name=key,
-                            values=values,
-                            values_readable=readable,
-                            status=knob_status(key, parameters, literals, dynamic),
-                            file=rel_path,
-                            line=getattr(
-                                key_node or value_node, "lineno", node.lineno
-                            ),
-                        )
-                    )
+            _add_declared_knobs(entry, decorator, constants, node, surface)
         entry.knobs.sort(key=lambda knob: knob.name)
         entry_points.append(entry)
     entry_points.sort(key=lambda item: (item.file, item.line))
     return entry_points
+
+
+def _add_declared_knobs(
+    entry: EntryPoint,
+    decorator: ast.Call,
+    constants: dict[str, ast.Dict],
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    surface: tuple[set[str], set[str], bool],
+) -> None:
+    """Add a knob for every key of each configuration space keyword of the
+    decorator; a space the audit cannot read sets the entry's note instead."""
+    for keyword in decorator.keywords:
+        if keyword.arg not in {"configuration_space", "config_space"}:
+            continue
+        pairs, key_nodes, note = _config_space_pairs(
+            keyword, constants, entry.file, node
+        )
+        if note is not None:
+            entry.config_space_note = note
+            continue
+        for key, value_node in pairs:
+            entry.knobs.append(
+                _declared_knob(key, value_node, key_nodes, surface, entry.file, node)
+            )
+
+
+def _config_space_pairs(
+    keyword: ast.keyword,
+    constants: dict[str, ast.Dict],
+    rel_path: str,
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> tuple[list[tuple[str, ast.expr]], dict[object, ast.expr], str | None]:
+    """``(key/value pairs, key nodes by key, note)`` for one configuration
+    space keyword. The note is set, with no pairs, when the space cannot be
+    read statically."""
+    space, pairs = resolve_config_space(keyword.value, constants)
+    if space is not None:
+        literal_pairs = [
+            (_literal(k), v) for k, v in zip(space.keys, space.values) if k is not None
+        ]
+        pairs = [(k, v) for k, v in literal_pairs if isinstance(k, str)]
+        key_nodes = {_literal(k): k for k in space.keys if k is not None}
+        return pairs, key_nodes, None
+    if pairs is None:
+        note = (
+            f"configuration_space is passed as `{_expr_text(keyword.value)}` "
+            f"at {rel_path}:{getattr(keyword.value, 'lineno', node.lineno)}; "
+            "the audit reads only a dict literal, a module-level constant, "
+            "a ConfigurationSpace(...) wrapper or dict(...), so its knobs "
+            "were not inventoried"
+        )
+        return [], {}, note
+    return pairs, {}, None
+
+
+def _declared_knob(
+    key: str,
+    value_node: ast.expr,
+    key_nodes: dict[object, ast.expr],
+    surface: tuple[set[str], set[str], bool],
+    rel_path: str,
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+) -> Knob:
+    """One declared knob: its readable values and whether the body reads it."""
+    values, readable = knob_values(value_node)
+    key_node = key_nodes.get(key)
+    parameters, literals, dynamic = surface
+    return Knob(
+        name=key,
+        values=values,
+        values_readable=readable,
+        status=knob_status(key, parameters, literals, dynamic),
+        file=rel_path,
+        line=getattr(key_node or value_node, "lineno", node.lineno),
+    )
 
 
 # --------------------------------------------------------------------------
@@ -952,35 +1075,11 @@ def classify_scorer(tree: ast.AST, node: ast.AST) -> tuple[str, list[str]]:
 
     for child in ast.walk(tree):
         if isinstance(child, ast.Call):
-            callee = None
-            if isinstance(child.func, ast.Name):
-                callee = child.func.id
-                if callee in EXECUTING_BUILTINS:
-                    executing.append(f"builtin {callee}")
-            elif isinstance(child.func, ast.Attribute):
-                callee = child.func.attr
-                owner = child.func.value
-                if isinstance(owner, ast.Name) and owner.id == "os":
-                    if callee in EXECUTING_OS_ATTRS:
-                        executing.append(f"os.{callee}")
-                if callee in ESCAPE_CALL_ATTRS:
-                    owner_name = owner.id if isinstance(owner, ast.Name) else "?"
-                    escapes.append(f"{owner_name}.{callee}")
-            if isinstance(child.func, ast.Name) and callee in ESCAPE_CALL_ATTRS:
-                escapes.append(callee)
-            if callee is not None:
-                dynamic = _dynamic_naming_signal(child, callee)
-                if dynamic:
-                    escapes.append(dynamic)
+            _call_signals(child, executing, escapes)
         # Touching the module table at all: popping a module and importing it
         # again rebuilds the real entry points, which is a reload spelled
         # differently.
-        if (
-            isinstance(child, ast.Attribute)
-            and child.attr == "modules"
-            and isinstance(child.value, ast.Name)
-            and child.value.id == "sys"
-        ):
+        if _is_sys_modules(child):
             escapes.append("sys.modules")
 
     if judge:
@@ -991,14 +1090,60 @@ def classify_scorer(tree: ast.AST, node: ast.AST) -> tuple[str, list[str]]:
         signals.append(
             "steps outside the socket layer via " + ", ".join(sorted(set(escapes)))
         )
+    return _scorer_kind(judge, executing, escapes), signals
 
+
+def _call_signals(child: ast.Call, executing: list[str], escapes: list[str]) -> None:
+    """Record what one call does outside plain Python: an executing builtin or
+    ``os`` function, a reload/import/subprocess escape, a runtime-named lookup."""
+    callee = None
+    if isinstance(child.func, ast.Name):
+        callee = child.func.id
+        if callee in EXECUTING_BUILTINS:
+            executing.append(f"builtin {callee}")
+        if callee in ESCAPE_CALL_ATTRS:
+            escapes.append(callee)
+    elif isinstance(child.func, ast.Attribute):
+        callee = _attribute_call_signals(child.func, executing, escapes)
+    if callee is not None:
+        dynamic = _dynamic_naming_signal(child, callee)
+        if dynamic:
+            escapes.append(dynamic)
+
+
+def _attribute_call_signals(
+    func: ast.Attribute, executing: list[str], escapes: list[str]
+) -> str:
+    """Record the signals of an ``owner.attr(...)`` call; return ``attr``."""
+    callee = func.attr
+    owner = func.value
+    is_os = isinstance(owner, ast.Name) and owner.id == "os"
+    if is_os and callee in EXECUTING_OS_ATTRS:
+        executing.append(f"os.{callee}")
+    if callee in ESCAPE_CALL_ATTRS:
+        owner_name = owner.id if isinstance(owner, ast.Name) else "?"
+        escapes.append(f"{owner_name}.{callee}")
+    return callee
+
+
+def _is_sys_modules(child: ast.AST) -> bool:
+    return (
+        isinstance(child, ast.Attribute)
+        and child.attr == "modules"
+        and isinstance(child.value, ast.Name)
+        and child.value.id == "sys"
+    )
+
+
+def _scorer_kind(judge: list[str], executing: list[str], escapes: list[str]) -> str:
+    """``hybrid``, ``llm-judge``, ``executing`` or ``deterministic``."""
     if judge and (executing or escapes):
-        return "hybrid", signals
+        return "hybrid"
     if judge:
-        return "llm-judge", signals
+        return "llm-judge"
     if executing or escapes:
-        return "executing", signals
-    return "deterministic", signals
+        return "executing"
+    return "deterministic"
 
 
 def classify_module_function(path: Path, function: str) -> tuple[str, list[str], int]:
@@ -1032,10 +1177,8 @@ def scan_python(files: list[Path], root: Path) -> PythonInventory:
         )
     for path in considered:
         rel = relative(path, root)
-        try:
-            source = path.read_text(encoding="utf-8-sig", errors="replace")
-            tree = ast.parse(source)
-        except (OSError, SyntaxError, ValueError):
+        tree = _parse_python(path)
+        if tree is None:
             inventory.files_unparsed.append(rel)
             continue
         inventory.files_scanned += 1
@@ -1044,42 +1187,8 @@ def scan_python(files: list[Path], root: Path) -> PythonInventory:
         modules = module_imports(tree)
         providers = sorted(modules & PROVIDER_MODULES)
         for node in ast.walk(tree):
-            if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                continue
-            parameters = [arg.arg for arg in node.args.args]
-            is_candidate, skip_reason = scorer_candidate_verdict(
-                node.name, parameters, rel
-            )
-            if is_candidate:
-                kind, signals = classify_scorer(tree, node)
-                inventory.scorers.append(
-                    ScorerCandidate(
-                        function=node.name,
-                        file=rel,
-                        line=node.lineno,
-                        kind=kind,
-                        signals=signals,
-                        parameters=parameters,
-                    )
-                )
-            elif skip_reason is not None:
-                inventory.skipped_scorers.append(
-                    SkippedScorer(
-                        function=node.name,
-                        file=rel,
-                        line=node.lineno,
-                        reason=skip_reason,
-                    )
-                )
-            if providers and not node.name.startswith("_"):
-                inventory.llm_call_sites.append(
-                    {
-                        "function": node.name,
-                        "file": rel,
-                        "line": node.lineno,
-                        "providers": providers,
-                    }
-                )
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                _inventory_function(inventory, tree, node, rel, providers)
     if inventory.files_unparsed:
         inventory.notes.append(
             f"{len(inventory.files_unparsed)} Python file(s) could not be parsed "
@@ -1089,6 +1198,58 @@ def scan_python(files: list[Path], root: Path) -> PythonInventory:
     inventory.skipped_scorers.sort(key=lambda item: (item.file, item.line))
     inventory.llm_call_sites.sort(key=lambda item: (item["file"], item["line"]))
     return inventory
+
+
+def _parse_python(path: Path) -> ast.Module | None:
+    """The module's syntax tree, or ``None`` when it cannot be read or parsed."""
+    try:
+        source = path.read_text(encoding="utf-8-sig", errors="replace")
+        return ast.parse(source)
+    except (OSError, SyntaxError, ValueError):
+        return None
+
+
+def _inventory_function(
+    inventory: PythonInventory,
+    tree: ast.AST,
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    rel: str,
+    providers: list[str],
+) -> None:
+    """File one function as a scorer, a skipped scorer candidate and/or an LLM
+    call site."""
+    parameters = [arg.arg for arg in node.args.args]
+    is_candidate, skip_reason = scorer_candidate_verdict(node.name, parameters, rel)
+    if is_candidate:
+        kind, signals = classify_scorer(tree, node)
+        inventory.scorers.append(
+            ScorerCandidate(
+                function=node.name,
+                file=rel,
+                line=node.lineno,
+                kind=kind,
+                signals=signals,
+                parameters=parameters,
+            )
+        )
+    elif skip_reason is not None:
+        inventory.skipped_scorers.append(
+            SkippedScorer(
+                function=node.name,
+                file=rel,
+                line=node.lineno,
+                reason=skip_reason,
+            )
+        )
+    if providers and not node.name.startswith("_"):
+        inventory.llm_call_sites.append(
+            {
+                "function": node.name,
+                "file": rel,
+                "line": node.lineno,
+                "providers": providers,
+            }
+        )
 
 
 # --------------------------------------------------------------------------
@@ -1206,76 +1367,12 @@ def load_rows(path: Path) -> RawDataset:
 
     try:
         if suffix == ".jsonl":
-            bad_lines = 0
-            total_lines = 0
-            truncated = False
-            with path.open("r", encoding="utf-8-sig", errors="replace") as handle:
-                for line in handle:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    total_lines += 1
-                    if len(result.rows) >= MAX_ROWS:
-                        truncated = True
-                        continue
-                    try:
-                        item = json.loads(line, parse_constant=_constant)
-                    except ValueError:
-                        bad_lines += 1
-                        continue
-                    if isinstance(item, dict):
-                        result.rows.append(item)
-            if not result.rows and bad_lines:
-                # Every line failed: a damaged file, not an absent one.
-                result.skipped = (
-                    f"could not be parsed (none of its {total_lines} line(s) is a "
-                    f"JSON object; {bad_lines} were not valid JSON)"
-                )
+            if _read_jsonl(path, result, _constant):
                 return result
-            if bad_lines:
-                result.notes.append(
-                    f"{bad_lines} line(s) were not valid JSON and were skipped"
-                )
-            if truncated:
-                result.notes.append(
-                    f"read the first {MAX_ROWS} of {total_lines} line(s); the rest "
-                    "were not analysed"
-                )
         elif suffix == ".json":
-            payload = json.loads(
-                path.read_text(encoding="utf-8-sig", errors="replace"),
-                parse_constant=_constant,
-            )
-            if not isinstance(payload, list):
-                result.nested_rows = _nested_row_key(payload)
-                result.not_rows = (
-                    f"is a JSON object with a nested row list (`{result.nested_rows}`), "
-                    "which this audit does not read; name a top-level array"
-                    if result.nested_rows
-                    else "is not a JSON array of objects"
-                )
-            else:
-                if len(payload) > MAX_ROWS:
-                    result.notes.append(
-                        f"read the first {MAX_ROWS} of {len(payload)} row(s); the "
-                        "rest were not analysed"
-                    )
-                result.rows = [
-                    item for item in payload[:MAX_ROWS] if isinstance(item, dict)
-                ]
+            _read_json(path, result, _constant)
         elif suffix == ".csv":
-            with path.open(
-                "r", encoding="utf-8-sig", errors="replace", newline=""
-            ) as handle:
-                reader = csv.DictReader(handle)
-                for index, item in enumerate(reader):
-                    if index >= MAX_ROWS:
-                        result.notes.append(
-                            f"read the first {MAX_ROWS} row(s); the rest were not "
-                            "analysed"
-                        )
-                        break
-                    result.rows.append(dict(item))
+            _read_csv(path, result)
     except (OSError, ValueError, csv.Error) as exc:
         result.skipped = f"could not be parsed ({type(exc).__name__})"
         return result
@@ -1283,6 +1380,95 @@ def load_rows(path: Path) -> RawDataset:
     if not result.rows and not result.not_rows:
         result.not_rows = "holds no rows"
     return result
+
+
+def _read_jsonl(
+    path: Path, result: RawDataset, parse_constant: Callable[[str], float]
+) -> bool:
+    """Read JSONL rows into ``result``. ``True`` when every line failed: the
+    file is then recorded as damaged and ``result`` is final as it stands."""
+    with path.open("r", encoding="utf-8-sig", errors="replace") as handle:
+        total_lines, bad_lines, truncated = _scan_jsonl(handle, result, parse_constant)
+    if not result.rows and bad_lines:
+        # Every line failed: a damaged file, not an absent one.
+        result.skipped = (
+            f"could not be parsed (none of its {total_lines} line(s) is a "
+            f"JSON object; {bad_lines} were not valid JSON)"
+        )
+        return True
+    if bad_lines:
+        result.notes.append(f"{bad_lines} line(s) were not valid JSON and were skipped")
+    if truncated:
+        result.notes.append(
+            f"read the first {MAX_ROWS} of {total_lines} line(s); the rest "
+            "were not analysed"
+        )
+    return False
+
+
+def _scan_jsonl(
+    handle: Iterable[str], result: RawDataset, parse_constant: Callable[[str], float]
+) -> tuple[int, int, bool]:
+    """Append each JSON-object line to ``result.rows`` up to ``MAX_ROWS``:
+    ``(non-blank lines, lines that are not JSON, truncated)``."""
+    bad_lines = 0
+    total_lines = 0
+    truncated = False
+    for line in handle:
+        line = line.strip()
+        if not line:
+            continue
+        total_lines += 1
+        if len(result.rows) >= MAX_ROWS:
+            truncated = True
+            continue
+        try:
+            item = json.loads(line, parse_constant=parse_constant)
+        except ValueError:
+            bad_lines += 1
+            continue
+        if isinstance(item, dict):
+            result.rows.append(item)
+    return total_lines, bad_lines, truncated
+
+
+def _read_json(
+    path: Path, result: RawDataset, parse_constant: Callable[[str], float]
+) -> None:
+    """Read a top-level JSON array of row objects into ``result``; an object
+    or scalar is recorded as ``not_rows``."""
+    payload = json.loads(
+        path.read_text(encoding="utf-8-sig", errors="replace"),
+        parse_constant=parse_constant,
+    )
+    if not isinstance(payload, list):
+        result.nested_rows = _nested_row_key(payload)
+        result.not_rows = (
+            f"is a JSON object with a nested row list (`{result.nested_rows}`), "
+            "which this audit does not read; name a top-level array"
+            if result.nested_rows
+            else "is not a JSON array of objects"
+        )
+        return
+    if len(payload) > MAX_ROWS:
+        result.notes.append(
+            f"read the first {MAX_ROWS} of {len(payload)} row(s); the "
+            "rest were not analysed"
+        )
+    result.rows = [item for item in payload[:MAX_ROWS] if isinstance(item, dict)]
+
+
+def _read_csv(path: Path, result: RawDataset) -> None:
+    """Read CSV rows, keyed by the header, into ``result`` up to ``MAX_ROWS``."""
+    with path.open("r", encoding="utf-8-sig", errors="replace", newline="") as handle:
+        reader = csv.DictReader(handle)
+        for index, item in enumerate(reader):
+            if index >= MAX_ROWS:
+                result.notes.append(
+                    f"read the first {MAX_ROWS} row(s); the rest were not analysed"
+                )
+                break
+            result.rows.append(dict(item))
 
 
 def _nested_row_key(payload: object) -> str | None:
@@ -1309,11 +1495,25 @@ def near_duplicate_pairs(rows: list[DatasetRow]) -> list[list[int]]:
     """Row-index pairs whose normalized inputs are close but not identical."""
     token_sets = {row.index: _tokenize(row.normalized_input) for row in rows}
     text_by_index = {row.index: row.normalized_input for row in rows}
+    pairs: list[list[int]] = []
+    for left, right in sorted(_candidate_pairs(token_sets, len(rows))):
+        if text_by_index[left] == text_by_index[right]:
+            continue
+        if _jaccard(token_sets[left], token_sets[right]) >= NEAR_DUPLICATE_JACCARD:
+            pairs.append([left, right])
+    return pairs
+
+
+def _candidate_pairs(
+    token_sets: dict[int, frozenset[str]], row_count: int
+) -> set[tuple[int, int]]:
+    """Row-index pairs ``(low, high)`` sharing at least one token that is not
+    common to more than ``max(50, 20%)`` of the rows."""
     index: dict[str, list[int]] = defaultdict(list)
     for row_index, tokens in token_sets.items():
         for token in tokens:
             index[token].append(row_index)
-    common_cutoff = max(50, int(0.2 * len(rows)))
+    common_cutoff = max(50, int(0.2 * row_count))
     candidates: set[tuple[int, int]] = set()
     for members in index.values():
         if len(members) > common_cutoff:
@@ -1321,52 +1521,61 @@ def near_duplicate_pairs(rows: list[DatasetRow]) -> list[list[int]]:
         for position, left in enumerate(members):
             for right in members[position + 1 :]:
                 candidates.add((left, right) if left < right else (right, left))
-    pairs: list[list[int]] = []
-    for left, right in sorted(candidates):
-        if text_by_index[left] == text_by_index[right]:
-            continue
-        left_tokens = token_sets[left]
-        right_tokens = token_sets[right]
-        union = left_tokens | right_tokens
-        if not union:
-            continue
-        overlap = len(left_tokens & right_tokens) / len(union)
-        if overlap >= NEAR_DUPLICATE_JACCARD:
-            pairs.append([left, right])
-    return pairs
+    return candidates
 
 
-def analyse_dataset(
-    path: Path, root: Path, raw: RawDataset
-) -> DatasetReport:
-    rows = raw.rows
+def _jaccard(left: frozenset[str], right: frozenset[str]) -> float:
+    """Token overlap of two inputs; ``-1.0`` when both are empty, so they are
+    never a pair."""
+    union = left | right
+    if not union:
+        return -1.0
+    return len(left & right) / len(union)
+
+
+def _row_gold(
+    row: dict,
+    position: int,
+    expected_key_counts: Counter[str],
+    missing_expected: list[int],
+    gold_kinds: Counter[str],
+) -> tuple[str | None, object]:
+    """``(gold key, gold value)`` for one row, tallying a missing or unusable one.
+
+    The first gold key present decides: an unusable value there is not rescued
+    by a later key."""
+    expected_key = next((key for key in EXPECTED_KEYS if key in row), None)
+    if expected_key is None:
+        missing_expected.append(position)
+        gold_kinds["absent"] += 1
+        return None, None
+    kind = _gold_kind(row[expected_key])
+    if kind is not None:
+        missing_expected.append(position)
+        gold_kinds[kind] += 1
+        return None, None
+    expected_key_counts[expected_key] += 1
+    return expected_key, row[expected_key]
+
+
+def _parse_dataset_rows(
+    rows: list[dict],
+) -> tuple[list[DatasetRow], Counter[str], Counter[str], list[int], Counter[str]]:
+    """``(parsed rows, input key counts, gold key counts, rows with no usable
+    gold, gold kinds)``. A row with no input-like key is not parsed."""
     parsed: list[DatasetRow] = []
     input_key_counts: Counter[str] = Counter()
     expected_key_counts: Counter[str] = Counter()
     missing_expected: list[int] = []
     gold_kinds: Counter[str] = Counter()
-
     for position, row in enumerate(rows):
         input_key = next((key for key in INPUT_KEYS if key in row), None)
         if input_key is None:
             continue
         input_key_counts[input_key] += 1
-        expected_key = next((key for key in EXPECTED_KEYS if key in row), None)
-        expected = None
-        if expected_key is None:
-            missing_expected.append(position)
-            gold_kinds["absent"] += 1
-        else:
-            # The first gold key present decides: an unusable value there is
-            # not rescued by a later key.
-            kind = _gold_kind(row[expected_key])
-            if kind is None:
-                expected_key_counts[expected_key] += 1
-                expected = row[expected_key]
-            else:
-                missing_expected.append(position)
-                gold_kinds[kind] += 1
-                expected_key = None
+        expected_key, expected = _row_gold(
+            row, position, expected_key_counts, missing_expected, gold_kinds
+        )
         parsed.append(
             DatasetRow(
                 index=position,
@@ -1377,7 +1586,19 @@ def analyse_dataset(
                 split=_row_split(row),
             )
         )
+    return parsed, input_key_counts, expected_key_counts, missing_expected, gold_kinds
 
+
+def _input_indexes(
+    parsed: list[DatasetRow],
+) -> tuple[
+    dict[str, list[int]],
+    dict[str, list[int]],
+    dict[str, list[int]],
+    dict[str, list[int]],
+]:
+    """Row indexes by normalized input: all rows, holdout-tagged rows, every
+    other row, and untagged rows."""
     by_input: dict[str, list[int]] = defaultdict(list)
     holdout_by_input: dict[str, list[int]] = defaultdict(list)
     non_holdout_by_input: dict[str, list[int]] = defaultdict(list)
@@ -1390,16 +1611,36 @@ def analyse_dataset(
             non_holdout_by_input[row.normalized_input].append(row.index)
         if row.split is None:
             untagged_by_input[row.normalized_input].append(row.index)
-    exact_groups = sorted(
+    return by_input, holdout_by_input, non_holdout_by_input, untagged_by_input
+
+
+def _exact_duplicate_groups(by_input: dict[str, list[int]]) -> list[list[int]]:
+    """Groups of row indexes sharing a normalized input, by first index."""
+    return sorted(
         (indices for indices in by_input.values() if len(indices) > 1),
         key=lambda group: group[0],
     )
 
+
+def _split_counts(parsed: list[DatasetRow]) -> tuple[Counter[str], int]:
+    """``(rows per split marker, rows in a holdout slice)``."""
     split_counts = Counter(row.split for row in parsed if row.split)
-    named_holdout = file_names_holdout(relative(path, root))
+    holdout_rows = sum(
+        value for key, value in split_counts.items() if key in HOLDOUT_VALUES
+    )
+    return split_counts, holdout_rows
+
+
+def _is_holdout_row(row: DatasetRow, named_holdout: bool) -> bool:
+    """A holdout-tagged row, or an untagged row in a holdout-named file."""
+    return row.split in HOLDOUT_VALUES or (row.split is None and named_holdout)
+
+
+def _holdout_overlap_rows(parsed: list[DatasetRow], named_holdout: bool) -> list[int]:
+    """Indexes of rows whose normalized input is in both the holdout slice and
+    another slice of the same file."""
     holdout_inputs = {
-        row.normalized_input for row in parsed
-        if row.split in HOLDOUT_VALUES or (row.split is None and named_holdout)
+        row.normalized_input for row in parsed if _is_holdout_row(row, named_holdout)
     }
     other_inputs = {
         row.normalized_input
@@ -1408,46 +1649,63 @@ def analyse_dataset(
         and (row.split is not None or not named_holdout)
     }
     overlap_texts = holdout_inputs & other_inputs
-    holdout_overlap = sorted(
+    return sorted(
         row.index for row in parsed if row.normalized_input in overlap_texts
     )
 
-    label_counts: dict[str, int] = {}
+
+def _label_counts(parsed: list[DatasetRow]) -> dict[str, int]:
+    """Counts per scalar gold value, kept only for 20+ scalar rows over at most
+    10 distinct values."""
     scalar_expected = [
         row.expected
         for row in parsed
         if isinstance(row.expected, (str, int, float, bool))
     ]
-    if len(scalar_expected) >= 20:
-        counted = Counter(str(value) for value in scalar_expected)
-        if len(counted) <= 10:
-            label_counts = dict(sorted(counted.items()))
+    if len(scalar_expected) < 20:
+        return {}
+    counted = Counter(str(value) for value in scalar_expected)
+    if len(counted) > 10:
+        return {}
+    return dict(sorted(counted.items()))
 
-    findings: list[str] = list(raw.notes)
-    count = len(parsed)
+
+def _size_findings(count: int) -> list[str]:
     if count < MIN_SMOKE:
-        findings.append(f"{count} rows is under the {MIN_SMOKE}-row smoke minimum")
-    elif count < MIN_TUNING:
-        findings.append(
+        return [f"{count} rows is under the {MIN_SMOKE}-row smoke minimum"]
+    if count < MIN_TUNING:
+        return [
             f"{count} rows is under the {MIN_TUNING}-row first-tuning-slice minimum"
-        )
+        ]
+    return []
+
+
+def _input_key_findings(
+    row_total: int, input_key_counts: Counter[str]
+) -> tuple[int, list[str]]:
+    """``(rows with no input/input_data key, findings)``."""
     other_keys = {
         key: value
         for key, value in sorted(input_key_counts.items())
         if key not in SDK_INPUT_KEYS
     }
-    keyless = len(rows) - sum(input_key_counts.values())
+    keyless = row_total - sum(input_key_counts.values())
     rows_without_sdk_input = sum(other_keys.values()) + keyless
-    if rows_without_sdk_input:
-        detail = [f"{value} keyed `{key}`" for key, value in other_keys.items()]
-        if keyless:
-            detail.append(f"{keyless} with no input-like key at all")
-        findings.append(
-            f"{rows_without_sdk_input} row(s) have no `input`/`input_data` key "
-            f"({', '.join(detail)}); `eval_dataset` reads only `input` or "
-            "`input_data` and refuses the whole file on the first such row — "
-            "rename or add the key"
-        )
+    if not rows_without_sdk_input:
+        return rows_without_sdk_input, []
+    detail = [f"{value} keyed `{key}`" for key, value in other_keys.items()]
+    if keyless:
+        detail.append(f"{keyless} with no input-like key at all")
+    return rows_without_sdk_input, [
+        f"{rows_without_sdk_input} row(s) have no `input`/`input_data` key "
+        f"({', '.join(detail)}); `eval_dataset` reads only `input` or "
+        "`input_data` and refuses the whole file on the first such row — "
+        "rename or add the key"
+    ]
+
+
+def _gold_findings(gold_kinds: Counter[str]) -> list[str]:
+    findings: list[str] = []
     if gold_kinds["absent"]:
         findings.append(
             f"{gold_kinds['absent']} row(s) carry no gold key "
@@ -1466,53 +1724,100 @@ def analyse_dataset(
             f"{sum(unusable.values())} row(s) carry a gold key with no usable "
             f"value ({detail})"
         )
-    if raw.constants:
-        named = ", ".join(
-            f"{name} ×{count}" for name, count in sorted(raw.constants.items())
-        )
-        findings.append(
-            f"{sum(raw.constants.values())} non-standard JSON constant(s) in the "
-            f"file ({named}); strict JSON readers refuse them"
-        )
+    return findings
+
+
+def _constant_findings(constants: dict[str, int]) -> list[str]:
+    if not constants:
+        return []
+    named = ", ".join(f"{name} ×{count}" for name, count in sorted(constants.items()))
+    return [
+        f"{sum(constants.values())} non-standard JSON constant(s) in the "
+        f"file ({named}); strict JSON readers refuse them"
+    ]
+
+
+def _near_duplicate_findings(
+    parsed: list[DatasetRow],
+) -> tuple[list[list[int]], list[str]]:
+    """``(near-duplicate pairs, findings)``; skipped, and said so, over the
+    row ceiling."""
+    if len(parsed) > NEAR_DUPLICATE_LIMIT:
+        return [], [
+            f"near-duplicate detection skipped: {len(parsed)} rows over the "
+            f"{NEAR_DUPLICATE_LIMIT}-row ceiling, so near-duplicates were not "
+            "looked for"
+        ]
+    near_pairs = near_duplicate_pairs(parsed)
+    if near_pairs:
+        return near_pairs, [f"{len(near_pairs)} near-duplicate input pair(s)"]
+    return near_pairs, []
+
+
+def _holdout_findings(split_counts: Counter[str], holdout_rows: int) -> list[str]:
+    if not split_counts:
+        return [NO_HOLDOUT_FINDING]
+    if holdout_rows == 0:
+        return [
+            "split markers present but none name a holdout slice "
+            f"({'/'.join(sorted(HOLDOUT_VALUES))})"
+        ]
+    if holdout_rows < MIN_HOLDOUT:
+        return [
+            f"holdout slice has {holdout_rows} rows, under the {MIN_HOLDOUT}-row minimum"
+        ]
+    return []
+
+
+def _label_findings(label_counts: dict[str, int]) -> list[str]:
+    if not label_counts:
+        return []
+    largest = max(label_counts.values())
+    if largest >= 0.8 * sum(label_counts.values()):
+        return [
+            f"one label covers {largest} of {sum(label_counts.values())} labelled rows"
+        ]
+    return []
+
+
+def analyse_dataset(
+    path: Path, root: Path, raw: RawDataset
+) -> DatasetReport:
+    rows = raw.rows
+    parsed, input_key_counts, expected_key_counts, missing_expected, gold_kinds = (
+        _parse_dataset_rows(rows)
+    )
+    by_input, holdout_by_input, non_holdout_by_input, untagged_by_input = (
+        _input_indexes(parsed)
+    )
+    exact_groups = _exact_duplicate_groups(by_input)
+    split_counts, holdout_rows = _split_counts(parsed)
+    holdout_overlap = _holdout_overlap_rows(
+        parsed, file_names_holdout(relative(path, root))
+    )
+    label_counts = _label_counts(parsed)
+
+    findings: list[str] = list(raw.notes)
+    count = len(parsed)
+    findings.extend(_size_findings(count))
+    rows_without_sdk_input, key_findings = _input_key_findings(
+        len(rows), input_key_counts
+    )
+    findings.extend(key_findings)
+    findings.extend(_gold_findings(gold_kinds))
+    findings.extend(_constant_findings(raw.constants))
     if exact_groups:
         findings.append(
             f"{len(exact_groups)} group(s) of rows share a normalized input"
         )
-    if len(parsed) > NEAR_DUPLICATE_LIMIT:
-        near_pairs: list[list[int]] = []
-        findings.append(
-            f"near-duplicate detection skipped: {len(parsed)} rows over the "
-            f"{NEAR_DUPLICATE_LIMIT}-row ceiling, so near-duplicates were not "
-            "looked for"
-        )
-    else:
-        near_pairs = near_duplicate_pairs(parsed)
-        if near_pairs:
-            findings.append(f"{len(near_pairs)} near-duplicate input pair(s)")
-    holdout_rows = sum(
-        value for key, value in split_counts.items() if key in HOLDOUT_VALUES
-    )
-    if not split_counts:
-        findings.append(NO_HOLDOUT_FINDING)
-    elif holdout_rows == 0:
-        findings.append(
-            "split markers present but none name a holdout slice "
-            f"({'/'.join(sorted(HOLDOUT_VALUES))})"
-        )
-    elif holdout_rows < MIN_HOLDOUT:
-        findings.append(
-            f"holdout slice has {holdout_rows} rows, under the {MIN_HOLDOUT}-row minimum"
-        )
+    near_pairs, near_findings = _near_duplicate_findings(parsed)
+    findings.extend(near_findings)
+    findings.extend(_holdout_findings(split_counts, holdout_rows))
     if holdout_overlap:
         findings.append(
             f"{len(holdout_overlap)} row(s) appear in both the holdout slice and another slice"
         )
-    if label_counts:
-        largest = max(label_counts.values())
-        if largest >= 0.8 * sum(label_counts.values()):
-            findings.append(
-                f"one label covers {largest} of {sum(label_counts.values())} labelled rows"
-            )
+    findings.extend(_label_findings(label_counts))
 
     return DatasetReport(
         file=relative(path, root),
@@ -1540,119 +1845,162 @@ def analyse_dataset(
     )
 
 
+def _drop_superseded_holdout_findings(report: DatasetReport) -> None:
+    """Drop the per-file holdout findings a tagged holdout-named file replaces:
+    the holdout-size finding always (it is re-stated below), and "none name a
+    holdout slice" once the file holds holdout rows."""
+    report.findings = [
+        finding
+        for finding in report.findings
+        if not (
+            report.holdout_rows
+            and finding.startswith(
+                "split markers present but none name a holdout slice"
+            )
+        )
+        and not finding.startswith("holdout slice has ")
+    ]
+
+
+def _declare_tagged_holdout(report: DatasetReport, holdout_inputs: set[str]) -> None:
+    """A holdout-named file whose rows carry split tags.
+
+    Tagged rows keep their declared roles. A holdout-named file that contains
+    tuning rows is contradictory; do not silently relabel those rows just to
+    make the sibling layout pass. Untagged rows still inherit the holdout role
+    from the file."""
+    holdout_inputs.update(report.holdout_input_index)
+    holdout_inputs.update(report.untagged_input_index)
+    untagged_rows = sum(
+        len(indexes) for indexes in report.untagged_input_index.values()
+    )
+    report.holdout_rows += untagged_rows
+    non_holdout_rows = sum(
+        count
+        for split, count in report.split_counts.items()
+        if split not in HOLDOUT_VALUES
+    )
+    if non_holdout_rows:
+        report.findings.append(
+            f"holdout-named file contradicts {non_holdout_rows} per-row "
+            "split marker(s) naming a non-holdout slice; per-row markers win"
+        )
+    if untagged_rows:
+        report.notes.append(
+            f"{untagged_rows} untagged row(s) inherit the holdout role "
+            "from the file name"
+        )
+    _drop_superseded_holdout_findings(report)
+    if 0 < report.holdout_rows < MIN_HOLDOUT:
+        report.findings.append(
+            f"holdout slice has {report.holdout_rows} rows, under the "
+            f"{MIN_HOLDOUT}-row minimum"
+        )
+    report.holdout_by_name = (
+        report.holdout_rows == report.rows and non_holdout_rows == 0
+    )
+
+
+def _declare_untagged_holdout(
+    report: DatasetReport, holdout_inputs: set[str]
+) -> None:
+    """A holdout-named file with no per-row split marker: every row is holdout."""
+    holdout_inputs.update(report.input_index)
+    report.holdout_rows = report.rows
+    report.holdout_by_name = True
+    report.notes.append(
+        f"holdout slice declared by file name: {report.rows} row(s), "
+        "no per-row split marker"
+    )
+    if report.rows < MIN_HOLDOUT:
+        report.findings.append(
+            f"holdout slice has {report.rows} rows, under the "
+            f"{MIN_HOLDOUT}-row minimum"
+        )
+
+
+def _declare_holdout_file(report: DatasetReport, holdout_inputs: set[str]) -> int:
+    """Read one holdout-named file as a holdout slice, adding its holdout
+    inputs to ``holdout_inputs``; returns its holdout row count."""
+    if report.split_counts:
+        _declare_tagged_holdout(report, holdout_inputs)
+    else:
+        _declare_untagged_holdout(report, holdout_inputs)
+    if report.holdout_by_name:
+        # A dedicated holdout file is judged against the holdout
+        # minimum, not the tuning minimum meant for searchable rows.
+        report.findings = [
+            finding
+            for finding in report.findings
+            if finding != NO_HOLDOUT_FINDING
+            and "first-tuning-slice minimum" not in finding
+        ]
+    return report.holdout_rows
+
+
+def _link_tuning_file(
+    report: DatasetReport, holdout_inputs: set[str], total: int, names: str
+) -> None:
+    """Give a tuning file its sibling holdout slice and check the pair for
+    shared inputs."""
+    if report.holdout_rows == 0 and total:
+        report.holdout_rows = total
+        report.findings = [
+            finding
+            for finding in report.findings
+            if finding != NO_HOLDOUT_FINDING
+            and not finding.startswith(
+                "split markers present but none name a holdout slice"
+            )
+        ]
+        report.notes.append(
+            f"holdout slice declared by sibling file {names} ({total} row(s))"
+        )
+    overlap = sorted(
+        index
+        for text, indexes in report.non_holdout_input_index.items()
+        if text in holdout_inputs
+        for index in indexes
+    )
+    report.overlap_rows |= set(overlap)
+    report.holdout_overlap_total = len(report.overlap_rows)
+    report.holdout_overlap = sorted(report.overlap_rows)[:20]
+    if overlap:
+        report.findings.append(
+            f"{len(overlap)} row(s) appear in both this file and the "
+            f"sibling holdout file"
+        )
+
+
+def _sibling_groups(
+    reports: list[DatasetReport],
+) -> list[tuple[list[DatasetReport], list[DatasetReport]]]:
+    """``(holdout-named files, other files)`` for each directory holding both."""
+    by_dir: dict[str, list[DatasetReport]] = defaultdict(list)
+    for report in reports:
+        by_dir[str(Path(report.file).parent)].append(report)
+    groups = []
+    for group in by_dir.values():
+        holdouts = [r for r in group if file_names_holdout(r.file)]
+        tuning = [r for r in group if r not in holdouts]
+        if holdouts and tuning:
+            groups.append((holdouts, tuning))
+    return groups
+
+
 def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
     """Read the two-file holdout layout: a holdout-named file beside a tuning
     file in one directory declares the holdout slice for both, and the overlap
     check runs across the pair. Explicit row tags win; untagged rows inherit
     their file's role."""
-    by_dir: dict[str, list[DatasetReport]] = defaultdict(list)
-    for report in reports:
-        by_dir[str(Path(report.file).parent)].append(report)
-    for group in by_dir.values():
-        holdouts = [r for r in group if file_names_holdout(r.file)]
-        tuning = [r for r in group if r not in holdouts]
-        if not holdouts or not tuning:
-            continue
+    for holdouts, tuning in _sibling_groups(reports):
         holdout_inputs: set[str] = set()
         total = 0
         for report in holdouts:
-            if report.split_counts:
-                # Tagged rows keep their declared roles. A holdout-named file
-                # that contains tuning rows is contradictory; do not silently
-                # relabel those rows just to make the sibling layout pass.
-                # Untagged rows still inherit the holdout role from the file.
-                holdout_inputs.update(report.holdout_input_index)
-                holdout_inputs.update(report.untagged_input_index)
-                untagged_rows = sum(
-                    len(indexes) for indexes in report.untagged_input_index.values()
-                )
-                report.holdout_rows += untagged_rows
-                non_holdout_rows = sum(
-                    count
-                    for split, count in report.split_counts.items()
-                    if split not in HOLDOUT_VALUES
-                )
-                if non_holdout_rows:
-                    report.findings.append(
-                        f"holdout-named file contradicts {non_holdout_rows} per-row "
-                        "split marker(s) naming a non-holdout slice; per-row markers win"
-                    )
-                if untagged_rows:
-                    report.notes.append(
-                        f"{untagged_rows} untagged row(s) inherit the holdout role "
-                        "from the file name"
-                    )
-                report.findings = [
-                    finding
-                    for finding in report.findings
-                    if not (
-                        report.holdout_rows
-                        and finding.startswith(
-                            "split markers present but none name a holdout slice"
-                        )
-                    )
-                    and not finding.startswith("holdout slice has ")
-                ]
-                if 0 < report.holdout_rows < MIN_HOLDOUT:
-                    report.findings.append(
-                        f"holdout slice has {report.holdout_rows} rows, under the "
-                        f"{MIN_HOLDOUT}-row minimum"
-                    )
-                report.holdout_by_name = (
-                    report.holdout_rows == report.rows and non_holdout_rows == 0
-                )
-            else:
-                holdout_inputs.update(report.input_index)
-                report.holdout_rows = report.rows
-                report.holdout_by_name = True
-                report.notes.append(
-                    f"holdout slice declared by file name: {report.rows} row(s), "
-                    "no per-row split marker"
-                )
-                if report.rows < MIN_HOLDOUT:
-                    report.findings.append(
-                        f"holdout slice has {report.rows} rows, under the "
-                        f"{MIN_HOLDOUT}-row minimum"
-                    )
-            if report.holdout_by_name:
-                # A dedicated holdout file is judged against the holdout
-                # minimum, not the tuning minimum meant for searchable rows.
-                report.findings = [
-                    finding
-                    for finding in report.findings
-                    if finding != NO_HOLDOUT_FINDING
-                    and "first-tuning-slice minimum" not in finding
-                ]
-            total += report.holdout_rows
+            total += _declare_holdout_file(report, holdout_inputs)
         names = ", ".join(r.file for r in holdouts)
         for report in tuning:
-            if report.holdout_rows == 0 and total:
-                report.holdout_rows = total
-                report.findings = [
-                    finding
-                    for finding in report.findings
-                    if finding != NO_HOLDOUT_FINDING
-                    and not finding.startswith(
-                        "split markers present but none name a holdout slice"
-                    )
-                ]
-                report.notes.append(
-                    f"holdout slice declared by sibling file {names} ({total} row(s))"
-                )
-            overlap = sorted(
-                index
-                for text, indexes in report.non_holdout_input_index.items()
-                if text in holdout_inputs
-                for index in indexes
-            )
-            report.overlap_rows |= set(overlap)
-            report.holdout_overlap_total = len(report.overlap_rows)
-            report.holdout_overlap = sorted(report.overlap_rows)[:20]
-            if overlap:
-                report.findings.append(
-                    f"{len(overlap)} row(s) appear in both this file and the "
-                    f"sibling holdout file"
-                )
+            _link_tuning_file(report, holdout_inputs, total, names)
 
 
 def _read_dataset(
@@ -1676,13 +2024,15 @@ def _read_dataset(
         if named or raw.nested_rows or file_names_holdout(rel):
             return None, f"{rel} {raw.not_rows}"
         return None, None
-    if not named:
-        with_input = sum(
-            1 for row in raw.rows if any(key in row for key in INPUT_KEYS)
-        )
-        if with_input == 0 or with_input < 0.5 * len(raw.rows):
-            return None, None
+    if not named and _mostly_without_input(raw.rows):
+        return None, None
     return analyse_dataset(path, root, raw), None
+
+
+def _mostly_without_input(rows: list[dict]) -> bool:
+    """No row, or fewer than half of them, carries an input-like key."""
+    with_input = sum(1 for row in rows if any(key in row for key in INPUT_KEYS))
+    return with_input == 0 or with_input < 0.5 * len(rows)
 
 
 def scan_datasets(
@@ -1721,26 +2071,8 @@ def explicit_datasets(
     """
     reports: list[DatasetReport] = []
     skipped: list[str] = []
-    report, skip = _read_dataset(path, root, named=True)
-    if report is not None:
-        reports.append(report)
-    if skip is not None:
-        skipped.append(skip)
-    siblings: list[Path] = []
-    if path.parent.is_dir():
-        try:
-            entries = list(path.parent.iterdir())
-        except OSError:
-            entries = []
-        named_real = os.path.realpath(path)
-        siblings = sorted(
-            entry
-            for entry in entries
-            if entry.is_file()
-            and entry.suffix.lower() in DATASET_SUFFIXES
-            and os.path.realpath(entry) != named_real
-            and file_names_holdout(relative(entry, root))
-        )
+    _keep_read(_read_dataset(path, root, named=True), reports, skipped)
+    siblings = _holdout_siblings(path, root)
     considered = siblings[: MAX_DATA_FILES - 1]
     notes: list[str] = []
     if len(siblings) > len(considered):
@@ -1750,14 +2082,43 @@ def explicit_datasets(
             "the rest were not analysed"
         )
     for sibling in considered:
-        report, skip = _read_dataset(sibling, root, named=False)
-        if report is not None:
-            reports.append(report)
-        if skip is not None:
-            skipped.append(skip)
+        _keep_read(_read_dataset(sibling, root, named=False), reports, skipped)
     reports.sort(key=lambda report: report.file)
     apply_sibling_holdouts(reports)
     return reports, 1 + len(siblings), notes, sorted(skipped)
+
+
+def _keep_read(
+    read: tuple[DatasetReport | None, str | None],
+    reports: list[DatasetReport],
+    skipped: list[str],
+) -> None:
+    """File one ``_read_dataset`` result under the reports or the skip lines."""
+    report, skip = read
+    if report is not None:
+        reports.append(report)
+    if skip is not None:
+        skipped.append(skip)
+
+
+def _holdout_siblings(path: Path, root: Path) -> list[Path]:
+    """Holdout-named dataset files beside ``path``, sorted, ``path`` itself
+    (by resolved path) excluded; none when the directory cannot be listed."""
+    if not path.parent.is_dir():
+        return []
+    try:
+        entries = list(path.parent.iterdir())
+    except OSError:
+        entries = []
+    named_real = os.path.realpath(path)
+    return sorted(
+        entry
+        for entry in entries
+        if entry.is_file()
+        and entry.suffix.lower() in DATASET_SUFFIXES
+        and os.path.realpath(entry) != named_real
+        and file_names_holdout(relative(entry, root))
+    )
 
 
 # --------------------------------------------------------------------------
@@ -1787,7 +2148,9 @@ def _probe_kind(value: object) -> str | None:
     return None
 
 
-def build_probe_payload(datasets: list[DatasetReport], root: Path):
+def build_probe_payload(
+    datasets: list[DatasetReport], root: Path
+) -> tuple[object, object | None, object, str]:
     """Return ``(good, partial, bad, source)`` probe values.
 
     ``good`` and ``bad`` are two distinct gold values of the same JSON kind from
@@ -1805,27 +2168,9 @@ def build_probe_payload(datasets: list[DatasetReport], root: Path):
         raw = load_rows(root / report.file)
         if not raw.rows:
             continue
-        values: dict[str, list[object]] = {}
-        chosen: str | None = None
-        for row in raw.rows:
-            key = next((name for name in EXPECTED_KEYS if name in row), None)
-            if key is None:
-                continue
-            value = row[key]
-            kind = _probe_kind(value)
-            if kind is None:
-                continue
-            if chosen is not None and kind != chosen:
-                continue
-            seen = values.setdefault(kind, [])
-            if value not in seen:
-                seen.append(value)
-            if chosen is None and len(seen) >= 2:
-                chosen = kind
-            if chosen is not None and len(seen) >= PROBE_CANDIDATES:
-                break
-        if chosen is not None:
-            good, *others = values[chosen]
+        candidates = _probe_candidates(raw.rows)
+        if candidates is not None:
+            good, *others = candidates
             # The first candidate that differs most from ``good``: two gold
             # values can be distinct and still the same answer to the task
             # (a case or spacing variant, numbers within a tolerance, objects
@@ -1840,6 +2185,46 @@ def build_probe_payload(datasets: list[DatasetReport], root: Path):
         "an unrelated answer",
         "synthetic",
     )
+
+
+def _probe_gold(row: dict) -> tuple[str, object] | None:
+    """``(probe kind, gold value)`` of a row's first gold key, or ``None``
+    when the row has no gold key or its value cannot be probed."""
+    key = next((name for name in EXPECTED_KEYS if name in row), None)
+    if key is None:
+        return None
+    value = row[key]
+    kind = _probe_kind(value)
+    if kind is None:
+        return None
+    return kind, value
+
+
+def _probe_candidates(rows: list[dict]) -> list[object] | None:
+    """The distinct gold values of the first kind to show two of them, at most
+    ``PROBE_CANDIDATES``, in row order; ``None`` when no kind has two."""
+    values: dict[str, list[object]] = {}
+    chosen: str | None = None
+    for row in rows:
+        gold = _probe_gold(row)
+        if gold is None:
+            continue
+        kind, value = gold
+        if chosen is not None and kind != chosen:
+            continue
+        distinct = _add_distinct(values.setdefault(kind, []), value)
+        if chosen is None and distinct >= 2:
+            chosen = kind
+        if chosen is not None and distinct >= PROBE_CANDIDATES:
+            break
+    return values[chosen] if chosen is not None else None
+
+
+def _add_distinct(seen: list[object], value: object) -> int:
+    """Append ``value`` unless an equal one is there; return the new count."""
+    if value not in seen:
+        seen.append(value)
+    return len(seen)
 
 
 def _same_answer(left: object, right: object) -> bool:
@@ -1860,27 +2245,41 @@ def answer_difference(good: object, other: object) -> float:
     if isinstance(good, bool) or isinstance(other, bool):
         return float(good != other)
     if isinstance(good, (int, float)) and isinstance(other, (int, float)):
-        # JSON integers have no size limit; a distance no float can hold ranks
-        # last rather than stopping the audit.
-        try:
-            distance = float(abs(good - other))
-        except OverflowError:
-            return 0.0
-        return distance if math.isfinite(distance) else 0.0
+        return _number_difference(good, other)
     if isinstance(good, dict) and isinstance(other, dict):
-        return float(
-            sum(
-                1
-                for key in good.keys() | other.keys()
-                if key not in good
-                or key not in other
-                or not _same_answer(good[key], other[key])
-            )
-        )
+        return _object_difference(good, other)
     if isinstance(good, list) and isinstance(other, list):
-        differing = sum(1 for a, b in zip(good, other) if not _same_answer(a, b))
-        return float(differing + abs(len(good) - len(other)))
+        return _list_difference(good, other)
     return float(not _same_answer(good, other))
+
+
+def _list_difference(good: list, other: list) -> float:
+    """How many positions differ, plus the difference in length."""
+    differing = sum(1 for a, b in zip(good, other) if not _same_answer(a, b))
+    return float(differing + abs(len(good) - len(other)))
+
+
+def _number_difference(good: int | float, other: int | float) -> float:
+    """The distance between two numbers. JSON integers have no size limit; a
+    distance no float can hold ranks last rather than stopping the audit."""
+    try:
+        distance = float(abs(good - other))
+    except OverflowError:
+        return 0.0
+    return distance if math.isfinite(distance) else 0.0
+
+
+def _object_difference(good: dict, other: dict) -> float:
+    """How many fields are missing from one object or differ between them."""
+    return float(
+        sum(
+            1
+            for key in good.keys() | other.keys()
+            if key not in good
+            or key not in other
+            or not _same_answer(good[key], other[key])
+        )
+    )
 
 
 def partial_value(good: object, bad: object) -> object | None:
@@ -1896,16 +2295,29 @@ def partial_value(good: object, bad: object) -> object | None:
     if isinstance(good, str):
         return perturb(good)
     if isinstance(good, list) and isinstance(bad, list):
-        if len(good) < 2 or not bad:
-            return None
-        candidate = [*good[:-1], bad[-1]]
-        return candidate if candidate not in (good, bad) else None
+        return _partial_list(good, bad)
     if isinstance(good, dict) and isinstance(bad, dict):
-        for key, value in good.items():
-            if key in bad and bad[key] != value:
-                candidate = {**good, key: bad[key]}
-                if candidate != bad:
-                    return candidate
+        return _partial_object(good, bad)
+    return None
+
+
+def _partial_list(good: list, bad: list) -> list | None:
+    """``good`` with its last item replaced by ``bad``'s last item, unless that
+    equals either answer or there is no item to take."""
+    if len(good) < 2 or not bad:
+        return None
+    candidate = [*good[:-1], bad[-1]]
+    return candidate if candidate not in (good, bad) else None
+
+
+def _partial_object(good: dict, bad: dict) -> dict | None:
+    """``good`` with the first shared key that differs taking ``bad``'s value,
+    unless every such object equals ``bad``."""
+    for key, value in good.items():
+        if key in bad and bad[key] != value:
+            candidate = {**good, key: bad[key]}
+            if candidate != bad:
+                return candidate
     return None
 
 
@@ -1989,42 +2401,24 @@ def validate_probe_payload(payload: object) -> tuple[dict, int]:
     other key is dropped and counted.
     """
     if not isinstance(payload, dict):
-        return {"ran": False, "stage": "tampered-result"}, 0
+        return _tampered_result(), 0
 
     clean: dict = {}
-    known = 0
-
-    if isinstance(payload.get("ran"), bool):
-        clean["ran"] = payload["ran"]
-        known += 1
-    if isinstance(payload.get("network_blocked"), bool):
-        clean["network_blocked"] = payload["network_blocked"]
-        known += 1
-    if isinstance(payload.get("network_guard"), str) and payload["network_guard"] in GUARD_STATES:
-        clean["network_guard"] = payload["network_guard"]
-        known += 1
-    if isinstance(payload.get("stage"), str) and payload["stage"] in PROBE_STAGES:
-        clean["stage"] = payload["stage"]
-        known += 1
+    known = _copy_known_flags(payload, clean)
 
     if "scores" in payload:
-        scores = payload["scores"]
-        converted = None
-        if isinstance(scores, dict) and set(scores) <= SCORE_CASES:
-            converted = {name: _numbers(value) for name, value in scores.items()}
+        scores = _clean_scores(payload["scores"])
         # Scores the parent cannot hold as finite numbers are not the child's
         # honest output: the child withholds a non-finite value itself.
-        if converted is None or any(value is None for value in converted.values()):
-            return {"ran": False, "stage": "tampered-result"}, len(payload)
-        clean["scores"] = converted
+        if scores is None:
+            return _tampered_result(), len(payload)
+        clean["scores"] = scores
         known += 1
 
-    errors = payload.get("errors")
-    if isinstance(errors, list) and len(errors) <= 100:
-        cleaned = [_clean_error(item) for item in errors]
-        if all(item is not None for item in cleaned):
-            clean["errors"] = cleaned
-            known += 1
+    errors = _clean_errors(payload.get("errors"))
+    if errors is not None:
+        clean["errors"] = errors
+        known += 1
 
     top_fault = _clean_error(payload)
     if top_fault is not None and "error_type" in payload:
@@ -2033,8 +2427,54 @@ def validate_probe_payload(payload: object) -> tuple[dict, int]:
         known += 1
 
     if "ran" not in clean:
-        return {"ran": False, "stage": "tampered-result"}, len(payload)
+        return _tampered_result(), len(payload)
     return clean, max(0, len(payload) - known)
+
+
+def _tampered_result() -> dict:
+    """A fresh not-run result: callers add keys to the one they get."""
+    return {"ran": False, "stage": "tampered-result"}
+
+
+# The probe result's flags, in report order, each with the shape it must have.
+KNOWN_FLAGS: tuple[tuple[str, Callable[[object], bool]], ...] = (
+    ("ran", lambda value: isinstance(value, bool)),
+    ("network_blocked", lambda value: isinstance(value, bool)),
+    ("network_guard", lambda value: isinstance(value, str) and value in GUARD_STATES),
+    ("stage", lambda value: isinstance(value, str) and value in PROBE_STAGES),
+)
+
+
+def _copy_known_flags(payload: dict, clean: dict) -> int:
+    """Copy each known flag of the right shape into ``clean``; return how many."""
+    known = 0
+    for name, valid in KNOWN_FLAGS:
+        if valid(payload.get(name)):
+            clean[name] = payload[name]
+            known += 1
+    return known
+
+
+def _clean_scores(scores: object) -> dict[str, list[float]] | None:
+    """The scores as finite floats per known case, or ``None`` when any part
+    of them is not."""
+    converted = None
+    if isinstance(scores, dict) and set(scores) <= SCORE_CASES:
+        converted = {name: _numbers(value) for name, value in scores.items()}
+    if converted is None or any(value is None for value in converted.values()):
+        return None
+    return converted
+
+
+def _clean_errors(errors: object) -> list[dict] | None:
+    """The cleaned error records, or ``None`` when the list is too long or any
+    record is not an object."""
+    if not (isinstance(errors, list) and len(errors) <= 100):
+        return None
+    cleaned = [_clean_error(item) for item in errors]
+    if all(item is not None for item in cleaned):
+        return cleaned
+    return None
 
 
 def validate_probe_evidence(
@@ -2054,18 +2494,25 @@ def validate_probe_evidence(
         raise ValueError("requested repeats must be a positive integer")
     clean, dropped = validate_probe_payload(payload)
     if payload["ran"]:
-        scores = clean.get("scores")
-        errors = clean.get("errors")
-        if not isinstance(scores, dict) or set(scores) != SCORE_CASES or errors is None:
-            raise ValueError("probe measurements are malformed")
-        if not errors:
-            good_count = len(scores["good"])
-            if (good_count != repeats if repeats is not None else good_count < 1):
-                raise ValueError("probe good count differs from requested repeats")
-            expected_partial = 1 if partial_probed else 0
-            if len(scores["partial"]) != expected_partial or len(scores["bad"]) != 1:
-                raise ValueError("probe comparison cases are incomplete")
+        _check_measurements(clean, repeats, partial_probed)
     return clean, dropped
+
+
+def _check_measurements(clean: dict, repeats: int | None, partial_probed: bool) -> None:
+    """Raise ``ValueError`` unless a run's scores cover every case and, when no
+    call failed, hold the requested number of each."""
+    scores = clean.get("scores")
+    errors = clean.get("errors")
+    if not isinstance(scores, dict) or set(scores) != SCORE_CASES or errors is None:
+        raise ValueError("probe measurements are malformed")
+    if errors:
+        return
+    good_count = len(scores["good"])
+    if (good_count != repeats if repeats is not None else good_count < 1):
+        raise ValueError("probe good count differs from requested repeats")
+    expected_partial = 1 if partial_probed else 0
+    if len(scores["partial"]) != expected_partial or len(scores["bad"]) != 1:
+        raise ValueError("probe comparison cases are incomplete")
 
 
 def _unique_members(pairs: list[tuple[str, object]]) -> dict:
@@ -2269,39 +2716,84 @@ def probe_metrics(result: dict | None) -> dict:
                 stage, PROBE_FAILURE_SENTENCE["no-result"]
             ).format(fault=_fault_phrase(result)),
         }
+    good, partial, bad, errors = _score_lists(result)
+    unusable = _unusable_scores(result, good, partial, bad, errors)
+    if unusable is not None:
+        return unusable
+    return _ran_metrics(good, partial, bad, errors)
+
+
+def _score_lists(
+    result: dict,
+) -> tuple[list[float], list[float], list[float], list[dict]]:
+    """``(good, partial, bad, errors)`` of a probe that ran, each a new list."""
     scores = result.get("scores") or {}
     good = list(scores.get("good") or [])
     partial = list(scores.get("partial") or [])
     bad = list(scores.get("bad") or [])
     errors = list(result.get("errors") or [])
-    # The child records an error for every case it could not score, so missing
-    # scores with no error to account for them are not its honest output. A key
-    # the parent dropped may have been that error (an older parent dropped error
-    # records it could not name), so the evidence is incomplete then too.
-    # A gold kind with no in-between value sends no partial case (the parent
-    # records that as ``partial_probed: false``); every other probe sends one.
+    return good, partial, bad, errors
+
+
+def _scores_complete(
+    result: dict, good: list[float], partial: list[float], bad: list[float]
+) -> bool:
+    """Every case the probe sent has its score and no result key was dropped.
+
+    The child records an error for every case it could not score, so missing
+    scores with no error to account for them are not its honest output. A key
+    the parent dropped may have been that error (an older parent dropped error
+    records it could not name), so the evidence is incomplete then too.
+    A gold kind with no in-between value sends no partial case (the parent
+    records that as ``partial_probed: false``); every other probe sends one.
+    """
     expected_partial = 0 if result.get("partial_probed") is False else 1
-    complete = (
+    return (
         bool(good)
         and len(partial) == expected_partial
         and len(bad) == 1
         and not result.get("dropped_keys")
     )
-    if not errors and not complete:
+
+
+def _unusable_scores(
+    result: dict,
+    good: list[float],
+    partial: list[float],
+    bad: list[float],
+    errors: list[dict],
+) -> dict | None:
+    """The ``failed`` reading of a probe that ran without usable scores, or
+    ``None`` when its scores can be read."""
+    if not errors and not _scores_complete(result, good, partial, bad):
         return {
             "verdict": "failed",
             "stage": "tampered-result",
             "sentence": PROBE_FAILURE_SENTENCE["tampered-result"],
         }
-    if not (good or partial or bad) and not any(
-        error.get("non_finite") for error in errors
-    ):
+    if _no_score_at_all(good, partial, bad, errors):
         fault = _fault_phrase(errors[0] if errors else {})
         return {
             "verdict": "failed",
             "stage": "no-scores",
             "sentence": PROBE_FAILURE_SENTENCE["no-scores"].format(fault=fault),
         }
+    return None
+
+
+def _no_score_at_all(
+    good: list[float], partial: list[float], bad: list[float], errors: list[dict]
+) -> bool:
+    """No case scored, and no call returned a non-finite value either."""
+    return not (good or partial or bad) and not any(
+        error.get("non_finite") for error in errors
+    )
+
+
+def _ran_metrics(
+    good: list[float], partial: list[float], bad: list[float], errors: list[dict]
+) -> dict:
+    """The ``ran`` reading: repeatability, ordering, finiteness, readiness."""
     ordered = bool(good and bad) and good[0] > bad[0]
     if partial:
         ordered = ordered and good[0] >= partial[0] >= bad[0]
@@ -2367,33 +2859,11 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
         return "failed", [metrics["sentence"]]
 
     errors = metrics["errors"]
-    order = ""
-    if not errors and metrics["finite"]:
-        order = (
-            " (ordered as expected)"
-            if metrics["ordered"]
-            else " (not ordered as expected)"
-        )
     synthetic = result.get("payload_source") == "synthetic"
-    if synthetic and order:
-        order += " on placeholder text, not on this task's answers"
-    if result.get("partial_probed") is False:
-        cases = "gold self-match / contrast candidate probes scored "
-        scored = f"{_show(metrics['good'])} / {_show(metrics['bad'])}"
-    else:
-        cases = "gold self-match / partial / contrast candidate probes scored "
-        scored = (
-            f"{_show(metrics['good'])} / {_show(metrics['partial'])} / "
-            f"{_show(metrics['bad'])}"
-        )
+    order = _order_note(metrics, synthetic)
     evidence = [
-        f"repeat-scoring the same pair {metrics['repeats']} times returned "
-        + (
-            "one identical score"
-            if metrics["stable"]
-            else f"{metrics['distinct']} different scores"
-        ),
-        f"{cases}{scored}{order}",
+        _repeat_line(metrics),
+        f"{_scored_cases(result, metrics)}{order}",
     ]
     if synthetic:
         evidence.append(SYNTHETIC_PROBE_NOTE)
@@ -2403,6 +2873,44 @@ def summarize_probe(result: dict) -> tuple[str, list[str]]:
     if errors:
         evidence.append(_error_summary(errors))
     return ("ok" if metrics["ready"] else "attention"), evidence
+
+
+def _order_note(metrics: dict, synthetic: bool) -> str:
+    """Whether the probe values came out in the expected order; empty when a
+    call failed or a score is not finite."""
+    order = ""
+    if not metrics["errors"] and metrics["finite"]:
+        order = (
+            " (ordered as expected)"
+            if metrics["ordered"]
+            else " (not ordered as expected)"
+        )
+    if synthetic and order:
+        order += " on placeholder text, not on this task's answers"
+    return order
+
+
+def _scored_cases(result: dict, metrics: dict) -> str:
+    """The probe cases and their first scores, without the partial case when
+    none was sent."""
+    if result.get("partial_probed") is False:
+        cases = "gold self-match / contrast candidate probes scored "
+        scored = f"{_show(metrics['good'])} / {_show(metrics['bad'])}"
+    else:
+        cases = "gold self-match / partial / contrast candidate probes scored "
+        scored = (
+            f"{_show(metrics['good'])} / {_show(metrics['partial'])} / "
+            f"{_show(metrics['bad'])}"
+        )
+    return f"{cases}{scored}"
+
+
+def _repeat_line(metrics: dict) -> str:
+    return f"repeat-scoring the same pair {metrics['repeats']} times returned " + (
+        "one identical score"
+        if metrics["stable"]
+        else f"{metrics['distinct']} different scores"
+    )
 
 
 def probe_symptom(metrics: dict) -> str:
@@ -2512,31 +3020,49 @@ def venv_site_paths(venv: Path) -> tuple[list[str], bool]:
     cfg = _pyvenv_cfg(venv)
     if cfg.get("include-system-site-packages", "false").lower() != "true":
         return own, False
+    xy = _venv_major_minor(cfg)
+    user_sites = _user_site_paths(xy)
+    base = _base_site_paths(cfg.get("home"), xy)
+    paths = [str(path) for path in user_sites] + own + [str(path) for path in base]
+    return paths, True
+
+
+def _venv_major_minor(cfg: dict[str, str]) -> str:
+    """``X.Y`` of the venv's Python, from ``version`` or ``version_info``; empty
+    when neither names one."""
     version = cfg.get("version") or cfg.get("version_info") or ""
     parts = version.split(".")
-    xy = f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else ""
+    return f"{parts[0]}.{parts[1]}" if len(parts) >= 2 else ""
+
+
+def _user_site_paths(xy: str) -> list[Path]:
+    """The user site directories for Python ``xy``; with no version, every
+    ``python3*`` user site that exists."""
     user = Path.home()
     if xy:
-        user_sites = [
+        return [
             user / ".local" / "lib" / f"python{xy}" / "site-packages",
             user / "Library" / "Python" / xy / "lib" / "python" / "site-packages",
         ]
-    else:
-        user_sites = sorted((user / ".local" / "lib").glob("python3*/site-packages"))
+    return sorted((user / ".local" / "lib").glob("python3*/site-packages"))
+
+
+def _base_site_paths(home: str | None, xy: str) -> list[Path]:
+    """The base installation's package directories that exist, found under the
+    parent of the venv's ``home``; none without a ``home``."""
     base: list[Path] = []
-    home = cfg.get("home")
-    if home:
-        prefix = Path(home).parent
-        lib = f"python{xy}" if xy else "python3*"
-        for pattern in (
-            f"lib/{lib}/site-packages",
-            f"lib/{lib}/dist-packages",
-            "lib/python3/dist-packages",
-            f"local/lib/{lib}/dist-packages",
-        ):
-            base.extend(sorted(prefix.glob(pattern)))
-    paths = [str(path) for path in user_sites] + own + [str(path) for path in base]
-    return paths, True
+    if not home:
+        return base
+    prefix = Path(home).parent
+    lib = f"python{xy}" if xy else "python3*"
+    for pattern in (
+        f"lib/{lib}/site-packages",
+        f"lib/{lib}/dist-packages",
+        "lib/python3/dist-packages",
+        f"local/lib/{lib}/dist-packages",
+    ):
+        base.extend(sorted(prefix.glob(pattern)))
+    return base
 
 
 def read_sdk_version(interpreter: str) -> dict:
@@ -2580,14 +3106,7 @@ def key_presence(root: Path, files: list[Path]) -> dict:
     in_environment = sorted(name for name in KEY_ENV_NAMES if name in os.environ)
     in_files: dict[str, list[str]] = {}
     for path in env_files:
-        try:
-            text = path.read_text(encoding="utf-8-sig", errors="replace")
-        except OSError:
-            continue
-        names = []
-        for name in KEY_ENV_NAMES:
-            if re.search(rf"(?m)^\s*(export\s+)?{re.escape(name)}\s*=", text):
-                names.append(name)
+        names = _declared_key_names(path)
         if names:
             in_files[relative(path, root)] = names
     return {
@@ -2595,6 +3114,20 @@ def key_presence(root: Path, files: list[Path]) -> dict:
         "names_set_in_environment": in_environment,
         "names_declared_in_env_files": in_files,
     }
+
+
+def _declared_key_names(path: Path) -> list[str] | None:
+    """The key names an env file assigns (``NAME=`` or ``export NAME=``), in
+    ``KEY_ENV_NAMES`` order; ``None`` when the file cannot be read."""
+    try:
+        text = path.read_text(encoding="utf-8-sig", errors="replace")
+    except OSError:
+        return None
+    return [
+        name
+        for name in KEY_ENV_NAMES
+        if re.search(rf"(?m)^\s*(export\s+)?{re.escape(name)}\s*=", text)
+    ]
 
 
 def env_file_ignored(root: Path) -> str:
@@ -2688,64 +3221,89 @@ def knob_wiring(entry_points: list[dict]) -> dict:
         raise ValueError("stored knob status is not a supported reading")
     knob_count = len(all_knobs)
     read_count = sum(1 for knob in all_knobs if knob["status"] == KNOB_READ)
-
-    def first(predicate):
-        return next((entry for entry in entry_points if predicate(entry)), None)
-
-    def with_status(entry: dict, status: str) -> list[dict]:
-        return [knob for knob in entry["knobs"] if knob["status"] == status]
-
-    verdict, entry, knobs = "read", None, []
-    if not entry_points:
-        verdict = "none"
-    elif (
-        found := first(lambda e: not e["knobs"] and not e["config_space_note"])
-    ) is not None:
-        verdict, entry = "blank", found
-    elif (
-        found := first(
-            lambda e: e["knobs"]
-            and all(knob["status"] == KNOB_UNREAD for knob in e["knobs"])
-        )
-    ) is not None:
-        verdict, entry, knobs = "all-unread", found, list(found["knobs"])
-    elif (found := first(lambda e: with_status(e, KNOB_UNREAD))) is not None:
-        verdict, entry, knobs = "partly-unread", found, with_status(found, KNOB_UNREAD)
-    elif (found := first(lambda e: e["config_space_note"])) is not None:
-        verdict, entry, knobs = "not-inventoried", found, list(found["knobs"])
-    elif (found := first(lambda e: with_status(e, KNOB_MAYBE))) is not None:
-        verdict, entry, knobs = "possibly-read", found, with_status(found, KNOB_MAYBE)
-
-    summary = ""
-    if entry is not None:
-        where = f"`{entry['function']}` at {entry['file']}:{entry['line']}"
-        declared = len(entry["knobs"])
-        if verdict == "blank":
-            summary = f"{where} declares 0 knobs"
-        elif verdict == "all-unread":
-            summary = (
-                f"{where} declares {declared} knob(s) and the body reads none of them"
-            )
-        elif verdict == "partly-unread":
-            summary = (
-                f"{where} declares {declared} knob(s) and the body never reads "
-                f"{len(knobs)} of them ({_names(knobs)})"
-            )
-        elif verdict == "not-inventoried":
-            summary = f"the configuration space of {where} was not inventoried"
-        elif verdict == "possibly-read":
-            summary = (
-                f"{len(knobs)} knob(s) of {where} ({_names(knobs)}) are read "
-                "through a mapping the parser cannot follow"
-            )
+    verdict, entry, knobs = _wiring_verdict(entry_points)
     return {
         "verdict": verdict,
         "entry": entry,
         "knobs": knobs,
         "knob_count": knob_count,
         "read_count": read_count,
-        "summary": summary,
+        "summary": _wiring_summary(verdict, entry, knobs),
     }
+
+
+def _knobs_with_status(entry: dict, status: str) -> list[dict]:
+    return [knob for knob in entry["knobs"] if knob["status"] == status]
+
+
+# The knob wiring ladder after `none`, in order: (verdict, which entry it
+# matches, which of that entry's knobs it names). The first rung with a
+# matching entry decides; with none, the verdict is `read`.
+WIRING_LADDER: tuple[
+    tuple[str, Callable[[dict], object], Callable[[dict], list[dict]]], ...
+] = (
+    (
+        "blank",
+        lambda e: not e["knobs"] and not e["config_space_note"],
+        lambda e: [],
+    ),
+    (
+        "all-unread",
+        lambda e: e["knobs"] and all(knob["status"] == KNOB_UNREAD for knob in e["knobs"]),
+        lambda e: list(e["knobs"]),
+    ),
+    (
+        "partly-unread",
+        lambda e: _knobs_with_status(e, KNOB_UNREAD),
+        lambda e: _knobs_with_status(e, KNOB_UNREAD),
+    ),
+    (
+        "not-inventoried",
+        lambda e: e["config_space_note"],
+        lambda e: list(e["knobs"]),
+    ),
+    (
+        "possibly-read",
+        lambda e: _knobs_with_status(e, KNOB_MAYBE),
+        lambda e: _knobs_with_status(e, KNOB_MAYBE),
+    ),
+)
+
+
+def _wiring_verdict(entry_points: list[dict]) -> tuple[str, dict | None, list[dict]]:
+    """``(verdict, entry it names, knobs it names)`` by the wiring ladder."""
+    if not entry_points:
+        return "none", None, []
+    for verdict, matches, named_knobs in WIRING_LADDER:
+        found = next((entry for entry in entry_points if matches(entry)), None)
+        if found is not None:
+            return verdict, found, named_knobs(found)
+    return "read", None, []
+
+
+def _wiring_summary(verdict: str, entry: dict | None, knobs: list[dict]) -> str:
+    """The one-line reading of a verdict that names an entry; empty otherwise."""
+    if entry is None:
+        return ""
+    where = f"`{entry['function']}` at {entry['file']}:{entry['line']}"
+    declared = len(entry["knobs"])
+    if verdict == "blank":
+        return f"{where} declares 0 knobs"
+    if verdict == "all-unread":
+        return f"{where} declares {declared} knob(s) and the body reads none of them"
+    if verdict == "partly-unread":
+        return (
+            f"{where} declares {declared} knob(s) and the body never reads "
+            f"{len(knobs)} of them ({_names(knobs)})"
+        )
+    if verdict == "not-inventoried":
+        return f"the configuration space of {where} was not inventoried"
+    if verdict == "possibly-read":
+        return (
+            f"{len(knobs)} knob(s) of {where} ({_names(knobs)}) are read "
+            "through a mapping the parser cannot follow"
+        )
+    return ""
 
 
 CONFIG_SPACE_SKILLS = ["traigent-optimize-config-space"]
@@ -2820,116 +3378,127 @@ def _capitalised(text: str) -> str:
 def agent_area(inventory: PythonInventory) -> dict:
     evidence: list[str] = []
     evidence.extend(inventory.notes)
-    if inventory.entry_points:
-        for entry in inventory.entry_points:
-            evidence.append(
-                f"`@traigent.optimize` on `{entry.function}` at "
-                f"{entry.file}:{entry.line}, {len(entry.knobs)} declared knob(s)"
-            )
-            if entry.config_space_note:
-                evidence.append(entry.config_space_note)
-        unread = [
-            knob
-            for entry in inventory.entry_points
-            for knob in entry.knobs
-            if knob.status == KNOB_UNREAD
-        ]
-        maybe = [
-            knob
-            for entry in inventory.entry_points
-            for knob in entry.knobs
-            if knob.status == KNOB_MAYBE
-        ]
-        unreadable_values = [
-            knob
-            for entry in inventory.entry_points
-            for knob in entry.knobs
-            if not knob.values_readable
-        ]
-        for knob in unread:
-            evidence.append(
-                f"knob `{knob.name}` is declared at {knob.file}:{knob.line} and the "
-                "decorated function body never reads it"
-            )
-        for knob in maybe:
-            evidence.append(
-                f"knob `{knob.name}` at {knob.file}:{knob.line} is read through a "
-                "mapping the parser cannot follow, so whether it reaches the body "
-                "is unconfirmed"
-            )
-        for knob in unreadable_values:
-            evidence.append(
-                f"knob `{knob.name}` at {knob.file}:{knob.line} has values the audit "
-                "could not read, so they are not listed"
-            )
-        no_space = [
-            entry
-            for entry in inventory.entry_points
-            if not entry.knobs and not entry.config_space_note
-        ]
-        for entry in no_space:
-            evidence.append(
-                f"`{entry.function}` at {entry.file}:{entry.line} declares no "
-                "configuration space, so there is nothing to search"
-            )
-        # One reading, shared with the next step and Tier 2: the card cannot
-        # read `ok` over a knob or inventory fact the ladder would act on.
-        verdict = knob_wiring(entry_point_records(inventory.entry_points))["verdict"]
-        gap = inventory_gap(inventory)
-        status = "ok" if verdict == "read" and not gap else "attention"
-        if verdict in ("all-unread", "partly-unread"):
-            meaning = (
-                "A knob the function never reads cannot change the output, so every "
-                "trial that varies it is spend with no effect."
-            )
-        elif verdict == "blank":
-            meaning = (
-                "A decorated function with no configuration space gives the "
-                "optimizer one point to evaluate, so there is nothing to compare."
-            )
-        elif verdict == "not-inventoried":
-            meaning = (
-                "The configuration space was not readable statically, so this audit "
-                "cannot say whether its knobs reach the function body — check those "
-                "by hand."
-            )
-        elif verdict == "possibly-read":
-            meaning = (
-                f"{len(maybe)} knob(s) are read through a mapping the parser cannot "
-                "follow — confirm by hand that each one reaches the body."
-            )
-        elif gap:
-            meaning = (
-                f"{_capitalised(gap)}, so the entry points and knobs listed here may "
-                "be incomplete — this audit cannot vouch for code it did not read."
-            )
-        else:
-            meaning = (
-                "Every declared knob is read directly by the function body, so a "
-                "search over them can change the output."
-            )
-    else:
-        evidence.append(
-            f"searched for `@traigent.optimize` in {inventory.files_scanned} "
-            "Python file(s), found none"
-        )
-        if inventory.llm_call_sites:
-            for site in inventory.llm_call_sites[:5]:
-                evidence.append(
-                    f"`{site['function']}` at {site['file']}:{site['line']} sits in a "
-                    f"module importing {', '.join(site['providers'])}"
-                )
-        else:
-            evidence.append(
-                f"searched for provider imports ({', '.join(sorted(PROVIDER_MODULES)[:6])}, "
-                f"and others) in {inventory.files_scanned} Python file(s), found none"
-            )
-        status = "not-found"
+    if not inventory.entry_points:
+        evidence.extend(_no_entry_point_lines(inventory))
         meaning = (
             "Nothing is instrumented yet, so there is no search space to optimize; "
             "`traigent-setup-decorator` is where a first decorated function comes from."
         )
+        return {"status": "not-found", "evidence": evidence, "meaning": meaning}
+    knobs = [knob for entry in inventory.entry_points for knob in entry.knobs]
+    evidence.extend(_entry_point_lines(inventory.entry_points))
+    evidence.extend(_knob_lines(knobs))
+    evidence.extend(_blank_entry_lines(inventory.entry_points))
+    # One reading, shared with the next step and Tier 2: the card cannot
+    # read `ok` over a knob or inventory fact the ladder would act on.
+    verdict = knob_wiring(entry_point_records(inventory.entry_points))["verdict"]
+    gap = inventory_gap(inventory)
+    status = "ok" if verdict == "read" and not gap else "attention"
+    maybe_count = sum(1 for knob in knobs if knob.status == KNOB_MAYBE)
+    meaning = _agent_meaning(verdict, gap, maybe_count)
     return {"status": status, "evidence": evidence, "meaning": meaning}
+
+
+def _no_entry_point_lines(inventory: PythonInventory) -> list[str]:
+    """What was searched for when no decorated function was found."""
+    lines = [
+        f"searched for `@traigent.optimize` in {inventory.files_scanned} "
+        "Python file(s), found none"
+    ]
+    if inventory.llm_call_sites:
+        lines.extend(
+            f"`{site['function']}` at {site['file']}:{site['line']} sits in a "
+            f"module importing {', '.join(site['providers'])}"
+            for site in inventory.llm_call_sites[:5]
+        )
+    else:
+        lines.append(
+            f"searched for provider imports ({', '.join(sorted(PROVIDER_MODULES)[:6])}, "
+            f"and others) in {inventory.files_scanned} Python file(s), found none"
+        )
+    return lines
+
+
+def _entry_point_lines(entry_points: list[EntryPoint]) -> list[str]:
+    """One line per decorated function, each followed by its space note."""
+    lines: list[str] = []
+    for entry in entry_points:
+        lines.append(
+            f"`@traigent.optimize` on `{entry.function}` at "
+            f"{entry.file}:{entry.line}, {len(entry.knobs)} declared knob(s)"
+        )
+        if entry.config_space_note:
+            lines.append(entry.config_space_note)
+    return lines
+
+
+def _knob_lines(knobs: list[Knob]) -> list[str]:
+    """The unread knobs, then the possibly-read ones, then those whose values
+    could not be read."""
+    lines = [
+        f"knob `{knob.name}` is declared at {knob.file}:{knob.line} and the "
+        "decorated function body never reads it"
+        for knob in knobs
+        if knob.status == KNOB_UNREAD
+    ]
+    lines += [
+        f"knob `{knob.name}` at {knob.file}:{knob.line} is read through a "
+        "mapping the parser cannot follow, so whether it reaches the body "
+        "is unconfirmed"
+        for knob in knobs
+        if knob.status == KNOB_MAYBE
+    ]
+    lines += [
+        f"knob `{knob.name}` at {knob.file}:{knob.line} has values the audit "
+        "could not read, so they are not listed"
+        for knob in knobs
+        if not knob.values_readable
+    ]
+    return lines
+
+
+def _blank_entry_lines(entry_points: list[EntryPoint]) -> list[str]:
+    """One line per decorated function that declares no configuration space."""
+    return [
+        f"`{entry.function}` at {entry.file}:{entry.line} declares no "
+        "configuration space, so there is nothing to search"
+        for entry in entry_points
+        if not entry.knobs and not entry.config_space_note
+    ]
+
+
+def _agent_meaning(verdict: str, gap: str, maybe_count: int) -> str:
+    """What the knob wiring verdict, or an inventory gap, means for a search."""
+    if verdict in ("all-unread", "partly-unread"):
+        return (
+            "A knob the function never reads cannot change the output, so every "
+            "trial that varies it is spend with no effect."
+        )
+    if verdict == "blank":
+        return (
+            "A decorated function with no configuration space gives the "
+            "optimizer one point to evaluate, so there is nothing to compare."
+        )
+    if verdict == "not-inventoried":
+        return (
+            "The configuration space was not readable statically, so this audit "
+            "cannot say whether its knobs reach the function body — check those "
+            "by hand."
+        )
+    if verdict == "possibly-read":
+        return (
+            f"{maybe_count} knob(s) are read through a mapping the parser cannot "
+            "follow — confirm by hand that each one reaches the body."
+        )
+    if gap:
+        return (
+            f"{_capitalised(gap)}, so the entry points and knobs listed here may "
+            "be incomplete — this audit cannot vouch for code it did not read."
+        )
+    return (
+        "Every declared knob is read directly by the function body, so a "
+        "search over them can change the output."
+    )
 
 
 def dataset_findings(
@@ -2952,63 +3521,12 @@ def dataset_area(
     skipped_files: list[str],
 ) -> dict:
     skip_lines = [f"{item} — not analysed" for item in skipped_files]
-    if not reports and skipped_files:
-        return {
-            "status": "attention",
-            "evidence": [
-                f"searched {candidates} JSONL/JSON/CSV file(s) for rows carrying an "
-                f"input-like key; {len(skipped_files)} could not be read, so whether "
-                "one of them is the dataset is unconfirmed",
-                *notes,
-                *skip_lines,
-            ],
-            "meaning": (
-                "A dataset file this audit could not read cannot be judged, so "
-                "nothing confirmed is there to score a configuration against yet; "
-                "`traigent-dataset-curate` covers the file formats."
-            ),
-        }
     if not reports:
-        return {
-            "status": "attention" if (notes or skipped_files) else "not-found",
-            "evidence": [
-                f"searched {candidates} JSONL/JSON/CSV file(s) for rows carrying an "
-                f"input-like key ({'/'.join(INPUT_KEYS)}), found none",
-                *notes,
-                *skip_lines,
-            ],
-            "meaning": (
-                "With no examples there is nothing to score a configuration against; "
-                "`traigent-dataset-curate` covers building a first slice."
-            ),
-        }
+        return _no_dataset_area(candidates, notes, skipped_files, skip_lines)
     evidence: list[str] = list(notes) + skip_lines
     shown = reports[:MAX_DATASETS_IN_CARD]
     for report in shown:
-        evidence.append(
-            f"{report.file}: {report.rows} row(s), "
-            f"gold key(s) {', '.join(report.expected_key_counts) or 'none'}, "
-            f"split marker(s) {', '.join(f'{k}={v}' for k, v in report.split_counts.items()) or 'none'}"
-        )
-        for note in report.notes:
-            evidence.append(f"{report.file}: {note}")
-        for finding in report.findings:
-            evidence.append(f"{report.file}: {finding}")
-        if report.missing_expected:
-            evidence.append(
-                f"{report.file}: first row indexes with no usable gold value: "
-                f"{report.missing_expected[:5]}"
-            )
-        if report.exact_duplicate_groups:
-            evidence.append(
-                f"{report.file}: first duplicate row-index group: "
-                f"{report.exact_duplicate_groups[0]}"
-            )
-        if report.near_duplicate_pairs:
-            evidence.append(
-                f"{report.file}: first near-duplicate row-index pair: "
-                f"{report.near_duplicate_pairs[0]}"
-            )
+        evidence.extend(_dataset_report_lines(report))
     if len(reports) > len(shown):
         evidence.append(
             f"{len(reports) - len(shown)} further dataset file(s) are in the JSON "
@@ -3026,6 +3544,70 @@ def dataset_area(
     return {"status": status, "evidence": evidence, "meaning": meaning}
 
 
+def _no_dataset_area(
+    candidates: int, notes: list[str], skipped_files: list[str], skip_lines: list[str]
+) -> dict:
+    """The Dataset area when no file was read as a dataset."""
+    if skipped_files:
+        return {
+            "status": "attention",
+            "evidence": [
+                f"searched {candidates} JSONL/JSON/CSV file(s) for rows carrying an "
+                f"input-like key; {len(skipped_files)} could not be read, so whether "
+                "one of them is the dataset is unconfirmed",
+                *notes,
+                *skip_lines,
+            ],
+            "meaning": (
+                "A dataset file this audit could not read cannot be judged, so "
+                "nothing confirmed is there to score a configuration against yet; "
+                "`traigent-dataset-curate` covers the file formats."
+            ),
+        }
+    return {
+        "status": "attention" if (notes or skipped_files) else "not-found",
+        "evidence": [
+            f"searched {candidates} JSONL/JSON/CSV file(s) for rows carrying an "
+            f"input-like key ({'/'.join(INPUT_KEYS)}), found none",
+            *notes,
+            *skip_lines,
+        ],
+        "meaning": (
+            "With no examples there is nothing to score a configuration against; "
+            "`traigent-dataset-curate` covers building a first slice."
+        ),
+    }
+
+
+def _dataset_report_lines(report: DatasetReport) -> list[str]:
+    """The card lines for one dataset file: its shape, notes, findings and the
+    first missing-gold, duplicate and near-duplicate rows."""
+    splits = ", ".join(f"{k}={v}" for k, v in report.split_counts.items())
+    lines = [
+        f"{report.file}: {report.rows} row(s), "
+        f"gold key(s) {', '.join(report.expected_key_counts) or 'none'}, "
+        f"split marker(s) {splits or 'none'}"
+    ]
+    lines.extend(f"{report.file}: {note}" for note in report.notes)
+    lines.extend(f"{report.file}: {finding}" for finding in report.findings)
+    if report.missing_expected:
+        lines.append(
+            f"{report.file}: first row indexes with no usable gold value: "
+            f"{report.missing_expected[:5]}"
+        )
+    if report.exact_duplicate_groups:
+        lines.append(
+            f"{report.file}: first duplicate row-index group: "
+            f"{report.exact_duplicate_groups[0]}"
+        )
+    if report.near_duplicate_pairs:
+        lines.append(
+            f"{report.file}: first near-duplicate row-index pair: "
+            f"{report.near_duplicate_pairs[0]}"
+        )
+    return lines
+
+
 KIND_LABEL = {
     "llm-judge": "LLM-judge",
     "executing": "executing",
@@ -3039,14 +3621,14 @@ KIND_REASON = {
 }
 
 
-def _handles(items, limit: int = 3) -> str:
+def _handles(items: Sequence[ScorerCandidate | SkippedScorer], limit: int = 3) -> str:
     shown = [f"{item.file}:{item.line}" for item in items[:limit]]
     if len(items) > limit:
         shown.append(f"and {len(items) - limit} more")
     return ", ".join(shown)
 
 
-def not_run_lines(candidates) -> list[str]:
+def not_run_lines(candidates: Iterable[ScorerCandidate]) -> list[str]:
     """One line per REASON, not one per scorer."""
     by_kind: dict[str, list[ScorerCandidate]] = defaultdict(list)
     for candidate in candidates:
@@ -3106,22 +3688,7 @@ def scorer_area(
                 "ranked; `traigent-eval-build` covers wiring one."
             ),
         }
-    shown = inventory.scorers[:MAX_SCORERS_IN_CARD]
-    evidence = [
-        f"`{candidate.function}` at {candidate.file}:{candidate.line} "
-        f"classified {candidate.kind}"
-        + (f" ({'; '.join(candidate.signals)})" if candidate.signals else "")
-        for candidate in shown
-    ]
-    if len(inventory.scorers) > len(shown):
-        evidence.append(
-            f"{len(inventory.scorers) - len(shown)} further scorer(s) are in the "
-            "JSON report and not printed here"
-        )
-    evidence.extend(skipped_scorer_lines(inventory.skipped_scorers))
-    evidence.extend(
-        not_run_lines(c for c in inventory.scorers if c.kind != "deterministic")
-    )
+    evidence = _scorer_listing(inventory)
     if refusal is not None:
         evidence.append(refusal)
         return {
@@ -3148,72 +3715,72 @@ def scorer_area(
     evidence.extend(probe_evidence)
     synthetic = probe.get("payload_source") == "synthetic"
     status = "ok" if probe_status == "ok" and not synthetic else "attention"
+    meaning = _probe_meaning(probe_status, synthetic, probe)
+    return {"status": status, "evidence": evidence, "meaning": meaning}
+
+
+def _scorer_listing(inventory: PythonInventory) -> list[str]:
+    """The scorers found (up to the card's limit), the skipped candidates, and
+    one line per reason the non-deterministic ones were not run."""
+    shown = inventory.scorers[:MAX_SCORERS_IN_CARD]
+    evidence = [
+        f"`{candidate.function}` at {candidate.file}:{candidate.line} "
+        f"classified {candidate.kind}"
+        + (f" ({'; '.join(candidate.signals)})" if candidate.signals else "")
+        for candidate in shown
+    ]
+    if len(inventory.scorers) > len(shown):
+        evidence.append(
+            f"{len(inventory.scorers) - len(shown)} further scorer(s) are in the "
+            "JSON report and not printed here"
+        )
+    evidence.extend(skipped_scorer_lines(inventory.skipped_scorers))
+    evidence.extend(
+        not_run_lines(c for c in inventory.scorers if c.kind != "deterministic")
+    )
+    return evidence
+
+
+def _probe_meaning(probe_status: str, synthetic: bool, probe: dict) -> str:
+    """What a probe that was run means for a configuration comparison."""
     if probe_status == "blocked":
-        meaning = (
+        return (
             "A scorer that reaches the network is not a local deterministic scorer; "
             "its score depends on a service this audit will not call."
         )
-    elif probe_status == "failed":
-        meaning = UNMEASURED_MEANING
-    elif probe_status == "ok" and synthetic:
-        meaning = SYNTHETIC_MEANING
-    elif probe_status == "ok":
-        meaning = (
+    if probe_status == "failed":
+        return UNMEASURED_MEANING
+    if probe_status == "ok" and synthetic:
+        return SYNTHETIC_MEANING
+    if probe_status == "ok":
+        return (
             "The scorer returns the same number for the same pair and ranks the "
             "gold self-match above the contrast candidate. This shows repeatability "
             "and separation of the tested pair, not correctness for every task answer."
         )
-    elif probe_metrics(probe)["errors"]:
-        meaning = (
+    metrics = probe_metrics(probe)
+    if metrics["errors"]:
+        return (
             "Not every probe call produced a finite score, so whether a run would "
             "get a usable score for every row is not established."
         )
-    elif not probe_metrics(probe)["stable"]:
-        meaning = (
+    if not metrics["stable"]:
+        return (
             "A scorer that returns different numbers for the same pair makes a "
             "configuration comparison unreliable: the movement you measure may be "
             "the scorer moving."
         )
-    else:
-        meaning = (
-            "Repeated self-match scores are identical, but the probe values "
-            "do not have the expected ordering. The contrast candidate may be "
-            "equivalent for this task, so verify an actually incorrect answer "
-            "before concluding that the scorer needs fixing."
-        )
-    return {"status": status, "evidence": evidence, "meaning": meaning}
+    return (
+        "Repeated self-match scores are identical, but the probe values "
+        "do not have the expected ordering. The contrast candidate may be "
+        "equivalent for this task, so verify an actually incorrect answer "
+        "before concluding that the scorer needs fixing."
+    )
 
 
 def setup_area(sdk: dict, keys: dict, ignored: str, model_ids: list[str]) -> dict:
-    evidence: list[str] = []
     version = sdk.get("traigent_version")
-    if version:
-        evidence.append(f"traigent {version} is installed in {sdk['interpreter']}")
-    else:
-        evidence.append(
-            f"traigent is not installed for {sdk['interpreter']}"
-            + (f" ({sdk['error_type']})" if sdk.get("error_type") else "")
-            + (
-                " — read by path from its own site-packages, the user site and "
-                "the base installation it includes"
-                if sdk.get("read_base_installation")
-                else ""
-            )
-        )
-    if keys["names_set_in_environment"]:
-        evidence.append(
-            "set in this environment: "
-            + ", ".join(keys["names_set_in_environment"])
-            + " (name only; the audit reads no value)"
-        )
-    else:
-        evidence.append(
-            f"searched the environment for {len(KEY_ENV_NAMES)} known key names, "
-            "found none set"
-        )
-    for env_file, names in sorted(keys["names_declared_in_env_files"].items()):
-        evidence.append(f"{env_file} declares {', '.join(names)} (name only)")
-    evidence.append(f".env git status: {ignored}")
+    evidence = [_sdk_line(sdk), *_key_lines(keys), f".env git status: {ignored}"]
     if model_ids:
         evidence.append(
             "model ids in the configuration space: "
@@ -3240,48 +3807,67 @@ def setup_area(sdk: dict, keys: dict, ignored: str, model_ids: list[str]) -> dic
     }
 
 
+def _sdk_line(sdk: dict) -> str:
+    """Where the SDK is installed, or why it reads as not installed."""
+    version = sdk.get("traigent_version")
+    if version:
+        return f"traigent {version} is installed in {sdk['interpreter']}"
+    return (
+        f"traigent is not installed for {sdk['interpreter']}"
+        + (f" ({sdk['error_type']})" if sdk.get("error_type") else "")
+        + (
+            " — read by path from its own site-packages, the user site and "
+            "the base installation it includes"
+            if sdk.get("read_base_installation")
+            else ""
+        )
+    )
+
+
+def _key_lines(keys: dict) -> list[str]:
+    """The key names set in the environment, then those each env file declares."""
+    if keys["names_set_in_environment"]:
+        lines = [
+            "set in this environment: "
+            + ", ".join(keys["names_set_in_environment"])
+            + " (name only; the audit reads no value)"
+        ]
+    else:
+        lines = [
+            f"searched the environment for {len(KEY_ENV_NAMES)} known key names, "
+            "found none set"
+        ]
+    lines.extend(
+        f"{env_file} declares {', '.join(names)} (name only)"
+        for env_file, names in sorted(keys["names_declared_in_env_files"].items())
+    )
+    return lines
+
+
 STOP_LINE = (
     "Stopping after this free audit is a valid choice; nothing here has left "
     "your machine."
 )
 
 
-def next_step(
-    inventory: PythonInventory,
-    reports: list[DatasetReport],
-    probe: dict | None,
-    probed: ScorerCandidate | None,
-    *,
-    skipped_files: list[str] | tuple[str, ...] = (),
-    dataset_notes: list[str] | tuple[str, ...] = (),
-    dataset_named: bool = False,
-) -> dict:
-    """Exactly one next step, chosen by the most blocking finding.
+def _no_entry_point_step(inventory: PythonInventory) -> dict:
+    return {
+        "branch": "a",
+        "skills": ["traigent-setup-quickstart", "traigent-setup-decorator"],
+        "line": (
+            f"No `@traigent.optimize` was found in {inventory.files_scanned} "
+            "Python file(s), so there is no search space yet — install and "
+            "configure the SDK with `traigent-setup-quickstart`, then wire one "
+            "decorated function with `traigent-setup-decorator`."
+        ),
+    }
 
-    The Agent and Dataset rungs read the same `knob_wiring`, `inventory_gap`
-    and `dataset_findings` the area cards read, so `g` is reached only when
-    the Agent, Dataset and Scorer areas all read `ok`.
-    """
-    metrics = probe_metrics(probe)
-    wiring = knob_wiring(entry_point_records(inventory.entry_points))
-    knob = knob_step(wiring)
-    curate = ["traigent-dataset-curate"]
 
-    if not inventory.entry_points:
-        return {
-            "branch": "a",
-            "skills": ["traigent-setup-quickstart", "traigent-setup-decorator"],
-            "line": (
-                f"No `@traigent.optimize` was found in {inventory.files_scanned} "
-                "Python file(s), so there is no search space yet — install and "
-                "configure the SDK with `traigent-setup-quickstart`, then wire one "
-                "decorated function with `traigent-setup-decorator`."
-            ),
-        }
-
-    if knob is not None and knob["branch"] == "b":
-        return knob
-
+def _scorer_step(
+    inventory: PythonInventory, metrics: dict, probed: ScorerCandidate | None
+) -> dict | None:
+    """Branch ``c`` (no scorer), ``d`` (a probe that ran and is not ready) or
+    ``e`` (no probe ran), or ``None`` when the scorer is ready."""
     if not inventory.scorers:
         return {
             "branch": "c",
@@ -3318,190 +3904,252 @@ def next_step(
                 "with `traigent-eval-audit`."
             ),
         }
+    return None
 
-    # A file that could not be read is named, never reported as absent. Beside
-    # analysed rows it outranks the rest only when the user named the dataset
-    # (then it is the named file's holdout sibling); in discovery it waits for
-    # the catch-all below.
+
+def _unread_dataset_step(
+    reports: list[DatasetReport],
+    skipped_files: list[str] | tuple[str, ...],
+    dataset_notes: list[str] | tuple[str, ...],
+    dataset_named: bool,
+) -> dict | None:
+    """A file that could not be read is named, never reported as absent.
+
+    Beside analysed rows it outranks the rest only when the user named the
+    dataset (then it is the named file's holdout sibling); in discovery it
+    waits for the catch-all `_dataset_fact_step`."""
     unread = list(skipped_files) if (dataset_named or not reports) else []
-    if unread or (not reports and dataset_notes):
-        if unread and not reports:
-            line = (
-                f"{unread[0]}, so no evaluation dataset could be analysed and there "
-                "is nothing to score a configuration against yet — repair the file, "
-                "or point --dataset at a readable one; `traigent-dataset-curate` "
-                "covers the format."
-            )
-        elif unread:
-            line = (
-                f"{unread[0]}, so the slice it holds was not analysed and this "
-                "dataset's readiness is unconfirmed — repair it with "
-                "`traigent-dataset-curate`, then re-run this audit."
-            )
-        else:
-            line = (
-                f"{dataset_notes[0]}, and none of the files read is a dataset — "
-                "point --dataset at your evaluation file, or build one with "
-                "`traigent-dataset-curate`."
-            )
-        return {"branch": "f", "skills": list(curate), "line": line}
+    if not unread and (reports or not dataset_notes):
+        return None
+    if unread and not reports:
+        line = (
+            f"{unread[0]}, so no evaluation dataset could be analysed and there "
+            "is nothing to score a configuration against yet — repair the file, "
+            "or point --dataset at a readable one; `traigent-dataset-curate` "
+            "covers the format."
+        )
+    elif unread:
+        line = (
+            f"{unread[0]}, so the slice it holds was not analysed and this "
+            "dataset's readiness is unconfirmed — repair it with "
+            "`traigent-dataset-curate`, then re-run this audit."
+        )
+    else:
+        line = (
+            f"{dataset_notes[0]}, and none of the files read is a dataset — "
+            "point --dataset at your evaluation file, or build one with "
+            "`traigent-dataset-curate`."
+        )
+    return {"branch": "f", "skills": ["traigent-dataset-curate"], "line": line}
 
-    if not reports:
-        return {
-            "branch": "f",
-            "skills": ["traigent-dataset-curate"],
-            "line": (
-                "No evaluation dataset was found, so there is nothing to score a "
-                "configuration against — build a first tuning slice and a holdout "
-                "slice with `traigent-dataset-curate`."
-            ),
-        }
 
-    # A dataset the SDK cannot load stops the first run outright, so it outranks
-    # a row shortfall.
+def _no_dataset_step(reports: list[DatasetReport]) -> dict | None:
+    if reports:
+        return None
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": (
+            "No evaluation dataset was found, so there is nothing to score a "
+            "configuration against — build a first tuning slice and a holdout "
+            "slice with `traigent-dataset-curate`."
+        ),
+    }
+
+
+def _unloadable_dataset_step(reports: list[DatasetReport]) -> dict | None:
+    """A dataset the SDK cannot load stops the first run outright, so it
+    outranks a row shortfall."""
     unloadable = [report for report in reports if report.rows_without_sdk_input]
-    if unloadable:
-        worst = unloadable[0]
-        return {
-            "branch": "f",
-            "skills": ["traigent-dataset-curate"],
-            "line": (
-                f"{worst.file} has {worst.rows_without_sdk_input} row(s) with no "
-                "`input`/`input_data` key, so `eval_dataset` will refuse to load "
-                "it — rename or add the key with `traigent-dataset-curate`."
-            ),
-        }
+    if not unloadable:
+        return None
+    worst = unloadable[0]
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": (
+            f"{worst.file} has {worst.rows_without_sdk_input} row(s) with no "
+            "`input`/`input_data` key, so `eval_dataset` will refuse to load "
+            "it — rename or add the key with `traigent-dataset-curate`."
+        ),
+    }
 
-    # A row with no usable gold can never score correct against gold, so every
-    # measured score is capped below what the agent really does.
+
+def _missing_gold_step(reports: list[DatasetReport]) -> dict | None:
+    """A row with no usable gold can never score correct against gold, so
+    every measured score is capped below what the agent really does."""
     gold = [report for report in reports if report.missing_gold_counts]
-    if gold:
-        worst = max(gold, key=lambda report: sum(report.missing_gold_counts.values()))
-        detail = ", ".join(
-            f"{worst.missing_gold_counts[kind]} {label}"
-            for kind, label in GOLD_KIND_LABEL.items()
-            if worst.missing_gold_counts.get(kind)
-        )
-        return {
-            "branch": "f",
-            "skills": list(curate),
-            "line": (
-                f"{worst.file} has {sum(worst.missing_gold_counts.values())} row(s) "
-                f"with no usable gold value ({detail}), so a scorer that compares "
-                "against gold cannot score those rows correct and every measured "
-                "score is capped — fill or drop them with `traigent-dataset-curate`."
-            ),
-        }
+    if not gold:
+        return None
+    worst = max(gold, key=lambda report: sum(report.missing_gold_counts.values()))
+    detail = ", ".join(
+        f"{worst.missing_gold_counts[kind]} {label}"
+        for kind, label in GOLD_KIND_LABEL.items()
+        if worst.missing_gold_counts.get(kind)
+    )
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": (
+            f"{worst.file} has {sum(worst.missing_gold_counts.values())} row(s) "
+            f"with no usable gold value ({detail}), so a scorer that compares "
+            "against gold cannot score those rows correct and every measured "
+            "score is capped — fill or drop them with `traigent-dataset-curate`."
+        ),
+    }
 
-    # A holdout that shares rows with the searched slice re-measures what the
-    # search already saw, so its score is not a held-out score.
+
+def _overlap_count(report: DatasetReport) -> int:
+    return report.holdout_overlap_total or len(report.holdout_overlap)
+
+
+def _holdout_overlap_step(reports: list[DatasetReport]) -> dict | None:
+    """A holdout that shares rows with the searched slice re-measures what the
+    search already saw, so its score is not a held-out score."""
     overlapping = [report for report in reports if report.holdout_overlap]
-    if overlapping:
-        worst = max(
-            overlapping,
-            key=lambda report: report.holdout_overlap_total
-            or len(report.holdout_overlap),
+    if not overlapping:
+        return None
+    worst = max(overlapping, key=_overlap_count)
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": (
+            f"{worst.file} has {_overlap_count(worst)} row(s) that appear in both "
+            "the holdout slice and another slice, so a holdout score would partly "
+            "re-measure rows the search already saw — make the slices disjoint "
+            "with `traigent-dataset-curate`."
+        ),
+    }
+
+
+def _is_short(report: DatasetReport) -> bool:
+    """Under a row minimum. A file that is itself the holdout slice (declared
+    by name) has no tuning rows to judge: only the holdout minimum applies."""
+    return (
+        not report.holdout_by_name and report.rows < MIN_TUNING
+    ) or report.holdout_rows < MIN_HOLDOUT
+
+
+def _short_dataset_line(worst: DatasetReport) -> str:
+    if worst.holdout_by_name:
+        return (
+            f"{worst.file} is a {worst.rows}-row holdout slice declared by "
+            f"file name, under the {MIN_HOLDOUT}-row holdout minimum, so a "
+            "small score movement would not be resolvable — grow it with "
+            "`traigent-dataset-curate`."
         )
-        count = worst.holdout_overlap_total or len(worst.holdout_overlap)
-        return {
-            "branch": "f",
-            "skills": list(curate),
-            "line": (
-                f"{worst.file} has {count} row(s) that appear in both the holdout "
-                "slice and another slice, so a holdout score would partly re-measure "
-                "rows the search already saw — make the slices disjoint with "
-                "`traigent-dataset-curate`."
-            ),
-        }
+    # Name only the minimum(s) actually missed.
+    missed = []
+    if worst.rows < MIN_TUNING:
+        missed.append(f"the {MIN_TUNING}-row tuning minimum")
+    if worst.holdout_rows < MIN_HOLDOUT:
+        missed.append(f"the {MIN_HOLDOUT}-row holdout minimum")
+    return (
+        f"{worst.file} has {worst.rows} row(s) and a {worst.holdout_rows}-row "
+        f"holdout slice, under {' and '.join(missed)}, so a small score "
+        "movement would not be resolvable — grow and split it with "
+        "`traigent-dataset-curate`."
+    )
 
-    # A file that is itself the holdout slice (declared by name) has no tuning
-    # rows to judge: only the holdout minimum applies to it.
-    short = [
-        report
-        for report in reports
-        if (not report.holdout_by_name and report.rows < MIN_TUNING)
-        or report.holdout_rows < MIN_HOLDOUT
-    ]
-    if short:
-        tuning_short = [r for r in short if not r.holdout_by_name]
-        worst = min(tuning_short or short, key=lambda report: report.rows)
-        if worst.holdout_by_name:
-            line = (
-                f"{worst.file} is a {worst.rows}-row holdout slice declared by "
-                f"file name, under the {MIN_HOLDOUT}-row holdout minimum, so a "
-                "small score movement would not be resolvable — grow it with "
-                "`traigent-dataset-curate`."
-            )
-        else:
-            # Name only the minimum(s) actually missed.
-            missed = []
-            if worst.rows < MIN_TUNING:
-                missed.append(f"the {MIN_TUNING}-row tuning minimum")
-            if worst.holdout_rows < MIN_HOLDOUT:
-                missed.append(f"the {MIN_HOLDOUT}-row holdout minimum")
-            line = (
-                f"{worst.file} has {worst.rows} row(s) and a {worst.holdout_rows}-row "
-                f"holdout slice, under {' and '.join(missed)}, so a small score "
-                "movement would not be resolvable — grow and split it with "
-                "`traigent-dataset-curate`."
-            )
-        return {
-            "branch": "f",
-            "skills": ["traigent-dataset-curate"],
-            "line": line,
-        }
 
-    # Knob wiring that is partly broken or unconfirmed: concrete spend, but
-    # below the dataset faults that make a run worthless outright.
-    if knob is not None and knob["branch"] == "h":
-        return knob
+def _short_dataset_step(reports: list[DatasetReport]) -> dict | None:
+    short = [report for report in reports if _is_short(report)]
+    if not short:
+        return None
+    tuning_short = [r for r in short if not r.holdout_by_name]
+    worst = min(tuning_short or short, key=lambda report: report.rows)
+    return {
+        "branch": "f",
+        "skills": ["traigent-dataset-curate"],
+        "line": _short_dataset_line(worst),
+    }
 
+
+def _dataset_step(
+    reports: list[DatasetReport],
+    skipped_files: list[str] | tuple[str, ...],
+    dataset_notes: list[str] | tuple[str, ...],
+    dataset_named: bool,
+) -> dict | None:
+    """The first dataset rung that applies, in priority order, or ``None``."""
+    step = _unread_dataset_step(reports, skipped_files, dataset_notes, dataset_named)
+    if step is not None:
+        return step
+    for rung in (
+        _no_dataset_step,
+        _unloadable_dataset_step,
+        _missing_gold_step,
+        _holdout_overlap_step,
+        _short_dataset_step,
+    ):
+        step = rung(reports)
+        if step is not None:
+            return step
+    return None
+
+
+def _inventory_gap_step(inventory: PythonInventory) -> dict | None:
     gap = inventory_gap(inventory)
-    if gap:
-        if inventory.files_unparsed:
-            pronoun = "it" if len(inventory.files_unparsed) == 1 else "them"
-            remedy = f"fix or exclude {pronoun} and re-run this audit."
-        else:
-            remedy = "narrow --root to the project's own code and re-run this audit."
-        return {
-            "branch": "i",
-            "skills": [],
-            "line": (
-                f"{_capitalised(gap)}, so the entry points and scorers above may be "
-                f"incomplete — {remedy}"
-            ),
-        }
+    if not gap:
+        return None
+    if inventory.files_unparsed:
+        pronoun = "it" if len(inventory.files_unparsed) == 1 else "them"
+        remedy = f"fix or exclude {pronoun} and re-run this audit."
+    else:
+        remedy = "narrow --root to the project's own code and re-run this audit."
+    return {
+        "branch": "i",
+        "skills": [],
+        "line": (
+            f"{_capitalised(gap)}, so the entry points and scorers above may be "
+            f"incomplete — {remedy}"
+        ),
+    }
 
+
+def _dataset_fact_step(
+    reports: list[DatasetReport],
+    skipped_files: list[str] | tuple[str, ...],
+    dataset_notes: list[str] | tuple[str, ...],
+) -> dict | None:
     facts = dataset_findings(reports, list(dataset_notes), list(skipped_files))
-    if facts:
-        if len(facts) == len(skipped_files):
-            line = (
-                f"{facts[0]}, so this audit cannot rule out an evaluation file it "
-                "did not read — repair it, or name your dataset with --dataset so "
-                "other files are not scanned, then re-run this audit."
-            )
-        else:
-            line = (
-                f"{facts[0]}, so this audit cannot call the dataset ready — resolve "
-                "it with `traigent-dataset-curate`, then re-run this audit."
-            )
-        return {"branch": "f", "skills": list(curate), "line": line}
+    if not facts:
+        return None
+    if len(facts) == len(skipped_files):
+        line = (
+            f"{facts[0]}, so this audit cannot rule out an evaluation file it "
+            "did not read — repair it, or name your dataset with --dataset so "
+            "other files are not scanned, then re-run this audit."
+        )
+    else:
+        line = (
+            f"{facts[0]}, so this audit cannot call the dataset ready — resolve "
+            "it with `traigent-dataset-curate`, then re-run this audit."
+        )
+    return {"branch": "f", "skills": ["traigent-dataset-curate"], "line": line}
 
-    # A probe on placeholder text measured repeatability only, so the Scorer
-    # area is not `ok` and `g` would claim more than was tested.
-    if probe is not None and probe.get("payload_source") == "synthetic":
-        return {
-            "branch": "e",
-            "skills": ["traigent-eval-audit"],
-            "line": (
-                f"`{probed.function}` at {probed.file}:{probed.line} is repeatable, "
-                "but it was probed with placeholder text because no dataset gave "
-                "two distinct usable gold values of the same kind, so whether it "
-                "separates a good answer for this task from a bad one is unknown — "
-                "assess it with `traigent-eval-audit`."
-            ),
-        }
 
+def _placeholder_probe_step(
+    probe: dict | None, probed: ScorerCandidate | None
+) -> dict | None:
+    """A probe on placeholder text measured repeatability only, so the Scorer
+    area is not `ok` and `g` would claim more than was tested."""
+    if probe is None or probe.get("payload_source") != "synthetic":
+        return None
+    return {
+        "branch": "e",
+        "skills": ["traigent-eval-audit"],
+        "line": (
+            f"`{probed.function}` at {probed.file}:{probed.line} is repeatable, "
+            "but it was probed with placeholder text because no dataset gave "
+            "two distinct usable gold values of the same kind, so whether it "
+            "separates a good answer for this task from a bad one is unknown — "
+            "assess it with `traigent-eval-audit`."
+        ),
+    }
+
+
+def _all_clear_step() -> dict:
     return {
         "branch": "g",
         "skills": ["traigent-optimize-run"],
@@ -3511,6 +4159,52 @@ def next_step(
             "then one small bounded run, with `traigent-optimize-run`."
         ),
     }
+
+
+def _knob_step_on(knob: dict | None, branch: str) -> dict | None:
+    return knob if knob is not None and knob["branch"] == branch else None
+
+
+def next_step(
+    inventory: PythonInventory,
+    reports: list[DatasetReport],
+    probe: dict | None,
+    probed: ScorerCandidate | None,
+    *,
+    skipped_files: list[str] | tuple[str, ...] = (),
+    dataset_notes: list[str] | tuple[str, ...] = (),
+    dataset_named: bool = False,
+) -> dict:
+    """Exactly one next step, chosen by the most blocking finding.
+
+    The Agent and Dataset rungs read the same `knob_wiring`, `inventory_gap`
+    and `dataset_findings` the area cards read, so `g` is reached only when
+    the Agent, Dataset and Scorer areas all read `ok`.
+    """
+    metrics = probe_metrics(probe)
+    wiring = knob_wiring(entry_point_records(inventory.entry_points))
+    knob = knob_step(wiring)
+
+    if not inventory.entry_points:
+        return _no_entry_point_step(inventory)
+
+    # Each rung is tried in priority order; the first that applies is the step.
+    # Knob wiring that is partly broken or unconfirmed (`h`) is concrete spend,
+    # but below the dataset faults that make a run worthless outright.
+    rungs = (
+        lambda: _knob_step_on(knob, "b"),
+        lambda: _scorer_step(inventory, metrics, probed),
+        lambda: _dataset_step(reports, skipped_files, dataset_notes, dataset_named),
+        lambda: _knob_step_on(knob, "h"),
+        lambda: _inventory_gap_step(inventory),
+        lambda: _dataset_fact_step(reports, skipped_files, dataset_notes),
+        lambda: _placeholder_probe_step(probe, probed),
+    )
+    for rung in rungs:
+        step = rung()
+        if step is not None:
+            return step
+    return _all_clear_step()
 
 
 def open_questions(areas: dict, datasets: list[DatasetReport]) -> list[str]:
@@ -3585,8 +4279,6 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
     python_files = [path for path in files if path.suffix == ".py"]
     inventory = scan_python(python_files, root)
 
-    dataset_notes: list[str] = []
-    skipped_files: list[str] = []
     if args.dataset:
         reports, dataset_candidates, dataset_notes, skipped_files = explicit_datasets(
             Path(args.dataset), root
@@ -3596,74 +4288,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             files, root
         )
 
-    probed: ScorerCandidate | None = None
-    refusal: str | None = None
-    selected: ScorerCandidate | None = None
-    if args.scorer:
-        file_part, _, function_part = args.scorer.rpartition(":")
-        if not file_part or not function_part:
-            raise ValueError("--scorer must be given as FILE.py:FUNCTION")
-        # A relative selector is read against the working directory when that
-        # lands inside --root, else against --root: joined to the root once.
-        # Every read of the selected file uses this one resolved path.
-        sel_abs = os.path.realpath(root / relative(Path(file_part), root))
-        chosen_file = relative(Path(sel_abs), root)
-
-        def is_selection(file: str, function: str) -> bool:
-            # Same resolved path, not same spelling or inode. Known limit: on a
-            # case-insensitive volume a differently-cased selection lists twice.
-            return (
-                function == function_part
-                and os.path.realpath(root / file) == sel_abs
-            )
-
-        selected = next(
-            (
-                candidate
-                for candidate in inventory.scorers
-                if is_selection(candidate.file, candidate.function)
-            ),
-            None,
-        )
-        if selected is None:
-            kind, signals, line = classify_module_function(
-                Path(sel_abs), function_part
-            )
-            selected = ScorerCandidate(
-                function=function_part,
-                file=chosen_file,
-                line=line,
-                kind=kind,
-                signals=signals,
-                parameters=[],
-            )
-            # A selected function found by name IS a scorer, whatever its name
-            # and whether it is probed or refused: listing it keeps the scorer
-            # area, the next step and Tier 2 on one fact.
-            if line:
-                inventory.scorers.append(selected)
-                inventory.skipped_scorers = [
-                    item
-                    for item in inventory.skipped_scorers
-                    if not is_selection(item.file, item.function)
-                ]
-        # An explicit selection is not permission to run arbitrary code: a
-        # judge calls a provider and an executing scorer runs code, and this
-        # audit does neither, whichever way the scorer was chosen.
-        if selected.kind == "deterministic":
-            probed = selected
-        else:
-            refusal = (
-                f"`{selected.function}` at {selected.file} was selected with "
-                f"--scorer and refused: it is classified {selected.kind}"
-                + (f" ({'; '.join(selected.signals)})" if selected.signals else "")
-                + ", and this audit runs no scorer that calls a provider or "
-                "executes code — `traigent-eval-audit` assesses those"
-            )
-    else:
-        deterministic = [c for c in inventory.scorers if c.kind == "deterministic"]
-        if len(deterministic) == 1:
-            probed = deterministic[0]
+    selected, probed, refusal = _choose_scorer(args.scorer, inventory, root)
 
     interpreter = project_interpreter(root)
     probe: dict | None = None
@@ -3680,12 +4305,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             interpreter, probed, root, payload, args.repeats, isolation
         )
 
-    model_ids: list[str] = []
-    for entry in inventory.entry_points:
-        for knob in entry.knobs:
-            if knob.name in MODEL_KNOB_NAMES:
-                model_ids.extend(str(value) for value in knob.values)
-    model_ids = sorted(set(model_ids))
+    model_ids = _declared_model_ids(inventory)
 
     sdk = read_sdk_version(interpreter)
     keys = key_presence(root, files)
@@ -3717,14 +4337,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             "walkthrough": {
                 "dir": WALKTHROUGH_DIR,
                 "count": len(walkthrough_files),
-                # The first run's own tuning/holdout working copies, when present:
-                # named so the card can say where the graduate's reserved slice is.
-                "holdout_files": sorted(
-                    relative(path, root)
-                    for path in walkthrough_files
-                    if path.suffix.lower() in {".jsonl", ".json", ".csv"}
-                    and file_names_holdout(relative(path, root))
-                ),
+                "holdout_files": _walkthrough_holdout_files(walkthrough_files, root),
             },
         },
         "areas": areas,
@@ -3738,35 +4351,9 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             "near_duplicate_row_ceiling": NEAR_DUPLICATE_LIMIT,
             "source": "skills/traigent-dataset-curate/SKILL.md",
         },
-        "datasets": [
-            {
-                "file": report.file,
-                "rows": report.rows,
-                "input_keys": report.input_key_counts,
-                "gold_keys": report.expected_key_counts,
-                "missing_gold_rows": report.missing_expected,
-                "missing_gold_counts": report.missing_gold_counts,
-                "duplicate_groups": report.exact_duplicate_groups,
-                "near_duplicate_pairs": report.near_duplicate_pairs,
-                "splits": report.split_counts,
-                "holdout_rows": report.holdout_rows,
-                "holdout_overlap_rows": report.holdout_overlap,
-                "label_counts": report.label_counts,
-                "findings": report.findings,
-                "notes": report.notes,
-                "rows_without_sdk_input_key": report.rows_without_sdk_input,
-            }
-            for report in reports
-        ],
+        "datasets": [_dataset_record(report) for report in reports],
         "scorers": [
-            {
-                "function": candidate.function,
-                "file": candidate.file,
-                "line": candidate.line,
-                "kind": candidate.kind,
-                "signals": candidate.signals,
-                **({"selected": True} if candidate is selected else {}),
-            }
+            _scorer_record(candidate, candidate is selected)
             for candidate in inventory.scorers
         ],
         "skipped_scorer_candidates": [
@@ -3797,6 +4384,141 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         },
         "open_questions": open_questions(areas, reports),
         "not_established": not_established(guard_level),
+    }
+
+
+def _choose_scorer(
+    selector: str | None, inventory: PythonInventory, root: Path
+) -> tuple[ScorerCandidate | None, ScorerCandidate | None, str | None]:
+    """``(selected, probed, refusal)``.
+
+    Without ``--scorer`` the only deterministic scorer found, if exactly one,
+    is probed. With it, the selected function is probed only when it is
+    deterministic. An explicit selection is not permission to run arbitrary
+    code: a judge calls a provider and an executing scorer runs code, and this
+    audit does neither, whichever way the scorer was chosen.
+    """
+    if not selector:
+        deterministic = [c for c in inventory.scorers if c.kind == "deterministic"]
+        return None, (deterministic[0] if len(deterministic) == 1 else None), None
+    selected = _select_scorer(selector, inventory, root)
+    if selected.kind == "deterministic":
+        return selected, selected, None
+    refusal = (
+        f"`{selected.function}` at {selected.file} was selected with "
+        f"--scorer and refused: it is classified {selected.kind}"
+        + (f" ({'; '.join(selected.signals)})" if selected.signals else "")
+        + ", and this audit runs no scorer that calls a provider or "
+        "executes code — `traigent-eval-audit` assesses those"
+    )
+    return selected, None, refusal
+
+
+def _select_scorer(
+    selector: str, inventory: PythonInventory, root: Path
+) -> ScorerCandidate:
+    """The scorer named by ``--scorer FILE.py:FUNCTION``: the inventory's own
+    record when it has one, else a record classified from the module."""
+    file_part, _, function_part = selector.rpartition(":")
+    if not file_part or not function_part:
+        raise ValueError("--scorer must be given as FILE.py:FUNCTION")
+    # A relative selector is read against the working directory when that
+    # lands inside --root, else against --root: joined to the root once.
+    # Every read of the selected file uses this one resolved path.
+    sel_abs = os.path.realpath(root / relative(Path(file_part), root))
+    chosen_file = relative(Path(sel_abs), root)
+
+    def is_selection(file: str, function: str) -> bool:
+        # Same resolved path, not same spelling or inode. Known limit: on a
+        # case-insensitive volume a differently-cased selection lists twice.
+        return function == function_part and os.path.realpath(root / file) == sel_abs
+
+    selected = next(
+        (
+            candidate
+            for candidate in inventory.scorers
+            if is_selection(candidate.file, candidate.function)
+        ),
+        None,
+    )
+    if selected is not None:
+        return selected
+    kind, signals, line = classify_module_function(Path(sel_abs), function_part)
+    selected = ScorerCandidate(
+        function=function_part,
+        file=chosen_file,
+        line=line,
+        kind=kind,
+        signals=signals,
+        parameters=[],
+    )
+    # A selected function found by name IS a scorer, whatever its name
+    # and whether it is probed or refused: listing it keeps the scorer
+    # area, the next step and Tier 2 on one fact.
+    if line:
+        inventory.scorers.append(selected)
+        inventory.skipped_scorers = [
+            item
+            for item in inventory.skipped_scorers
+            if not is_selection(item.file, item.function)
+        ]
+    return selected
+
+
+def _declared_model_ids(inventory: PythonInventory) -> list[str]:
+    """Every value of a model-named knob, as text, sorted and deduplicated."""
+    model_ids = [
+        str(value)
+        for entry in inventory.entry_points
+        for knob in entry.knobs
+        if knob.name in MODEL_KNOB_NAMES
+        for value in knob.values
+    ]
+    return sorted(set(model_ids))
+
+
+def _walkthrough_holdout_files(walkthrough_files: list[Path], root: Path) -> list[str]:
+    """The first run's own tuning/holdout working copies, when present: named
+    so the card can say where the graduate's reserved slice is."""
+    return sorted(
+        relative(path, root)
+        for path in walkthrough_files
+        if path.suffix.lower() in {".jsonl", ".json", ".csv"}
+        and file_names_holdout(relative(path, root))
+    )
+
+
+def _dataset_record(report: DatasetReport) -> dict:
+    """One dataset file as the report's `datasets` record."""
+    return {
+        "file": report.file,
+        "rows": report.rows,
+        "input_keys": report.input_key_counts,
+        "gold_keys": report.expected_key_counts,
+        "missing_gold_rows": report.missing_expected,
+        "missing_gold_counts": report.missing_gold_counts,
+        "duplicate_groups": report.exact_duplicate_groups,
+        "near_duplicate_pairs": report.near_duplicate_pairs,
+        "splits": report.split_counts,
+        "holdout_rows": report.holdout_rows,
+        "holdout_overlap_rows": report.holdout_overlap,
+        "label_counts": report.label_counts,
+        "findings": report.findings,
+        "notes": report.notes,
+        "rows_without_sdk_input_key": report.rows_without_sdk_input,
+    }
+
+
+def _scorer_record(candidate: ScorerCandidate, selected: bool) -> dict:
+    """One scorer as the report's `scorers` record; ``selected`` only when it
+    is the ``--scorer`` choice."""
+    return {
+        "function": candidate.function,
+        "file": candidate.file,
+        "line": candidate.line,
+        "kind": candidate.kind,
+        "signals": candidate.signals,
+        **({"selected": True} if selected else {}),
     }
 
 
