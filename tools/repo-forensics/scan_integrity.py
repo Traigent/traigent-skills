@@ -176,6 +176,8 @@ def find_critical_files(repo_path):
                             if os.path.isfile(resolved_script):
                                 rp = os.path.relpath(resolved_script, repo_path)
                                 found[rp] = resolved_script
+        except json.JSONDecodeError:
+            pass  # malformed settings.json (a ValueError subclass): nothing more to check
         except ValueError as e:
             print(
                 f"[!] {SCANNER_NAME}: Skipping out-of-root file {settings_path}: {e}",
@@ -184,8 +186,8 @@ def find_critical_files(repo_path):
             findings.append(
                 _skip_out_of_root_finding(".claude/settings.json", settings_path, str(e))
             )
-        except (json.JSONDecodeError, OSError):
-            pass  # malformed or unreadable settings.json: nothing more to check
+        except OSError:
+            pass  # unreadable settings.json: nothing more to check
 
     return found, findings
 

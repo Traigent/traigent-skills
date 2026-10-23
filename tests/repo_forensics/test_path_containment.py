@@ -157,3 +157,18 @@ def test_scan_integrity_find_critical_files_refuses_symlink_outside_root(
     captured = capsys.readouterr()
     assert "Skipping out-of-root file" in captured.err
     assert "outside repo root" in captured.err
+
+
+def test_scan_integrity_malformed_settings_json_is_not_reported_out_of_root(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    (repo / ".claude").mkdir(parents=True)
+    (repo / ".claude" / "settings.json").write_text("{not json", encoding="utf-8")
+
+    critical_files, findings = scan_integrity.find_critical_files(str(repo))
+
+    # json.JSONDecodeError subclasses ValueError; it must not be mistaken for
+    # the out-of-root ValueError raised by the containment helpers.
+    assert findings == []
+    assert ".claude/settings.json" in critical_files or critical_files == {}
