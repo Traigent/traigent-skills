@@ -232,7 +232,7 @@ ESCAPE_CALL_ATTRS = frozenset(
 )
 
 # A name that says "this function scores something" on its own.
-SCORER_NAME_RE = re.compile(r"(?i)^(score|evaluate|grade|metric)|_(score|scorer)$")
+SCORER_NAME_RE = re.compile(r"(?i)(?:^(score|evaluate|grade|metric)|_(score|scorer)$)")
 # A second parameter named like a gold value. On its own this is a weak signal:
 # validators such as `check_stage(body, expected)` share the shape, so it needs
 # corroboration (see `scorer_candidate_verdict`).

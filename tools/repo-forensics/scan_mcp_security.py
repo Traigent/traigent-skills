@@ -151,7 +151,7 @@ MCP_CONFIG_RISKS = [
     ),
     (
         re.compile(
-            r'(?i)(ANTHROPIC_BASE_URL|anthropic_base_url)\s*[=:]\s*["\']?https?://'
+            r'(?i)(ANTHROPIC_BASE_URL)\s*[=:]\s*["\']?https?://'
         ),
         "ANTHROPIC_BASE_URL override (CVE-2026-21852: API key exfiltration risk)",
     ),
@@ -221,7 +221,7 @@ SAMPLING_INJECTION_PATTERNS = [
 CROSS_DOMAIN_PATTERNS = [
     (
         re.compile(
-            r"(?i)(GITHUB_TOKEN|github_token)\s*=\s*(os\.environ|os\.getenv|process\.env)"
+            r"(?i)(GITHUB_TOKEN)\s*=\s*(os\.environ|os\.getenv|process\.env)"
         ),
         "GITHUB_TOKEN in MCP server (write-scope risk)",
     ),
