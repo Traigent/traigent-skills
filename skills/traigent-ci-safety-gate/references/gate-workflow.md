@@ -52,9 +52,11 @@ jobs:
       # "0.01" can fail too, because the pre-run check uses a conservative
       # estimate even offline -- measured at $0.32 for a two-row dataset and
       # two grid trials, so scale the figure to your job before trusting it.
-      # Leave it unset (the $2.00 default) and rely on
-      # TRAIGENT_OFFLINE_MODE for zero spend; set a cap only in the paid job,
-      # above the estimate for its dataset and trial count.
+      # Offline mode alone does NOT give zero spend: it stops only Traigent
+      # backend communication, and real LLM calls still happen. Zero model
+      # spend requires mocking the model (TRAIGENT_MOCK_LLM=true or a stub).
+      # In a mocked job leave the cap unset (the $2.00 default); in the paid
+      # job set a cap above the estimate for its dataset and trial count.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

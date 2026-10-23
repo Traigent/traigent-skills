@@ -188,7 +188,6 @@ import litellm
             "claude-sonnet-5-5",  # Anthropic
             "gemini/gemini-3-flash",    # Google
         ],
-        "temperature": [0.0, 0.3, 0.7],
         "max_tokens": [1024, 2048],  # headroom-safe: the pool includes a reasoning model (see note above)
     },
     objectives=["accuracy"],
@@ -200,7 +199,6 @@ def classify_text(text):
     response = litellm.completion(
         model=config["model"],
         messages=[{"role": "user", "content": f"Classify this text: {text}"}],
-        temperature=config["temperature"],
         max_tokens=config["max_tokens"],
     )
     return response.choices[0].message.content
@@ -213,6 +211,8 @@ for trial in results.successful_trials:
     accuracy = trial.get_metric("accuracy", 0.0)
     print(f"{model}: accuracy={accuracy:.2%}")
 ```
+
+> Claude Haiku 5.5 and Sonnet 5.5 reject the `temperature` parameter (LiteLLM 1.106.0 raises `UnsupportedParamsError`), so this example tunes `model` and `max_tokens` only and never passes `temperature`; add `temperature` to a space only for models that accept it.
 
 LiteLLM handles API key routing automatically based on the model prefix. Set provider API keys in environment variables:
 

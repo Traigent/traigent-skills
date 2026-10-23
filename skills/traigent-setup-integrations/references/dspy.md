@@ -147,11 +147,11 @@ import dspy
 @traigent.optimize(
     eval_dataset="qa_eval.jsonl",
     configuration_space={
-        "model": ["gpt-4o-mini", "gpt-4o", "claude-haiku-5-5"],
+        "model": ["gpt-4o-mini", "gpt-4o"],  # no Claude 5.5 models here: they reject `temperature`
         "temperature": [0.0, 0.3, 0.7],
     },
     objectives=["accuracy"],
-    max_trials=9,
+    max_trials=6,
 )
 def optimized_qa(question):
     config = traigent.get_config()

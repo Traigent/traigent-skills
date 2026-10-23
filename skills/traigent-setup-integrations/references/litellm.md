@@ -126,7 +126,6 @@ import litellm
             "claude-sonnet-5-5",
             "gemini/gemini-3-flash",
         ],
-        "temperature": [0.0, 0.3, 0.7],
         "max_tokens": [1024, 2048],  # headroom-safe: the pool includes a reasoning model (see note above)
     },
     objectives=["accuracy"],
@@ -138,13 +137,14 @@ def answer(question):
     response = litellm.completion(
         model=config["model"],
         messages=[{"role": "user", "content": question}],
-        temperature=config["temperature"],
         max_tokens=config["max_tokens"],
     )
     return response.choices[0].message.content
 
 results = answer.optimize_sync()
 ```
+
+> Claude Haiku 5.5 and Sonnet 5.5 reject the `temperature` parameter (LiteLLM 1.106.0 raises `UnsupportedParamsError`), so this example tunes `model` and `max_tokens` only and never passes `temperature`; add `temperature` to a space only for models that accept it.
 
 ## Cost Tracking
 
@@ -213,7 +213,6 @@ import litellm
             "gemini/gemini-3-flash",
             "gemini/gemini-3.1-pro",
         ],
-        "temperature": [0.0, 0.3, 0.5, 0.7],
         "max_tokens": [1024, 2048],  # headroom-safe: the pool includes reasoning models (see note above)
     },
     objectives=["accuracy"],
@@ -228,7 +227,6 @@ def generate_response(prompt):
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt},
         ],
-        temperature=config["temperature"],
         max_tokens=config["max_tokens"],
     )
     return response.choices[0].message.content
@@ -239,7 +237,7 @@ results = generate_response.optimize_sync()
 
 # Analyze results
 print(f"Best model: {results.best_config['model']}")
-print(f"Best temperature: {results.best_config['temperature']}")
+print(f"Best max_tokens: {results.best_config['max_tokens']}")
 print(f"Best score: {results.best_score:.3f}")
 print(f"Total cost: ${results.total_cost:.4f}" if results.total_cost else "Cost not tracked")
 print(f"Trials: {len(results.successful_trials)}/{len(results.trials)} successful")
@@ -247,7 +245,7 @@ print(f"Trials: {len(results.successful_trials)}/{len(results.trials)} successfu
 # Apply best config
 if results.best_score is not None and results.best_score >= 0.8:
     generate_response.apply_best_config(results)
-    # Now generate_response() uses the best model/temperature/max_tokens
+    # Now generate_response() uses the best model/max_tokens
 ```
 
 ## Tips

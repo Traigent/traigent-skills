@@ -139,7 +139,7 @@ answer = my_function("What is Python?")
 
 SAFETY: run a holdout regression check against a pinned baseline config.
 
-- Pull request job: run offline/mock under `TRAIGENT_OFFLINE_MODE=true` to verify wiring, script shape, and fail-closed behavior without spending.
+- Pull request job: run offline/mock under `TRAIGENT_OFFLINE_MODE=true` to verify wiring, script shape, and fail-closed behavior. Offline mode stops only Traigent backend communication; real LLM calls still happen, so add `TRAIGENT_MOCK_LLM=true` (or a stub) for zero model spend.
 - Scheduled job: run the real holdout evaluation under `TRAIGENT_RUN_COST_LIMIT` with account credentials and compare candidate vs incumbent. That limit bounds only calls placed through the SDK; the holdout script's own provider calls are bounded by the script (rows × configs × a per-call cap), and it must write the **measured** `total_cost` — a `0.0` placeholder or a missing field would make `--max-cost` pass vacuously, so the holdout script refuses a `0.0` total after real calls (cost is not wired) and the gate script refuses a missing, NaN or negative field.
 
 Any CI workflow that executes `optimize()` or `optimize_sync()` in local/offline mode, including
@@ -176,7 +176,8 @@ permissions:
   contents: read
 
 jobs:
-  # PR job: offline wiring check only — static env, zero spend. The paid
+  # PR job: offline wiring check only — static env; zero model spend needs the
+  # mock (TRAIGENT_MOCK_LLM=true) or a stub, not offline mode alone. The paid
   # nightly job is a separate job with its own static env; see
   # references/gate-workflow.md for the full two-job workflow.
   safety-gate:
@@ -194,9 +195,11 @@ jobs:
       # "0.01" can fail too, because the pre-run check uses a conservative
       # estimate even offline -- measured at $0.32 for a two-row dataset and
       # two grid trials, so scale the figure to your job before trusting it.
-      # Leave it unset (the $2.00 default) and rely on
-      # TRAIGENT_OFFLINE_MODE for zero spend; set a cap only in the paid job,
-      # above the estimate for its dataset and trial count.
+      # Offline mode alone does NOT give zero spend: it stops only Traigent
+      # backend communication, and real LLM calls still happen. Zero model
+      # spend requires mocking the model (TRAIGENT_MOCK_LLM=true or a stub).
+      # In a mocked job leave the cap unset (the $2.00 default); in the paid
+      # job set a cap above the estimate for its dataset and trial count.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
