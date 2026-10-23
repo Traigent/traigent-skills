@@ -41,7 +41,10 @@ can still be `best_config`. One sample is one completed trial. Below
 `min_samples` completed trials (default 30) it never halts; at or after that
 floor the run stops with `stop_reason == "safety_constraint"` when the
 confidence lower bound on per-trial compliance is below the required rate —
-including when every trial complied but there is not yet enough evidence. The
+including when every trial complied but there is not yet enough evidence (on
+SDK 0.31.0 and later that case reports the distinct
+`stop_reason == "safety_constraint_insufficient_evidence"`; treat both values
+as a safety halt, and neither as a pass). The
 check runs after the `max_trials` check, so a failing constraint on the trial
 that reaches `max_trials` (or on a run that ends below `min_samples`) leaves a
 non-safety `stop_reason` such as `"max_trials_reached"`; that is not a pass,
