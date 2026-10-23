@@ -268,6 +268,20 @@ skills:
       - traigent/tvl/models.py
       - traigent/tvl/__main__.py
 
+  # Person-step handoff: reads agent readiness / next-step and the reviewer-grant
+  # list over documented v1beta REST. RuntimeClient.get_next_step
+  # (traigent/runtime/client.py) is on the SDK development branch only and is not
+  # in the 0.31.0 release, so no fenced block imports it; the skill teaches a
+  # requests call that uses the SDK User-Agent and BackendConfig instead.
+  traigent-readiness-person-steps:
+    min_sdk_version: "0.24.0"
+    modules:
+      - traigent.cloud.user_agent
+      - traigent.config.backend_config
+    sdk_paths:
+      - traigent/cloud/user_agent.py
+      - traigent/config/backend_config.py
+
   # Union of the three guidance-flow entries this skill was merged from
   # (run-plan, next-run, iterate), folded in during the 2026-07 taxonomy
   # consolidation.

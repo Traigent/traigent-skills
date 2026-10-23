@@ -1,0 +1,26 @@
+{
+  "schema": "skill-provenance/v1",
+  "doc_hash": "48a1e9aca3516dd2",
+  "entries": [
+    {
+      "edit_id": "genesis",
+      "op": "genesis",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-23T00:00:00Z",
+      "note": "genesis: person-step handoff skill from the owner-approved interface decision method (card product-2026-10-23-interface-decision-method): detect PERSON steps in readiness next-step and also_needed, build portal links, check reviewer grants before a sign-off, post one request, wait, verify by re-reading readiness. Experimental: RuntimeClient is not in a stable SDK release.",
+      "source_type": "owner_intent"
+    },
+    {
+      "edit_id": "interaction-policy-v1",
+      "op": "sync",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-23T00:00:00Z",
+      "doc_before_hash": "75c786df90675c63",
+      "doc_after_hash": "48a1e9aca3516dd2",
+      "note": "inject shared interaction-policy managed region",
+      "source_type": "human"
+    }
+  ]
+}

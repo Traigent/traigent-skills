@@ -23,6 +23,7 @@
     {"name": "traigent-analyze-variable-importance", "stage": "analyze", "maturity": "stable"},
     {"name": "traigent-ci-safety-gate", "stage": "gate-debug", "maturity": "stable"},
     {"name": "traigent-debugging", "stage": "gate-debug", "maturity": "stable"},
+    {"name": "traigent-readiness-person-steps", "stage": "gate-debug", "maturity": "experimental"},
     {"name": "traigent-js", "stage": "javascript", "maturity": "stable"},
     {"name": "traigent-recipe-text2sql", "stage": "recipe", "maturity": "stable"}
   ]

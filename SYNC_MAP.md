@@ -22,6 +22,7 @@ When SDK source files change (in the [`Traigent`](https://github.com/Traigent/Tr
 | `traigent-eval-build` | `traigent/api/decorators.py`, `traigent/api/types.py`, `traigent/evaluators/base.py`, `traigent/evaluators/local.py`, `traigent/evaluators/hybrid_api.py` |
 | `traigent-eval-audit` | `traigent/api/decorators.py`, `traigent/api/types.py` |
 | `traigent-ci-safety-gate` | `traigent/api/decorators.py`, `traigent/api/safety.py`, `traigent/tvl/promotion_gate.py`, `traigent/tvl/models.py`, `traigent/tvl/__main__.py` |
+| `traigent-readiness-person-steps` | `traigent/cloud/user_agent.py`, `traigent/config/backend_config.py` |
 | `traigent-analyze-guidance` | `traigent/api/decorators.py`, `traigent/core/optimized_function.py`, `traigent/api/types.py`, `traigent/utils/insights.py`, `traigent/utils/importance.py`, `traigent/analytics/example_insights.py` |
 | `traigent-recipe-text2sql` | `traigent/__init__.py`, `traigent/api/decorators.py`, `traigent/core/objectives.py`, `traigent/evaluators/base.py`, `traigent/testing/*`, `traigent/core/optimized_function.py` |
 | `traigent-setup-audit` | `traigent/cli/main.py`, `traigent/cli/function_discovery.py`, `traigent/integrations/model_discovery/*`, `traigent/evaluators/base.py`, `traigent/cloud/auth.py`, `traigent/cloud/user_agent.py`, `traigent/cloud/analytics_client.py`, `skills/traigent-dataset-curate/SKILL.md` |

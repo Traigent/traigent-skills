@@ -23,7 +23,7 @@ The eight skills that propose, size, or judge a run also carry a shared **econom
 
 ## Skills
 
-These 19 skills guide your agent through the full Traigent optimization lifecycle, grouped by the stage where you'd reach for them:
+These 20 skills guide your agent through the full Traigent optimization lifecycle, grouped by the stage where you'd reach for them:
 
 | Stage | Skill | Description |
 | ----- | ----- | ----------- |
@@ -44,6 +44,7 @@ These 19 skills guide your agent through the full Traigent optimization lifecycl
 | Analyze | [traigent-analyze-variable-importance](skills/traigent-analyze-variable-importance/) | Rank which tuned variables actually drove observed optimization gains — per-value objective spread, variance-decomposition share, bootstrap confidence intervals, honest `significant` vs `directional` labels, and a one-glance SVG summary card. |
 | Gate & Debug | [traigent-ci-safety-gate](skills/traigent-ci-safety-gate/) | Gate an optimized agent — candidate-vs-incumbent `PromotionGate`, TVL spec validation, in-run `safety_constraints` (SDK 0.28.0+: a statistical run halt, not a trial filter), and GitHub Actions checks for safety (holdout regression) and efficiency (cost/latency budgets). |
 | Gate & Debug | [traigent-debugging](skills/traigent-debugging/) | Troubleshoot optimization failures — mock mode for CI/CD without API keys, `traigent.configure(logging_level="DEBUG")` logging, error-class reference (`CostLimitExceeded`, `ConfigurationError`, `OptimizationStateError`), portal / local-fallback diagnosis for a connected run that ended local-only, and missing-dependency diagnosis. |
+| Gate & Debug | [traigent-readiness-person-steps](skills/traigent-readiness-person-steps/) | Hand a person-only readiness step to a human, then verify it — detect `PERSON` steps in an agent's next step and `also_needed`, build the portal link for each (owner, deployment stage, criticality, accuracy requirement, evaluation-set and evaluator sign-off, reviewer grant), check a reviewer grant exists before a sign-off, post one request, wait, and re-read readiness to report exactly what changed. Never performs a person-only act with an API key. Experimental: `RuntimeClient` is not in a stable SDK release yet. |
 | JS/TS | [traigent-js](skills/traigent-js/) | Set up and run native JavaScript/TypeScript optimization with `@traigent/sdk` — `optimize(spec)(agentFn)`, `param.*` search spaces, evaluation blocks, trial context, budgets, injection modes, and hybrid config-space authoring. |
 | Recipes | [traigent-recipe-text2sql](skills/traigent-recipe-text2sql/) | End-to-end recipe to optimize a text2SQL agent with Traigent and reach high accuracy at low cost. Use when wiring a SPIDER-style NL->SQL agent with @traigent.optimize: execution-match scoring, model + structural knobs, weighted ACL objectives, mock dry-run, then a real portal-tracked run. Captures the working configuration that took a plain agent from 20/30 -> 27/30 on its tuning slice on the cheap model (counts that predate the recipe's result_eq comparator and were not re-scored with it). |
 
@@ -74,7 +75,7 @@ These skills were renamed or merged as part of a taxonomy consolidation. No prio
 ### As a plugin (recommended — one step)
 
 This repo is a plugin marketplace for Claude Code, OpenAI Codex CLI, and GitHub Copilot CLI.
-Installing the `traigent` plugin gives you all 19 skills at once,
+Installing the `traigent` plugin gives you all 20 skills at once,
 namespaced as `traigent:<skill-name>`. On Claude Code and Copilot CLI, updates
 arrive through the agent's normal plugin-update flow.
 
