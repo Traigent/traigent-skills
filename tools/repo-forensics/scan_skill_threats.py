@@ -128,7 +128,7 @@ HOMOGLYPH_PATTERN = re.compile("[" + "".join(HOMOGLYPHS.keys()) + "]")
 PREREQUISITE_PATTERNS = [
     (
         re.compile(
-            r"(?i)(curl|wget)\s+.*(https?://|ftp://).*\|\s*(sh|bash|python|ruby|perl)"
+            r"(?i)(curl|wget)\s.*(https?://|ftp://).*\|\s*(sh|bash|python|ruby|perl)"
         ),
         "Pipe-to-shell download pattern",
     ),
@@ -147,7 +147,7 @@ PREREQUISITE_PATTERNS = [
         "macOS package installer elevation",
     ),
     (
-        re.compile(r"(?i)(pip|npm|gem)\s+install\s+.*--force"),
+        re.compile(r"(?i)(pip|npm|gem)\s+install\s.*--force"),
         "Forced package installation",
     ),
     (re.compile(r"(?i)chmod\s+777"), "World-writable permissions"),
@@ -293,7 +293,7 @@ STEALTH_PATTERNS = [
         "Full output suppression with background",
     ),
     (
-        re.compile(r"(?i)(nohup|disown|setsid)\s+.*(curl|wget|python|node|bash)"),
+        re.compile(r"(?i)(nohup|disown|setsid)\s.*(curl|wget|python|node|bash)"),
         "Detached background process",
     ),
 ]
@@ -346,7 +346,7 @@ KNOWN_MALICIOUS_AUTHORS = [
 CLICKFIX_PATTERNS = [
     (
         re.compile(
-            r"(?i)(curl|wget)\s+.*(https?://).*\|\s*(base64\s+-d|base64\s+--decode)\s*\|\s*(bash|sh|python)"
+            r"(?i)(curl|wget)\s.*(https?://).*\|\s*(base64\s+-d|base64\s+--decode)\s*\|\s*(bash|sh|python)"
         ),
         "ClickFix pipe: download | base64-decode | shell exec",
     ),
@@ -362,7 +362,7 @@ CLICKFIX_PATTERNS = [
         "Python one-liner with suspicious import",
     ),
     (
-        re.compile(r"(?i)(curl|wget)\s+.*-s\s+.*\|\s*(python|python3)\s+-"),
+        re.compile(r"(?i)(curl|wget)\s.*-s\s.*\|\s*(python|python3)\s+-"),
         "Silent download piped to Python interpreter",
     ),
     (

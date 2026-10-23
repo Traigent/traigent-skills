@@ -131,7 +131,7 @@ SAST_PATTERNS = {
             "name": "SQL String Concat",
             "severity": "high",
             "regex": re.compile(
-                r"(?i)(SELECT|INSERT|UPDATE|DELETE)\s+.*\+\s*(?:req\.|params\.|query\.)"
+                r"(?i)(SELECT|INSERT|UPDATE|DELETE)\s.*\+\s*(?:req\.|params\.|query\.)"
             ),
             "category": "injection",
         },
@@ -280,7 +280,7 @@ SAST_PATTERNS = {
         {
             "name": "Curl Pipe Bash",
             "severity": "critical",
-            "regex": re.compile(r"curl\s+.*\|\s*(ba)?sh"),
+            "regex": re.compile(r"curl\s.*\|\s*(ba)?sh"),
             "category": "shell-injection",
         },
         {

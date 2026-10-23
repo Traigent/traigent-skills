@@ -262,7 +262,7 @@ LOG_EXFIL_PATTERNS = [
         "Logging to external HTTP endpoint",
     ),
     (
-        re.compile(r"(?i)(tool_call|tool_result)\s*.*requests\.(post|put)\s*\("),
+        re.compile(r"(?i)(tool_call|tool_result).*requests\.(post|put)\s*\("),
         "Tool call data sent via HTTP POST",
     ),
     (

@@ -54,7 +54,7 @@ ORDERS = ("candidate_first", "reference_first")
 RESULT_KEYS = ("protocol", "judge", "orders", "verdicts")
 VERDICT_KEYS = ("example_id", "verdict")
 
-_CLEAN = re.compile(r"\A\s*[\"']?\s*([A-Za-z-]+)\s*[\"']?\.?\s*\Z")
+_CLEAN = re.compile(r"\A\s*(?:[\"']\s*)?([A-Za-z-]+)\s*(?:(?:[\"']\.?|\.)\s*)?\Z")
 
 
 def _sha256(text: str) -> str:
