@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e3f4f78563a57207",
+  "doc_hash": "a3ad34a0f92f7e2c",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
-    "references/cost-management.md": "808d5b88b589b32b",
+    "references/cost-management.md": "e1f5a2b9b74462d8",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/execution-budget.md": "23d17308f849017b",
     "references/parallel-config.md": "2938f82d7a778d5f",
@@ -400,6 +400,17 @@
       "doc_before_hash": "85c074342bcdfb9e",
       "doc_after_hash": "e3f4f78563a57207",
       "note": "Review round 1 corrections: typed SDK errors are not run-terminal (trial lifecycle records a failed trial); per-example timeout cap scoped to the default local evaluator; judge capture is isolated per evaluation (no concurrent-trial caveat); project .env loads at SDK import; README credential-read wording aligned (#429, #431, #417, #443, #427).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "recent-issues-2026-10-21",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-21T00:00:00Z",
+      "doc_before_hash": "e3f4f78563a57207",
+      "doc_after_hash": "a3ad34a0f92f7e2c",
+      "note": "Issue sweep 2026-10-21 against SDK 0.30.0: install floor >=0.24.0 with a floor-enforcing install check (#442); current Anthropic model IDs (#450); OpenAI real-run tier IDs and a litellm>=1.106.0 pin (#451); tuning-dataset path (#452); holdout reference script reads the export_config wrapper and the SDK's label keys (#453); PR-job cost limit removed and the TVL note version-stamped (#454); auth device-login and TRAIGENT_DEBUG wording (#455); ProviderValidationError, TRAIGENT_STRICT_COST_ACCOUNTING, row-metadata merge and the models --check typo claim (#447).",
       "source_type": "agent"
     }
   ]

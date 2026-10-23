@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.34"
+  version: "1.0.35"
 ---
 
 # Traigent Quickstart
@@ -122,21 +122,37 @@ quickstart because `litellm` ships in core. Install optional extras only after t
 run succeeds.
 
 ```bash
-pip install "traigent>=0.19"
+pip install "traigent>=0.24.0"
 python - <<'PY'
 import importlib.metadata as md
 import traigent
+
+FLOOR = "0.24.0"  # the floor these skills are written against
 v = md.version("traigent")
 if v == "0.0.1" or not hasattr(traigent, "optimize"):
     raise SystemExit(
         f"Bad Traigent install: traigent {v}. "
-        'You likely got the PyPI placeholder — reinstall with: python -m pip install --upgrade "traigent>=0.19"'
+        'You likely got the PyPI placeholder — reinstall with: python -m pip install --upgrade "traigent>=0.24.0"'
+    )
+
+# Imported only after the placeholder check: the 0.0.1 placeholder declares no
+# dependencies, so in a fresh venv this import would raise ModuleNotFoundError
+# and hide the message above -- in exactly the case that message exists for.
+# A real install always has it (traigent -> litellm -> packaging>=24.0).
+from packaging.version import Version
+
+if Version(v) < Version(FLOOR):
+    raise SystemExit(
+        f"Traigent {v} is below the {FLOOR} floor these skills are written against "
+        "(cost/latency metric units changed in 0.23.0, `traigent plan` URL resolution in "
+        "0.20.0, and the `auto`/smart selector names in 0.20.1). "
+        'Upgrade with: python -m pip install --upgrade "traigent>=0.24.0"'
     )
 print(f"traigent {v} OK")
 PY
 ```
 
-> **Warning:** pip printing `traigent 0.0.1 does not provide the extra ...` is **FATAL** — you installed the placeholder package; reinstall with `python -m pip install --upgrade "traigent>=0.19"`. The same message with a real version (e.g. `traigent 0.27.0 does not provide the extra 'dspy'`) means that extra does not exist — reinstalling Traigent will not help; check `references/installation-extras.md`.
+> **Warning:** pip printing `traigent 0.0.1 does not provide the extra ...` is **FATAL** — you installed the placeholder package; reinstall with `python -m pip install --upgrade "traigent>=0.24.0"`. The same message with a real version (e.g. `traigent 0.27.0 does not provide the extra 'dspy'`) means that extra does not exist — reinstalling Traigent will not help; check `references/installation-extras.md`.
 
 ### Literal First Run (execution-only agents)
 
@@ -155,15 +171,31 @@ export LITELLM_LOCAL_MODEL_COST_MAP=True
 python -m venv .venv
 source .venv/bin/activate
 
-python -m pip install --upgrade --timeout 60 --retries 5 "traigent>=0.19"
+python -m pip install --upgrade --timeout 60 --retries 5 "traigent>=0.24.0"
 python - <<'PY'
 import importlib.metadata as md
 import traigent
+
+FLOOR = "0.24.0"  # the floor these skills are written against
 v = md.version("traigent")
 if v == "0.0.1" or not hasattr(traigent, "optimize"):
     raise SystemExit(
         f"Bad Traigent install: traigent {v}. "
-        'You likely got the PyPI placeholder — reinstall with: python -m pip install --upgrade "traigent>=0.19"'
+        'You likely got the PyPI placeholder — reinstall with: python -m pip install --upgrade "traigent>=0.24.0"'
+    )
+
+# Imported only after the placeholder check: the 0.0.1 placeholder declares no
+# dependencies, so in a fresh venv this import would raise ModuleNotFoundError
+# and hide the message above -- in exactly the case that message exists for.
+# A real install always has it (traigent -> litellm -> packaging>=24.0).
+from packaging.version import Version
+
+if Version(v) < Version(FLOOR):
+    raise SystemExit(
+        f"Traigent {v} is below the {FLOOR} floor these skills are written against "
+        "(cost/latency metric units changed in 0.23.0, `traigent plan` URL resolution in "
+        "0.20.0, and the `auto`/smart selector names in 0.20.1). "
+        'Upgrade with: python -m pip install --upgrade "traigent>=0.24.0"'
     )
 print(f"traigent {v} OK")
 PY
@@ -235,10 +267,10 @@ path here. A **fresh** venv is enough; you do **not** need `--system-site-packag
 
 ```bash
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-python -m pip install --upgrade "traigent>=0.19"
+python -m pip install --upgrade "traigent>=0.24.0"
 ```
 
-`pip install "traigent>=0.19"` resolves from PyPI and pulls `litellm` (a **core dependency**) along with
+`pip install "traigent>=0.24.0"` resolves from PyPI and pulls `litellm` (a **core dependency**) along with
 it, so the keyless mock path — which intercepts `litellm.completion(...)` — works immediately,
 with no extra install. Only the LangChain / OpenAI / Anthropic *adapter* clients live in the
 `integrations` extra (below).
@@ -253,19 +285,19 @@ Install these after the keyless mock run succeeds.
 
 ```bash
 # Recommended extras after the mock run succeeds
-pip install "traigent[recommended]>=0.19"
+pip install "traigent[recommended]>=0.24.0"
 
 # Framework integrations (LangChain, OpenAI, Anthropic, MLflow, W&B)
-pip install "traigent[integrations]>=0.19"
+pip install "traigent[integrations]>=0.24.0"
 
 # Analytics (numpy, pandas, matplotlib)
-pip install "traigent[analytics]>=0.19"
+pip install "traigent[analytics]>=0.24.0"
 
 # All optional features
-pip install "traigent[all]>=0.19"
+pip install "traigent[all]>=0.24.0"
 
 # Enterprise bundle (all production features)
-pip install "traigent[enterprise]>=0.19"
+pip install "traigent[enterprise]>=0.24.0"
 ```
 
 See `references/installation-extras.md` for the full table of extras and their contents.
@@ -290,7 +322,9 @@ Put the key in `.env` via [Using a .env File](#using-a-env-file) (its checks run
 
 The CLI device-flow issues a project-scoped `sk_`-prefixed key with broader permissions (quota, dataset management, full project access). Use this when you need project-level operations beyond experiments.
 
-Run `traigent auth login` in your terminal — it opens a browser for OAuth device authorization. The key is saved to your encrypted local credential store at `~/.traigent/secure_credentials.enc` (secured with `TRAIGENT_MASTER_PASSWORD`); the legacy plaintext `~/.traigent/credentials.json` is no longer read unless `TRAIGENT_ALLOW_PLAINTEXT_CREDENTIALS=true` is set for a one-time migration. If a process needs it as `TRAIGENT_API_KEY`, put it in `.env` the same way — not in an `export` typed at a shell prompt.
+Run `traigent auth device-login` in your terminal. It does **not** open a browser itself: it prints a URL and a one-time code for you to approve in a browser, then polls until the backend returns the project-scoped key or the request expires. Pass `--write-env` to also write the key to a local `.env`. `traigent auth login` is a different command — it prompts for your **email and password** and does not use the device flow.
+
+The key is saved to your encrypted local credential store at `~/.traigent/secure_credentials.enc` (secured with `TRAIGENT_MASTER_PASSWORD`); the legacy plaintext `~/.traigent/credentials.json` is no longer read unless `TRAIGENT_ALLOW_PLAINTEXT_CREDENTIALS=true` is set for a one-time migration. If a process needs it as `TRAIGENT_API_KEY`, put it in `.env` the same way — not in an `export` typed at a shell prompt.
 
 **Which key to use?** A Full-access portal key is sufficient for most optimization workflows. Use the device-flow key for quota management, cross-project access, or when the CLI reports permission errors.
 
@@ -347,7 +381,7 @@ enable_mock_mode_for_quickstart()
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
-- **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.19"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.19"`.)
+- **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.24.0"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.24.0"`.)
 - **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local. A `TRAIGENT_API_KEY` in the project `.env` counts as set on 0.28.0+ (see "Using a .env File"); use `TRAIGENT_OFFLINE_MODE=true` or `offline=True` for zero egress.
 - **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer).
 
@@ -461,10 +495,13 @@ For production, set your provider API keys (`OPENAI_API_KEY`, `ANTHROPIC_API_KEY
 
 > **Before your first real run, verify your model IDs are live.** Provider catalogs change — a
 > delisted or renamed ID causes a 404 or a degraded/unpriced trial. Preflight with
-> `traigent models --provider <p> --check <model_id>` (see the CLI Quick Reference below) to
-> catch typos and unknown ID shapes — but know its limit: the check validates against a
-> **shipped model snapshot with pattern-based fallback**, so a retired-but-well-formed ID still
-> passes; it does **not** detect provider-side delisting. To confirm an ID is actually live,
+> `traigent models --provider <p> --check <model_id>` (see the CLI Quick Reference below) — but
+> know its limits. The check validates against a **shipped model snapshot with pattern-based
+> fallback**, so it catches an ID whose prefix or shape is unknown but not a misspelling after a
+> known prefix: keyless, `gpt-4o-mnii` is reported `valid: true`, while `gtp-4o` is caught.
+> A retired-but-well-formed ID still passes. Keyless it sees no provider-side delisting, and the
+> snapshot lags upstream additions, so a `valid: false` can simply mean the ID is newer than this
+> SDK's snapshot. To confirm an ID is actually live,
 > query the provider's catalog directly (e.g. `curl -s https://openrouter.ai/api/v1/models`
 > for OpenRouter). The `traigent-setup-integrations` skill covers multi-provider model verification.
 
@@ -505,7 +542,7 @@ from pathlib import Path
 os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
 os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"
 
-import litellm  # pip install "traigent>=0.19"
+import litellm  # pip install "traigent>=0.24.0"
 import traigent
 from traigent import Choices
 from traigent.testing import enable_mock_mode_for_quickstart
@@ -705,7 +742,7 @@ traigent onboard         # guided first-run setup wizard
 | -------------------------- | ------------------------------------------------------------------- |
 | `traigent quickstart`      | Run the bundled mock-mode demo (keyless, zero-setup, always works)  |
 | `traigent onboard`         | Guided setup for Traigent in this project (API key, project, env)   |
-| `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-3-haiku-20240307` (ID-shape preflight against a shipped snapshot; confirm liveness via the provider's catalog) |
+| `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-haiku-5-5` (ID-shape preflight against a shipped snapshot; confirm liveness via the provider's catalog). The snapshot lags upstream additions — on 0.30.0 this example reports `valid: false` although Anthropic lists the model as active, so read a `false` as "not in this SDK's snapshot", not as "retired" |
 | `traigent generate-config` | Scaffold a full `@traigent.optimize()` config for your function     |
 | `traigent detect-tvars`    | Detect tuned-variable candidates in existing Python files           |
 | `traigent info`            | Show SDK version, environment, and integrations                     |
@@ -721,7 +758,7 @@ traigent onboard         # guided first-run setup wizard
 - **Choose an optimization algorithm** -- For connected real runs, omit `algorithm` or use `"auto"`; use `"grid"`/`"random"` for explicit local/offline search. `traigent algorithms` lists auto + smart names since 0.20.1 (see version-matrix: `algorithms-cli`) — the full public selector surface with a local/connected availability column (on 0.20.0 the CLI omitted `auto` and the smart names: Traigent/Traigent#1751). Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): `bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random` bind to the typed backend Optuna strategy, while unsupported smart names such as `nsga2`/`cmaes` fail fast with a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no smart name executed end-to-end). With `offline=True` every smart name still raises `ConfigurationError` at decoration time (verified on 0.21.0). The `traigent-optimize-run` skill owns the full selector contract.
 - **Add multiple objectives** -- Use `objectives=["accuracy", "cost", "latency"]` for multi-objective optimization.
 - **Use framework integrations** -- Install `traigent[integrations]` for LangChain, OpenAI, and Anthropic adapters.
-- **Verify model IDs before a real run** -- Catalogs change; run `traigent models --provider <p> --check <id>` to catch typos and unknown ID shapes, then confirm the ID is actually live against the provider's catalog — the CLI check validates a shipped snapshot with pattern fallback and cannot detect provider-side delisting, so a retired/renamed ID can still pass and cause a 404 or a degraded, unpriced trial. See `traigent-setup-integrations`.
+- **Verify model IDs before a real run** -- Catalogs change; run `traigent models --provider <p> --check <id>` as a shape preflight, then confirm the ID is actually live against the provider's catalog. The CLI check validates a shipped snapshot with pattern fallback. It catches an ID whose prefix or shape is unknown but not a misspelling after a known prefix: keyless, `gpt-4o-mnii` is reported `valid: true`, while `gtp-4o` is caught. Keyless it cannot see a provider-side delisting either, so a misspelled or retired ID can still pass and cause a 404 or a degraded, unpriced trial — and the snapshot lags upstream additions, so a `valid: false` can simply mean the ID is newer than this SDK's snapshot. See `traigent-setup-integrations`.
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

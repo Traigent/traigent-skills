@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.29"
+  version: "1.1.30"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -92,7 +92,7 @@ extra: on an install without it, the command exits with an install hint. The `re
 `all` extras already include it, and pandas for the dataframe recipes below.
 
 ```bash
-pip install "traigent[mcp,analytics]>=0.19"   # or "traigent[recommended]>=0.19", which includes both
+pip install "traigent[mcp,analytics]>=0.24.0"   # or "traigent[recommended]>=0.24.0", which includes both
 traigent auth login                           # or export TRAIGENT_API_KEY; the server reuses these credentials
 ```
 
@@ -578,7 +578,7 @@ where you cannot improve one objective without sacrificing another.
 
 Get one aggregated row per configuration with `to_aggregated_dataframe()` (groups repeated samples
 of the same config and averages each metric), then filter to the non-dominated set.
-`to_aggregated_dataframe()` / `to_dataframe()` need pandas: `pip install "traigent[analytics]>=0.19"`
+`to_aggregated_dataframe()` / `to_dataframe()` need pandas: `pip install "traigent[analytics]>=0.24.0"`
 (also included in `traigent[recommended]`).
 
 ```python
@@ -897,7 +897,7 @@ import traigent
 @traigent.optimize(
     eval_dataset="summarization_eval.jsonl",
     configuration_space={
-        "model": ["gpt-4o-mini", "gpt-4o", "gpt-4-turbo"],
+        "model": ["gpt-6-luna", "gpt-5.6-terra", "gpt-5.6-sol"],
         "temperature": [0.0, 0.3, 0.7],
         "max_tokens": [256, 512, 1024],
     },

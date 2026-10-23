@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b2ec076f92ede299",
+  "doc_hash": "a84e31dc649844e5",
   "reference_hashes": {
-    "references/error-reference.md": "db41984f4cfff36a",
+    "references/error-reference.md": "02ac48de17fe6c9e",
     "references/logging-config.md": "158e07e3237bfb61",
-    "references/mock-mode.md": "94ebd85013f9dfb9"
+    "references/mock-mode.md": "d807a475e9f43471"
   },
   "entries": [
     {
@@ -221,6 +221,17 @@
       "doc_before_hash": "71604ec0069f228d",
       "doc_after_hash": "b2ec076f92ede299",
       "note": "Review round 1 corrections: typed SDK errors are not run-terminal (trial lifecycle records a failed trial); per-example timeout cap scoped to the default local evaluator; judge capture is isolated per evaluation (no concurrent-trial caveat); project .env loads at SDK import; README credential-read wording aligned (#429, #431, #417, #443, #427).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "recent-issues-2026-10-21",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-21T00:00:00Z",
+      "doc_before_hash": "b2ec076f92ede299",
+      "doc_after_hash": "a84e31dc649844e5",
+      "note": "Issue sweep 2026-10-21 against SDK 0.30.0: install floor >=0.24.0 with a floor-enforcing install check (#442); current Anthropic model IDs (#450); OpenAI real-run tier IDs and a litellm>=1.106.0 pin (#451); tuning-dataset path (#452); holdout reference script reads the export_config wrapper and the SDK's label keys (#453); PR-job cost limit removed and the TVL note version-stamped (#454); auth device-login and TRAIGENT_DEBUG wording (#455); ProviderValidationError, TRAIGENT_STRICT_COST_ACCOUNTING, row-metadata merge and the models --check typo claim (#447).",
       "source_type": "agent"
     }
   ]

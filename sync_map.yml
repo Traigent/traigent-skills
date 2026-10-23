@@ -295,6 +295,11 @@ skills:
 
   traigent-recipe-text2sql:
     min_sdk_version: "0.24.0"
+    env_version_floors:
+      # TRAIGENT_LITELLM_LIVE_PRICES ships in traigent>=0.29.0 (the same
+      # release that sets LITELLM_LOCAL_MODEL_COST_MAP on import); the
+      # quickstart prose carries the version note next to the variable.
+      TRAIGENT_LITELLM_LIVE_PRICES: "0.29.0"
     modules:
       - traigent
       - traigent.api.decorators

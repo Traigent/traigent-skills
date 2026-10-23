@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.9"
+  version: "1.0.10"
 ---
 
 # Traigent Framework Integrations
@@ -29,12 +29,12 @@ Install Traigent with framework integration support:
 
 ```bash
 # All integrations
-pip install "traigent[integrations]>=0.19"
+pip install "traigent[integrations]>=0.24.0"
 
 # Or install individual frameworks alongside Traigent
-pip install "traigent>=0.19" langchain-openai langchain-anthropic
-pip install "traigent>=0.19" litellm
-pip install "traigent>=0.19" "dspy==3.3.1"
+pip install "traigent>=0.24.0" langchain-openai langchain-anthropic
+pip install "traigent>=0.24.0" "litellm>=1.106.0"   # 1.106.0 is the bundled pricing map that prices the OpenAI and Anthropic IDs below
+pip install "traigent>=0.24.0" "dspy==3.3.1"
 ```
 
 > **Pin, don't float, the framework version.** `langchain-openai`/`langchain-anthropic` and `dspy` both
@@ -153,11 +153,14 @@ LiteLLM provides a unified `completion()` interface across 100+ LLM providers (O
 > **Verify model IDs are live + priced before a real run.** Provider catalogs change — IDs get
 > delisted, renamed, or re-routed to a retired backend. A dead ID causes a 404 or a *degraded*
 > trial whose cost stays unpriced ($0.00). The IDs below were valid when written; re-check them
-> first: `traigent models --provider <p> --check <id>` catches typos and unknown ID shapes but
-> only validates a shipped snapshot with pattern fallback — it cannot detect delisting, so confirm
+> first: `traigent models --provider <p> --check <id>` only validates a shipped snapshot with
+> pattern fallback. It catches an ID whose prefix or shape is unknown but not a misspelling after a
+> known prefix: keyless, `gpt-4o-mnii` is reported `valid: true`, while `gtp-4o` is caught. Keyless
+> it cannot see a delisting, and the snapshot lags upstream additions, so confirm
 > the ID is actually live against the provider's live catalog endpoint (e.g.
 > `curl -s https://openrouter.ai/api/v1/models` for OpenRouter). Prefer specific
-> versioned IDs over `-latest` aliases. See [LiteLLM reference](references/litellm.md#verifying-model-availability) and the `traigent-debugging` skill's "Model 404 / retired endpoint" entry.
+> the most specific ID the provider publishes — a dated snapshot where one exists, otherwise the
+> generation ID — over a `-latest` alias. See [LiteLLM reference](references/litellm.md#verifying-model-availability) and the `traigent-debugging` skill's "Model 404 / retired endpoint" entry.
 
 > **⚠️ Give reasoning models enough `max_tokens` headroom.** Reasoning models (`gemini-2.5`/`3.x`,
 > `gpt-5`, the `o`-series) spend hidden reasoning tokens that count against `max_tokens` *before*
@@ -181,11 +184,10 @@ import litellm
         "model": [
             "gpt-4o-mini",          # OpenAI
             "gpt-4o",               # OpenAI
-            "claude-3-haiku-20240307",  # Anthropic (versioned, not a -latest alias)
-            "claude-3-5-sonnet-20241022",  # Anthropic
+            "claude-haiku-5-5",  # Anthropic (generation ID, not a -latest alias)
+            "claude-sonnet-5-5",  # Anthropic
             "gemini/gemini-3-flash",    # Google
         ],
-        "temperature": [0.0, 0.3, 0.7],
         "max_tokens": [1024, 2048],  # headroom-safe: the pool includes a reasoning model (see note above)
     },
     objectives=["accuracy"],
@@ -197,7 +199,6 @@ def classify_text(text):
     response = litellm.completion(
         model=config["model"],
         messages=[{"role": "user", "content": f"Classify this text: {text}"}],
-        temperature=config["temperature"],
         max_tokens=config["max_tokens"],
     )
     return response.choices[0].message.content
@@ -210,6 +211,8 @@ for trial in results.successful_trials:
     accuracy = trial.get_metric("accuracy", 0.0)
     print(f"{model}: accuracy={accuracy:.2%}")
 ```
+
+> Claude Haiku 5.5 and Sonnet 5.5 reject the `temperature` parameter (LiteLLM 1.106.0 raises `UnsupportedParamsError`), so this example tunes `model` and `max_tokens` only and never passes `temperature`; add `temperature` to a space only for models that accept it.
 
 LiteLLM handles API key routing automatically based on the model prefix. Set provider API keys in environment variables:
 

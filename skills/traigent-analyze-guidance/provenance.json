@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "77b09333b3c94a4a",
+  "doc_hash": "cbd4edfc0c6b2277",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
-    "references/optimization-principles.md": "a1f71a77da92817c",
-    "references/preflight.md": "8931979336540085",
+    "references/optimization-principles.md": "b339772d03b54898",
+    "references/preflight.md": "06bea7e343049c78",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -389,6 +389,17 @@
       "doc_before_hash": "32138acf6e5d26a1",
       "doc_after_hash": "77b09333b3c94a4a",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "recent-issues-2026-10-21",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-21T00:00:00Z",
+      "doc_before_hash": "77b09333b3c94a4a",
+      "doc_after_hash": "cbd4edfc0c6b2277",
+      "note": "Issue sweep 2026-10-21 against SDK 0.30.0: install floor >=0.24.0 with a floor-enforcing install check (#442); current Anthropic model IDs (#450); OpenAI real-run tier IDs and a litellm>=1.106.0 pin (#451); tuning-dataset path (#452); holdout reference script reads the export_config wrapper and the SDK's label keys (#453); PR-job cost limit removed and the TVL note version-stamped (#454); auth device-login and TRAIGENT_DEBUG wording (#455); ProviderValidationError, TRAIGENT_STRICT_COST_ACCOUNTING, row-metadata merge and the models --check typo claim (#447).",
       "source_type": "agent"
     }
   ]
