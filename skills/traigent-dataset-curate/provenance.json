@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0b2a017b400f366c",
+  "doc_hash": "818a0007290c17d6",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
-    "references/economics-characterization.v0.md": "86c1f7ebdb50f49b"
+    "references/economics-characterization.v0.md": "77962c618cf98642"
   },
   "entries": [
     {
@@ -296,6 +296,17 @@
       "doc_before_hash": "bb9becbbb88d01bd",
       "doc_after_hash": "0b2a017b400f366c",
       "note": "Issue sweep 2026-10-21 against SDK 0.30.0: install floor >=0.24.0 with a floor-enforcing install check (#442); current Anthropic model IDs (#450); OpenAI real-run tier IDs and a litellm>=1.106.0 pin (#451); tuning-dataset path (#452); holdout reference script reads the export_config wrapper and the SDK's label keys (#453); PR-job cost limit removed and the TVL note version-stamped (#454); auth device-login and TRAIGENT_DEBUG wording (#455); ProviderValidationError, TRAIGENT_STRICT_COST_ACCOUNTING, row-metadata merge and the models --check typo claim (#447).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-463-470-2026-10-29",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-29T00:00:00Z",
+      "doc_before_hash": "0b2a017b400f366c",
+      "doc_after_hash": "818a0007290c17d6",
+      "note": "Standalone litellm is intercepted under mock mode from SDK 0.31.0; the stub smoke test stays the recommendation (#465).",
       "source_type": "agent"
     }
   ]

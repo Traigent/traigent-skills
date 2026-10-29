@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "cbd4edfc0c6b2277",
+  "doc_hash": "a1993f6aa14c58ad",
   "reference_hashes": {
-    "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
+    "references/economics-characterization.v0.md": "77962c618cf98642",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
-    "references/optimization-principles.md": "b339772d03b54898",
-    "references/preflight.md": "06bea7e343049c78",
+    "references/optimization-principles.md": "545f6e354e23dbe0",
+    "references/preflight.md": "3c101bb6ebfaf77c",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -400,6 +400,17 @@
       "doc_before_hash": "77b09333b3c94a4a",
       "doc_after_hash": "cbd4edfc0c6b2277",
       "note": "Issue sweep 2026-10-21 against SDK 0.30.0: install floor >=0.24.0 with a floor-enforcing install check (#442); current Anthropic model IDs (#450); OpenAI real-run tier IDs and a litellm>=1.106.0 pin (#451); tuning-dataset path (#452); holdout reference script reads the export_config wrapper and the SDK's label keys (#453); PR-job cost limit removed and the TVL note version-stamped (#454); auth device-login and TRAIGENT_DEBUG wording (#455); ProviderValidationError, TRAIGENT_STRICT_COST_ACCOUNTING, row-metadata merge and the models --check typo claim (#447).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-463-470-2026-10-29",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-29T00:00:00Z",
+      "doc_before_hash": "cbd4edfc0c6b2277",
+      "doc_after_hash": "a1993f6aa14c58ad",
+      "note": "Mock dry run described as no-spend but still priced on SDK 0.31.0+ (#463).",
       "source_type": "agent"
     }
   ]

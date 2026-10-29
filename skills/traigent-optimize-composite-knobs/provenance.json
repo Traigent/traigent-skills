@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d1d769046d2af99c",
+  "doc_hash": "cf75109434f60c10",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
-    "references/pattern-catalog.md": "59998518e556f1b1",
+    "references/pattern-catalog.md": "9def7ed36550a8df",
     "references/router-fitness.md": "29537947ff5e0c4d"
   },
   "entries": [
@@ -144,6 +144,17 @@
       "doc_before_hash": "d7987a3a9138e23b",
       "doc_after_hash": "d1d769046d2af99c",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-463-470-2026-10-29",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-29T00:00:00Z",
+      "doc_before_hash": "d1d769046d2af99c",
+      "doc_after_hash": "cf75109434f60c10",
+      "note": "Cascade gate margin defined as the top-vote share with the discrete threshold bands for 2 and 3 samples (#467).",
       "source_type": "agent"
     }
   ]

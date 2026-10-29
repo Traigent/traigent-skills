@@ -1,11 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7bedc6439953584d",
+  "doc_hash": "4ffc1e0dce2cb9c7",
   "reference_hashes": {
-    "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
+    "references/agent-identity.md": "16206658c40f65e2",
+    "references/economics-characterization.v0.md": "77962c618cf98642",
     "references/evaluation-options.md": "f766d4df828a1ade",
     "references/execution-modes.md": "9d797be6dae9c6e1",
-    "references/injection-modes.md": "d81067c2dff72c82",
+    "references/injection-modes.md": "597e4e1b09b63279",
     "references/task-type.md": "e6201449c6f90853",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
   },
@@ -275,6 +276,17 @@
       "doc_before_hash": "4faeeb1efab6d9c6",
       "doc_after_hash": "7bedc6439953584d",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-463-470-2026-10-29",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-29T00:00:00Z",
+      "doc_before_hash": "7bedc6439953584d",
+      "doc_after_hash": "4ffc1e0dce2cb9c7",
+      "note": "agent_name is the identity key and experiment_name its deprecated alias; run_title/run_description label one run (SDK 0.27.0+), new references/agent-identity.md (#468); raw-client mock scope version-qualified (#465).",
       "source_type": "agent"
     }
   ]
