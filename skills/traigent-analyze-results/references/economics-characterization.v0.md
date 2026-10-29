@@ -199,6 +199,35 @@ Not a portal, not a Traigent web form. That has consequences:
    Q1 and Q3. More than four asked questions means inference was not attempted — go back and
    read the project.
 
+### When no user can answer (headless, CI, or any session without a user-input channel)
+
+Rules 3-4 above cannot be met when nobody can reply. The agent still must not guess. Use this
+stop-and-resume path instead; an interactive session keeps the flow above unchanged.
+
+1. **List what is missing.** The required confirmations are Q1 `value_channel`, Q3
+   `error_cost_band`, and the **forecast** for Q2 `daily_volume_band` (observed volume may
+   still be inferred and reported with its evidence pointer; the forecast stays a
+   confirmation). Also list any Q4 or Q5 that inference could not settle with confidence;
+   those are not blockers: record them as `defaulted` with low confidence, as in §6.
+2. **Report each as `pending_user_confirmation`,** with its question id, its field name, and
+   the allowed closed values copied from the §2 table, in the run's own output (job summary,
+   PR comment, or final message). Example, one line per pending question:
+
+   ```text
+   pending_user_confirmation: Q1 value_channel = one of save_expert_time | replace_manual_operations | process_volume_cheaper | increase_revenue | prevent_costly_mistakes
+   ```
+
+3. **Stop before budget sizing and before launching any paid run.** Say plainly that no budget
+   has been proposed and nothing paid has run. Dry-run and mock validation that spends nothing
+   may continue; approval requirements in §1 are unchanged.
+4. **Do not infer, default, or carry over** Q1, Q3, or the Q2 forecast to get past the stop. A
+   repo default, an earlier session's guess, or a model's best estimate is not a confirmation.
+5. **Do not write an incomplete survey draft.** The closed schema in §6 has no pending state, so a
+   draft with a missing or invented Q1, Q3, or Q2 value would be an invalid record. Write the
+   draft only after those answers exist.
+6. **Resume** when the caller supplies the user's own answers (in the task input, a file, or a
+   later interactive turn). Answers the user gave count as `asked`; continue at §6.
+
 ## 4. The explanation duty — mandatory
 
 **For every question and every confirmation, without exception, the agent must:**
@@ -276,6 +305,9 @@ matter how good the conversation was.
 **There is no Traigent survey tool to call today.** Do not invent one, do not describe one to
 the user, and do not claim the answers have been sent anywhere. A closed submission path is
 planned; until it exists, the completed draft is written **locally only**.
+
+Write the draft only once every required answer exists. While Q1, Q3, or the Q2 forecast is
+`pending_user_confirmation` (§3, "When no user can answer"), write no draft at all.
 
 Write the completed draft to **`.traigent/economics-survey.v0.json`** in the project root:
 
