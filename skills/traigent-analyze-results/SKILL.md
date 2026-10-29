@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.30"
+  version: "1.1.31"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -342,8 +342,9 @@ print(results.objectives)       # ["accuracy"]
 print(results.timestamp)        # datetime when optimization completed
 ```
 
-> **Identifying a run in the portal.** `experiment_name` (set on the decorator, or the
-> access-time `TRAIGENT_EXPERIMENT_NAME` env var, then the deterministic self-describing
+> **Identifying a run in the portal.** `agent_name` (SDK 0.27.0+, set on the decorator; the
+> deprecated alias `experiment_name` is read next, then the access-time
+> `TRAIGENT_EXPERIMENT_NAME` env var, then the deterministic self-describing
 > default `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"`, then bare `func.__name__`) names
 > the **agent**, not the individual run — the portal groups optimization history by
 > (agent, evaluation dataset). Keep it **stable across runs**; giving each run its own name
@@ -351,9 +352,10 @@ print(results.timestamp)        # datetime when optimization completed
 > `results.experiment_run_id`; `results.experiment_id` identifies only its experiment group.
 > Treat `results.cloud_url` as exact only when its query contains the matching
 > `run_id=<experiment_run_id>`; otherwise open the group and select that run ID. Use the timestamp
-> for chronology, not identity, and do not name each run separately.
-> The current SDK has no `tags`/`metadata` argument.
-> See `traigent-setup-decorator` -> "Naming: `experiment_name` identifies the agent, not the run".
+> for chronology, not identity, and do not name each run separately. To say what a run
+> tested, use the decorator's `run_title=` / `run_description=` (SDK 0.27.0+), which are
+> labels only. The current SDK has no `tags`/`metadata` argument.
+> See `traigent-setup-decorator` -> "Naming: `agent_name` identifies the agent, not the run".
 
 `best_score` is `None` when no trial produced a valid score (e.g., all trials failed). Always check before comparing:
 

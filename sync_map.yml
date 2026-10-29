@@ -60,6 +60,10 @@ skills:
       # on PyPI since 2026-09-02); the reference states the requirement
       # in prose at the top of the file.
       references/winner-stability-reps.md: "0.27.0"
+      # agent_name / run_title / run_description shipped in 0.27.0
+      # (Traigent/Traigent@62cbaa667); the reference states the requirement in
+      # prose at the top of the file.
+      references/agent-identity.md: "0.27.0"
       # EvaluationOptions.task_type first shipped in 0.28.0
       # (Traigent/Traigent#2226); older SDKs follow the no-task_type path in
       # SKILL.md, which stays unfloored.
@@ -321,6 +325,10 @@ skills:
       # TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT ships in traigent>=0.31.0; the
       # skill text states the 0.31.0 requirement in prose next to it.
       TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT: "0.31.0"
+    python_version_floors:
+      # The runnable recipe passes agent_name=, which shipped in 0.27.0
+      # (Traigent/Traigent@62cbaa667); the docstring states the requirement.
+      references/quickstart_text2sql.md: "0.27.0"
     modules:
       - traigent
       - traigent.api.decorators
