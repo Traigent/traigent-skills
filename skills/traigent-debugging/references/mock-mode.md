@@ -195,8 +195,9 @@ Mock mode has important limitations to be aware of:
      fabricated 0.0, so **every trial fails**: `All trials failed — no examples succeeded`,
      `best_score` is `None`, and the process exits 0. This is **also expected under mock**, not a
      broken pipeline. Do not wrap the scorer to swallow the error and return 0.0. Instead make
-     the agent return valid JSON before the model call while mock mode is on (a stub deleted for
-     the real run), or use a config-aware mock-only demo scorer. LiteLLM's `mock_response=`
+     the agent return valid JSON before the model call while mock mode is on (check
+     `traigent.testing.is_mock_mode_enabled()`, preferably in a dry-run-only wrapper or
+     monkeypatch rather than in production agent code; the stub proves wiring, not parsing of real replies), or use a config-aware mock-only demo scorer. LiteLLM's `mock_response=`
      argument does not help on SDK 0.31.1: Traigent's interception overrides it
      (Traigent/Traigent#2798). A scorer unwrapping `traigent.with_usage(...)` reads
      `output["text"]` (see `traigent-boost-agent` `references/instrument-recipe.md`).

@@ -1,12 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4d05d7c965e19708",
+  "doc_hash": "c3d41ac7c2443761",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/insights-and-iteration.md": "e864e5ed0254be8c",
     "references/instrument-recipe.md": "7a7074385e04b522",
-    "references/run-cost-and-limits.md": "ced7dcb6b6e72ab9"
+    "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
     {
@@ -342,7 +342,7 @@
       "run_id": null,
       "timestamp": "2026-10-29T00:00:00Z",
       "doc_before_hash": "7794da5274b03731",
-      "doc_after_hash": "4d05d7c965e19708",
+      "doc_after_hash": "c3d41ac7c2443761",
       "note": "Mock dry run is still priced and gated on SDK 0.31.0+ (small slice or the documented mock exemption, never TRAIGENT_COST_APPROVED) (#463); a reply-parsing scorer fails every trial under mock instead of scoring 0.0, split from number-returning scorers (#464); raw openai/anthropic clients are blocked, not billed, for known provider hosts on SDK 0.31.0+ (#465).",
       "source_type": "agent"
     }

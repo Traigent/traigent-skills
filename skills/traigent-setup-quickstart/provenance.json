@@ -3,10 +3,10 @@
   "doc_hash": "77be6a9a6d2040e6",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
-    "references/environment-variables.md": "ffcdb359a818d737",
+    "references/environment-variables.md": "91b8e281f037b2b3",
     "references/first-value-fallback.md": "44ea4e6b23f8632d",
     "references/installation-extras.md": "21a597989700969a",
-    "references/run-cost-and-limits.md": "ced7dcb6b6e72ab9"
+    "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
     {

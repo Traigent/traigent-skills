@@ -194,7 +194,7 @@ Score interpretation depends on the scorer, because every mock call returns the 
 > the SDK refuses to turn the parse error into a fabricated 0.0, so every trial fails. Do not
 > patch the scorer to swallow the error and return 0.0. For the dry run, make the agent return
 > valid JSON before the model call (a stub that short-circuits when `traigent.testing.is_mock_mode_enabled()` is true, deleted
-> for the real run), or use the config-aware mock-only demo scorer below. Passing
+> for the real run; it proves wiring only, not parsing of real replies), or use the config-aware mock-only demo scorer below. Passing
 > `mock_response=` to `litellm.completion` does not work on SDK 0.31.1: Traigent's mock
 > interception overrides it (Traigent/Traigent#2798).
 >

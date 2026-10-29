@@ -26,7 +26,7 @@ def test_skill_defines_the_margin_and_its_bands(repo_root: Path) -> None:
     assert "margin = (votes for the most common answer) / (samples)" in text
     assert "`margin < threshold`" in text and "Equality does not escalate" in text
     assert "2-sample" in text and "threshold of 0.5 or lower never escalates" in text
-    assert "`0.3` escalates no vote" in text
+    assert "`0.3` escalates no non-empty vote" in text
     assert "`0.5` escalates only a three-way split" in text
     assert "`0.7` escalates every non-unanimous vote" in text
     assert "GATE: [0.3, 0.5, 0.7]" in text, "the Quick Start grid stays"

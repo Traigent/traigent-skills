@@ -124,7 +124,7 @@ The base arm must return more than one sample, and the threshold must be one the
   escalates. Use a threshold above 0.5.
 - With a **3-sample** base arm the margin of a non-empty vote is 1/3 (all different), 2/3 (a
   2-1 split) or 1.0 (unanimous). That makes three distinct bands for the grid in this block:
-  `0.3` escalates no vote (keep it as a no-escalation control), `0.5` escalates only a
+  `0.3` escalates no non-empty vote (keep it as a no-escalation control), `0.5` escalates only a
   three-way split, and `0.7` escalates every non-unanimous vote. `0.3` and `0.5` behave the
   same on a 2-1 split.
 

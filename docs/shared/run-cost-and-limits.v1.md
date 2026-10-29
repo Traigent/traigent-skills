@@ -91,7 +91,10 @@ mock mode.) Two supported ways to dry-run a large dataset:
   explicit non-production environment (`ENVIRONMENT=development`, or `test`, `testing`,
   `local`, `dev`, `stage`, `staging`). It applies only while mock mode is on. With the
   environment unset, `ci` or production it is ignored and the estimate still applies. Use it
-  for test and walkthrough runs only.
+  for test and walkthrough runs only, and set both variables on the mock process alone (for
+  example `ENVIRONMENT=development TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1 python dry_run.py`), never
+  exported in the shell that later runs the real optimization: `ENVIRONMENT` also changes other
+  production-versus-development checks.
 
 Do not set `TRAIGENT_COST_APPROVED=true` to get past a mock run's refusal. It approves spend,
 and the same shell would carry that approval into the real run.
