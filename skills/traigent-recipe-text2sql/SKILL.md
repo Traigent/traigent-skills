@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -72,7 +72,7 @@ the optimizer is searching.
 ## The loop (what actually works)
 1. **Baseline** the un-optimized agent with an OBJECTIVE metric.
 2. **Instrument** the entry function with `@traigent.optimize`.
-3. **Mock dry-run** (free) to validate the pipeline.
+3. **Mock dry-run** (no provider spend) to validate the pipeline.
 4. **Real run** (`algorithm="auto"`, cost-capped, portal-tracked).
 5. **Iterate** — drop knobs that didn't move accuracy, swap in better ones
    (see `traigent-analyze-guidance`), then re-run.
@@ -220,7 +220,7 @@ decorated = traigent.optimize(
 result = decorated.optimize_sync(max_trials=25, algorithm="auto")  # or: await decorated.optimize(...)
 ```
 - **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. With `offline=False`, omit `algorithm` or use `algorithm="auto"` for the default connected path to real cloud Optuna TPE. Use `"grid"`/`"random"` only for explicit local/offline search; `offline=True` keeps everything local (zero egress), `offline=False` syncs trials to the portal. Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): supported names (`bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random`) bind to the typed backend Optuna strategy on authenticated connected runs; unsupported names (`nsga2`/`cmaes`) fail fast (Traigent/Traigent#1752, #1758). They never run locally: `offline=True` raises `ConfigurationError` and the local registry raises `OptimizationError`.
-- **Mock first (free of LLM spend):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms never run offline — connected only). **Expect all-zero accuracy in mock**: this recipe scores by execution match, and every mock call returns the same canned text, so uniform 0.0 is the expected mock signature, not a broken pipeline (wiring, sampling, and scoring paths are what the mock validates). An offline mock touches no quota; a connected mock run (`offline=False` with a key) does.
+- **Mock first (no provider spend):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms never run offline — connected only). **Expect all-zero accuracy in mock**: this recipe scores by execution match, and every mock call returns the same canned text, so uniform 0.0 is the expected mock signature, not a broken pipeline (wiring, sampling, and scoring paths are what the mock validates). An offline mock touches no quota; a connected mock run (`offline=False` with a key) does. On SDK 0.31.0+ a mock run is still priced against the cost cap, so mock a few rows, not the full set (or use the SDK's documented mock exemption: `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` with an explicit non-production `ENVIRONMENT`); never set `TRAIGENT_COST_APPROVED=true` for a mock run.
 - **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, omit `algorithm` or use `algorithm="auto"`; named smart selectors (`bayesian`/`tpe`/`optuna`) are selectable on authenticated connected runs on SDK 0.20.1+ (see the Selector bullet above).
 - **`cloud_url` gate (don't skip this):** after a `--real`/`offline=False` run, check `result.cloud_url`. A missing `cloud_url` on a run you meant to be portal-tracked is easy to miss — trials still run and a `best_config` still comes back, so it reads as success (the SDK does log a fallback warning banner, but it's easy to scroll past). Verify the link before reporting the run as cloud-tracked. When it's missing, read `result.metadata["source"]` (`"local_fallback"` vs backend-tracked) for the provenance and `result.metadata.get("persistence_rejection_reason")` / `result.metadata.get("fallback_reason")` for the cause: a `persistence_rejection_reason` (e.g. a duplicate `example_id`) means the backend REJECTED the submission — fix the request, not the credentials; a `fallback_reason` with no rejection means check `TRAIGENT_API_KEY` and connectivity instead.
 - **Dataset path:** `eval_dataset` must live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.

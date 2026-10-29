@@ -186,10 +186,16 @@ function (mock mode alone can still contact the backend when a Traigent key is s
 ```python
 import traigent.testing
 
-traigent.testing.enable_mock_mode_for_quickstart()  # no provider calls, no spend; hard-blocked in production
+traigent.testing.enable_mock_mode_for_quickstart()  # simulated LiteLLM/LangChain calls: no provider spend; hard-blocked in production
 ```
 
-Mock mode skips only the pre-run pricing estimate (so a pre-run `CostLimitExceeded` does not fire).
+Mock mode does **not** skip the pre-run pricing estimate from SDK 0.31.0: the estimate and the
+`TRAIGENT_RUN_COST_LIMIT` cap (default $2.00) apply to a mock run, so a large dataset can raise
+`CostLimitExceeded` before trial 1 even though nothing would be spent. (SDKs before 0.31.0 did
+skip the estimate in mock mode.) Dry-run a small slice of the dataset, or for a test-only run set
+`TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together with an explicit non-production `ENVIRONMENT`
+such as `development` (ignored when the environment is unset, `ci` or production). Do not use
+`TRAIGENT_COST_APPROVED=true` for a mock run: it approves spend and would carry into the real run.
 The runtime CostEnforcer is always active: permits, `TRAIGENT_RUN_COST_LIMIT`, and
 `stop_reason="cost_limit"` apply in mock runs too. Released SDKs through 0.30.0 can
 stop at 0 trials because of their initial reservation. The observed-mean admission

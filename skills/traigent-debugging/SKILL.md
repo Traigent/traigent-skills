@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.17"
+  version: "1.0.18"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -181,6 +181,12 @@ traigent.utils.exceptions.CostLimitExceeded: Cost limit exceeded: estimated $0.5
     max_trials=5,  # Fewer trials = lower cost
 )
 ```
+
+**In a mock dry run** (SDK 0.31.0+) the same refusal fires on a large dataset even though nothing
+would be spent, and its text only offers the approval variables. Do not raise the limit or set
+`TRAIGENT_COST_APPROVED=true` for a mock run (approval would carry into the real run). Dry-run a small
+slice of the dataset, or for a test-only run set `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together
+with an explicit non-production `ENVIRONMENT` such as `development`; see `references/mock-mode.md`.
 
 **Handling programmatically**:
 
@@ -449,7 +455,7 @@ pip install "traigent[dev]>=0.24.0"             # Development tools
 Test your optimization setup without making real API calls or connecting to the backend. The recommended activation is in-code (production-blocked, visible in code review); the env-var path below remains as a legacy fallback that works in non-production.
 <!-- /PROTECTED -->
 
-> **Mock is free of LLM spend. It is free of quota only when `offline=True`** (no backend call is made); a connected mock run (`offline=False` with a key) creates a session and consumes `optimization_samples` (see the quota-exhaustion entry above). And exact/execution-match scorers read a uniform 0.0 under mock — see "Scores are all 0.0" below before concluding the pipeline is broken.
+> **Mock is free of LLM spend. It is free of quota only when `offline=True`** (no backend call is made); a connected mock run (`offline=False` with a key) creates a session and consumes `optimization_samples` (see the quota-exhaustion entry above). On SDK 0.31.0+ it is still priced against the cost cap, so a large dataset can raise `CostLimitExceeded` (see that entry). And exact/execution-match scorers read a uniform 0.0 under mock, while a scorer that parses the reply (`json.loads`, JSON-schema) fails every trial — see `references/mock-mode.md` and "Scores are all 0.0" below before concluding the pipeline is broken.
 
 **Recommended (in-code):**
 
@@ -538,7 +544,7 @@ See [Mock Mode reference](references/mock-mode.md) for details.
 
 ### Wrong results (low scores)
 
-0. **Are you in mock mode?** If scores are **uniformly 0.0 / identical** and `TRAIGENT_MOCK_LLM`
+0. **Are you in mock mode?** If scores are **uniformly 0.0 / identical** (or every trial failed with `All trials failed` under a reply-parsing scorer) and `TRAIGENT_MOCK_LLM`
    or `enable_mock_mode_for_quickstart()` is active, stop — that is the constant mock string, not
    a real result (see the Mock Mode note above). Re-run without mock before debugging the items below.
 0b. **Uniform 0.0 / 1.0 on a REAL run?** Stop paying. Print the raw model output and the value the

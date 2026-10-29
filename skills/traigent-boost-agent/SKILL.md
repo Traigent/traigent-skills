@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.20"
+  version: "2.1.21"
 ---
 
 # Traigent Boost Agent
@@ -23,7 +23,7 @@ Present a cost estimate and get the user's explicit approval before any paid run
 
 1. Set up the decorated function (for a single function, see the Fast Path below; for a whole codebase, Steps 1-7 of the 12-Step Lifecycle Playbook)
 2. Validate dataset, config space, and providers
-3. Dry-run in mock mode — verify the full pipeline end-to-end at zero cost
+3. Dry-run in mock mode — verify the full pipeline end-to-end with no provider spend (on SDK 0.31.0+ a mock run is still priced and gated by the pre-run cost estimate, so dry-run a small slice of a large dataset; see Step 3)
 4. Report what the dry run found, estimate real costs
 5. **Wait** for the user to say "run it for real"
 <!-- /PROTECTED -->
@@ -140,7 +140,9 @@ traigent check my_script.py --dry-run                         # discovers @traig
 
 Enable mock mode in code, then run the full optimization pipeline end to end (decorator wiring, config sampling, dataset loading, trial execution, scoring) with LLM calls intercepted. Mock mode is hard-blocked when `ENVIRONMENT=production`. For mock-mode setup mechanics and scope (what is and isn't intercepted, mock vs offline), see `traigent-setup-quickstart`.
 
-> A **connected** mock run (`offline=False` with a key) consumes the plan's `optimization_samples` quota like any other run; an `offline=True` mock run makes no backend call and touches no quota. Mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients are NOT intercepted and still bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`; `TRAIGENT_MOCK_LLM` is deprecated in favor of `enable_mock_mode_for_quickstart()`).
+> A **connected** mock run (`offline=False` with a key) consumes the plan's `optimization_samples` quota like any other run; an `offline=True` mock run makes no backend call and touches no quota. Mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients get no canned reply. On SDK 0.31.0+ the HTTP request such a client sends to a known LLM provider host is blocked (`MockModeTransportBlockedError`), not billed; clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 raw-client calls reach the provider and bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`; `TRAIGENT_MOCK_LLM` is deprecated in favor of `enable_mock_mode_for_quickstart()`).
+
+> **A mock run is still priced and gated (SDK 0.31.0+).** The pre-run cost estimate and the `TRAIGENT_RUN_COST_LIMIT` cap (default $2.00) apply to a mock run, so a realistic eval set can stop here with `CostLimitExceeded` before trial 1 even though nothing would be spent. Dry-run a small slice (5-10 rows) of the dataset instead. For a test-only run you can also set `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together with an explicit non-production `ENVIRONMENT` (for example `development`; unset, `ci` and production are refused). Never set `TRAIGENT_COST_APPROVED=true` to get past a mock run's refusal: it approves spend and would carry over to the real run. Details: `references/run-cost-and-limits.md`.
 
 ```python
 import os
@@ -174,13 +176,27 @@ print(f"Best score:    {results.best_score}")
 | Stop reason | `"max_trials_reached"` or `"optimizer"` | `"error"` = something broke |
 | Config keys | Expected keys in `best_config` | Missing keys = config space mismatch |
 
-Score interpretation depends on evaluator type: a config-aware scorer (reads `traigent.get_config()`) produces meaningful varied scores even in mock mode; an output-based/deterministic scorer (exact-match, JSON-schema, execution accuracy) sees the mock LLM's constant response and scores uniformly 0.0.
+Score interpretation depends on the scorer, because every mock call returns the same canned text (`This is a mock response for testing.`):
 
-> **WARNING — uniform 0.0 under mock is plumbing-OK, not a failure:**
-> If your scorer is output-based (exact-match, SQL execution accuracy, JSON-schema, etc.)
-> and all mock scores are 0.0, that is the correct expected result: the mock returns a
-> constant string that no deterministic scorer can score positively. Focus on whether trials
-> ran without errors (`failed_trials == 0`), not on the 0.0 score values.
+| Scorer shape | What mock shows | Plumbing-OK result |
+|---|---|---|
+| Config-aware (reads `traigent.get_config()`) | Varied scores across trials | Scores differ between configs |
+| Returns a number for any input (exact-match, SQL execution accuracy, a scorer that catches parse errors) | Uniform 0.0 | Every trial ran (`failed_trials == 0`), score uniformly 0.0 |
+| **Parses the reply** (`json.loads`, JSON-schema validation, a structured-output parser) | The parse raises on the canned text, so **every trial fails**: `All trials failed — no examples succeeded`, `best_score` is `None`, and the process still exits 0 | Not reachable with the canned text; stub the reply (below) |
+
+> **WARNING — uniform 0.0 under mock is plumbing-OK; all-trials-failed under a parsing scorer is expected, not a broken pipeline:**
+> If your scorer returns a number for any input and all mock scores are 0.0, that is the
+> correct expected result: the mock returns a constant string that no deterministic scorer
+> can score positively. Focus on whether trials ran without errors (`failed_trials == 0`),
+> not on the 0.0 score values.
+>
+> If your scorer **parses** the agent's reply (the usual shape for structured-output agents),
+> the SDK refuses to turn the parse error into a fabricated 0.0, so every trial fails. Do not
+> patch the scorer to swallow the error and return 0.0. For the dry run, make the agent return
+> valid JSON before the model call (a stub that short-circuits when mock mode is on, deleted
+> for the real run), or use the config-aware mock-only demo scorer below. Passing
+> `mock_response=` to `litellm.completion` does not work on SDK 0.31.1: Traigent's mock
+> interception overrides it (Traigent/Traigent#2798).
 >
 > For a varied score spread without real LLM calls, wire a config-aware mock-only demo
 > scorer (delete it for the real run) — see `traigent-setup-quickstart` (`mock_demo_accuracy`)
@@ -479,7 +495,7 @@ CONFIGURATION_SPACE = {
    - Confirm dataset loading, config sampling, stage wiring, tuple-return unpacking, and zero failed trials before real provider calls.
    - Machine-checkable success contract — assert this instead of eyeballing the table:
      `assert results.trials, "no trials ran"` · `assert not getattr(results, "failed_trials", []), f"failed trials: {results.failed_trials}"` · `assert results.best_config is not None, "no best config selected"`.
-   - Mock reality: a connected mock run consumes `optimization_samples` quota, an `offline=True` one does not; exact/execution-match scorers read uniform 0.0 under mock (expected, not broken); raw `openai`/`anthropic` clients are not intercepted and still bill.
+   - Mock reality: a connected mock run consumes `optimization_samples` quota, an `offline=True` one does not; scorers that return a number read uniform 0.0 under mock (expected, not broken), while scorers that parse the reply (`json.loads`, JSON-schema) fail every trial on the canned text (expected; stub the reply, Step 3); raw `openai`/`anthropic` clients get no canned reply, and on SDK 0.31.0+ their requests to known provider hosts are blocked rather than billed (before 0.31.0 they reach the provider and bill); on 0.31.0+ the mock run is still priced and gated, so use a small slice or the documented exemption (Step 3).
    - DELEGATE (required): `traigent-setup-quickstart` owns first-run setup. DELEGATE (deep-dive, optional — only on mock/offline failure): `traigent-debugging` owns failure diagnosis.
 
 9. OPTIMIZE for real only with cost limits and explicit approval.

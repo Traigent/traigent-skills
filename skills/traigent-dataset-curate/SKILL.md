@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.15"
+  version: "1.1.16"
 ---
 
 # Traigent Curate Dataset
@@ -216,10 +216,13 @@ for example in synthetic_examples:
     example.metadata["review_status"] = "needs_human_label_check"
 ```
 
-> **Mock mode does not cover this snippet** (every traigent release through 0.30.0; still true on the SDK development branch): the SDK only intercepts litellm once an
+> **Mock mode does not cover this snippet on traigent 0.30.0 and earlier**: those releases only intercept litellm once an
 > evaluator has been built, and a standalone `ExampleSynthesizer` never builds one, so
-> `enable_mock_mode_for_quickstart()` leaves `private_llm` making real provider calls. Smoke-test
-> synthesis with a local stub instead. It makes zero provider calls. Switch to `private_llm` only after
+> `enable_mock_mode_for_quickstart()` leaves `private_llm` making real provider calls. From
+> traigent 0.31.0 the interceptors are installed when mock mode is enabled, so a standalone
+> `litellm.completion` (this snippet's `private_llm` calls it) gets the canned mock reply. The
+> canned reply is not a usable synthetic example, so smoke-test synthesis with a local stub on
+> every version. It makes zero provider calls. Switch to `private_llm` only after
 > explicit user approval, since it sends seed rows to your provider.
 
 ```python runnable

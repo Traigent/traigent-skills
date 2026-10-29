@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.35"
+  version: "1.0.36"
 ---
 
 # Traigent Quickstart
@@ -81,7 +81,8 @@ The linear path:
    **nothing** ready, use the bundled fallback below — no dataset needed to see value.
 3. **Mock dry-run first.** Always run keyless mock mode before anything paid (the "Your
    First Optimization" example below is exactly this). Show the ranked table so they see
-   the loop work at zero cost and zero egress.
+   the loop work with no provider spend and zero egress (on SDK 0.31.0+ the mock run is still
+   priced against the cost cap, so keep the dry-run dataset small).
 4. **Confirm the real run explicitly.** A real (paid) run happens only after the user
    sees the mock result and says go — and after the cost-gate approval. Never jump from
    mock straight to spend. Show the card in `references/run-cost-and-limits.md` first:
@@ -380,10 +381,11 @@ enable_mock_mode_for_quickstart()
 <!-- PROTECTED -->
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
-- **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted — a function using a raw client will make real, billable calls in mock mode. Use LiteLLM in examples that must run keyless.
+- **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted (no canned reply). On SDK 0.31.0+ their HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed; clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 a raw-client call in mock mode reaches the provider and bills. Use LiteLLM in examples that must run keyless.
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.24.0"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.24.0"`.)
 - **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local. A `TRAIGENT_API_KEY` in the project `.env` counts as set on 0.28.0+ (see "Using a .env File"); use `TRAIGENT_OFFLINE_MODE=true` or `offline=True` for zero egress.
-- **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer).
+- **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer). A scorer that **parses** the reply (`json.loads`, JSON-schema) cannot score the canned text: every trial fails (`All trials failed — no examples succeeded`, `best_score` is `None`) — also expected; stub the reply instead of catching the error.
+- **A mock run is still priced and gated (SDK 0.31.0+).** The pre-run cost estimate and the `TRAIGENT_RUN_COST_LIMIT` cap (default $2.00) apply to mock runs, so a large dataset can raise `CostLimitExceeded` before trial 1. Dry-run a small slice, or for a test-only run set `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` with an explicit non-production `ENVIRONMENT` (for example `development`). Never use `TRAIGENT_COST_APPROVED=true` for a mock run. See `references/run-cost-and-limits.md`.
 
 ### Legacy Env-Var Path
 
@@ -547,7 +549,7 @@ import traigent
 from traigent import Choices
 from traigent.testing import enable_mock_mode_for_quickstart
 
-# Step 1: dry-run in mock mode — no API keys required, no cost
+# Step 1: dry-run in mock mode — no API keys required, no provider spend
 enable_mock_mode_for_quickstart()
 
 Path("eval_queries.jsonl").write_text(
