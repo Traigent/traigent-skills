@@ -208,7 +208,7 @@ stop-and-resume path instead; an interactive session keeps the flow above unchan
    `error_cost_band`, and the **forecast** for Q2 `daily_volume_band` (observed volume may
    still be inferred and reported with its evidence pointer; the forecast stays a
    confirmation). Also list any Q4 or Q5 that inference could not settle with confidence;
-   those are not blockers: record them as `defaulted` with low confidence, as in §6.
+   those are not blockers: report them as `defaulted` with low confidence in the same output (no draft is written while this path applies, see step 5).
 2. **Report each as `pending_user_confirmation`,** with its question id, its field name, and
    the allowed closed values copied from the §2 table, in the run's own output (job summary,
    PR comment, or final message). Example, one line per pending question:

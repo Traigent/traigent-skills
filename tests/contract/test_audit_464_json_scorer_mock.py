@@ -51,6 +51,12 @@ def test_quickstart_surfaces_mention_the_parsing_case(repo_root: Path, rel: str)
     assert "parse" in text and "json.loads" in text
 
 
+def test_debugging_skill_no_longer_lists_json_schema_as_uniform_zero(repo_root: Path) -> None:
+    text = _flat(repo_root, "skills/traigent-debugging/SKILL.md")
+    assert "(exact-match, JSON-schema, SQL execution-accuracy) scores **0.0" not in text
+    assert "fails **every trial**" in text
+
+
 def test_nobody_is_told_to_swallow_the_parse_error(repo_root: Path) -> None:
     assert "Do not patch the scorer to swallow the error" in _flat(repo_root, BOOST)
     assert "Do not wrap the scorer to swallow the error" in _flat(repo_root, MOCK_MODE)

@@ -128,6 +128,8 @@ The base arm must return more than one sample, and the threshold must be one the
   three-way split, and `0.7` escalates every non-unanimous vote. `0.3` and `0.5` behave the
   same on a 2-1 split.
 
+An empty or abstain-only vote has margin 0 and escalates for any positive threshold.
+
 In this block the 2-1 split (margin 0.67) accepts the cheap answer at 0.3 and 0.5 and escalates
 to the strong arm at 0.7.
 

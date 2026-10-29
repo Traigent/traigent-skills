@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0e034976264bd208",
+  "doc_hash": "92e4750156066f0f",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "9def7ed36550a8df",
@@ -153,7 +153,7 @@
       "run_id": null,
       "timestamp": "2026-10-29T00:00:00Z",
       "doc_before_hash": "d1d769046d2af99c",
-      "doc_after_hash": "0e034976264bd208",
+      "doc_after_hash": "92e4750156066f0f",
       "note": "Cascade gate margin defined as the top-vote share with the discrete threshold bands for 2 and 3 samples (#467).",
       "source_type": "agent"
     }

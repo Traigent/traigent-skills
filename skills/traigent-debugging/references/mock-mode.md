@@ -82,8 +82,8 @@ When mock mode is active (`enable_mock_mode_for_quickstart()`, or the deprecated
 ### A mock run is still priced and gated (SDK 0.31.0+)
 
 From SDK 0.31.0 the pre-run cost estimate runs for a mock run too, and `CostLimitExceeded` can
-fire before trial 1 on a large dataset even though nothing would be spent (observed: a 46-row
-dataset of about 6,500 input tokens per row against the $2.00 default). SDKs before 0.31.0
+fire before trial 1 on a large dataset even though nothing would be spent (for example a 46-row
+dataset of several thousand input tokens per row against the $2.00 default). SDKs before 0.31.0
 skipped the estimate in mock mode. The refusal text only offers `TRAIGENT_RUN_COST_LIMIT` and
 `TRAIGENT_COST_APPROVED=true`; for a mock run use neither (approval would carry into the real
 run). Instead:

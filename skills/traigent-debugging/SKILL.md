@@ -506,8 +506,10 @@ Mock mode is essential for:
 - Testing evaluator logic
 
 > **Uniform 0.0 scores under mock are expected, not a bug.** The mock LLM returns a single fixed
-> string (`"This is a mock response for testing."`), so a deterministic / execution-style scorer
-> (exact-match, JSON-schema, SQL execution-accuracy) scores **0.0 on every example × every config**.
+> string (`"This is a mock response for testing."`), so a scorer that returns a number for any input
+> (exact-match, SQL execution-accuracy) scores **0.0 on every example × every config**. A scorer that
+> *parses* the reply (`json.loads`, JSON-schema) instead fails **every trial** (`All trials failed`,
+> `best_score` is `None`): also expected under mock; stub the reply, do not catch the error.
 > That all-zero board means **mock plumbing is working and your real output is being replaced** —
 > it is *not* a broken evaluator, dataset, or config space, and you should **not** debug it as
 > "wrong results / low scores" below. Confirm only that the pipeline runs (trials > 0, no failed

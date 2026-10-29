@@ -72,3 +72,9 @@ BANDS = [
 def test_stated_bands_match_the_sdk(votes: list[str], threshold: float, expected: bool) -> None:
     pytest.importorskip("traigent.knobs.patterns")
     assert _escalated(votes, threshold) is expected
+
+
+def test_empty_vote_has_margin_zero_as_the_skill_states(repo_root: Path) -> None:
+    cascade = pytest.importorskip("traigent.knobs.cascade")
+    assert cascade.vote_over([], 3).margin == 0.0
+    assert "empty or abstain-only vote has margin 0" in _flat(repo_root, SKILL)

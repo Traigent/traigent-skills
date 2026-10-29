@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c7ea6b802c9e95e6",
+  "doc_hash": "fca5337a7a947192",
   "reference_hashes": {
     "references/error-reference.md": "02ac48de17fe6c9e",
     "references/logging-config.md": "158e07e3237bfb61",
-    "references/mock-mode.md": "fabd1e7cb7428486"
+    "references/mock-mode.md": "29535480cd60a674"
   },
   "entries": [
     {
@@ -241,7 +241,7 @@
       "run_id": null,
       "timestamp": "2026-10-29T00:00:00Z",
       "doc_before_hash": "a84e31dc649844e5",
-      "doc_after_hash": "c7ea6b802c9e95e6",
+      "doc_after_hash": "fca5337a7a947192",
       "note": "CostLimitExceeded entry and Mock Mode note: a mock run is priced and gated on SDK 0.31.0+ (small slice or documented exemption, never TRAIGENT_COST_APPROVED); reply-parsing scorers fail every trial under mock (#463, #464).",
       "source_type": "agent"
     }
