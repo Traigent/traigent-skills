@@ -115,8 +115,8 @@ def answer(text: str) -> tuple[str, dict[str, float]]:
 
 The cascade gate's "margin" is the **top-vote share**, not the gap between the top two votes:
 `margin = (votes for the most common answer) / (samples)`, and the cascade escalates to the
-expert arm when `margin < threshold`. Equality does not escalate. The base arm must therefore
-return more than one sample, and the threshold must be one the margin can actually fall below:
+expert arm when `margin < threshold`. Equality does not escalate.
+The base arm must return more than one sample, and the threshold must be one the margin can actually fall below:
 
 - With `samples=1` the margin is always 1.0, so the gate never escalates and every threshold
   scores the same.

@@ -216,7 +216,7 @@ for example in synthetic_examples:
     example.metadata["review_status"] = "needs_human_label_check"
 ```
 
-> **Mock mode does not cover this snippet on traigent 0.30.0 and earlier**: those releases only intercept litellm once an
+> **Mock mode does not cover this snippet on any traigent release through 0.30.0**: those releases only intercept litellm once an
 > evaluator has been built, and a standalone `ExampleSynthesizer` never builds one, so
 > `enable_mock_mode_for_quickstart()` leaves `private_llm` making real provider calls. From
 > traigent 0.31.0 the interceptors are installed when mock mode is enabled, so a standalone

@@ -52,7 +52,7 @@ def test_dataset_curate_no_longer_claims_standalone_litellm_is_unmocked_on_0_31(
     raw = (repo_root / "skills/traigent-dataset-curate/SKILL.md").read_text(encoding="utf-8")
     text = " ".join(re.sub(r"\n>[ ]?", "\n", raw).split())  # drop blockquote markers
     assert "still true on the SDK development branch" not in text
-    assert "0.30.0 and earlier" in text
+    assert "through 0.30.0" in text
     assert "From traigent 0.31.0 the interceptors are installed when mock mode is enabled" in text
 
 

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "818a0007290c17d6",
+  "doc_hash": "65bc403527e2f53c",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "adfa250fd96c0892",
@@ -305,7 +305,7 @@
       "run_id": null,
       "timestamp": "2026-10-29T00:00:00Z",
       "doc_before_hash": "0b2a017b400f366c",
-      "doc_after_hash": "818a0007290c17d6",
+      "doc_after_hash": "65bc403527e2f53c",
       "note": "Standalone litellm is intercepted under mock mode from SDK 0.31.0; the stub smoke test stays the recommendation (#465).",
       "source_type": "agent"
     }
