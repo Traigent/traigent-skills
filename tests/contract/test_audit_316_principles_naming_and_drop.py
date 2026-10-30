@@ -40,13 +40,13 @@ def test_per_run_name_example_appears_only_as_a_do_not(repo_root: Path) -> None:
     assert text[paragraph_start:offset].strip().startswith("**Do not**")
 
 
-def test_p6_scopes_the_label_to_the_run_plan_and_keeps_experiment_name_stable(
+def test_p6_scopes_the_label_to_the_run_plan_and_keeps_agent_name_stable(
     repo_root: Path,
 ) -> None:
     text = (repo_root / PRINCIPLES).read_text(encoding="utf-8")
     p6 = _flat(_section(text, "### P6"))
     assert "**run-plan record**" in p6
-    assert "Do not put that label in `experiment_name`" in p6
+    assert "Do not put that label in `agent_name`" in p6
     assert '"Run naming"' in p6
 
 

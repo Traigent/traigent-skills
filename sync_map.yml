@@ -18,6 +18,9 @@ skills:
       # release that made traigent's own import set LITELLM_LOCAL_MODEL_COST_MAP
       # by default); the reference table row carries the version note in prose.
       TRAIGENT_LITELLM_LIVE_PRICES: "0.29.0"
+      # TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT ships in traigent>=0.31.0; the
+      # skill text states the 0.31.0 requirement in prose next to it.
+      TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT: "0.31.0"
     sdk_paths:
       - traigent/utils/cost_calculator.py
       - traigent/core/cost_estimator.py
@@ -57,6 +60,10 @@ skills:
       # on PyPI since 2026-09-02); the reference states the requirement
       # in prose at the top of the file.
       references/winner-stability-reps.md: "0.27.0"
+      # agent_name / run_title / run_description shipped in 0.27.0
+      # (Traigent/Traigent@62cbaa667); the reference states the requirement in
+      # prose at the top of the file.
+      references/agent-identity.md: "0.27.0"
       # EvaluationOptions.task_type first shipped in 0.28.0
       # (Traigent/Traigent#2226); older SDKs follow the no-task_type path in
       # SKILL.md, which stays unfloored.
@@ -72,6 +79,10 @@ skills:
       - docs/features/safety-gates.md
 
   traigent-optimize-run:
+    env_version_floors:
+      # TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT ships in traigent>=0.31.0; the
+      # skill text states the 0.31.0 requirement in prose next to it.
+      TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT: "0.31.0"
     python_version_floors:
       # traigent.ExecutionBudget and the optimize(budget=) kwarg ship in
       # 0.26.0; the reference states the requirement in prose at the top.
@@ -108,6 +119,9 @@ skills:
       # TRAIGENT_LOG_LEVEL ships in traigent>=0.13.0 (utils/logging.py); the
       # skill notes the version requirement in prose next to the variable.
       TRAIGENT_LOG_LEVEL: "0.13.0.dev1"
+      # TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT ships in traigent>=0.31.0; the
+      # skill text states the 0.31.0 requirement in prose next to it.
+      TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT: "0.31.0"
     modules:
       - traigent.utils.exceptions
       - traigent.utils.env_config
@@ -132,6 +146,10 @@ skills:
   # Union of the former traigent-boost-agent entry and the retired bare
   # `traigent` key (folded in during the 2026-07 taxonomy consolidation).
   traigent-boost-agent:
+    env_version_floors:
+      # TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT ships in traigent>=0.31.0; the
+      # skill text states the 0.31.0 requirement in prose next to it.
+      TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT: "0.31.0"
     min_sdk_version: "0.24.0"
     backend_prefixes:
       - /api/v1/analytics/runs
@@ -252,6 +270,10 @@ skills:
       - traigent/api/types.py
 
   traigent-ci-safety-gate:
+    env_version_floors:
+      # TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT ships in traigent>=0.31.0; the
+      # skill text states the 0.31.0 requirement in prose next to it.
+      TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT: "0.31.0"
     python_version_floors:
       # safety_constraints is accepted from 0.28.0 (below it, decoration raises
       # NotImplementedError); the reference states the requirement in prose.
@@ -300,6 +322,13 @@ skills:
       # release that sets LITELLM_LOCAL_MODEL_COST_MAP on import); the
       # quickstart prose carries the version note next to the variable.
       TRAIGENT_LITELLM_LIVE_PRICES: "0.29.0"
+      # TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT ships in traigent>=0.31.0; the
+      # skill text states the 0.31.0 requirement in prose next to it.
+      TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT: "0.31.0"
+    python_version_floors:
+      # The runnable recipe passes agent_name=, which shipped in 0.27.0
+      # (Traigent/Traigent@62cbaa667); the docstring states the requirement.
+      references/quickstart_text2sql.md: "0.27.0"
     modules:
       - traigent
       - traigent.api.decorators

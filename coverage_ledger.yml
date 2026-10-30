@@ -969,15 +969,6 @@ waivers:
   "be:POST /api/v2/lifecycles/<lifecycle_id>/reopen":
     reason: SmartOps Planner V2 (/api/v2) lifecycle surface; not yet promoted to a taught path — revisit when v2 has an SDK client
     owner: nimrodbusany
-  "py:optimize#agent_name":
-    reason: 0.27.0 preferred spelling of experiment_name (which stays as a deprecated alias); skills still teach experiment_name — remove this waiver when they migrate
-    owner: nimrodbusany
-  "py:optimize#run_description":
-    reason: optional per-run display description surfaced in the portal; skills teach agent/experiment naming only, no run-label surface yet
-    owner: nimrodbusany
-  "py:optimize#run_title":
-    reason: optional per-run display label surfaced in the portal; skills teach agent/experiment naming only, no run-label surface yet
-    owner: nimrodbusany
 
   # JS API snapshot refresh 2026-09-16 (issue #113): tools/contract/refresh_js_api.py against
   # traigent-js origin/main @ 9580f5772e1ce9f38adeb418870d6386210ab4ad (765 symbols, up from 641;

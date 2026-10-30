@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.5"
+  version: "1.1.6"
 ---
 
 # Traigent Composite Knobs
@@ -84,7 +84,8 @@ def _stage(outputs: list[str]) -> StageRunner:
     objectives=["accuracy"],
     configuration_space={
         # Declare the threshold as a tuned variable so params[GATE] resolves.
-        # The optimizer searches discrete margin values; the winning value
+        # The optimizer searches discrete top-vote-share thresholds (0.3 is a
+        # no-escalation control for 3 samples, see below); the winning value
         # doubles as the live calibrated_value passed to execute_composite.
         GATE: [0.3, 0.5, 0.7],
     },
@@ -112,9 +113,25 @@ def answer(text: str) -> tuple[str, dict[str, float]]:
     return str(run.output), metrics
 ```
 
-The base arm must return more than one sample. With `samples=1` the vote margin is always 1.0,
-so the gate never escalates and every threshold scores the same. In this block the 2-1 split
-accepts the cheap answer at the lower thresholds and escalates to the strong arm at 0.7.
+The cascade gate's "margin" is the **top-vote share**, not the gap between the top two votes:
+`margin = (votes for the most common answer) / (samples)`, and the cascade escalates to the
+expert arm when `margin < threshold`. Equality does not escalate.
+The base arm must return more than one sample, and the threshold must be one the margin can actually fall below:
+
+- With `samples=1` the margin is always 1.0, so the gate never escalates and every threshold
+  scores the same.
+- With a **2-sample** base arm a 1-1 split has margin 0.5, so a threshold of 0.5 or lower never
+  escalates. Use a threshold above 0.5.
+- With a **3-sample** base arm the margin of a non-empty vote is 1/3 (all different), 2/3 (a
+  2-1 split) or 1.0 (unanimous). That makes three distinct bands for the grid in this block:
+  `0.3` escalates no non-empty vote (keep it as a no-escalation control), `0.5` escalates only a
+  three-way split, and `0.7` escalates every non-unanimous vote. `0.3` and `0.5` behave the
+  same on a 2-1 split.
+
+An empty or abstain-only vote has margin 0 and escalates for any positive threshold.
+
+In this block the 2-1 split (margin 0.67) accepts the cheap answer at 0.3 and 0.5 and escalates
+to the strong arm at 0.7.
 
 The evaluator unpacks exactly a two-item tuple `(output, metrics)` where `metrics` is numeric
 and identifier-keyed; other return shapes are not unpacked. `output` is scored by the built-in

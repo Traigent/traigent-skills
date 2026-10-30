@@ -20,9 +20,11 @@ of every trial that uses it.
 
 ## Guards, in this order
 
-1. **Dry run for $0.** Call `enable_mock_mode_for_quickstart()` (from `traigent.testing`) and
-   declare `offline=True` on the decorated function. No model calls, no provider spend, no
-   backend traffic. It proves the wiring, not the quality.
+1. **Dry run with no provider spend.** Call `enable_mock_mode_for_quickstart()` (from
+   `traigent.testing`) and declare `offline=True` on the decorated function. Simulated calls
+   cost nothing and send no backend traffic. It proves the wiring, not the quality. The
+   pre-run estimate and its cap (guard 2) still apply to a mock run on SDK 0.31.0+: see
+   "Mock dry runs on SDK 0.31.0+" below.
 2. **A spending cap.** Pass `cost_limit` in USD to `.optimize()` (or set
    `TRAIGENT_RUN_COST_LIMIT`; the default is $2.00). A pre-run estimate over the cap stops the
    run before anything is spent; a cap hit mid-run stops the run and keeps the finished trials
@@ -75,6 +77,27 @@ From SDK 0.30.0 (see version-matrix: `unmeasured-cost-cap`) an unmeasured call s
   `COST_UNMEASURED_TRIALS_RAN`.
 - Partial capture: `COST_OBJECTIVE_PARTIAL_USAGE_CAPTURED`; nothing captured with a cost
   objective: `COST_OBJECTIVE_NO_USAGE_CAPTURED` (this one exists from 0.29.0).
+
+## Mock dry runs on SDK 0.31.0+
+
+From SDK 0.31.0 a mock run is still priced: the pre-run estimate is computed from your dataset
+and models, and the cap in guard 2 applies, so a large dataset can raise `CostLimitExceeded`
+before trial 1 even though nothing would be spent. (SDKs before 0.31.0 skipped the estimate in
+mock mode.) Two supported ways to dry-run a large dataset:
+
+- **A small slice.** Point the dry run at a few rows (for example 5 to 10). This works on every
+  SDK version and needs no environment variable.
+- **The SDK's mock exemption.** Set `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together with an
+  explicit non-production environment (`ENVIRONMENT=development`, or `test`, `testing`,
+  `local`, `dev`, `stage`, `staging`). It applies only while mock mode is on. With the
+  environment unset, `ci` or production it is ignored and the estimate still applies. Use it
+  for test and walkthrough runs only, and set both variables on the mock process alone (for
+  example `ENVIRONMENT=development TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1 python dry_run.py`), never
+  exported in the shell that later runs the real optimization: `ENVIRONMENT` also changes other
+  production-versus-development checks.
+
+Do not set `TRAIGENT_COST_APPROVED=true` to get past a mock run's refusal. It approves spend,
+and the same shell would carry that approval into the real run.
 
 ## Before a real run, check
 

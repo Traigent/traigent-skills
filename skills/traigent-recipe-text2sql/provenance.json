@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "db7a0b40330545ac",
+  "doc_hash": "5479f72fb4d9af92",
   "reference_hashes": {
-    "references/quickstart_text2sql.md": "475dd02b122d45a0"
+    "references/quickstart_text2sql.md": "c3477ca384dafde4"
   },
   "entries": [
     {
@@ -206,6 +206,17 @@
       "doc_before_hash": "c4976693bfa60943",
       "doc_after_hash": "db7a0b40330545ac",
       "note": "Issue sweep 2026-10-21 against SDK 0.30.0: install floor >=0.24.0 with a floor-enforcing install check (#442); current Anthropic model IDs (#450); OpenAI real-run tier IDs and a litellm>=1.106.0 pin (#451); tuning-dataset path (#452); holdout reference script reads the export_config wrapper and the SDK's label keys (#453); PR-job cost limit removed and the TVL note version-stamped (#454); auth device-login and TRAIGENT_DEBUG wording (#455); ProviderValidationError, TRAIGENT_STRICT_COST_ACCOUNTING, row-metadata merge and the models --check typo claim (#447).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-463-470-2026-10-29",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-29T00:00:00Z",
+      "doc_before_hash": "db7a0b40330545ac",
+      "doc_after_hash": "5479f72fb4d9af92",
+      "note": "Mock dry run described as no-spend but still priced on SDK 0.31.0+ (#463); the runnable recipe passes agent_name= (requires traigent>=0.27.0, #468).",
       "source_type": "agent"
     }
   ]

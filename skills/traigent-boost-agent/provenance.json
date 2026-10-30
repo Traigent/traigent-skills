@@ -1,12 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7794da5274b03731",
+  "doc_hash": "0b8186b40b8de19b",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
-    "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
+    "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/insights-and-iteration.md": "e864e5ed0254be8c",
-    "references/instrument-recipe.md": "db2c3f40e4327736",
-    "references/run-cost-and-limits.md": "2171222031bb8a5e"
+    "references/instrument-recipe.md": "6e9b84fa7b1990d9",
+    "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
     {
@@ -333,6 +333,17 @@
       "doc_before_hash": "037fd971a9c3ce60",
       "doc_after_hash": "7794da5274b03731",
       "note": "Issue sweep 2026-10-21 against SDK 0.30.0: install floor >=0.24.0 with a floor-enforcing install check (#442); current Anthropic model IDs (#450); OpenAI real-run tier IDs and a litellm>=1.106.0 pin (#451); tuning-dataset path (#452); holdout reference script reads the export_config wrapper and the SDK's label keys (#453); PR-job cost limit removed and the TVL note version-stamped (#454); auth device-login and TRAIGENT_DEBUG wording (#455); ProviderValidationError, TRAIGENT_STRICT_COST_ACCOUNTING, row-metadata merge and the models --check typo claim (#447).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-463-470-2026-10-29",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-29T00:00:00Z",
+      "doc_before_hash": "7794da5274b03731",
+      "doc_after_hash": "0b8186b40b8de19b",
+      "note": "Mock dry run is still priced and gated on SDK 0.31.0+ (small slice or the documented mock exemption, never TRAIGENT_COST_APPROVED) (#463); a reply-parsing scorer fails every trial under mock instead of scoring 0.0, split from number-returning scorers (#464); raw openai/anthropic clients are blocked, not billed, for known provider hosts on SDK 0.31.0+ (#465).",
       "source_type": "agent"
     }
   ]

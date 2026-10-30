@@ -103,7 +103,7 @@ def _render_context(question: str, cfg: dict) -> str:
 def _call_answer_model(question: str, cfg: dict) -> tuple[str, float]:
     context = _render_context(question, cfg)
     # litellm.completion, not a raw provider client: mock mode intercepts only
-    # LiteLLM/LangChain calls, so the dry-run below stays keyless and free.
+    # LiteLLM/LangChain calls, so the dry-run below stays keyless and spends nothing at a provider.
     response = litellm.completion(
         model=cfg["model"],
         temperature=float(cfg["temperature"]),
@@ -194,7 +194,7 @@ from traigent.testing import enable_mock_mode_for_quickstart
 enable_mock_mode_for_quickstart()
 ```
 
-> Mock mode covers LiteLLM/LangChain calls only — a raw `openai` / `anthropic` client in the body makes real, billable calls even during a "keyless" mock dry-run. The After block calls `litellm.completion` for that reason; if you keep your own client, stub it for the dry-run.
+> Mock mode covers LiteLLM/LangChain calls only: raw `openai` / `anthropic` clients get no canned reply, but on SDK 0.31.0+ their HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed. Clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 raw-client calls reach the provider and bill. The After block calls `litellm.completion` for that reason; if you keep your own client, stub it for the dry-run. On SDK 0.31.0+ the mock run is also still priced against the cost cap, so dry-run a small slice of a large dataset (see `run-cost-and-limits.md`).
 
 Real optimization:
 

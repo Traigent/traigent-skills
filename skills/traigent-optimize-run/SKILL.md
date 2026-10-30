@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.30"
+  version: "1.0.31"
 ---
 
 # Running Traigent Optimization
@@ -74,7 +74,7 @@ See `traigent-analyze-results` for the full field reference.
 > ```python
 > from traigent.testing import enable_mock_mode_for_quickstart
 > enable_mock_mode_for_quickstart()
-> results = answer.optimize_sync(max_trials=10, algorithm="grid")  # mock, no cost
+> results = answer.optimize_sync(max_trials=10, algorithm="grid")  # mock: no provider spend (SDK 0.31.0+ still prices the run: use a small slice for a large dataset)
 > print(f"Mock pipeline OK: {len(results.trials)} trials, {len(results.failed_trials)} failed")
 > # Estimate the REAL run's calls before approving. There is no `results.estimated_cost_usd`
 > # accessor. Calls ~= trials x examples x model calls per example, plus judge calls; price
