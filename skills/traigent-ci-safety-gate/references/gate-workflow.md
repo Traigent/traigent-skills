@@ -59,7 +59,8 @@ jobs:
       # In a mocked job leave the cap unset (the $2.00 default); SDK 0.31.0+ still
       # prices a mocked optimize() against it, so keep that job to a few rows or
       # use TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1 with an explicit non-production
-      # ENVIRONMENT such as test (ignored when unset, ci or production). In the paid
+      # ENVIRONMENT such as test (ignored when unset, ci or production), set on the mock
+      # step alone, never job-wide. In the paid
       # job set a cap above the estimate for its dataset and trial count.
     steps:
       - uses: actions/checkout@v4

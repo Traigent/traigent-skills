@@ -103,7 +103,7 @@ def _render_context(question: str, cfg: dict) -> str:
 def _call_answer_model(question: str, cfg: dict) -> tuple[str, float]:
     context = _render_context(question, cfg)
     # litellm.completion, not a raw provider client: mock mode intercepts only
-    # LiteLLM/LangChain calls, so the dry-run below stays keyless and free.
+    # LiteLLM/LangChain calls, so the dry-run below stays keyless and spends nothing at a provider.
     response = litellm.completion(
         model=cfg["model"],
         temperature=float(cfg["temperature"]),

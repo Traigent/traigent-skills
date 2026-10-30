@@ -23,7 +23,7 @@ Present a cost estimate and get the user's explicit approval before any paid run
 
 1. Set up the decorated function (for a single function, see the Fast Path below; for a whole codebase, Steps 1-7 of the 12-Step Lifecycle Playbook)
 2. Validate dataset, config space, and providers
-3. Dry-run in mock mode — verify the full pipeline end-to-end with no provider spend (on SDK 0.31.0+ a mock run is still priced and gated by the pre-run cost estimate, so dry-run a small slice of a large dataset; see Step 3)
+3. Dry-run in mock mode — verify the full pipeline end-to-end with no provider spend (on SDK 0.31.0+ a mock run is still priced and gated by the pre-run cost estimate, so dry-run a small slice of a large dataset; see Fast Path Step 3)
 4. Report what the dry run found, estimate real costs
 5. **Wait** for the user to say "run it for real"
 <!-- /PROTECTED -->
@@ -142,7 +142,7 @@ Enable mock mode in code, then run the full optimization pipeline end to end (de
 
 > A **connected** mock run (`offline=False` with a key) consumes the plan's `optimization_samples` quota like any other run; an `offline=True` mock run makes no backend call and touches no quota. Mock intercepts LiteLLM/LangChain calls only — raw `openai`/`anthropic` clients get no canned reply. On SDK 0.31.0+ the HTTP request such a client sends to a known LLM provider host is blocked (`MockModeTransportBlockedError`), not billed; clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 raw-client calls reach the provider and bill. See `traigent-debugging` for the quota entry and hermetic-startup env vars (`TRAIGENT_OFFLINE_MODE`, `LITELLM_LOCAL_MODEL_COST_MAP`; `TRAIGENT_MOCK_LLM` is deprecated in favor of `enable_mock_mode_for_quickstart()`).
 
-> **A mock run is still priced and gated (SDK 0.31.0+).** The pre-run cost estimate and the `TRAIGENT_RUN_COST_LIMIT` cap (default $2.00) apply to a mock run, so a realistic eval set can stop here with `CostLimitExceeded` before trial 1 even though nothing would be spent. Dry-run a small slice (5-10 rows) of the dataset instead. For a test-only run you can also set `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together with an explicit non-production `ENVIRONMENT` (for example `development`; unset, `ci` and production are refused). Never set `TRAIGENT_COST_APPROVED=true` to get past a mock run's refusal: it approves spend and would carry over to the real run. Details: `references/run-cost-and-limits.md`.
+> **A mock run is still priced and gated (SDK 0.31.0+).** The pre-run cost estimate and the `TRAIGENT_RUN_COST_LIMIT` cap (default $2.00) apply to a mock run, so a realistic eval set can stop here with `CostLimitExceeded` before trial 1 even though nothing would be spent. Dry-run a small slice (5-10 rows) of the dataset instead. For a test-only run you can also set `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together with an explicit non-production `ENVIRONMENT` (for example `development`; unset, `ci` and production are refused). Set both on the mock process alone, never exported or committed (`ENVIRONMENT` also changes other production checks). Never set `TRAIGENT_COST_APPROVED=true` to get past a mock run's refusal: it approves spend and would carry over to the real run. Details: `references/run-cost-and-limits.md`.
 
 ```python
 import os

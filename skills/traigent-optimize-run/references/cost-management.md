@@ -194,7 +194,7 @@ Mock mode does **not** skip the pre-run pricing estimate from SDK 0.31.0: the es
 `CostLimitExceeded` before trial 1 even though nothing would be spent. (SDKs before 0.31.0 did
 skip the estimate in mock mode.) Dry-run a small slice of the dataset, or for a test-only run set
 `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together with an explicit non-production `ENVIRONMENT`
-such as `development` (ignored when the environment is unset, `ci` or production). Do not use
+such as `development` (ignored when the environment is unset, `ci` or production); set both on the mock process alone, never exported or committed. Do not use
 `TRAIGENT_COST_APPROVED=true` for a mock run: it approves spend and would carry into the real run.
 The runtime CostEnforcer is always active: permits, `TRAIGENT_RUN_COST_LIMIT`, and
 `stop_reason="cost_limit"` apply in mock runs too. Released SDKs through 0.30.0 can

@@ -186,7 +186,7 @@ traigent.utils.exceptions.CostLimitExceeded: Cost limit exceeded: estimated $0.5
 would be spent, and its text only offers the approval variables. Do not raise the limit or set
 `TRAIGENT_COST_APPROVED=true` for a mock run (approval would carry into the real run). Dry-run a small
 slice of the dataset, or for a test-only run set `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together
-with an explicit non-production `ENVIRONMENT` such as `development`; see `references/mock-mode.md`.
+with an explicit non-production `ENVIRONMENT` such as `development`, set on the mock process alone and never exported; see `references/mock-mode.md`.
 
 **Handling programmatically**:
 

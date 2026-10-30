@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "77be6a9a6d2040e6",
+  "doc_hash": "b8eca7c50e06b7bd",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
-    "references/environment-variables.md": "91b8e281f037b2b3",
+    "references/environment-variables.md": "c50fe19585bb0888",
     "references/first-value-fallback.md": "44ea4e6b23f8632d",
     "references/installation-extras.md": "21a597989700969a",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
@@ -449,7 +449,7 @@
       "run_id": null,
       "timestamp": "2026-10-29T00:00:00Z",
       "doc_before_hash": "47a6fad70d5a2127",
-      "doc_after_hash": "77be6a9a6d2040e6",
+      "doc_after_hash": "b8eca7c50e06b7bd",
       "note": "Mock runs are priced and gated on SDK 0.31.0+ (#463); reply-parsing scorers fail every trial under mock (#464); raw-client mock scope version-qualified for SDK 0.31.0 (#465).",
       "source_type": "agent"
     }

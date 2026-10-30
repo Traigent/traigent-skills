@@ -92,6 +92,26 @@ def test_exempt_env_var_is_prose_versioned_everywhere(repo_root: Path) -> None:
     assert not missing, missing
 
 
+def test_exempt_env_var_is_scoped_to_the_mock_process_everywhere(repo_root: Path) -> None:
+    """Every skill file naming the variable also says to scope it, not export it.
+
+    ENVIRONMENT changes other production-versus-development checks, so teaching
+    the exemption without the scope leaks it into the shell that later runs the
+    real optimization.
+    """
+    scope = re.compile(
+        r"mock (process|step) alone|never exported|never job-wide|process alone", re.I
+    )
+    missing = []
+    for path in _markdown(repo_root):
+        text = path.read_text(encoding="utf-8")
+        for match in re.finditer(r"TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT", text):
+            window = text[max(0, match.start() - 1200) : match.end() + 1200]
+            if not scope.search(window):
+                missing.append(f"{path.relative_to(repo_root)}@{match.start()}")
+    assert not missing, missing
+
+
 # --- SDK behaviour the wording describes (0.31.0+) -------------------------------
 
 

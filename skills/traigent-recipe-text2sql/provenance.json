@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "dfbfb4eff0df3c20",
+  "doc_hash": "5479f72fb4d9af92",
   "reference_hashes": {
     "references/quickstart_text2sql.md": "c3477ca384dafde4"
   },
@@ -215,7 +215,7 @@
       "run_id": null,
       "timestamp": "2026-10-29T00:00:00Z",
       "doc_before_hash": "db7a0b40330545ac",
-      "doc_after_hash": "dfbfb4eff0df3c20",
+      "doc_after_hash": "5479f72fb4d9af92",
       "note": "Mock dry run described as no-spend but still priced on SDK 0.31.0+ (#463); the runnable recipe passes agent_name= (requires traigent>=0.27.0, #468).",
       "source_type": "agent"
     }

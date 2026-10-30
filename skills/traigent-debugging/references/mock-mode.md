@@ -92,7 +92,10 @@ run). Instead:
 - Or, for a test-only run, set `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together with an explicit
   non-production environment (`ENVIRONMENT=development`; `test`, `testing`, `local`, `dev`,
   `stage` and `staging` also qualify). With the environment unset, `ci` or production the
-  exemption is ignored and the estimate applies. It also requires mock mode to be on.
+  exemption is ignored and the estimate applies. It also requires mock mode to be on. Set both
+  variables on the mock process alone, never exported or committed: `ENVIRONMENT` also changes
+  other production checks, and the exemption would also skip the estimate for any call mock mode
+  does not block (`boto3`, unlisted hosts).
 
 ### What Gets Mocked
 
