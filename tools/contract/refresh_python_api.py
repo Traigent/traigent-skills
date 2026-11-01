@@ -227,16 +227,18 @@ def _model_fields(tree: ast.AST, class_name: str) -> list[str]:
     """
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == class_name:
-            fields: list[str] = []
-            for stmt in node.body:
-                if isinstance(stmt, ast.AnnAssign) and isinstance(
-                    stmt.target, ast.Name
-                ):
-                    name = stmt.target.id
-                    if not name.startswith("_"):
-                        fields.append(name)
-            return sorted(set(fields))
+            return _class_fields(node)
     raise ValueError(f"could not find model class {class_name}")
+
+
+def _class_fields(node: ast.ClassDef) -> list[str]:
+    fields: list[str] = []
+    for stmt in node.body:
+        if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+            name = stmt.target.id
+            if not name.startswith("_"):
+                fields.append(name)
+    return sorted(set(fields))
 
 
 def _public_exceptions(tree: ast.AST) -> list[str]:

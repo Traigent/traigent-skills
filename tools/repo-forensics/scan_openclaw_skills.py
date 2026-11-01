@@ -127,7 +127,9 @@ CLAWHAVOC = [
 
 def _read(repo_root, path):
     try:
-        return core.read_text_file_within_root(repo_root, path, encoding="utf-8", errors="ignore")
+        return core.read_text_file_within_root(
+            repo_root, path, encoding="utf-8", errors="ignore"
+        )
     except FileNotFoundError:
         return None
     except ValueError as e:
@@ -141,23 +143,16 @@ def _read(repo_root, path):
         return None
 
 
-def is_openclaw_skill(repo_path):
-    """Return True if repo looks like an OpenClaw/NanoClaw/ClawHub skill.
-    Requires at least one OpenClaw-specific marker. SKILL.md alone needs
-    frontmatter (---) to distinguish from generic Claude skills.
-    """
-    # OpenClaw-specific markers (not found in generic repos)
-    for name in (".clawhubignore", "SOUL.md", "AGENTS.md"):
-        if os.path.isfile(os.path.join(repo_path, name)):
-            return True
-    # SKILL.md with frontmatter = OpenClaw/NanoClaw style
-    skill_md = os.path.join(repo_path, "SKILL.md")
-    if os.path.isfile(skill_md):
-        content = _read(repo_path, skill_md)
-        if content and content.startswith("---"):
-            return True
+AGENTS_FILENAME = "AGENTS.md"
+SOUL_FILENAME = "SOUL.md"
+CLAWHUB_IGNORE_FILENAME = ".clawhubignore"
+SKILL_FILENAME = "SKILL.md"
+TOOLS_FILENAME = "tools.json"
+
+
+def _has_tool_definitions(repo_path):
     # tools.json with tool definitions (not generic config)
-    tools_json = os.path.join(repo_path, "tools.json")
+    tools_json = os.path.join(repo_path, TOOLS_FILENAME)
     if os.path.isfile(tools_json):
         content = _read(repo_path, tools_json)
         if content:
@@ -175,10 +170,47 @@ def is_openclaw_skill(repo_path):
     return False
 
 
+def is_openclaw_skill(repo_path):
+    """Return True if repo looks like an OpenClaw/NanoClaw/ClawHub skill.
+    Requires at least one OpenClaw-specific marker. SKILL.md alone needs
+    frontmatter (---) to distinguish from generic Claude skills.
+    """
+    # OpenClaw-specific markers (not found in generic repos)
+    for name in (CLAWHUB_IGNORE_FILENAME, SOUL_FILENAME, AGENTS_FILENAME):
+        if os.path.isfile(os.path.join(repo_path, name)):
+            return True
+    # SKILL.md with frontmatter = OpenClaw/NanoClaw style
+    skill_md = os.path.join(repo_path, SKILL_FILENAME)
+    if os.path.isfile(skill_md):
+        content = _read(repo_path, skill_md)
+        if content and content.startswith("---"):
+            return True
+    return _has_tool_definitions(repo_path)
+
+
+def _check_frontmatter_triggers(fields, findings):
+    if "triggers" in fields:
+        raw = fields["triggers"]
+        for w in re.findall(r"[\w]+", raw.lower()):
+            if w in BROAD_TRIGGERS:
+                findings.append(
+                    _F(
+                        SCANNER_NAME,
+                        "medium",
+                        f"Overly broad trigger keyword: '{w}'",
+                        f"Trigger '{w}' matches too many intents, risking skill hijacking.",
+                        SKILL_FILENAME,
+                        1,
+                        raw[:120],
+                        "frontmatter",
+                    )
+                )
+
+
 def scan_frontmatter(repo_path):
     """Cat 1: Parse SKILL.md frontmatter, validate name/author/triggers/description."""
     findings = []
-    content = _read(repo_path, os.path.join(repo_path, "SKILL.md"))
+    content = _read(repo_path, os.path.join(repo_path, SKILL_FILENAME))
     if not content:
         return findings
     fm_match = re.match(r"^---\s*\n(.*?)\n---", content, re.DOTALL)
@@ -197,7 +229,7 @@ def scan_frontmatter(repo_path):
                 "high",
                 "Missing skill name in frontmatter",
                 "SKILL.md frontmatter has no 'name' field.",
-                "SKILL.md",
+                SKILL_FILENAME,
                 1,
                 fm_text[:120],
                 "frontmatter",
@@ -210,28 +242,14 @@ def scan_frontmatter(repo_path):
                 "high",
                 "Missing skill author in frontmatter (unattributed skill)",
                 "Unattributed skills are a supply-chain risk.",
-                "SKILL.md",
+                SKILL_FILENAME,
                 1,
                 fm_text[:120],
                 "frontmatter",
             )
         )
-    if "triggers" in fields:
-        raw = fields["triggers"]
-        for w in re.findall(r"[\w]+", raw.lower()):
-            if w in BROAD_TRIGGERS:
-                findings.append(
-                    _F(
-                        SCANNER_NAME,
-                        "medium",
-                        f"Overly broad trigger keyword: '{w}'",
-                        f"Trigger '{w}' matches too many intents, risking skill hijacking.",
-                        "SKILL.md",
-                        1,
-                        raw[:120],
-                        "frontmatter",
-                    )
-                )
+    _check_frontmatter_triggers(fields, findings)
+
     desc = fields.get("description", "")
     for pat in PROMPT_INJECTION_RE:
         if pat.search(desc):
@@ -241,7 +259,7 @@ def scan_frontmatter(repo_path):
                     "high",
                     "Prompt injection in skill description",
                     "Frontmatter description contains prompt injection.",
-                    "SKILL.md",
+                    SKILL_FILENAME,
                     1,
                     desc[:120],
                     "frontmatter",
@@ -251,10 +269,54 @@ def scan_frontmatter(repo_path):
     return findings
 
 
+def _check_tool_fields(tool, tname, raw_lines, findings):
+    for fld in ("description", "name", "title", "summary"):
+        val = tool.get(fld, "")
+        if not isinstance(val, str):
+            continue
+        for pat, title, sev in TOOL_INJECTION_KW:
+            if pat.search(val):
+                ln = next(
+                    (i + 1 for i, line in enumerate(raw_lines) if val[:40] in line),
+                    0,
+                )
+                findings.append(
+                    _F(
+                        SCANNER_NAME,
+                        sev,
+                        title,
+                        f"Tool '{tname}' field '{fld}' contains injection pattern.",
+                        TOOLS_FILENAME,
+                        ln,
+                        val[:120],
+                        "tool-poisoning",
+                    )
+                )
+
+
+def _check_tool_credentials(tool, tname, findings):
+    schema = tool.get("inputSchema", {})
+    if isinstance(schema, dict):
+        for prop in schema.get("properties", {}) or {}:
+            if CRED_FIELD_RE.search(prop):
+                findings.append(
+                    _F(
+                        SCANNER_NAME,
+                        "high",
+                        "Tool requests credential input",
+                        f"Tool '{tname}' has credential-type input '{prop}'.",
+                        TOOLS_FILENAME,
+                        0,
+                        f"inputSchema.properties.{prop}",
+                        "tool-poisoning",
+                    )
+                )
+
+
 def scan_tools_json(repo_path):
     """Cat 2: Check tools.json for schema poisoning and credential fields."""
     findings = []
-    path = os.path.join(repo_path, "tools.json")
+    path = os.path.join(repo_path, TOOLS_FILENAME)
     raw = _read(repo_path, path)
     if not raw:
         return findings
@@ -267,7 +329,7 @@ def scan_tools_json(repo_path):
                 "medium",
                 "Unparseable tools.json",
                 "tools.json could not be parsed as JSON. Manual review required.",
-                "tools.json",
+                TOOLS_FILENAME,
                 0,
                 raw[:80],
                 "tool-poisoning",
@@ -286,51 +348,50 @@ def scan_tools_json(repo_path):
         if not isinstance(tool, dict):
             continue
         tname = tool.get("name", f"#{idx}")
-        for fld in ("description", "name", "title", "summary"):
-            val = tool.get(fld, "")
-            if not isinstance(val, str):
-                continue
-            for pat, title, sev in TOOL_INJECTION_KW:
-                if pat.search(val):
-                    ln = next(
-                        (i + 1 for i, line in enumerate(raw_lines) if val[:40] in line),
-                        0,
-                    )
-                    findings.append(
-                        _F(
-                            SCANNER_NAME,
-                            sev,
-                            title,
-                            f"Tool '{tname}' field '{fld}' contains injection pattern.",
-                            "tools.json",
-                            ln,
-                            val[:120],
-                            "tool-poisoning",
-                        )
-                    )
-        schema = tool.get("inputSchema", {})
-        if isinstance(schema, dict):
-            for prop in schema.get("properties", {}) or {}:
-                if CRED_FIELD_RE.search(prop):
-                    findings.append(
-                        _F(
-                            SCANNER_NAME,
-                            "high",
-                            "Tool requests credential input",
-                            f"Tool '{tname}' has credential-type input '{prop}'.",
-                            "tools.json",
-                            0,
-                            f"inputSchema.properties.{prop}",
-                            "tool-poisoning",
-                        )
-                    )
+        _check_tool_fields(tool, tname, raw_lines, findings)
+
+        _check_tool_credentials(tool, tname, findings)
+
     return findings
+
+
+def _check_agent_config_line(line, rel, i, findings):
+    for pat in PROMPT_INJECTION_RE:
+        if pat.search(line):
+            findings.append(
+                _F(
+                    SCANNER_NAME,
+                    "critical",
+                    "Safety override in agent config",
+                    f"Prompt injection in {rel}.",
+                    rel,
+                    i + 1,
+                    line.strip()[:120],
+                    "agent-injection",
+                )
+            )
+            break
+    for pat in CRED_ACCESS_RE:
+        if pat.search(line):
+            findings.append(
+                _F(
+                    SCANNER_NAME,
+                    "high",
+                    "Credential access in agent config",
+                    f"Agent config {rel} references credentials.",
+                    rel,
+                    i + 1,
+                    line.strip()[:120],
+                    "agent-injection",
+                )
+            )
+            break
 
 
 def scan_agent_configs(repo_path):
     """Cat 3: Scan SOUL.md, AGENTS.md, CLAUDE.md, memory/*.md for injection + credential access."""
     findings = []
-    targets = ["SOUL.md", "AGENTS.md", "CLAUDE.md"]
+    targets = [SOUL_FILENAME, AGENTS_FILENAME, "CLAUDE.md"]
     mem_dir = os.path.join(repo_path, "memory")
     if os.path.isdir(mem_dir):
         targets += [
@@ -343,43 +404,15 @@ def scan_agent_configs(repo_path):
         for i, line in enumerate(content.split("\n")):
             if len(line) > core.MAX_LINE_LENGTH:
                 continue
-            for pat in PROMPT_INJECTION_RE:
-                if pat.search(line):
-                    findings.append(
-                        _F(
-                            SCANNER_NAME,
-                            "critical",
-                            "Safety override in agent config",
-                            f"Prompt injection in {rel}.",
-                            rel,
-                            i + 1,
-                            line.strip()[:120],
-                            "agent-injection",
-                        )
-                    )
-                    break
-            for pat in CRED_ACCESS_RE:
-                if pat.search(line):
-                    findings.append(
-                        _F(
-                            SCANNER_NAME,
-                            "high",
-                            "Credential access in agent config",
-                            f"Agent config {rel} references credentials.",
-                            rel,
-                            i + 1,
-                            line.strip()[:120],
-                            "agent-injection",
-                        )
-                    )
-                    break
+            _check_agent_config_line(line, rel, i, findings)
+
     return findings
 
 
 def scan_clawhubignore(repo_path):
     """Cat 4: Check .clawhubignore for patterns that hide executable code."""
     findings = []
-    content = _read(repo_path, os.path.join(repo_path, ".clawhubignore"))
+    content = _read(repo_path, os.path.join(repo_path, CLAWHUB_IGNORE_FILENAME))
     if not content:
         return findings
     for i, raw in enumerate(content.split("\n")):
@@ -393,7 +426,7 @@ def scan_clawhubignore(repo_path):
                     "critical",
                     "Wildcard ignore suppresses all ClawHub scanning",
                     f"Pattern '{line}' hides ALL files from ClawHub review.",
-                    ".clawhubignore",
+                    CLAWHUB_IGNORE_FILENAME,
                     i + 1,
                     line,
                     "clawhubignore-bypass",
@@ -408,7 +441,7 @@ def scan_clawhubignore(repo_path):
                             "high",
                             "Ignore pattern hides executable code from ClawHub scanner",
                             f"Pattern '{line}' hides reviewable files.",
-                            ".clawhubignore",
+                            CLAWHUB_IGNORE_FILENAME,
                             i + 1,
                             line,
                             "clawhubignore-bypass",
@@ -424,7 +457,7 @@ def scan_clawhavoc(repo_path):
     scan_skill_threats.py which already covers the full repo for these IOCs.
     """
     findings = []
-    openclaw_files = ["SKILL.md", "tools.json", "SOUL.md", "AGENTS.md"]
+    openclaw_files = [SKILL_FILENAME, TOOLS_FILENAME, SOUL_FILENAME, AGENTS_FILENAME]
     for name in openclaw_files:
         file_path = os.path.join(repo_path, name)
         content = _read(repo_path, file_path)
@@ -454,7 +487,9 @@ def main(args):
     """Run all OpenClaw skill checks. Returns list[Finding].
     Args can be a namespace with .repo_path or a string path (for testing).
     """
-    repo_path = core.resolve_repo_root(args if isinstance(args, str) else args.repo_path)
+    repo_path = core.resolve_repo_root(
+        args if isinstance(args, str) else args.repo_path
+    )
     if not is_openclaw_skill(repo_path):
         print("[+] Not an OpenClaw skill. Skipping.")
         return []

@@ -71,35 +71,7 @@ def process_skill(skill_path: Path, canonical_block: str, check: bool) -> bool:
     text = skill_path.read_text(encoding="utf-8")
     lines = text.splitlines(keepends=True)
 
-    # Find existing region if present
-    start_idx = -1
-    end_idx = -1
-    for i, line in enumerate(lines):
-        if line.rstrip("\n") == START_MARKER:
-            start_idx = i
-        if line.rstrip("\n") == END_MARKER and start_idx >= 0:
-            end_idx = i
-            break
-
-    if start_idx >= 0 and end_idx >= 0:
-        # Remove existing region from current position, collapsing blank lines ONLY at
-        # the splice boundary where the block was removed. Blank lines elsewhere in the
-        # document (including intentional double blanks) are left byte-for-byte intact.
-        pre = lines[:start_idx]
-        post = lines[end_idx + 1 :]
-        # Drop blank lines trailing pre (left over above the removed block)
-        while pre and pre[-1].strip() == "":
-            pre.pop()
-        # Drop blank lines leading post (left over below the removed block)
-        while post and post[0].strip() == "":
-            post.pop(0)
-        # Rejoin: restore exactly one blank line at the splice (if post is non-empty)
-        if pre and post:
-            body_lines = pre + ["\n"] + post
-        else:
-            body_lines = pre + post
-    else:
-        body_lines = list(lines)
+    body_lines, start_idx = _without_existing_block(lines)
 
     # Strip trailing blank lines before appending the canonical block
     while body_lines and body_lines[-1].strip() == "":
@@ -123,6 +95,45 @@ def process_skill(skill_path: Path, canonical_block: str, check: bool) -> bool:
 
     skill_path.write_text(new_text, encoding="utf-8")
     return True
+
+
+def _splice_block(lines: list[str], start_idx: int, end_idx: int) -> list[str]:
+    pre = lines[:start_idx]
+    post = lines[end_idx + 1 :]
+    # Drop blank lines trailing pre (left over above the removed block)
+    while pre and pre[-1].strip() == "":
+        pre.pop()
+    # Drop blank lines leading post (left over below the removed block)
+    while post and post[0].strip() == "":
+        post.pop(0)
+    # Rejoin: restore exactly one blank line at the splice (if post is non-empty)
+    if pre and post:
+        body_lines = pre + ["\n"] + post
+    else:
+        body_lines = pre + post
+    return body_lines
+
+
+def _without_existing_block(lines: list[str]) -> tuple[list[str], int]:
+    # Find existing region if present
+    start_idx = -1
+    end_idx = -1
+    for i, line in enumerate(lines):
+        if line.rstrip("\n") == START_MARKER:
+            start_idx = i
+        if line.rstrip("\n") == END_MARKER and start_idx >= 0:
+            end_idx = i
+            break
+
+    if start_idx >= 0 and end_idx >= 0:
+        # Remove existing region from current position, collapsing blank lines ONLY at
+        # the splice boundary where the block was removed. Blank lines elsewhere in the
+        # document (including intentional double blanks) are left byte-for-byte intact.
+        body_lines = _splice_block(lines, start_idx, end_idx)
+    else:
+        body_lines = list(lines)
+
+    return body_lines, start_idx
 
 
 def main() -> int:

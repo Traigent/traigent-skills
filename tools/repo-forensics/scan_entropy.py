@@ -60,6 +60,77 @@ SECRET_FORMAT_PATTERNS = [
 ]
 
 
+def _check_entropy(stripped, i, rel_path, threshold, findings):
+    # Shannon entropy check (per-string distribution, threshold 5.8)
+    ent = shannon_entropy(stripped)
+    if ent > threshold:
+        # Don't duplicate if already caught by base64/hex patterns
+        already_found = any(f.line == i + 1 for f in findings)
+        if not already_found:
+            # Combo detection: HIGH if matches known secret format, MEDIUM otherwise
+            matches_secret_format = any(
+                p.search(stripped) for p in SECRET_FORMAT_PATTERNS
+            )
+            severity = "high" if matches_secret_format else "medium"
+            title = (
+                "High-Confidence Secret"
+                if matches_secret_format
+                else "High Entropy Line"
+            )
+            findings.append(
+                core.Finding(
+                    scanner=SCANNER_NAME,
+                    severity=severity,
+                    title=title,
+                    description=f"Shannon entropy {ent:.2f} bits/char"
+                    + (" + known secret format match" if matches_secret_format else ""),
+                    file=rel_path,
+                    line=i + 1,
+                    snippet=stripped[:120],
+                    category="obfuscation",
+                )
+            )
+
+
+def _scan_entropy_line(stripped, i, rel_path, threshold, findings):
+    # Check for base64 blocks
+    for m in BASE64_PATTERN.finditer(stripped):
+        matched = m.group(0)
+        if len(matched) >= 80:
+            findings.append(
+                core.Finding(
+                    scanner=SCANNER_NAME,
+                    severity="high",
+                    title="Base64 Encoded Block",
+                    description=f"Large base64-encoded string ({len(matched)} chars) may hide payloads",
+                    file=rel_path,
+                    line=i + 1,
+                    snippet=matched[:120],
+                    category="encoding",
+                )
+            )
+            break  # One finding per line
+
+    # Check for long hex strings
+    for m in HEX_PATTERN.finditer(stripped):
+        matched = m.group(0)
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="high",
+                title="Long Hex String",
+                description=f"Long hex string ({len(matched)} chars) may be shellcode or encoded data",
+                file=rel_path,
+                line=i + 1,
+                snippet=matched[:120],
+                category="encoding",
+            )
+        )
+        break
+
+    _check_entropy(stripped, i, rel_path, threshold, findings)
+
+
 def scan_file(file_path, rel_path, threshold=5.8):
     """Scan for high-entropy strings with per-string distribution (TruffleHog v3 approach).
     Threshold raised to 5.8 to reduce false positives on cryptographic constants.
@@ -85,74 +156,7 @@ def scan_file(file_path, rel_path, threshold=5.8):
             if len(stripped) < 50:
                 continue
 
-            # Check for base64 blocks
-            for m in BASE64_PATTERN.finditer(stripped):
-                matched = m.group(0)
-                if len(matched) >= 80:
-                    findings.append(
-                        core.Finding(
-                            scanner=SCANNER_NAME,
-                            severity="high",
-                            title="Base64 Encoded Block",
-                            description=f"Large base64-encoded string ({len(matched)} chars) may hide payloads",
-                            file=rel_path,
-                            line=i + 1,
-                            snippet=matched[:120],
-                            category="encoding",
-                        )
-                    )
-                    break  # One finding per line
-
-            # Check for long hex strings
-            for m in HEX_PATTERN.finditer(stripped):
-                matched = m.group(0)
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="high",
-                        title="Long Hex String",
-                        description=f"Long hex string ({len(matched)} chars) may be shellcode or encoded data",
-                        file=rel_path,
-                        line=i + 1,
-                        snippet=matched[:120],
-                        category="encoding",
-                    )
-                )
-                break
-
-            # Shannon entropy check (per-string distribution, threshold 5.8)
-            ent = shannon_entropy(stripped)
-            if ent > threshold:
-                # Don't duplicate if already caught by base64/hex patterns
-                already_found = any(f.line == i + 1 for f in findings)
-                if not already_found:
-                    # Combo detection: HIGH if matches known secret format, MEDIUM otherwise
-                    matches_secret_format = any(
-                        p.search(stripped) for p in SECRET_FORMAT_PATTERNS
-                    )
-                    severity = "high" if matches_secret_format else "medium"
-                    title = (
-                        "High-Confidence Secret"
-                        if matches_secret_format
-                        else "High Entropy Line"
-                    )
-                    findings.append(
-                        core.Finding(
-                            scanner=SCANNER_NAME,
-                            severity=severity,
-                            title=title,
-                            description=f"Shannon entropy {ent:.2f} bits/char"
-                            + (
-                                " + known secret format match"
-                                if matches_secret_format
-                                else ""
-                            ),
-                            file=rel_path,
-                            line=i + 1,
-                            snippet=stripped[:120],
-                            category="obfuscation",
-                        )
-                    )
+            _scan_entropy_line(stripped, i, rel_path, threshold, findings)
 
     except Exception as e:
         print(f"[!] {SCANNER_NAME}: Failed to scan {rel_path}: {e}", file=sys.stderr)

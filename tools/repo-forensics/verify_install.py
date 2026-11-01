@@ -13,6 +13,8 @@ is established for marketplace distribution.
 Created by Alex Greenshpun
 """
 
+
+
 import os
 import sys
 import json
@@ -46,11 +48,13 @@ def get_skill_root():
     return core.resolve_repo_root(os.path.dirname(scripts_dir))  # skill/
 
 
+CHECKSUMS_FILENAME = 'checksums.json'
+
 def get_tracked_files(skill_root):
     """Get all files that should be integrity-checked."""
     tracked = []
     skip_dirs = {".git", "__pycache__", ".pytest_cache", "tests", ".cache"}
-    skip_files = {".forensics-baseline.json", ".forensics-iocs.json", "checksums.json"}
+    skip_files = {".forensics-baseline.json", ".forensics-iocs.json", CHECKSUMS_FILENAME}
 
     for root, dirs, files in os.walk(skill_root, followlinks=False):
         dirs[:] = [d for d in dirs if d not in skip_dirs]
@@ -92,7 +96,7 @@ def generate_checksums(skill_root):
         "files": checksums,
     }
 
-    out_path = os.path.join(skill_root, "checksums.json")
+    out_path = os.path.join(skill_root, CHECKSUMS_FILENAME)
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(output, f, indent=2)
 
@@ -103,7 +107,7 @@ def generate_checksums(skill_root):
 def verify_checksums(skill_root):
     """Verify current files against checksums.json.
     Returns (passed: bool, report: list[str])."""
-    checksum_path = os.path.join(skill_root, "checksums.json")
+    checksum_path = os.path.join(skill_root, CHECKSUMS_FILENAME)
     if not os.path.exists(checksum_path):
         return False, [
             "checksums.json not found. Run --generate first or download from release."

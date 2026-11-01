@@ -95,7 +95,21 @@ class ObfuscationVisitor(ast.NodeVisitor):
 
     def visit_Call(self, node):
         lineno = getattr(node, "lineno", None)
+        self._check_call_pattern_1(node, lineno)
+        self._check_call_pattern_2(node, lineno)
+        self._check_call_pattern_3(node, lineno)
+        self._check_call_pattern_4(node, lineno)
+        self._check_call_pattern_5(node, lineno)
+        self._check_call_pattern_6(node, lineno)
+        self._check_call_pattern_7(node, lineno)
+        self._check_call_pattern_8(node, lineno)
+        self._check_call_pattern_9(node, lineno)
+        self._check_call_pattern_10(node, lineno)
+        self._check_call_pattern_11(node, lineno)
+        self._check_call_pattern_12(node, lineno)
+        self.generic_visit(node)
 
+    def _check_call_pattern_1(self, node, lineno):
         # Pattern 1: exec(base64.b64decode(...)) or exec(codecs.decode(...)) etc.
         if isinstance(node.func, ast.Name) and node.func.id in ("exec", "eval"):
             if node.args and isinstance(node.args[0], ast.Call):
@@ -111,6 +125,8 @@ class ObfuscationVisitor(ast.NodeVisitor):
                         category="obfuscated-exec",
                     )
 
+
+    def _check_call_pattern_2(self, node, lineno):
         # Pattern 2: eval(compile(bytes(...), '', 'exec')) or eval(compile(...))
         if isinstance(node.func, ast.Name) and node.func.id == "eval":
             if node.args and isinstance(node.args[0], ast.Call):
@@ -124,6 +140,8 @@ class ObfuscationVisitor(ast.NodeVisitor):
                         category="obfuscated-exec",
                     )
 
+
+    def _check_call_pattern_3(self, node, lineno):
         # Pattern 3: __import__('os').system(...) dynamic import + execute
         if isinstance(node.func, ast.Attribute):
             if isinstance(node.func.value, ast.Call):
@@ -142,30 +160,36 @@ class ObfuscationVisitor(ast.NodeVisitor):
                             category="obfuscated-exec",
                         )
 
-        # Pattern 4: getattr(os, 'system') or getattr(builtins, 'exec') evasion
-        if isinstance(node.func, ast.Name) and node.func.id == "getattr":
-            if len(node.args) >= 2:
-                obj_arg = node.args[0]
-                attr_arg = node.args[1]
-                obj_name = obj_arg.id if isinstance(obj_arg, ast.Name) else None
-                # Support both ast.Str (old) and ast.Constant (new)
-                if isinstance(attr_arg, ast.Constant) and isinstance(
-                    attr_arg.value, str
-                ):
-                    attr_val = attr_arg.value
-                elif isinstance(attr_arg, ast.Str):
-                    attr_val = attr_arg.s
-                else:
-                    attr_val = None
-                if obj_name in SENSITIVE_MODULES and attr_val in DANGEROUS_ATTRS:
-                    self._add(
-                        severity="critical",
-                        title=f"Dynamic Attribute Access: getattr({obj_name}, '{attr_val}')",
-                        description=f"getattr() evasion: calling dangerous '{attr_val}' on '{obj_name}' dynamically",
-                        lineno=lineno,
-                        category="obfuscated-exec",
-                    )
 
+    def _check_call_pattern_4(self, node, lineno):
+        # Pattern 4: getattr(os, 'system') or getattr(builtins, 'exec') evasion
+        if not (isinstance(node.func, ast.Name) and node.func.id == "getattr"):
+            return
+        if len(node.args) >= 2:
+            obj_arg = node.args[0]
+            attr_arg = node.args[1]
+            obj_name = obj_arg.id if isinstance(obj_arg, ast.Name) else None
+            # Support both ast.Str (old) and ast.Constant (new)
+            if isinstance(attr_arg, ast.Constant) and isinstance(
+                attr_arg.value, str
+            ):
+                attr_val = attr_arg.value
+            elif isinstance(attr_arg, ast.Str):
+                attr_val = attr_arg.s
+            else:
+                attr_val = None
+            if obj_name in SENSITIVE_MODULES and attr_val in DANGEROUS_ATTRS:
+                self._add(
+                    severity="critical",
+                    title=f"Dynamic Attribute Access: getattr({obj_name}, '{attr_val}')",
+                    description=f"getattr() evasion: calling dangerous '{attr_val}' on '{obj_name}' dynamically",
+                    lineno=lineno,
+                    category="obfuscated-exec",
+                )
+
+
+
+    def _check_call_pattern_5(self, node, lineno):
         # Pattern 5: os.system(a + b) or subprocess.call(['/bin/sh', '-c', var])
         # String concatenation into shell commands
         if isinstance(node.func, ast.Attribute):
@@ -195,6 +219,8 @@ class ObfuscationVisitor(ast.NodeVisitor):
                             category="shell-injection",
                         )
 
+
+    def _check_call_pattern_6(self, node, lineno):
         # Pattern 6: importlib.import_module(variable) - dynamic import with non-literal arg
         if (
             isinstance(node.func, ast.Attribute)
@@ -212,6 +238,8 @@ class ObfuscationVisitor(ast.NodeVisitor):
                     category="obfuscated-exec",
                 )
 
+
+    def _check_call_pattern_7(self, node, lineno):
         # Pattern 7: importlib.reload() - runtime code replacement
         if (
             isinstance(node.func, ast.Attribute)
@@ -227,6 +255,8 @@ class ObfuscationVisitor(ast.NodeVisitor):
                 category="obfuscated-exec",
             )
 
+
+    def _check_call_pattern_8(self, node, lineno):
         # Pattern 8: marshal.loads() / marshal.load() - bytecode deserialization
         if (
             isinstance(node.func, ast.Attribute)
@@ -242,6 +272,8 @@ class ObfuscationVisitor(ast.NodeVisitor):
                 category="obfuscated-exec",
             )
 
+
+    def _check_call_pattern_9(self, node, lineno):
         # Pattern 9: types.FunctionType() / types.CodeType() - runtime code construction
         if (
             isinstance(node.func, ast.Attribute)
@@ -257,6 +289,8 @@ class ObfuscationVisitor(ast.NodeVisitor):
                 category="obfuscated-exec",
             )
 
+
+    def _check_call_pattern_10(self, node, lineno):
         # Pattern 10: sys.addaudithook() - audit system manipulation
         if (
             isinstance(node.func, ast.Attribute)
@@ -272,45 +306,52 @@ class ObfuscationVisitor(ast.NodeVisitor):
                 category="obfuscated-exec",
             )
 
+
+    def _check_call_pattern_11(self, node, lineno):
         # Pattern 11: bytes([int, int, ...]).decode() - string obfuscation via byte array
-        if isinstance(node.func, ast.Attribute) and node.func.attr == "decode":
-            val = node.func.value
-            if isinstance(val, ast.Call):
-                if isinstance(val.func, ast.Name) and val.func.id in (
-                    "bytes",
-                    "bytearray",
-                ):
-                    if val.args and isinstance(val.args[0], ast.List):
-                        if val.args[0].elts and isinstance(
-                            val.args[0].elts[0], ast.Constant
-                        ):
-                            self._add(
-                                severity="high",
-                                title="String Obfuscation: bytes([int_list]).decode()",
-                                description="String constructed from integer byte array. Evades string-matching scanners.",
-                                lineno=lineno,
-                                category="obfuscated-exec",
-                            )
-
-        # Pattern 12: open(__file__, 'w') - self-modification
-        if isinstance(node.func, ast.Name) and node.func.id == "open":
-            if len(node.args) >= 2:
-                first_arg = node.args[0]
-                second_arg = node.args[1]
-                if isinstance(first_arg, ast.Name) and first_arg.id == "__file__":
-                    if isinstance(second_arg, ast.Constant) and isinstance(
-                        second_arg.value, str
+        if not (isinstance(node.func, ast.Attribute) and node.func.attr == "decode"):
+            return
+        val = node.func.value
+        if isinstance(val, ast.Call):
+            if isinstance(val.func, ast.Name) and val.func.id in (
+                "bytes",
+                "bytearray",
+            ):
+                if val.args and isinstance(val.args[0], ast.List):
+                    if val.args[0].elts and isinstance(
+                        val.args[0].elts[0], ast.Constant
                     ):
-                        if "w" in second_arg.value or "a" in second_arg.value:
-                            self._add(
-                                severity="critical",
-                                title="Self-Modification: open(__file__, 'w')",
-                                description="Code opens its own source file for writing. Can rewrite itself at runtime.",
-                                lineno=lineno,
-                                category="obfuscated-exec",
-                            )
+                        self._add(
+                            severity="high",
+                            title="String Obfuscation: bytes([int_list]).decode()",
+                            description="String constructed from integer byte array. Evades string-matching scanners.",
+                            lineno=lineno,
+                            category="obfuscated-exec",
+                        )
 
-        self.generic_visit(node)
+
+
+    def _check_call_pattern_12(self, node, lineno):
+        # Pattern 12: open(__file__, 'w') - self-modification
+        if not (isinstance(node.func, ast.Name) and node.func.id == "open"):
+            return
+        if len(node.args) >= 2:
+            first_arg = node.args[0]
+            second_arg = node.args[1]
+            if isinstance(first_arg, ast.Name) and first_arg.id == "__file__":
+                if isinstance(second_arg, ast.Constant) and isinstance(
+                    second_arg.value, str
+                ):
+                    if "w" in second_arg.value or "a" in second_arg.value:
+                        self._add(
+                            severity="critical",
+                            title="Self-Modification: open(__file__, 'w')",
+                            description="Code opens its own source file for writing. Can rewrite itself at runtime.",
+                            lineno=lineno,
+                            category="obfuscated-exec",
+                        )
+
+
 
     def visit_ClassDef(self, node):
         """Detect __reduce__ overrides - classic pickle deserialization backdoor."""

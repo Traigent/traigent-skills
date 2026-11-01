@@ -38,6 +38,90 @@ def get_git_log(repo_path):
         return []
 
 
+def _analyze_commit(line, authors, now, findings):
+    parts = line.split("\x00")
+    if len(parts) < 6:
+        return
+
+    commit_hash = parts[0][:12]
+    author_name = parts[1]
+    author_email = parts[2]
+    author_date_str = parts[3]
+    committer_date_str = parts[4]
+    gpg_status = parts[5] if len(parts) > 5 else "N"
+
+    if author_email not in authors:
+        authors[author_email] = set()
+    authors[author_email].add(author_name)
+
+    a_date = datetime.datetime.fromisoformat(author_date_str)
+    c_date = datetime.datetime.fromisoformat(committer_date_str)
+
+    # Future dates
+    if a_date > now + datetime.timedelta(days=1):
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="high",
+                title="Future Author Date",
+                description=f"Commit {commit_hash} has author date in the future",
+                file=f"commit:{commit_hash}",
+                line=0,
+                snippet=f"Author date: {author_date_str}",
+                category="time-anomaly",
+            )
+        )
+
+    # Time stomping (>30 day lag)
+    delta = c_date - a_date
+    if delta > datetime.timedelta(days=30):
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="medium",
+                title="Time Lag (>30 days)",
+                description="Large gap between author and committer dates",
+                file=f"commit:{commit_hash}",
+                line=0,
+                snippet=f"Author: {author_date_str}, Commit: {committer_date_str}",
+                category="time-anomaly",
+            )
+        )
+
+    # Impossible time
+    if delta < datetime.timedelta(0):
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="high",
+                title="Impossible Time (Committer before Author)",
+                description="Committer date is before author date (time manipulation)",
+                file=f"commit:{commit_hash}",
+                line=0,
+                snippet=f"Author: {author_date_str}, Commit: {committer_date_str}",
+                category="time-anomaly",
+            )
+        )
+
+    # GPG signature check
+    if gpg_status == "N":
+        # Not signed, low severity (very common)
+        pass  # Don't flag, too noisy
+    elif gpg_status == "B":
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="high",
+                title="Bad GPG Signature",
+                description=f"Commit {commit_hash} has an invalid/expired GPG signature",
+                file=f"commit:{commit_hash}",
+                line=0,
+                snippet="GPG status: Bad signature",
+                category="signature",
+            )
+        )
+
+
 def analyze_commits(commits, repo_path):
     findings = []
     authors = {}
@@ -45,87 +129,7 @@ def analyze_commits(commits, repo_path):
 
     for line in commits:
         try:
-            parts = line.split("\x00")
-            if len(parts) < 6:
-                continue
-
-            commit_hash = parts[0][:12]
-            author_name = parts[1]
-            author_email = parts[2]
-            author_date_str = parts[3]
-            committer_date_str = parts[4]
-            gpg_status = parts[5] if len(parts) > 5 else "N"
-
-            if author_email not in authors:
-                authors[author_email] = set()
-            authors[author_email].add(author_name)
-
-            a_date = datetime.datetime.fromisoformat(author_date_str)
-            c_date = datetime.datetime.fromisoformat(committer_date_str)
-
-            # Future dates
-            if a_date > now + datetime.timedelta(days=1):
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="high",
-                        title="Future Author Date",
-                        description=f"Commit {commit_hash} has author date in the future",
-                        file=f"commit:{commit_hash}",
-                        line=0,
-                        snippet=f"Author date: {author_date_str}",
-                        category="time-anomaly",
-                    )
-                )
-
-            # Time stomping (>30 day lag)
-            delta = c_date - a_date
-            if delta > datetime.timedelta(days=30):
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="medium",
-                        title="Time Lag (>30 days)",
-                        description="Large gap between author and committer dates",
-                        file=f"commit:{commit_hash}",
-                        line=0,
-                        snippet=f"Author: {author_date_str}, Commit: {committer_date_str}",
-                        category="time-anomaly",
-                    )
-                )
-
-            # Impossible time
-            if delta < datetime.timedelta(0):
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="high",
-                        title="Impossible Time (Committer before Author)",
-                        description="Committer date is before author date (time manipulation)",
-                        file=f"commit:{commit_hash}",
-                        line=0,
-                        snippet=f"Author: {author_date_str}, Commit: {committer_date_str}",
-                        category="time-anomaly",
-                    )
-                )
-
-            # GPG signature check
-            if gpg_status == "N":
-                # Not signed, low severity (very common)
-                pass  # Don't flag, too noisy
-            elif gpg_status == "B":
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="high",
-                        title="Bad GPG Signature",
-                        description=f"Commit {commit_hash} has an invalid/expired GPG signature",
-                        file=f"commit:{commit_hash}",
-                        line=0,
-                        snippet="GPG status: Bad signature",
-                        category="signature",
-                    )
-                )
+            _analyze_commit(line, authors, now, findings)
 
         except (ValueError, IndexError):
             continue

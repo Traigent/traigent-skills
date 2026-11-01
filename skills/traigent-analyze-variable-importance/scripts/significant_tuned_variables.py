@@ -7,6 +7,8 @@ with an optional Traigent SDK variance-importance cross-check when available.
 
 from __future__ import annotations
 
+
+
 import argparse
 import csv
 import html
@@ -201,18 +203,23 @@ def invalid_text_error(value: Any, path: str) -> str | None:
             return None
         return f"{path} must be valid Unicode text, got {json.dumps(value)}"
     if isinstance(value, dict):
-        for key, item in value.items():
-            child_path = f"{path}[{json.dumps(str(key))}]"
-            if not _is_unicode_text(str(key)):
-                return f"{child_path} names a key that is not valid Unicode text"
-            found = invalid_text_error(item, child_path)
-            if found is not None:
-                return found
+        return _invalid_dict_text_error(value, path)
     elif isinstance(value, (list, tuple)):
         for index, item in enumerate(value):
             found = invalid_text_error(item, f"{path}[{index}]")
             if found is not None:
                 return found
+    return None
+
+
+def _invalid_dict_text_error(value: dict, path: str) -> str | None:
+    for key, item in value.items():
+        child_path = f"{path}[{json.dumps(str(key))}]"
+        if not _is_unicode_text(str(key)):
+            return f"{child_path} names a key that is not valid Unicode text"
+        found = invalid_text_error(item, child_path)
+        if found is not None:
+            return found
     return None
 
 
@@ -1218,13 +1225,15 @@ def format_pct(value: float | None) -> str:
     return f"{sign}{value:.1f}%"
 
 
+DEFAULT_SLICE_LABEL = 'this evaluation slice'
+
 def build_video_card_payload(
     rows: list[KnobImportance],
     top_k: int,
     n_trials: int,
     objective: str,
     heldout: dict[str, Any] | None,
-    slice_label: str = "this evaluation slice",
+    slice_label: str = DEFAULT_SLICE_LABEL,
     skipped_non_completed: int = 0,
     alpha: float = DEFAULT_ALPHA,
     *,
@@ -1306,7 +1315,7 @@ def write_video_card_json(
     n_trials: int,
     objective: str,
     heldout: dict[str, Any] | None,
-    slice_label: str = "this evaluation slice",
+    slice_label: str = DEFAULT_SLICE_LABEL,
     skipped_non_completed: int = 0,
     alpha: float = DEFAULT_ALPHA,
     *,
@@ -1336,7 +1345,7 @@ def write_insights_md(
     confidence: float,
     heldout: dict[str, Any] | None,
     sdk_note: str,
-    slice_label: str = "this evaluation slice",
+    slice_label: str = DEFAULT_SLICE_LABEL,
     skipped_non_completed: int = 0,
     alpha: float = DEFAULT_ALPHA,
     sdk_payload: dict[str, Any] | None = None,
@@ -1536,7 +1545,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--slice-label",
-        default="this evaluation slice",
+        default=DEFAULT_SLICE_LABEL,
         help="Human label for the eval slice used in captions, e.g. 'this HotpotQA slice'",
     )
     parser.add_argument(
