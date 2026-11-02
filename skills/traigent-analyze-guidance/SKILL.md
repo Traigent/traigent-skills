@@ -238,7 +238,7 @@ curl -fsS -H "X-API-Key: $TRAIGENT_API_KEY" -H "X-Project-Id: <project_id>" \
 ```
 
 `intent` is `iterate`, `deploy`, `debug` or `report`. The response is wrapped as
-`{"success": true, "data": {...}}`; the brief is `data`, and it must carry `headline`, `confidence`,
+`{"success": true, "data": {...}}`; the brief is `data`, and it must carry `run_id`, `project_id`, `intent`, `headline`, `confidence`,
 `recommended_action`, `evidence`, `drilldowns` and `warnings`. A response missing any of those is
 malformed: report it, do not present it as a recommendation. Use the dev backend URL for a
 dev-issued key. Read the key from the environment; never print it.

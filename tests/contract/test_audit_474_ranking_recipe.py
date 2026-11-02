@@ -56,6 +56,8 @@ def test_the_recipe_scorer_runs_and_counts_unknown_items_honestly() -> None:
     meta = {"secs": {"a": 10, "b": 20, "c": 30}, "budget": 40, "secs_per_usd": 100}
     usage = {"total_cost": 0.0}
     assert scorer(["a", "b"], ["a", "c"], meta, usage) == 0.5
+    # A repeated item is charged once and counted once: recall stays within 0..1.
+    assert scorer(["a", "a"], ["a"], meta, usage) == 1.0
     # An unknown item neither finds anything nor spends budget.
     assert scorer(["zz", "a"], ["a"], meta, usage) == 1.0
     # Model spend is charged against the same budget: 0.3 USD = 30 s.

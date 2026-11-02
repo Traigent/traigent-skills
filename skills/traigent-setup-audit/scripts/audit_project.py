@@ -955,6 +955,11 @@ def _is_numeric_pair(node: ast.expr) -> bool:
     )
 
 
+def _is_scalar_literal(node: ast.expr) -> bool:
+    """A plain str/number/bool/None literal, which cannot declare a knob."""
+    return isinstance(node, ast.Constant)
+
+
 def _resolve_inline_knob(
     value: ast.expr, assignments: dict[str, ast.expr]
 ) -> ast.expr | None:
@@ -981,6 +986,10 @@ def _add_inline_knobs(
     unread: list[ast.keyword] = []
     for keyword in decorator.keywords:
         if keyword.arg in DECORATOR_OPTION_KEYWORDS:
+            continue
+        if keyword.arg and _is_scalar_literal(keyword.value):
+            # cost_limit=2, plateau_epsilon=0.01: a runtime option, never a knob
+            # (an inline knob is a constructor call or a numeric pair).
             continue
         knob_node = (
             _resolve_inline_knob(keyword.value, assignments) if keyword.arg else None

@@ -197,8 +197,11 @@ def recall_at_budget(output, expected, metadata, llm_metrics) -> float:
     if spend is None:
         raise ValueError("model spend is unmeasured: it cannot be charged against the budget")
     remaining = metadata["budget"] - spend * metadata["secs_per_usd"]
-    found = 0
+    found, seen = 0, set()
     for item in output:
+        if item in seen:               # a repeated item is not run twice
+            continue
+        seen.add(item)
         seconds = metadata["secs"].get(item)
         if seconds is None:            # not run: spends nothing, finds nothing
             continue

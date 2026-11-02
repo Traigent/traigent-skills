@@ -58,6 +58,8 @@ def test_every_analytics_tool_a_skill_names_is_declared_or_has_a_fallback() -> N
     guidance = GUIDANCE.read_text(encoding="utf-8")
     assert "/api/v1/analytics/runs/{run_id}/decision-payload" in guidance
     assert "X-API-Key" in guidance and "X-Project-Id" in guidance
+    for key in ("run_id", "project_id", "intent"):
+        assert f"`{key}`" in guidance.split("No-MCP fallback")[1], key
 
 
 def test_the_skills_say_the_plugin_loads_the_server() -> None:

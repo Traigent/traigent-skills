@@ -216,3 +216,19 @@ def test_decorator_options_are_not_mistaken_for_inline_knobs() -> None:
     entry = _entries(NON_KNOB_KEYWORDS_ONLY)[0]
     assert entry.knobs == []
     assert entry.config_space_note is None
+
+
+SCALAR_OPTIONS = '''
+import traigent
+
+
+@traigent.optimize(objectives=["accuracy"], cost_limit=2, plateau_epsilon=0.01, tie_breakers=None)
+def run(question):
+    return question
+'''
+
+
+def test_scalar_literal_decorator_options_are_not_reported_as_unread_knobs() -> None:
+    entry = _entries(SCALAR_OPTIONS)[0]
+    assert entry.knobs == []
+    assert entry.config_space_note is None
