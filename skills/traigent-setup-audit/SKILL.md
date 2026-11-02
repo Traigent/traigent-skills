@@ -519,7 +519,10 @@ required — it always is.
 - **Knob wiring is detected statically.** A knob read through a mapping the
   parser cannot follow is reported as *possibly read*, never as unread, and a
   configuration space the parser cannot read is reported as unread, never as
-  absent. Neither is a clean verdict; confirm those by hand.
+  absent. Knobs declared inline as decorator keywords
+  (`model=Choices([...])`, `temperature=Range(...)`) are inventoried like a
+  `configuration_space` entry; a keyword the parser cannot read is reported as
+  not inventoried. Neither is a clean verdict; confirm those by hand.
 - **The containment depends on the machine.** At `python-level` there is no
   namespace, so the classifier is what keeps ctypes and subprocess scorers from
   running — not the guard, and a static read of source is not a boundary. The

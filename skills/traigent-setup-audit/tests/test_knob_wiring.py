@@ -122,3 +122,97 @@ def test_the_from_import_alias_form_is_detected() -> None:
 
 def test_an_undecorated_function_is_not_an_entry_point() -> None:
     assert _entries("def run(question):\n    return question\n") == []
+
+
+# traigent-skills#472: the SDK accepts a knob declared inline as a decorator
+# keyword (``model=Choices([...])``) and boost-agent teaches that shape.
+
+INLINE_ONLY = '''
+import traigent
+from traigent import Choices, Range
+
+
+@traigent.optimize(
+    objectives=["accuracy"],
+    model=Choices(["a", "b"]),
+    temperature=Range(0.0, 1.0),
+    top_k=(1, 5),
+)
+def run(question, model, temperature):
+    return f"{model}/{temperature}/{question}"
+'''
+
+INLINE_BY_NAME = '''
+import traigent
+from traigent import Choices
+
+MODELS = Choices(["a", "b"])
+
+
+@traigent.optimize(model=MODELS)
+def run(question, model):
+    return model
+'''
+
+INLINE_UNRESOLVABLE = '''
+import traigent
+
+from knobs import make_model_knob
+
+
+@traigent.optimize(objectives=["accuracy"], model=make_model_knob())
+def run(question, model):
+    return model
+'''
+
+INLINE_SPLAT = '''
+import traigent
+from knobs import KNOBS
+
+
+@traigent.optimize(**KNOBS)
+def run(question, model):
+    return model
+'''
+
+NON_KNOB_KEYWORDS_ONLY = '''
+import traigent
+
+
+@traigent.optimize(objectives=["accuracy"], eval_dataset="data.jsonl", max_trials=5)
+def run(question):
+    return question
+'''
+
+
+def test_inline_choices_and_range_keywords_are_inventoried_as_knobs() -> None:
+    entry = _entries(INLINE_ONLY)[0]
+    assert {knob.name: knob.status for knob in entry.knobs} == {
+        "model": "read",
+        "temperature": "read",
+        "top_k": "declared, never read",
+    }
+    assert entry.config_space_note is None
+    model = next(knob for knob in entry.knobs if knob.name == "model")
+    assert (model.values, model.values_readable) == (["a", "b"], True)
+    assert model.line == 8
+
+
+def test_an_inline_knob_passed_by_module_constant_is_inventoried() -> None:
+    entry = _entries(INLINE_BY_NAME)[0]
+    assert [knob.name for knob in entry.knobs] == ["model"]
+    assert entry.config_space_note is None
+
+
+def test_an_inline_keyword_the_audit_cannot_read_is_unread_never_absent() -> None:
+    for source in (INLINE_UNRESOLVABLE, INLINE_SPLAT):
+        entry = _entries(source)[0]
+        assert entry.knobs == []
+        assert entry.config_space_note is not None
+        assert "not inventoried" in entry.config_space_note
+
+
+def test_decorator_options_are_not_mistaken_for_inline_knobs() -> None:
+    entry = _entries(NON_KNOB_KEYWORDS_ONLY)[0]
+    assert entry.knobs == []
+    assert entry.config_space_note is None

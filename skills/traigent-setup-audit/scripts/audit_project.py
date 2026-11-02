@@ -304,6 +304,33 @@ CONFIG_MAPPING_NAMES = frozenset(
 CONFIG_READ_FUNCS = frozenset({"get_config", "get_current_config", "current_config"})
 CONFIG_SPACE_WRAPPERS = frozenset({"ConfigurationSpace", "ConfigSpace"})
 CHOICES_FACTORIES = frozenset({"Choices", "Categorical"})
+# Constructors the SDK accepts as an inline knob (decorator keyword value).
+INLINE_KNOB_FACTORIES = CHOICES_FACTORIES | frozenset({"Range", "IntRange", "LogRange"})
+# Decorator keywords that are options, not knobs (SDK `_OPTIMIZE_DEFAULTS` plus
+# the legacy execution keys). Any other keyword whose value is not a knob
+# constructor is reported as unread; a stale entry here costs a spurious note,
+# never a missed one.
+DECORATOR_OPTION_KEYWORDS = frozenset({
+    "agent_measures", "agent_name", "agent_prefixes", "agent_ref", "agents",
+    "algorithm", "auto_detect_tvars", "auto_detect_tvars_exclude",
+    "auto_detect_tvars_include", "auto_detect_tvars_min_confidence",
+    "auto_detect_tvars_mode", "auto_load_best", "auto_override_frameworks",
+    "best_config_cache_dir", "best_config_cache_ttl_seconds",
+    "best_config_source", "best_config_stale_ok_ttl_seconds",
+    "best_config_strict", "cloud_fallback_policy", "config_id", "config_param",
+    "configuration_space", "config_space", "constraints", "content_less",
+    "custom_evaluator", "default_config", "effectuation",
+    "enable_auto_load_dev_logs", "environment", "eval_dataset", "evaluation",
+    "evaluator", "example_timeout", "execution", "execution_mode",
+    "experiment_name", "framework_targets", "global_measures", "grow_dataset",
+    "injection", "injection_mode", "legacy", "load_from", "local_storage_path",
+    "max_total_examples", "max_trials", "metric_functions", "minimal_logging",
+    "objectives", "offline", "parallel_config", "privacy_enabled",
+    "prompt_rewrite", "run_description", "run_title", "safety_constraints",
+    "samples_include_pruned", "scoring_function", "skill_train",
+    "smart_pruning", "strategy_params", "tvl", "tvl_environment", "tvl_spec",
+    "warm_start_from", "winner_stability_reps",
+})
 
 KNOB_READ = "read"
 KNOB_MAYBE = "possibly read through a config mapping"
@@ -764,6 +791,9 @@ def _choices_values(node: ast.Call) -> list[object] | None:
     if _factory_name(node.func) not in CHOICES_FACTORIES:
         return None
     values = [_literal(arg) for arg in node.args]
+    if len(values) == 1 and isinstance(values[0], (list, tuple)):
+        # ``Choices(["a", "b"])`` passes its values as one list.
+        values = list(values[0])
     if (
         values
         and all(value is not None for value in values)
@@ -854,6 +884,7 @@ def collect_entry_points(tree: ast.AST, rel_path: str) -> list[EntryPoint]:
     if not (modules or optimize_names):
         return []
     constants = module_dict_constants(tree)
+    assignments = module_assignments(tree)
 
     entry_points: list[EntryPoint] = []
     for node in ast.walk(tree):
@@ -872,11 +903,115 @@ def collect_entry_points(tree: ast.AST, rel_path: str) -> list[EntryPoint]:
         entry = EntryPoint(function=node.name, file=rel_path, line=node.lineno)
         surface = function_read_surface(node)
         if isinstance(decorator, ast.Call):
-            _add_declared_knobs(entry, decorator, constants, node, surface)
+            _add_declared_knobs(entry, decorator, constants, node, surface, assignments)
         entry.knobs.sort(key=lambda knob: knob.name)
         entry_points.append(entry)
     entry_points.sort(key=lambda item: (item.file, item.line))
     return entry_points
+
+
+def module_assignments(tree: ast.AST) -> dict[str, ast.expr]:
+    """Module-level ``NAME = <expr>`` bindings, so an inline knob passed by
+    name (``model=MODELS``) can be resolved to its constructor call."""
+    bound: dict[str, ast.expr] = {}
+    for node in getattr(tree, "body", []):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target, value = node.targets[0], node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            target, value = node.target, node.value
+        else:
+            continue
+        if isinstance(target, ast.Name):
+            bound[target.id] = value
+    return bound
+
+
+def _inline_factory(callee: ast.expr) -> str | None:
+    """The knob constructor a call targets (``Choices(...)``,
+    ``Choices.model(...)``, ``traigent.Range(...)``), or ``None``."""
+    if isinstance(callee, ast.Name):
+        return callee.id if callee.id in INLINE_KNOB_FACTORIES else None
+    if isinstance(callee, ast.Attribute):
+        if callee.attr in INLINE_KNOB_FACTORIES:
+            return callee.attr
+        return _inline_factory(callee.value)
+    return None
+
+
+def _is_numeric_pair(node: ast.expr) -> bool:
+    """The SDK's legacy inline range: a tuple of exactly two numbers."""
+    return (
+        isinstance(node, ast.Tuple)
+        and len(node.elts) == 2
+        and all(
+            isinstance(_literal(e), (int, float)) and not isinstance(_literal(e), bool)
+            for e in node.elts
+        )
+    )
+
+
+def _resolve_inline_knob(
+    value: ast.expr, assignments: dict[str, ast.expr]
+) -> ast.expr | None:
+    """The constructor expression behind an inline knob value, following a
+    module-level name once, or ``None`` when the value is not one."""
+    if isinstance(value, ast.Name) and value.id in assignments:
+        value = assignments[value.id]
+    if isinstance(value, ast.Call) and _inline_factory(value.func):
+        return value
+    return value if _is_numeric_pair(value) else None
+
+
+def _add_inline_knobs(
+    entry: EntryPoint,
+    decorator: ast.Call,
+    assignments: dict[str, ast.expr],
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    surface: tuple[set[str], set[str], bool],
+) -> None:
+    """Inventory knobs declared inline as decorator keywords. A keyword that is
+    neither a decorator option nor a readable knob constructor may still be
+    a knob the audit cannot see, so it sets the entry's note: unread, never
+    absent."""
+    unread: list[ast.keyword] = []
+    for keyword in decorator.keywords:
+        if keyword.arg in DECORATOR_OPTION_KEYWORDS:
+            continue
+        knob_node = (
+            _resolve_inline_knob(keyword.value, assignments) if keyword.arg else None
+        )
+        if knob_node is None:
+            unread.append(keyword)
+            continue
+        values, readable = [], False
+        if (
+            isinstance(knob_node, ast.Call)
+            and _inline_factory(knob_node.func) in CHOICES_FACTORIES
+        ):
+            values, readable = knob_values(knob_node)
+        parameters, literals, dynamic = surface
+        entry.knobs.append(
+            Knob(
+                name=keyword.arg,
+                values=values,
+                values_readable=readable,
+                status=knob_status(keyword.arg, parameters, literals, dynamic),
+                file=entry.file,
+                line=getattr(keyword.value, "lineno", node.lineno),
+            )
+        )
+    if unread and entry.config_space_note is None:
+        shown = ", ".join(
+            f"`{kw.arg}={_expr_text(kw.value)}`"
+            if kw.arg
+            else f"`**{_expr_text(kw.value)}`"
+            for kw in unread
+        )
+        entry.config_space_note = (
+            f"decorator keyword(s) {shown} at {entry.file}:{unread[0].value.lineno} "
+            "are not a decorator option and not a Choices/Range/IntRange/LogRange "
+            "call the audit can read, so any knobs they declare were not inventoried"
+        )
 
 
 def _add_declared_knobs(
@@ -885,9 +1020,12 @@ def _add_declared_knobs(
     constants: dict[str, ast.Dict],
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     surface: tuple[set[str], set[str], bool],
+    assignments: dict[str, ast.expr] | None = None,
 ) -> None:
     """Add a knob for every key of each configuration space keyword of the
-    decorator; a space the audit cannot read sets the entry's note instead."""
+    decorator, and for each inline knob keyword (``model=Choices([...])``); a
+    space the audit cannot read sets the entry's note instead."""
+    _add_inline_knobs(entry, decorator, assignments or {}, node, surface)
     for keyword in decorator.keywords:
         if keyword.arg not in {"configuration_space", "config_space"}:
             continue
