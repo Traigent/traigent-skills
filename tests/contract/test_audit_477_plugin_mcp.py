@@ -45,6 +45,43 @@ def test_the_plugin_declares_the_analytics_server_the_skills_name() -> None:
     assert "exit 127" in launch, "a missing launcher must fail with a message"
 
 
+def _run_launcher(tmp_path: Path, stubs: tuple[str, ...]):
+    import subprocess
+
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    for name in stubs:
+        stub = bindir / name
+        stub.write_text(f'#!/bin/sh\necho "ran:{name}:$*"\n', encoding="utf-8")
+        stub.chmod(0o755)
+    env = {"PATH": str(bindir)}
+    return subprocess.run(
+        ["/bin/sh", str(LAUNCHER)], env=env, capture_output=True, text=True, check=False,
+        timeout=20,
+    )
+
+
+def test_the_launcher_prefers_the_installed_console_script(tmp_path: Path) -> None:
+    out = _run_launcher(tmp_path, ("traigent-analytics-mcp", "uvx"))
+    assert out.returncode == 0 and out.stdout.strip() == "ran:traigent-analytics-mcp:"
+
+
+def test_the_launcher_falls_back_to_uvx_from_the_mcp_extra(tmp_path: Path) -> None:
+    out = _run_launcher(tmp_path, ("uvx",))
+    assert out.returncode == 0
+    assert out.stdout.strip() == "ran:uvx:--from traigent[mcp,analytics]>=0.24.0 traigent-analytics-mcp"
+
+
+def test_the_launcher_fails_with_a_message_when_neither_exists(tmp_path: Path) -> None:
+    out = _run_launcher(tmp_path, ())
+    assert out.returncode == 127
+    assert "install traigent[mcp,analytics] or uv" in out.stderr
+
+
+def test_the_launcher_is_posix_sh() -> None:
+    assert LAUNCHER.read_text(encoding="utf-8").startswith("#!/bin/sh\n")
+
+
 def test_the_launcher_is_executable_in_git() -> None:
     import subprocess
 
