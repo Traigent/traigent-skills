@@ -206,7 +206,13 @@ This mode is a thin client. Fetch the post-run brief through the
 action verbatim, then send that direction into Mode A as context for a fresh
 service plan.
 
-The server needs a one-time setup: `pip install "traigent[mcp]>=0.21.3"` (already included
+**Plugin install:** the plugin ships this server in its root `.mcp.json` (Claude Code; it uses an
+installed `traigent-analytics-mcp`, else fetches it with `uvx`, and forwards `TRAIGENT_API_KEY` and
+`TRAIGENT_BACKEND_URL` from the environment), so the tools load with the skills and no
+registration or restart is needed. Codex and other clients that do not read it, or a machine with
+neither the SDK nor `uv`, use the manual setup below, or the no-MCP fallback after it.
+
+The server needs a one-time setup outside the plugin: `pip install "traigent[mcp]>=0.21.3"` (already included
 in `traigent[recommended]`), then register the stdio command `traigent-analytics-mcp`
 with your coding assistant under the name `traigent-analytics`. The full steps are in
 `traigent-analyze-results` → "Prerequisites (one time)", including what to do when the
@@ -222,6 +228,20 @@ This mode is inert without the backend payload. If the tool cannot fetch a
 service response, report that directly and stop unless the user asks you to
 retry. Retry **at most once**; if the second attempt also fails, fall through to
 Mode C for local diagnosis instead of retrying again.
+
+**No-MCP fallback (headless or unattended sessions).** When the tool is not listed and a restart is
+not possible, read the same brief over REST (`GET /api/v1/analytics/runs/{run_id}/decision-payload`) and present its fields verbatim, exactly as for the tool:
+
+```bash
+curl -fsS -H "X-API-Key: $TRAIGENT_API_KEY" -H "X-Project-Id: <project_id>" \
+  "${TRAIGENT_BACKEND_URL:-https://portal.traigent.ai}/api/v1/analytics/runs/<run_id>/decision-payload?intent=iterate"
+```
+
+`intent` is `iterate`, `deploy`, `debug` or `report`. The response is wrapped as
+`{"success": true, "data": {...}}`; the brief is `data`, and it must carry `headline`, `confidence`,
+`recommended_action`, `evidence`, `drilldowns` and `warnings`. A response missing any of those is
+malformed: report it, do not present it as a recommendation. Use the dev backend URL for a
+dev-issued key. Read the key from the environment; never print it.
 
 ### Surface Status — the guidance CLI is retired
 
