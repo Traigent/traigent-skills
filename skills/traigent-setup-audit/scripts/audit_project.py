@@ -385,9 +385,9 @@ def install_network_guard() -> None:
         _refuse,
     )
 
-    try:
-        import _socket
-    except ImportError:  # pragma: no cover - _socket is always present on CPython
+    # ``import socket`` above loads the C module; absent on non-CPython runtimes.
+    _socket = sys.modules.get("_socket")
+    if _socket is None:  # pragma: no cover - _socket is always present on CPython
         return
     _replace_entry_points(
         _socket,
