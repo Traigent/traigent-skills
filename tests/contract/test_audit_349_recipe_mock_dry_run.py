@@ -43,7 +43,13 @@ def _after_block() -> str:
     return python[0]
 
 
-def _run_after_block(tmp_path: Path, *, stubs: str, env_extra: dict[str, str]) -> dict:
+def _run_after_block(
+    tmp_path: Path,
+    *,
+    stubs: str,
+    env_extra: dict[str, str],
+    allow_abort: bool = False,
+) -> dict:
     pytest.importorskip("traigent")
     (tmp_path / "evals").mkdir()
     rows = [
@@ -111,9 +117,13 @@ def _run_after_block(tmp_path: Path, *, stubs: str, env_extra: dict[str, str]) -
         timeout=240,
         check=False,
     )
-    assert completed.returncode == 0, completed.stdout + completed.stderr
+    log = completed.stdout + completed.stderr
+    if completed.returncode != 0:
+        # Only the failing-call test may see the run stop; it checks why.
+        assert allow_abort, log
+        return {"aborted": True, "log": log}
     line = next(ln for ln in completed.stdout.splitlines() if ln.startswith("RESULT="))
-    return {**json.loads(line.removeprefix("RESULT=")), "log": completed.stdout + completed.stderr}
+    return {**json.loads(line.removeprefix("RESULT=")), "aborted": False, "log": log}
 
 
 WORKING_STUBS = """
@@ -132,8 +142,7 @@ def test_after_block_dry_run_is_keyless_and_makes_no_network_call(tmp_path: Path
     assert set(result["statuses"]) == {"completed"}, result["statuses"]
 
 
-def test_after_block_reports_failed_model_calls_as_failed_trials(tmp_path: Path) -> None:
-    failing = """
+FAILING_STUBS = """
 def _unreachable(question, **kw):
     raise RuntimeError("provider call failed")
 builtins.retrieve_context = _unreachable
@@ -141,13 +150,46 @@ builtins.format_context = lambda chunks, **kw: "context"
 builtins.estimate_last_call_cost_usd = lambda: 0.001
 builtins.estimate_call_cost_usd = lambda response: 0.001
 """
-    # A fake key and a dead endpoint only let an older raw-client recipe import;
-    # the failing stub raises before any client call.
+# A fake key and a dead endpoint only let an older raw-client recipe import;
+# the failing stub raises before any client call.
+FAILING_ENV = {"OPENAI_API_KEY": "sk-test-not-a-real-key", "OPENAI_BASE_URL": "http://127.0.0.1:9/v1"}
+# `cost` is an objective of the recipe, so SDKs from 0.31.0 (mock runs included)
+# run strict cost accounting by default: a failed example that reported no cost is
+# unmeasured and stops the run with CostTrackingRequiredError instead of recording
+# a failed trial. The first test below lifts that to isolate the recipe's own
+# property; the second pins what the default does. Older SDKs ignore the variables.
+LENIENT_COST_ENV = {
+    "TRAIGENT_STRICT_COST_ACCOUNTING": "false",
+    "TRAIGENT_REQUIRE_COST_TRACKING": "false",
+}
+
+
+def test_after_block_reports_failed_model_calls_as_failed_trials(tmp_path: Path) -> None:
     result = _run_after_block(
-        tmp_path,
-        stubs=failing,
-        env_extra={"OPENAI_API_KEY": "sk-test-not-a-real-key", "OPENAI_BASE_URL": "http://127.0.0.1:9/v1"},
+        tmp_path, stubs=FAILING_STUBS, env_extra={**FAILING_ENV, **LENIENT_COST_ENV}
     )
+    assert result["trials"] >= 1
+    assert result["failed"] == result["trials"], (
+        f"every model call failed but only {result['failed']} of {result['trials']} "
+        "trials are failed: the recipe hides failures"
+    )
+
+
+def test_after_block_failed_model_calls_never_end_in_a_green_run(tmp_path: Path) -> None:
+    """Under the SDK's default cost accounting the failure is loud, never hidden.
+
+    Either every trial is failed, or the run stops naming the unmeasured cost. A
+    green run with failed trials missing is the defect this guards.
+    """
+    result = _run_after_block(
+        tmp_path, stubs=FAILING_STUBS, env_extra=FAILING_ENV, allow_abort=True
+    )
+    if result["aborted"]:
+        assert "CostTrackingRequiredError" in result["log"], (
+            "the run stopped, but not on the SDK's strict-cost refusal:\n"
+            + result["log"][-3000:]
+        )
+        return
     assert result["trials"] >= 1
     assert result["failed"] == result["trials"], (
         f"every model call failed but only {result['failed']} of {result['trials']} "
