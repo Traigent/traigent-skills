@@ -32,7 +32,9 @@ def _text() -> str:
 
 def test_real_probe_is_a_checkpoint_before_the_real_run() -> None:
     text = _text()
-    assert re.search(r"\| real probe \| `traigent-boost-agent` \(Fast Path Step 3\.6\)", text)
+    assert re.search(
+        r"\| real probe \| `traigent-boost-agent` \(Fast Path Step 3\.6\)", text
+    )
     assert text.index("| real probe |") < text.index("| real run |")
     assert "A real run starts only after the real probe passed" in text
     assert "`traigent-boost-agent` Step 3.6" in text
@@ -50,27 +52,53 @@ def test_earlier_checkpoints_are_unverified_history() -> None:
 
 def test_javascript_agent_routes_only_to_rows_traigent_js_owns() -> None:
     text = _text()
-    assert "takes `traigent-js` for setup, metric, dry run, real probe and real run" in text
-    assert "its dry-run row records the checks in `traigent-js`'s Verification section" in text
-    assert "Treat them as paid unless the user confirms in this session that they make no model or network call" in text
+    assert (
+        "takes `traigent-js` for setup, metric, dry run, real probe and real run"
+        in text
+    )
+    assert (
+        "its dry-run row records the checks in `traigent-js`'s Verification section"
+        in text
+    )
+    assert (
+        "Treat them as paid unless the user confirms in this session that they make no model or network call"
+        in text
+    )
     assert "Verification checks the user confirmed free in this session" in text
-    assert "record the audit skipped (it reads only Python) and open `traigent-js` instead" in text
-    assert "mark the row blocked with \"no JavaScript owner\"" in text
+    assert (
+        "record the audit skipped (it reads only Python) and open `traigent-js` instead"
+        in text
+    )
+    assert 'mark the row blocked with "no JavaScript owner"' in text
 
 
 def test_checkpoint_file_is_ignored_and_holds_no_secret() -> None:
     text = _text()
-    assert "add it to `.gitignore` (if git already tracks it, do not write to it" in text
+    assert (
+        "add it to `.gitignore` (if git already tracks it, do not write to it" in text
+    )
     assert "Never write a secret value into it" in text
 
 
 def test_service_and_portal_advice_remain_authoritative() -> None:
     text = _text()
-    assert "The portal's Agent Readiness next step and Director advice remain backend-owned" in text
-    assert "do not copy it into this file, reorder it from local checkpoints, or invent a replacement" in text
+    assert (
+        "The portal's Agent Readiness next step and Director advice remain backend-owned"
+        in text
+    )
+    assert (
+        "do not copy it into this file, reorder it from local checkpoints, or invent a replacement"
+        in text
+    )
     assert "`traigent-analyze-guidance` Mode B for the service decision brief" in text
-    assert "The checkpoint table records evidence and history; it does not decide what the backend should recommend" in text
-    assert "It does not replace the portal's Agent Readiness next step or Director advice" in text
+    assert (
+        "The checkpoint table records evidence and history; it does not decide what the backend should recommend"
+        in text
+    )
+    assert (
+        "It does not replace the portal's Agent Readiness next step or Director advice"
+        in text
+    )
 
 
 def test_description_has_no_bare_traigent_trigger() -> None:
