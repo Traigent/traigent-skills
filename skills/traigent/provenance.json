@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d0ae8e1dae3ed2ff",
+  "doc_hash": "e1577373b7b14f1d",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -121,6 +121,17 @@
       "doc_before_hash": "b4510a23b98e213f",
       "doc_after_hash": "d0ae8e1dae3ed2ff",
       "note": "Keep portal Agent Readiness and Director advice authoritative; the router records evidence without copying or replacing backend recommendations.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-policy-2026-11-02",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-02T21:42:46Z",
+      "doc_before_hash": "d0ae8e1dae3ed2ff",
+      "doc_after_hash": "e1577373b7b14f1d",
+      "note": "Add the canonical Traigent interaction policy, compiling snippet, and request-driven skill-usage clause required by the published skill contract.",
       "source_type": "agent"
     }
   ]
