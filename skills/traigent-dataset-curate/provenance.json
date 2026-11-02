@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "8ab6c357a0997440",
+  "doc_hash": "c4ac020c4824f4dd",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "36ab29cc47cd7eb2",
@@ -305,7 +305,7 @@
       "run_id": null,
       "timestamp": "2026-11-02T00:00:00Z",
       "doc_before_hash": "0b2a017b400f366c",
-      "doc_after_hash": "8ab6c357a0997440",
+      "doc_after_hash": "c4ac020c4824f4dd",
       "note": "State a rarer-class minimum per slice and the events-to-separate arithmetic; ask for a group key and report seen/novel holdout rows; add a Next holdout procedure and clarify never-recreate is per round (#473, #475).",
       "source_type": "agent"
     }

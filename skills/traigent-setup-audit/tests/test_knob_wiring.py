@@ -232,3 +232,28 @@ def test_scalar_literal_decorator_options_are_not_reported_as_unread_knobs() -> 
     entry = _entries(SCALAR_OPTIONS)[0]
     assert entry.knobs == []
     assert entry.config_space_note is None
+
+
+RUNTIME_OVERRIDES_BY_CONSTANT = '''
+import traigent
+
+BUDGET = 2.0
+EPSILON = 0.01
+
+
+@traigent.optimize(
+    configuration_space={"model": ["a", "b"]},
+    cost_limit=BUDGET,
+    plateau_epsilon=EPSILON,
+    plateau_window=3,
+    metric_limit=100,
+)
+def run(question, model):
+    return f"{model}/{question}"
+'''
+
+
+def test_runtime_override_keywords_given_by_constant_are_not_reported_unread() -> None:
+    entry = _entries(RUNTIME_OVERRIDES_BY_CONSTANT)[0]
+    assert [knob.name for knob in entry.knobs] == ["model"]
+    assert entry.config_space_note is None

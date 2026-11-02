@@ -97,7 +97,7 @@ traigent auth login                           # or export TRAIGENT_API_KEY; the 
 ```
 
 The Claude Code plugin ships this server in its root `.mcp.json` (an installed `traigent-analytics-mcp`,
-else `uvx`), so a plugin install needs no registration. For any other client, or a machine with
+else `uvx`, started through `sh`, so macOS, Linux and WSL; native Windows registers the server manually as below), so a plugin install needs no registration. For any other client, or a machine with
 neither the SDK nor `uv`, register the stdio server with your coding assistant under the name `traigent-analytics`, command
 `traigent-analytics-mcp` (an `mcpServers` entry in your assistant's MCP config, or its `mcp add`
 command). If the SDK is installed in a virtualenv, use that environment's absolute path to

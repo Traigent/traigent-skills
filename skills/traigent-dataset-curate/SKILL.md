@@ -76,10 +76,12 @@ Minimum starting counts:
 | High-variance tasks | 100+ | Add per-stratum coverage before trusting aggregate movement. |
 | Rarer class (the positive, failing, or minority case), per slice | 20+ tuning, 30+ holdout | A row count says nothing about how many rows carry the case the metric rewards. |
 
-**Enough events to separate two configurations.** A rate that rests on `k` rows of the rarer
-class moves `100/k` points per row: 20 rows is a 5-point step, 30 rows a 3-point step. If the lift
-you hope to see is under two such steps, no run can separate the configurations, and the decision
-brief reports "not separated from noise" after the money is spent. Count the rarer class in
+**Enough events to separate two configurations.** For a metric measured over the rarer class (its
+recall, say), a rate that rests on `k` such rows moves `100/k` points per row: 20 rows is a 5-point
+step, 30 rows a 3-point step. These counts are a floor, not a guarantee: sampling noise on `k` rows
+is about `50/sqrt(k)` points per rate at a 50% rate (roughly 11 points at k=20, 9 at k=30), so a lift
+of a few steps can still be noise. Below the floor no run can separate the configurations, and the
+decision brief reports "not separated from noise" after the money is spent. Count the rarer class in
 **each** slice before a paid run (`--label-field` in `traigent-setup-audit` counts it inside a
 structured gold value). Below the minimum, grow the rarer class first or run only as a smoke
 check; a slice with 0 rows of a class cannot score it at all. The same arithmetic runs after the

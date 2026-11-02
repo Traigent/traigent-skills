@@ -153,8 +153,9 @@ MIN_SMOKE = 10
 MIN_TUNING = 30
 MIN_HOLDOUT = 30
 # Rows of the rarer class a slice needs before a difference between two
-# configurations can mean anything: one row moves a rate by 1/k, so k=20 is a
-# five-point step and k=30 a three-point one.
+# configurations is even measurable: one row moves a rate by 1/k, so k=20 is a
+# five-point step and k=30 a three-point one. A floor, not a guarantee: noise
+# on k rows is still about 50/sqrt(k) points per rate.
 MIN_MINORITY_TUNING = 20
 MIN_MINORITY_HOLDOUT = 30
 MIN_HIGH_VARIANCE = 100
@@ -335,6 +336,10 @@ DECORATOR_OPTION_KEYWORDS = frozenset({
     "samples_include_pruned", "scoring_function", "skill_train",
     "smart_pruning", "strategy_params", "tvl", "tvl_environment", "tvl_spec",
     "warm_start_from", "winner_stability_reps",
+    # runtime overrides the SDK accepts as keywords (_ALLOWED_RUNTIME_OVERRIDE_KEYS)
+    "metric_limit", "metric_name", "metric_include_pruned", "plateau_window",
+    "plateau_epsilon", "semantic_saturation", "cost_limit", "cost_approved",
+    "estimated_calls_per_example", "tie_breakers", "tvl_parameter_agents",
 })
 
 KNOB_READ = "read"

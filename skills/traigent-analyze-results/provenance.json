@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "940d5a32b08850a0",
+  "doc_hash": "85dd9013dbee19c0",
   "reference_hashes": {
     "references/convergence-patterns.md": "1b074da6b72cce91",
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
@@ -438,8 +438,8 @@
       "run_id": null,
       "timestamp": "2026-11-02T00:00:00Z",
       "doc_before_hash": "ae7d4d5c7064aed4",
-      "doc_after_hash": "940d5a32b08850a0",
-      "note": "Note that the plugin ships the analytics MCP server in its root .mcp.json (#477).",
+      "doc_after_hash": "85dd9013dbee19c0",
+      "note": "Note that the plugin ships the analytics MCP server in its root .mcp.json, which needs sh (#477).",
       "source_type": "agent"
     }
   ]
