@@ -99,6 +99,8 @@ python3 <skill-dir>/scripts/audit_project.py \
   signature is outside the search, and its `scorers` entry carries
   `selected: true`; one the audit cannot find by name is not counted, as
   before.
+- `--label-field FIELD` counts rows per class of that field inside each gold
+  value, per slice (see the row-minimums paragraph below).
 - `--repeats` is how many times the same pair is re-scored (default 5).
 
 Exit code is `0` whenever the audit ran, whatever it found, and `2` on a usage
@@ -126,6 +128,17 @@ infer the task's equivalence policy.
 
 Row minimums come from `traigent-dataset-curate`: 10-20 for a smoke check, 30-100
 for a first tuning slice, 30+ for a holdout slice, 100+ for a high-variance task.
+
+`--label-field FIELD` counts rows per class of a field inside each row's gold
+value (a dotted path such as `is_flaky` or `result.label`; each item of a list
+counts) in the tuning and holdout slices of each file. A slice whose rarer class
+has fewer than 20 (tuning) or 30 (holdout) rows is a finding, and so is a class
+with none. Without the flag, structured gold is not counted and the Dataset
+area says "class balance not checked" in its notes. A holdout input that is a
+near-copy (token overlap of 0.9 or more) of a tuning input is also a finding,
+within one tagged file and across a tuning/holdout file pair; it catches
+paraphrased copies, not recurring cases with differently worded inputs, which
+need the group key in `traigent-dataset-curate`.
 
 In discovery, a file that parses but holds no rows — a `.json` that is not an
 array of rows (a `package.json`, for example), an empty array, a header-only

@@ -1336,7 +1336,8 @@ def _observe_report(spec: dict) -> dict:
             scorer = scorer.replace("<root>", str(root))
         args = argparse.Namespace(dataset=(str(root / spec["dataset"])
                                            if spec.get("dataset") else None),
-                                  scorer=scorer, repeats=3, json_out=None)
+                                  scorer=scorer, repeats=3, json_out=None,
+                                  label_field=None)
         patches = [
             mock.patch.object(audit, "detect_isolation", lambda: isolation),
             mock.patch.object(audit, "run_scorer_probe", fake_probe),

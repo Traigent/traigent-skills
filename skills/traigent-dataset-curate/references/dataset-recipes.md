@@ -44,7 +44,7 @@ Gold-label sourcing:
 Leakage traps:
 
 - Do not include the final patch in the prompt-side input.
-- Split by repository, issue family, or fixture family so near-duplicate tests do not cross slices.
+- Split by repository, issue family, or fixture family (the rows that share a repository, an originating issue, or a test fixture) so near-duplicate tests do not cross slices; if you cannot name the family, use the group key of "Check the rows before you spend on them" in `SKILL.md`.
 - Avoid judging generated code only by textual similarity to one patch when many correct solutions exist.
 
 Holdout sizing:

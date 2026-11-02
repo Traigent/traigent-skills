@@ -152,6 +152,11 @@ WALKTHROUGH_DIR = "traigent-runs"
 MIN_SMOKE = 10
 MIN_TUNING = 30
 MIN_HOLDOUT = 30
+# Rows of the rarer class a slice needs before a difference between two
+# configurations can mean anything: one row moves a rate by 1/k, so k=20 is a
+# five-point step and k=30 a three-point one.
+MIN_MINORITY_TUNING = 20
+MIN_MINORITY_HOLDOUT = 30
 MIN_HIGH_VARIANCE = 100
 
 PROVIDER_MODULES = frozenset(
@@ -1923,8 +1928,143 @@ def _label_findings(label_counts: dict[str, int]) -> list[str]:
     return []
 
 
+
+def _label_values(expected: object, path: str) -> list[str] | None:
+    """The label values a gold value carries at the dotted ``path``: one per
+    list item, one for a scalar. ``None`` when the path is not there."""
+    node = expected
+    for part in path.split("."):
+        if not isinstance(node, dict) or part not in node:
+            return None
+        node = node[part]
+    items = list(node) if isinstance(node, (list, tuple)) else [node]
+    return [json.dumps(i, sort_keys=True) if isinstance(i, (dict, list)) else str(i) for i in items]
+
+
+def _slice_label_counts(
+    parsed: list[DatasetRow], named_holdout: bool, path: str
+) -> tuple[dict[str, Counter[str]], int]:
+    """``({slice: rows per label}, rows without the label field)``."""
+    slices: dict[str, Counter[str]] = {"tuning": Counter(), "holdout": Counter()}
+    missing = 0
+    for row in parsed:
+        labels = _label_values(row.expected, path)
+        if labels is None:
+            missing += 1
+            continue
+        slice_name = "holdout" if _is_holdout_row(row, named_holdout) else "tuning"
+        slices[slice_name].update(set(labels))
+    return slices, missing
+
+
+def _slice_rows(parsed: list[DatasetRow], named_holdout: bool) -> dict[str, int]:
+    rows = {"tuning": 0, "holdout": 0}
+    for row in parsed:
+        rows["holdout" if _is_holdout_row(row, named_holdout) else "tuning"] += 1
+    return rows
+
+
+def _label_field_findings(
+    parsed: list[DatasetRow], named_holdout: bool, path: str
+) -> tuple[list[str], list[str]]:
+    """``(findings, notes)`` for the rows of the named label field in each
+    slice: a slice whose rarest label has fewer rows than the minority minimum
+    cannot rank two configurations."""
+    slices, missing = _slice_label_counts(parsed, named_holdout, path)
+    seen = sorted(set(slices["tuning"]) | set(slices["holdout"]))
+    if not seen:
+        return [
+            f"class balance not checked: label field `{path}` was found in none "
+            f"of {len(parsed)} row(s)"
+        ], []
+    rows = _slice_rows(parsed, named_holdout)
+    minimums = {"tuning": MIN_MINORITY_TUNING, "holdout": MIN_MINORITY_HOLDOUT}
+    findings: list[str] = []
+    notes: list[str] = []
+    if missing:
+        findings.append(
+            f"label field `{path}` is missing from {missing} of {len(parsed)} row(s)"
+        )
+    if len(seen) < 2:
+        findings.append(
+            f"label field `{path}` has one value (`{seen[0]}`) in the whole file, "
+            "so no configuration can be separated from another on it"
+        )
+    for slice_name, counts in slices.items():
+        if not rows[slice_name]:
+            continue
+        notes.append(
+            f"label field `{path}`, {slice_name} slice ({rows[slice_name]} row(s)): "
+            + ", ".join(f"{label} x{counts.get(label, 0)}" for label in seen)
+        )
+        if len(seen) < 2:
+            continue
+        rarest = min(seen, key=lambda label: (counts.get(label, 0), label))
+        if counts.get(rarest, 0) < minimums[slice_name]:
+            findings.append(
+                f"{slice_name} slice has {counts.get(rarest, 0)} row(s) of label "
+                f"`{rarest}`, under the {minimums[slice_name]}-row minority minimum"
+            )
+    return findings, notes
+
+
+def _structured_gold_balance_notes(parsed: list[DatasetRow]) -> list[str]:
+    """Structured gold (a JSON object or list) is never counted by the scalar
+    label check, so say the balance was not checked rather than say nothing.
+    A note, not a finding: it states a limit of the check, not a defect."""
+    structured = sum(1 for row in parsed if isinstance(row.expected, (dict, list)))
+    if not structured:
+        return []
+    return [
+        f"class balance not checked: {structured} row(s) carry structured gold, "
+        "which the label check does not count; name the label field with "
+        "`--label-field` to count rows per class in each slice"
+    ]
+
+
+def cross_split_near_duplicates(
+    holdout_texts: set[str], other_texts: set[str]
+) -> tuple[set[str], bool]:
+    """``(holdout texts with a near-duplicate among the other texts, checked)``.
+    Exact matches are not near-duplicates here; ``checked`` is False over the
+    row ceiling."""
+    holdout = sorted(holdout_texts)
+    other = sorted(other_texts - holdout_texts)
+    if len(holdout) + len(other) > NEAR_DUPLICATE_LIMIT:
+        return set(), False
+    texts = holdout + other
+    token_sets = {position: _tokenize(text) for position, text in enumerate(texts)}
+    flagged: set[str] = set()
+    for left, right in _candidate_pairs(token_sets, len(texts)):
+        if (left < len(holdout)) == (right < len(holdout)):
+            continue
+        if _jaccard(token_sets[left], token_sets[right]) >= NEAR_DUPLICATE_JACCARD:
+            flagged.add(texts[min(left, right)])
+    return flagged, True
+
+
+def _cross_split_near_findings(
+    holdout_texts: set[str], other_texts: set[str], where: str
+) -> list[str]:
+    """The finding for holdout inputs that are near-copies of ``where`` inputs."""
+    if not holdout_texts or not other_texts:
+        return []
+    flagged, checked = cross_split_near_duplicates(holdout_texts, other_texts)
+    if not checked:
+        return [
+            "cross-split near-duplicate detection skipped: over the "
+            f"{NEAR_DUPLICATE_LIMIT}-row ceiling, so paraphrased overlap was not looked for"
+        ]
+    if not flagged:
+        return []
+    return [
+        f"{len(flagged)} of {len(holdout_texts)} holdout input(s) have a "
+        f"near-duplicate in the {where}; an exact-text match would miss them"
+    ]
+
+
 def analyse_dataset(
-    path: Path, root: Path, raw: RawDataset
+    path: Path, root: Path, raw: RawDataset, label_field: str | None = None
 ) -> DatasetReport:
     rows = raw.rows
     parsed, input_key_counts, expected_key_counts, missing_expected, gold_kinds = (
@@ -1961,6 +2101,23 @@ def analyse_dataset(
             f"{len(holdout_overlap)} row(s) appear in both the holdout slice and another slice"
         )
     findings.extend(_label_findings(label_counts))
+    named_holdout = file_names_holdout(relative(path, root))
+    findings.extend(
+        _cross_split_near_findings(
+            {r.normalized_input for r in parsed if _is_holdout_row(r, named_holdout)},
+            {r.normalized_input for r in parsed if not _is_holdout_row(r, named_holdout)},
+            "tuning slice",
+        )
+    )
+    label_notes: list[str] = []
+    if label_field:
+        label_findings, label_notes = _label_field_findings(
+            parsed, named_holdout, label_field
+        )
+        findings.extend(label_findings)
+    elif not label_counts:
+        label_notes = _structured_gold_balance_notes(parsed)
+    findings_notes = list(label_notes)
 
     return DatasetReport(
         file=relative(path, root),
@@ -1985,6 +2142,7 @@ def analyse_dataset(
         holdout_input_index=dict(holdout_by_input),
         non_holdout_input_index=dict(non_holdout_by_input),
         untagged_input_index=dict(untagged_by_input),
+        notes=findings_notes,
     )
 
 
@@ -2113,6 +2271,13 @@ def _link_tuning_file(
             f"{len(overlap)} row(s) appear in both this file and the "
             f"sibling holdout file"
         )
+    report.findings.extend(
+        _cross_split_near_findings(
+            holdout_inputs,
+            set(report.non_holdout_input_index),
+            "tuning file",
+        )
+    )
 
 
 def _sibling_groups(
@@ -2147,7 +2312,7 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
 
 
 def _read_dataset(
-    path: Path, root: Path, *, named: bool
+    path: Path, root: Path, *, named: bool, label_field: str | None = None
 ) -> tuple[DatasetReport | None, str | None]:
     """``(report, skip line)`` for one candidate file, shared by discovery and
     ``--dataset`` so both read a file the same way.
@@ -2169,7 +2334,7 @@ def _read_dataset(
         return None, None
     if not named and _mostly_without_input(raw.rows):
         return None, None
-    return analyse_dataset(path, root, raw), None
+    return analyse_dataset(path, root, raw, label_field), None
 
 
 def _mostly_without_input(rows: list[dict]) -> bool:
@@ -2179,7 +2344,7 @@ def _mostly_without_input(rows: list[dict]) -> bool:
 
 
 def scan_datasets(
-    files: list[Path], root: Path
+    files: list[Path], root: Path, label_field: str | None = None
 ) -> tuple[list[DatasetReport], int, list[str], list[str]]:
     candidates = [path for path in files if path.suffix.lower() in DATASET_SUFFIXES]
     considered = candidates[:MAX_DATA_FILES]
@@ -2192,7 +2357,9 @@ def scan_datasets(
     reports: list[DatasetReport] = []
     skipped: list[str] = []
     for path in considered:
-        report, skip = _read_dataset(path, root, named=False)
+        report, skip = _read_dataset(
+            path, root, named=False, label_field=label_field
+        )
         if report is not None:
             reports.append(report)
         if skip is not None:
@@ -2203,7 +2370,7 @@ def scan_datasets(
 
 
 def explicit_datasets(
-    path: Path, root: Path
+    path: Path, root: Path, label_field: str | None = None
 ) -> tuple[list[DatasetReport], int, list[str], list[str]]:
     """``(reports, candidates, notes, skipped)`` for ``--dataset FILE``.
 
@@ -2214,7 +2381,11 @@ def explicit_datasets(
     """
     reports: list[DatasetReport] = []
     skipped: list[str] = []
-    _keep_read(_read_dataset(path, root, named=True), reports, skipped)
+    _keep_read(
+        _read_dataset(path, root, named=True, label_field=label_field),
+        reports,
+        skipped,
+    )
     siblings = _holdout_siblings(path, root)
     considered = siblings[: MAX_DATA_FILES - 1]
     notes: list[str] = []
@@ -2225,7 +2396,11 @@ def explicit_datasets(
             "the rest were not analysed"
         )
     for sibling in considered:
-        _keep_read(_read_dataset(sibling, root, named=False), reports, skipped)
+        _keep_read(
+            _read_dataset(sibling, root, named=False, label_field=label_field),
+            reports,
+            skipped,
+        )
     reports.sort(key=lambda report: report.file)
     apply_sibling_holdouts(reports)
     return reports, 1 + len(siblings), notes, sorted(skipped)
@@ -4424,11 +4599,11 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
 
     if args.dataset:
         reports, dataset_candidates, dataset_notes, skipped_files = explicit_datasets(
-            Path(args.dataset), root
+            Path(args.dataset), root, args.label_field
         )
     else:
         reports, dataset_candidates, dataset_notes, skipped_files = scan_datasets(
-            files, root
+            files, root, args.label_field
         )
 
     selected, probed, refusal = _choose_scorer(args.scorer, inventory, root)
@@ -4750,6 +4925,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--root", required=True, help="project directory to audit")
     parser.add_argument("--json", dest="json_out", help="also write the report as JSON")
     parser.add_argument("--dataset", help="audit this dataset file instead of searching")
+    parser.add_argument(
+        "--label-field",
+        help=(
+            "count rows per class of this field inside each dataset row's gold "
+            "value (dotted path, e.g. `is_flaky` or `result.label`; list items "
+            "each count), per slice"
+        ),
+    )
     parser.add_argument(
         "--scorer", help="probe this scorer, given as FILE.py:FUNCTION"
     )
