@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: experimental
   author: Traigent
-  version: "1.0.0"
+  version: "1.0.1"
 ---
 
 # Traigent — start here
@@ -18,6 +18,12 @@ lives in the specialist skill named below. It owns only the checkpoint record in
 on its step, and when this page and a specialist disagree, the specialist wins. Specialist
 skills stay available throughout: open one yourself when its step comes up, whether or not the
 user named it, and never hold a check back because the user is new.
+
+The portal's Agent Readiness next step and Director advice remain backend-owned. If the user points
+to that advice, follow it through the portal; do not copy it into this file, reorder it from local
+checkpoints, or invent a replacement. For a portal-tracked optimization run, use
+`traigent-analyze-guidance` Mode B for the service decision brief. If the service response or portal
+advice is unavailable, say so and continue only with the specialist skill's documented fallback.
 
 ## 1. Detect the state (read-only, free)
 
@@ -90,6 +96,10 @@ gap as it comes up:
 - otherwise — the first checkpoint in section 3 with no passed or skipped row, through the
   *Existing agent* gap table.
 
+When the user has a portal Agent Readiness recommendation for this agent, that service-provided
+next step takes precedence over this local checkpoint order. The checkpoint table records evidence
+and history; it does not decide what the backend should recommend.
+
 ## 3. Record checkpoints
 
 Keep one table in `traigent-checkpoints.md` at the project root. Ask once before creating it,
@@ -144,6 +154,8 @@ its owner skill's fresh approval, and never when its inputs did not change.
 - It gives no run advice: run plans and decisions come from the Traigent service through
   `traigent-analyze-guidance`. The SDK and CLI have no onboarding or phase parameter, so
   never pass or imply one.
+- It does not replace the portal's Agent Readiness next step or Director advice, or reproduce
+  their backend decision logic in local markdown.
 - It spends nothing and approves nothing.
 - A passed checkpoint says the check ran and what it returned. It is not a claim that the agent
   is good or that a run will improve it.

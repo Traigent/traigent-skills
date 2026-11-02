@@ -64,6 +64,15 @@ def test_checkpoint_file_is_ignored_and_holds_no_secret() -> None:
     assert "Never write a secret value into it" in text
 
 
+def test_service_and_portal_advice_remain_authoritative() -> None:
+    text = _text()
+    assert "The portal's Agent Readiness next step and Director advice remain backend-owned" in text
+    assert "do not copy it into this file, reorder it from local checkpoints, or invent a replacement" in text
+    assert "`traigent-analyze-guidance` Mode B for the service decision brief" in text
+    assert "The checkpoint table records evidence and history; it does not decide what the backend should recommend" in text
+    assert "It does not replace the portal's Agent Readiness next step or Director advice" in text
+
+
 def test_description_has_no_bare_traigent_trigger() -> None:
     front = yaml.safe_load(ROUTER.read_text(encoding="utf-8").split("---", 2)[1])
     description = front["description"]

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b4510a23b98e213f",
+  "doc_hash": "d0ae8e1dae3ed2ff",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -110,6 +110,17 @@
       "doc_before_hash": "67b29a71853de00e",
       "doc_after_hash": "b4510a23b98e213f",
       "note": "Review loop round 8: the user's confirmation that a JavaScript project's tests make no model or network call counts only in the session it was given, like a skipped row.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-traigent-2026-11-02",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-02T00:00:00Z",
+      "doc_before_hash": "b4510a23b98e213f",
+      "doc_after_hash": "d0ae8e1dae3ed2ff",
+      "note": "Keep portal Agent Readiness and Director advice authoritative; the router records evidence without copying or replacing backend recommendations.",
       "source_type": "agent"
     }
   ]
