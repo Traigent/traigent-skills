@@ -32,6 +32,8 @@ out of the package metadata so the request carries the SDK's own User-Agent.
 
 from __future__ import annotations
 
+
+
 import argparse
 import ipaddress
 import json
@@ -163,6 +165,10 @@ KEY_VIA_CLI = (
 KEY_NOT_SENT = "no Traigent API key is sent: nothing here contacts the service"
 
 
+READ_COST = '$0 read.'
+RUN_ID_REQUIREMENT = 'a completed portal run id (--run-id)'
+ONE_REQUEST_STOP_RULE = 'one request; any non-200 stops the check and is reported as a status.'
+
 CATALOGUE: tuple[Check, ...] = (
     Check(
         id="model-ids",
@@ -243,9 +249,9 @@ CATALOGUE: tuple[Check, ...] = (
             "this machine — the run is already on the service"
         ),
         key_line=KEY_IN_HEADER,
-        cost="$0 read.",
-        needs="a completed portal run id (--run-id)",
-        stop_rule="one request; any non-200 stops the check and is reported as a status.",
+        cost=READ_COST,
+        needs=RUN_ID_REQUIREMENT,
+        stop_rule=ONE_REQUEST_STOP_RULE,
         endpoints=("GET /api/v1/analytics/runs/{run_id}/evaluator-quality",),
     ),
     Check(
@@ -265,9 +271,9 @@ CATALOGUE: tuple[Check, ...] = (
             "it already holds; nothing is uploaded"
         ),
         key_line=KEY_IN_HEADER,
-        cost="$0 read.",
-        needs="a completed portal run id (--run-id)",
-        stop_rule="one request; any non-200 stops the check and is reported as a status.",
+        cost=READ_COST,
+        needs=RUN_ID_REQUIREMENT,
+        stop_rule=ONE_REQUEST_STOP_RULE,
         endpoints=("GET /api/v1/analytics/runs/{run_id}/example-insights",),
     ),
     Check(
@@ -294,7 +300,7 @@ CATALOGUE: tuple[Check, ...] = (
         ),
         key_line=KEY_IN_HEADER,
         cost="$0 read. No compute is requested, so nothing can be charged for one.",
-        needs="a completed portal run id (--run-id)",
+        needs=RUN_ID_REQUIREMENT,
         stop_rule=(
             "one request; a second one only when the first says results exist. "
             "`computed: false` ends the check."
@@ -321,9 +327,9 @@ CATALOGUE: tuple[Check, ...] = (
             "the portal run id. The service decides; this script only relays"
         ),
         key_line=KEY_IN_HEADER,
-        cost="$0 read.",
-        needs="a completed portal run id (--run-id)",
-        stop_rule="one request; any non-200 stops the check and is reported as a status.",
+        cost=READ_COST,
+        needs=RUN_ID_REQUIREMENT,
+        stop_rule=ONE_REQUEST_STOP_RULE,
         endpoints=("GET /api/v1/analytics/runs/{run_id}/decision-payload",),
     ),
     Check(
@@ -348,7 +354,7 @@ CATALOGUE: tuple[Check, ...] = (
             "and runs — which is why this helper has a card of its own"
         ),
         key_line=KEY_IN_HEADER,
-        cost="$0 read.",
+        cost=READ_COST,
         needs="an API key",
         stop_rule="one experiments page, then one runs request per experiment listed.",
         endpoints=(
@@ -977,9 +983,9 @@ def check_backend_url(url: str) -> str:
             "this script sends already begins with /api/v1, and a base URL "
             "carrying it again produces a doubled path that 404s."
         )
-    if parts.scheme == "https" and parts.hostname:
-        return trimmed
-    if parts.scheme == "http" and is_loopback(parts.hostname):
+    if (parts.scheme == "https" and parts.hostname) or (
+        parts.scheme == "http" and is_loopback(parts.hostname)
+    ):
         return trimmed
     raise ValueError(
         f"refusing backend URL {url!r}: an API key travels in a request header, "
@@ -1130,6 +1136,21 @@ def safe_dump(value: object, api_key: str) -> str | None:
 # --------------------------------------------------------------------------
 
 
+def _relay_decision_brief(data: dict, lines: list[str]) -> None:
+    brief = data.get("decision_brief")
+    if isinstance(brief, dict):
+        for key in ("headline", "confidence"):
+            if key in brief:
+                lines.append(f"`{key}: {brief[key]!r}`, relayed as returned.")
+        if "confidence" in brief:
+            lines.append(
+                "a confidence is never upgraded here: it is printed at the level "
+                "the service returned."
+            )
+    elif "confidence" in data:
+        lines.append(f"`confidence: {data['confidence']!r}`, relayed as returned.")
+
+
 def relay_lines(data: dict) -> list[str]:
     """Statements about the payload that are TRUE OF THE PAYLOAD, and nothing more.
 
@@ -1158,6 +1179,19 @@ def relay_lines(data: dict) -> list[str]:
     if isinstance(rows, list) and not rows:
         lines.append("no example rows were returned (`example_rows: []`).")
 
+    _relay_scoped_fields(data, lines)
+
+    _relay_decision_brief(data, lines)
+
+    if not lines:
+        lines.append(
+            "the payload carried none of the fields this check knows how to "
+            "summarise; read the verbatim body above."
+        )
+    return lines
+
+
+def _relay_scoped_fields(data: dict, lines: list[str]) -> None:
     # The same field name appears at the top level AND inside `summary`, with
     # different values. Printing both unlabelled read as one field contradicting
     # itself, so the nested scope is named.
@@ -1170,26 +1204,6 @@ def relay_lines(data: dict) -> list[str]:
                 lines.append(
                     f"`{prefix}{key}: {scope[key]!r}`, relayed as returned."
                 )
-
-    brief = data.get("decision_brief")
-    if isinstance(brief, dict):
-        for key in ("headline", "confidence"):
-            if key in brief:
-                lines.append(f"`{key}: {brief[key]!r}`, relayed as returned.")
-        if "confidence" in brief:
-            lines.append(
-                "a confidence is never upgraded here: it is printed at the level "
-                "the service returned."
-            )
-    elif "confidence" in data:
-        lines.append(f"`confidence: {data['confidence']!r}`, relayed as returned.")
-
-    if not lines:
-        lines.append(
-            "the payload carried none of the fields this check knows how to "
-            "summarise; read the verbatim body above."
-        )
-    return lines
 
 
 UNEXPECTED = (
@@ -1315,6 +1329,22 @@ def run_example_scoring(transport: Transport, run_id: str, out: list[str]) -> di
     return record
 
 
+def _collect_run_rows(transport: Transport, out: list[str], experiments: list) -> list[dict]:
+    rows: list[dict] = []
+    for experiment in experiments:
+        experiment_id = experiment.get("experiment_id") or experiment.get("id")
+        if not experiment_id:
+            continue
+        payload, entry = transport.request(
+            "GET", f"/api/v1/experiment-runs/{segment(experiment_id)}/runs"
+        )
+        report_result("list-runs", entry, payload, transport.api_key, out)
+        for run in as_list(envelope_data(payload), ("runs", "items", "results")):
+            if run.get("run_id"):
+                rows.append({"experiment": experiment, "run": run})
+    return rows
+
+
 def run_list_runs(transport: Transport, out: list[str]) -> dict:
     """List completed PORTAL runs with enough context to choose one by hand.
 
@@ -1347,18 +1377,7 @@ def run_list_runs(transport: Transport, out: list[str]) -> dict:
         )
         experiments = experiments[:EXPERIMENTS_PAGE_LIMIT]
 
-    rows: list[dict] = []
-    for experiment in experiments:
-        experiment_id = experiment.get("experiment_id") or experiment.get("id")
-        if not experiment_id:
-            continue
-        payload, entry = transport.request(
-            "GET", f"/api/v1/experiment-runs/{segment(experiment_id)}/runs"
-        )
-        report_result("list-runs", entry, payload, transport.api_key, out)
-        for run in as_list(envelope_data(payload), ("runs", "items", "results")):
-            if run.get("run_id"):
-                rows.append({"experiment": experiment, "run": run})
+    rows = _collect_run_rows(transport, out, experiments)
 
     completed = [row for row in rows
                  if str(row["run"].get("status") or "").lower()

@@ -23,6 +23,8 @@ never reads a Traigent backend; the SDK version is read out of process with
 
 from __future__ import annotations
 
+
+
 import argparse
 import ast
 import csv
@@ -123,7 +125,10 @@ GOLD_KIND_LABEL = {
     "infinite": "infinite",
     "empty": "empty string",
 }
-DATASET_SUFFIXES = (".jsonl", ".json", ".csv")
+JSON_SUFFIX = '.json'
+JSONL_SUFFIX = '.jsonl'
+
+DATASET_SUFFIXES = (JSONL_SUFFIX, JSON_SUFFIX, ".csv")
 HOLDOUT_VALUES = frozenset({"holdout", "test", "validation", "val", "eval"})
 # A dataset file whose name carries one of these tokens, beside another dataset
 # file in the same directory, declares the holdout slice by file name — a
@@ -147,6 +152,12 @@ WALKTHROUGH_DIR = "traigent-runs"
 MIN_SMOKE = 10
 MIN_TUNING = 30
 MIN_HOLDOUT = 30
+# Rows of the rarer class a slice needs before a difference between two
+# configurations is even measurable: one row moves a rate by 1/k, so k=20 is a
+# five-point step and k=30 a three-point one. A floor, not a guarantee: noise
+# on k rows is still about 50/sqrt(k) points per rate.
+MIN_MINORITY_TUNING = 20
+MIN_MINORITY_HOLDOUT = 30
 MIN_HIGH_VARIANCE = 100
 
 PROVIDER_MODULES = frozenset(
@@ -299,6 +310,37 @@ CONFIG_MAPPING_NAMES = frozenset(
 CONFIG_READ_FUNCS = frozenset({"get_config", "get_current_config", "current_config"})
 CONFIG_SPACE_WRAPPERS = frozenset({"ConfigurationSpace", "ConfigSpace"})
 CHOICES_FACTORIES = frozenset({"Choices", "Categorical"})
+# Constructors the SDK accepts as an inline knob (decorator keyword value).
+INLINE_KNOB_FACTORIES = CHOICES_FACTORIES | frozenset({"Range", "IntRange", "LogRange"})
+# Decorator keywords that are options, not knobs (SDK `_OPTIMIZE_DEFAULTS` plus
+# the legacy execution keys). Any other keyword whose value is not a knob
+# constructor is reported as unread; a stale entry here costs a spurious note,
+# never a missed one.
+DECORATOR_OPTION_KEYWORDS = frozenset({
+    "agent_measures", "agent_name", "agent_prefixes", "agent_ref", "agents",
+    "algorithm", "auto_detect_tvars", "auto_detect_tvars_exclude",
+    "auto_detect_tvars_include", "auto_detect_tvars_min_confidence",
+    "auto_detect_tvars_mode", "auto_load_best", "auto_override_frameworks",
+    "best_config_cache_dir", "best_config_cache_ttl_seconds",
+    "best_config_source", "best_config_stale_ok_ttl_seconds",
+    "best_config_strict", "cloud_fallback_policy", "config_id", "config_param",
+    "configuration_space", "config_space", "constraints", "content_less",
+    "custom_evaluator", "default_config", "effectuation",
+    "enable_auto_load_dev_logs", "environment", "eval_dataset", "evaluation",
+    "evaluator", "example_timeout", "execution", "execution_mode",
+    "experiment_name", "framework_targets", "global_measures", "grow_dataset",
+    "injection", "injection_mode", "legacy", "load_from", "local_storage_path",
+    "max_total_examples", "max_trials", "metric_functions", "minimal_logging",
+    "objectives", "offline", "parallel_config", "privacy_enabled",
+    "prompt_rewrite", "run_description", "run_title", "safety_constraints",
+    "samples_include_pruned", "scoring_function", "skill_train",
+    "smart_pruning", "strategy_params", "tvl", "tvl_environment", "tvl_spec",
+    "warm_start_from", "winner_stability_reps",
+    # runtime overrides the SDK accepts as keywords (_ALLOWED_RUNTIME_OVERRIDE_KEYS)
+    "metric_limit", "metric_name", "metric_include_pruned", "plateau_window",
+    "plateau_epsilon", "semantic_saturation", "cost_limit", "cost_approved",
+    "estimated_calls_per_example", "tie_breakers", "tvl_parameter_agents",
+})
 
 KNOB_READ = "read"
 KNOB_MAYBE = "possibly read through a config mapping"
@@ -759,6 +801,9 @@ def _choices_values(node: ast.Call) -> list[object] | None:
     if _factory_name(node.func) not in CHOICES_FACTORIES:
         return None
     values = [_literal(arg) for arg in node.args]
+    if len(values) == 1 and isinstance(values[0], (list, tuple)):
+        # ``Choices(["a", "b"])`` passes its values as one list.
+        values = list(values[0])
     if (
         values
         and all(value is not None for value in values)
@@ -849,6 +894,7 @@ def collect_entry_points(tree: ast.AST, rel_path: str) -> list[EntryPoint]:
     if not (modules or optimize_names):
         return []
     constants = module_dict_constants(tree)
+    assignments = module_assignments(tree)
 
     entry_points: list[EntryPoint] = []
     for node in ast.walk(tree):
@@ -867,11 +913,124 @@ def collect_entry_points(tree: ast.AST, rel_path: str) -> list[EntryPoint]:
         entry = EntryPoint(function=node.name, file=rel_path, line=node.lineno)
         surface = function_read_surface(node)
         if isinstance(decorator, ast.Call):
-            _add_declared_knobs(entry, decorator, constants, node, surface)
+            _add_declared_knobs(entry, decorator, constants, node, surface, assignments)
         entry.knobs.sort(key=lambda knob: knob.name)
         entry_points.append(entry)
     entry_points.sort(key=lambda item: (item.file, item.line))
     return entry_points
+
+
+def module_assignments(tree: ast.AST) -> dict[str, ast.expr]:
+    """Module-level ``NAME = <expr>`` bindings, so an inline knob passed by
+    name (``model=MODELS``) can be resolved to its constructor call."""
+    bound: dict[str, ast.expr] = {}
+    for node in getattr(tree, "body", []):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target, value = node.targets[0], node.value
+        elif isinstance(node, ast.AnnAssign) and node.value is not None:
+            target, value = node.target, node.value
+        else:
+            continue
+        if isinstance(target, ast.Name):
+            bound[target.id] = value
+    return bound
+
+
+def _inline_factory(callee: ast.expr) -> str | None:
+    """The knob constructor a call targets (``Choices(...)``,
+    ``Choices.model(...)``, ``traigent.Range(...)``), or ``None``."""
+    if isinstance(callee, ast.Name):
+        return callee.id if callee.id in INLINE_KNOB_FACTORIES else None
+    if isinstance(callee, ast.Attribute):
+        if callee.attr in INLINE_KNOB_FACTORIES:
+            return callee.attr
+        return _inline_factory(callee.value)
+    return None
+
+
+def _is_numeric_pair(node: ast.expr) -> bool:
+    """The SDK's legacy inline range: a tuple of exactly two numbers."""
+    return (
+        isinstance(node, ast.Tuple)
+        and len(node.elts) == 2
+        and all(
+            isinstance(_literal(e), (int, float)) and not isinstance(_literal(e), bool)
+            for e in node.elts
+        )
+    )
+
+
+def _is_scalar_literal(node: ast.expr) -> bool:
+    """A plain str/number/bool/None literal, which cannot declare a knob."""
+    return isinstance(node, ast.Constant)
+
+
+def _resolve_inline_knob(
+    value: ast.expr, assignments: dict[str, ast.expr]
+) -> ast.expr | None:
+    """The constructor expression behind an inline knob value, following a
+    module-level name once, or ``None`` when the value is not one."""
+    if isinstance(value, ast.Name) and value.id in assignments:
+        value = assignments[value.id]
+    if isinstance(value, ast.Call) and _inline_factory(value.func):
+        return value
+    return value if _is_numeric_pair(value) else None
+
+
+def _add_inline_knobs(
+    entry: EntryPoint,
+    decorator: ast.Call,
+    assignments: dict[str, ast.expr],
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    surface: tuple[set[str], set[str], bool],
+) -> None:
+    """Inventory knobs declared inline as decorator keywords. A keyword that is
+    neither a decorator option nor a readable knob constructor may still be
+    a knob the audit cannot see, so it sets the entry's note: unread, never
+    absent."""
+    unread: list[ast.keyword] = []
+    for keyword in decorator.keywords:
+        if keyword.arg in DECORATOR_OPTION_KEYWORDS:
+            continue
+        if keyword.arg and _is_scalar_literal(keyword.value):
+            # cost_limit=2, plateau_epsilon=0.01: a runtime option, never a knob
+            # (an inline knob is a constructor call or a numeric pair).
+            continue
+        knob_node = (
+            _resolve_inline_knob(keyword.value, assignments) if keyword.arg else None
+        )
+        if knob_node is None:
+            unread.append(keyword)
+            continue
+        values, readable = [], False
+        if (
+            isinstance(knob_node, ast.Call)
+            and _inline_factory(knob_node.func) in CHOICES_FACTORIES
+        ):
+            values, readable = knob_values(knob_node)
+        parameters, literals, dynamic = surface
+        entry.knobs.append(
+            Knob(
+                name=keyword.arg,
+                values=values,
+                values_readable=readable,
+                status=knob_status(keyword.arg, parameters, literals, dynamic),
+                file=entry.file,
+                line=getattr(keyword.value, "lineno", node.lineno),
+            )
+        )
+    if unread and entry.config_space_note is None:
+        shown = ", ".join(
+            f"`{kw.arg}={_expr_text(kw.value)}`"
+            if kw.arg
+            else f"`**{_expr_text(kw.value)}`"
+            for kw in unread
+        )
+        entry.config_space_note = (
+            f"decorator keyword(s) {shown} at {entry.file}:{unread[0].value.lineno} "
+            "are not a decorator option and not a Choices/Range/IntRange/LogRange "
+            "call the audit can read, so any knobs they declare were not inventoried"
+        )
 
 
 def _add_declared_knobs(
@@ -880,9 +1039,12 @@ def _add_declared_knobs(
     constants: dict[str, ast.Dict],
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     surface: tuple[set[str], set[str], bool],
+    assignments: dict[str, ast.expr] | None = None,
 ) -> None:
     """Add a knob for every key of each configuration space keyword of the
-    decorator; a space the audit cannot read sets the entry's note instead."""
+    decorator, and for each inline knob keyword (``model=Choices([...])``); a
+    space the audit cannot read sets the entry's note instead."""
+    _add_inline_knobs(entry, decorator, assignments or {}, node, surface)
     for keyword in decorator.keywords:
         if keyword.arg not in {"configuration_space", "config_space"}:
             continue
@@ -1366,10 +1528,10 @@ def load_rows(path: Path) -> RawDataset:
         return float(name)
 
     try:
-        if suffix == ".jsonl":
+        if suffix == JSONL_SUFFIX:
             if _read_jsonl(path, result, _constant):
                 return result
-        elif suffix == ".json":
+        elif suffix == JSON_SUFFIX:
             _read_json(path, result, _constant)
         elif suffix == ".csv":
             _read_csv(path, result)
@@ -1780,8 +1942,145 @@ def _label_findings(label_counts: dict[str, int]) -> list[str]:
     return []
 
 
+
+def _label_values(expected: object, path: str) -> list[str] | None:
+    """The label values a gold value carries at the dotted ``path``: one per
+    list item, one for a scalar. ``None`` when the path is not there."""
+    node = expected
+    for part in path.split("."):
+        if not isinstance(node, dict) or part not in node:
+            return None
+        node = node[part]
+    items = list(node) if isinstance(node, (list, tuple)) else [node]
+    return [json.dumps(i, sort_keys=True) if isinstance(i, (dict, list)) else str(i) for i in items]
+
+
+def _slice_label_counts(
+    parsed: list[DatasetRow], named_holdout: bool, path: str
+) -> tuple[dict[str, Counter[str]], int]:
+    """``({slice: rows per label}, rows without the label field)``."""
+    slices: dict[str, Counter[str]] = {"tuning": Counter(), "holdout": Counter()}
+    missing = 0
+    for row in parsed:
+        labels = _label_values(row.expected, path)
+        if labels is None:
+            missing += 1
+            continue
+        slice_name = "holdout" if _is_holdout_row(row, named_holdout) else "tuning"
+        slices[slice_name].update(set(labels))
+    return slices, missing
+
+
+def _slice_rows(parsed: list[DatasetRow], named_holdout: bool) -> dict[str, int]:
+    rows = {"tuning": 0, "holdout": 0}
+    for row in parsed:
+        rows["holdout" if _is_holdout_row(row, named_holdout) else "tuning"] += 1
+    return rows
+
+
+def _label_field_findings(
+    parsed: list[DatasetRow], named_holdout: bool, path: str
+) -> tuple[list[str], list[str]]:
+    """``(findings, notes)`` for the rows of the named label field in each
+    slice: a slice whose rarest label has fewer rows than the minority minimum
+    cannot rank two configurations."""
+    slices, missing = _slice_label_counts(parsed, named_holdout, path)
+    seen = sorted(set(slices["tuning"]) | set(slices["holdout"]))
+    if not seen:
+        return [
+            f"class balance not checked: label field `{path}` was found in none "
+            f"of {len(parsed)} row(s)"
+        ], []
+    rows = _slice_rows(parsed, named_holdout)
+    minimums = {"tuning": MIN_MINORITY_TUNING, "holdout": MIN_MINORITY_HOLDOUT}
+    findings: list[str] = []
+    notes: list[str] = []
+    if missing:
+        findings.append(
+            f"label field `{path}` is missing from {missing} of {len(parsed)} row(s)"
+        )
+    if len(seen) < 2:
+        findings.append(
+            f"label field `{path}` has one value (`{seen[0]}`) in the whole file, "
+            "so configurations can differ only on how many of those rows they get "
+            "right (recall for that label); false-positive behaviour cannot be "
+            "measured without rows of another label"
+        )
+    for slice_name, counts in slices.items():
+        if not rows[slice_name]:
+            continue
+        notes.append(
+            f"label field `{path}`, {slice_name} slice ({rows[slice_name]} row(s)): "
+            + ", ".join(f"{label} x{counts.get(label, 0)}" for label in seen)
+        )
+        if len(seen) < 2:
+            continue
+        rarest = min(seen, key=lambda label: (counts.get(label, 0), label))
+        if counts.get(rarest, 0) < minimums[slice_name]:
+            findings.append(
+                f"{slice_name} slice has {counts.get(rarest, 0)} row(s) of label "
+                f"`{rarest}`, under the {minimums[slice_name]}-row minority minimum"
+            )
+    return findings, notes
+
+
+def _structured_gold_balance_notes(parsed: list[DatasetRow]) -> list[str]:
+    """Structured gold (a JSON object or list) is never counted by the scalar
+    label check, so say the balance was not checked rather than say nothing.
+    A note, not a finding: it states a limit of the check, not a defect."""
+    structured = sum(1 for row in parsed if isinstance(row.expected, (dict, list)))
+    if not structured:
+        return []
+    return [
+        f"class balance not checked: {structured} row(s) carry structured gold, "
+        "which the label check does not count; name the label field with "
+        "`--label-field` to count rows per class in each slice"
+    ]
+
+
+def cross_split_near_duplicates(
+    holdout_texts: set[str], other_texts: set[str]
+) -> tuple[set[str], bool]:
+    """``(holdout texts with a near-duplicate among the other texts, checked)``.
+    Exact matches are not near-duplicates here; ``checked`` is False over the
+    row ceiling."""
+    holdout = sorted(holdout_texts)
+    other = sorted(other_texts - holdout_texts)
+    if len(holdout) + len(other) > NEAR_DUPLICATE_LIMIT:
+        return set(), False
+    texts = holdout + other
+    token_sets = {position: _tokenize(text) for position, text in enumerate(texts)}
+    flagged: set[str] = set()
+    for left, right in _candidate_pairs(token_sets, len(texts)):
+        if (left < len(holdout)) == (right < len(holdout)):
+            continue
+        if _jaccard(token_sets[left], token_sets[right]) >= NEAR_DUPLICATE_JACCARD:
+            flagged.add(texts[min(left, right)])
+    return flagged, True
+
+
+def _cross_split_near_findings(
+    holdout_texts: set[str], other_texts: set[str], where: str
+) -> list[str]:
+    """The finding for holdout inputs that are near-copies of ``where`` inputs."""
+    if not holdout_texts or not other_texts:
+        return []
+    flagged, checked = cross_split_near_duplicates(holdout_texts, other_texts)
+    if not checked:
+        return [
+            "cross-split near-duplicate detection skipped: over the "
+            f"{NEAR_DUPLICATE_LIMIT}-row ceiling, so paraphrased overlap was not looked for"
+        ]
+    if not flagged:
+        return []
+    return [
+        f"{len(flagged)} of {len(holdout_texts)} holdout input(s) have a "
+        f"near-duplicate in the {where}; an exact-text match would miss them"
+    ]
+
+
 def analyse_dataset(
-    path: Path, root: Path, raw: RawDataset
+    path: Path, root: Path, raw: RawDataset, label_field: str | None = None
 ) -> DatasetReport:
     rows = raw.rows
     parsed, input_key_counts, expected_key_counts, missing_expected, gold_kinds = (
@@ -1818,6 +2117,23 @@ def analyse_dataset(
             f"{len(holdout_overlap)} row(s) appear in both the holdout slice and another slice"
         )
     findings.extend(_label_findings(label_counts))
+    named_holdout = file_names_holdout(relative(path, root))
+    findings.extend(
+        _cross_split_near_findings(
+            {r.normalized_input for r in parsed if _is_holdout_row(r, named_holdout)},
+            {r.normalized_input for r in parsed if not _is_holdout_row(r, named_holdout)},
+            "tuning slice",
+        )
+    )
+    label_notes: list[str] = []
+    if label_field:
+        label_findings, label_notes = _label_field_findings(
+            parsed, named_holdout, label_field
+        )
+        findings.extend(label_findings)
+    elif not label_counts:
+        label_notes = _structured_gold_balance_notes(parsed)
+    findings_notes = list(label_notes)
 
     return DatasetReport(
         file=relative(path, root),
@@ -1842,6 +2158,7 @@ def analyse_dataset(
         holdout_input_index=dict(holdout_by_input),
         non_holdout_input_index=dict(non_holdout_by_input),
         untagged_input_index=dict(untagged_by_input),
+        notes=findings_notes,
     )
 
 
@@ -1970,6 +2287,13 @@ def _link_tuning_file(
             f"{len(overlap)} row(s) appear in both this file and the "
             f"sibling holdout file"
         )
+    report.findings.extend(
+        _cross_split_near_findings(
+            holdout_inputs,
+            set(report.non_holdout_input_index),
+            "tuning file",
+        )
+    )
 
 
 def _sibling_groups(
@@ -2004,7 +2328,7 @@ def apply_sibling_holdouts(reports: list[DatasetReport]) -> None:
 
 
 def _read_dataset(
-    path: Path, root: Path, *, named: bool
+    path: Path, root: Path, *, named: bool, label_field: str | None = None
 ) -> tuple[DatasetReport | None, str | None]:
     """``(report, skip line)`` for one candidate file, shared by discovery and
     ``--dataset`` so both read a file the same way.
@@ -2026,7 +2350,7 @@ def _read_dataset(
         return None, None
     if not named and _mostly_without_input(raw.rows):
         return None, None
-    return analyse_dataset(path, root, raw), None
+    return analyse_dataset(path, root, raw, label_field), None
 
 
 def _mostly_without_input(rows: list[dict]) -> bool:
@@ -2036,7 +2360,7 @@ def _mostly_without_input(rows: list[dict]) -> bool:
 
 
 def scan_datasets(
-    files: list[Path], root: Path
+    files: list[Path], root: Path, label_field: str | None = None
 ) -> tuple[list[DatasetReport], int, list[str], list[str]]:
     candidates = [path for path in files if path.suffix.lower() in DATASET_SUFFIXES]
     considered = candidates[:MAX_DATA_FILES]
@@ -2049,7 +2373,9 @@ def scan_datasets(
     reports: list[DatasetReport] = []
     skipped: list[str] = []
     for path in considered:
-        report, skip = _read_dataset(path, root, named=False)
+        report, skip = _read_dataset(
+            path, root, named=False, label_field=label_field
+        )
         if report is not None:
             reports.append(report)
         if skip is not None:
@@ -2060,7 +2386,7 @@ def scan_datasets(
 
 
 def explicit_datasets(
-    path: Path, root: Path
+    path: Path, root: Path, label_field: str | None = None
 ) -> tuple[list[DatasetReport], int, list[str], list[str]]:
     """``(reports, candidates, notes, skipped)`` for ``--dataset FILE``.
 
@@ -2071,7 +2397,11 @@ def explicit_datasets(
     """
     reports: list[DatasetReport] = []
     skipped: list[str] = []
-    _keep_read(_read_dataset(path, root, named=True), reports, skipped)
+    _keep_read(
+        _read_dataset(path, root, named=True, label_field=label_field),
+        reports,
+        skipped,
+    )
     siblings = _holdout_siblings(path, root)
     considered = siblings[: MAX_DATA_FILES - 1]
     notes: list[str] = []
@@ -2082,7 +2412,11 @@ def explicit_datasets(
             "the rest were not analysed"
         )
     for sibling in considered:
-        _keep_read(_read_dataset(sibling, root, named=False), reports, skipped)
+        _keep_read(
+            _read_dataset(sibling, root, named=False, label_field=label_field),
+            reports,
+            skipped,
+        )
     reports.sort(key=lambda report: report.file)
     apply_sibling_holdouts(reports)
     return reports, 1 + len(siblings), notes, sorted(skipped)
@@ -4281,11 +4615,11 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
 
     if args.dataset:
         reports, dataset_candidates, dataset_notes, skipped_files = explicit_datasets(
-            Path(args.dataset), root
+            Path(args.dataset), root, args.label_field
         )
     else:
         reports, dataset_candidates, dataset_notes, skipped_files = scan_datasets(
-            files, root
+            files, root, args.label_field
         )
 
     selected, probed, refusal = _choose_scorer(args.scorer, inventory, root)
@@ -4483,7 +4817,7 @@ def _walkthrough_holdout_files(walkthrough_files: list[Path], root: Path) -> lis
     return sorted(
         relative(path, root)
         for path in walkthrough_files
-        if path.suffix.lower() in {".jsonl", ".json", ".csv"}
+        if path.suffix.lower() in {JSONL_SUFFIX, JSON_SUFFIX, ".csv"}
         and file_names_holdout(relative(path, root))
     )
 
@@ -4607,6 +4941,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--root", required=True, help="project directory to audit")
     parser.add_argument("--json", dest="json_out", help="also write the report as JSON")
     parser.add_argument("--dataset", help="audit this dataset file instead of searching")
+    parser.add_argument(
+        "--label-field",
+        help=(
+            "count rows per class of this field inside each dataset row's gold "
+            "value (dotted path, e.g. `is_flaky` or `result.label`; list items "
+            "each count), per slice"
+        ),
+    )
     parser.add_argument(
         "--scorer", help="probe this scorer, given as FILE.py:FUNCTION"
     )

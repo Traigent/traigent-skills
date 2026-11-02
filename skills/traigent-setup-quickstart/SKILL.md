@@ -702,7 +702,7 @@ You can include additional fields for metadata, but `input` and `output` are req
 
 ### Tips for Good Datasets
 
-- Include at least 10-20 examples for meaningful optimization.
+- 10-20 examples is a smoke check only; size a tuning slice (30-100) and a holdout (30+) by `traigent-dataset-curate`, including how many rows carry the rarer class.
 - Cover edge cases and diverse inputs.
 - Ensure ground-truth `output` values are consistent and well-defined.
 - Reserve a holdout slice before tuning; never tune and validate on the same rows.

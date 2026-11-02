@@ -52,9 +52,6 @@ from pathlib import Path
 from typing import Any
 
 REPO_SLUG = "Traigent/Traigent"
-# Source of truth: a detached worktree of Traigent origin/develop (see the workspace CLAUDE.md
-# "Review-freshness guard"). Override with --sdk-repo for a different checkout.
-DEFAULT_SDK_REPO = Path("/tmp/rev-sdk-dev")
 DEFAULT_REF = "HEAD"
 DEFAULT_OUT = Path("tests/data/python_api_snapshot.json")
 
@@ -73,7 +70,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Refresh the vendored Traigent (Python SDK) public API snapshot.",
     )
-    parser.add_argument("--sdk-repo", type=Path, default=DEFAULT_SDK_REPO)
+    parser.add_argument("--sdk-repo", type=Path, required=True)
     parser.add_argument("--ref", default=DEFAULT_REF)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = parser.parse_args()
@@ -227,16 +224,18 @@ def _model_fields(tree: ast.AST, class_name: str) -> list[str]:
     """
     for node in tree.body:
         if isinstance(node, ast.ClassDef) and node.name == class_name:
-            fields: list[str] = []
-            for stmt in node.body:
-                if isinstance(stmt, ast.AnnAssign) and isinstance(
-                    stmt.target, ast.Name
-                ):
-                    name = stmt.target.id
-                    if not name.startswith("_"):
-                        fields.append(name)
-            return sorted(set(fields))
+            return _class_fields(node)
     raise ValueError(f"could not find model class {class_name}")
+
+
+def _class_fields(node: ast.ClassDef) -> list[str]:
+    fields: list[str] = []
+    for stmt in node.body:
+        if isinstance(stmt, ast.AnnAssign) and isinstance(stmt.target, ast.Name):
+            name = stmt.target.id
+            if not name.startswith("_"):
+                fields.append(name)
+    return sorted(set(fields))
 
 
 def _public_exceptions(tree: ast.AST) -> list[str]:

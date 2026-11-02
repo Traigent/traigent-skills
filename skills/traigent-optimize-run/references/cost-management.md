@@ -10,7 +10,7 @@ Traigent tracks the cost of the model calls it can measure and enforces a per-ru
 |---|---|---|
 | `TRAIGENT_RUN_COST_LIMIT` | `2.0` | Maximum USD spending per optimization run. |
 | `TRAIGENT_COST_APPROVED` | `false` | Set to `"true"` to skip the interactive cost approval handshake. |
-| `TRAIGENT_STRICT_COST_ACCOUNTING` | `false` | Fail fast if cost extraction from LLM responses fails. |
+| `TRAIGENT_STRICT_COST_ACCOUNTING` | `false`, but unset is not `false` | Fail fast if cost extraction from LLM responses fails. A run whose `objectives` include `cost` turns it on for itself when the variable is unset (an explicit value always wins). |
 | `TRAIGENT_REQUIRE_COST_TRACKING` | `false` | Raise exception if cost tracking cannot extract costs. |
 | `TRAIGENT_COST_WARNING_THRESHOLD` | `0.5` | Warn when this fraction of the limit is consumed (0.0-1.0). |
 | `TRAIGENT_COST_DIVERGENCE_THRESHOLD` | `2.0` | Log warning if actual/estimated cost ratio exceeds this. |

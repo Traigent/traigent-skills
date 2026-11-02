@@ -75,13 +75,11 @@ def main() -> int:
         current = target.read_text(encoding="utf-8")
         if current != rendered:
             raise SystemExit("SYNC_MAP.md is out of sync with sync_map.yml")
-        return 0
 
-    if args.write:
+    elif args.write:
         target.write_text(rendered, encoding="utf-8")
-        return 0
-
-    print(rendered, end="")
+    else:
+        print(rendered, end="")
     return 0
 
 

@@ -103,33 +103,41 @@ PAYLOADS = [
 ]
 
 
-def find_hook_scripts(repo_path):
-    """Find executable hook scripts in the repo."""
-    hooks = []
+def _append_settings_hooks(data, hooks):
+    for event_name, hook_list in data.get("hooks", {}).items():
+        if not isinstance(hook_list, list):
+            continue
+        for hook in hook_list:
+            cmd = (
+                hook.get("command", "") if isinstance(hook, dict) else str(hook)
+            )
+            if cmd:
+                hooks.append(
+                    {
+                        "event": event_name,
+                        "command": cmd,
+                        "source": ".claude/settings.json",
+                    }
+                )
 
-    # Check .claude/settings.json for registered hooks
+
+def _find_settings_hooks(repo_path, hooks):
     settings_path = os.path.join(repo_path, ".claude/settings.json")
     if os.path.exists(settings_path):
         try:
             with open(settings_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-            for event_name, hook_list in data.get("hooks", {}).items():
-                if not isinstance(hook_list, list):
-                    continue
-                for hook in hook_list:
-                    cmd = (
-                        hook.get("command", "") if isinstance(hook, dict) else str(hook)
-                    )
-                    if cmd:
-                        hooks.append(
-                            {
-                                "event": event_name,
-                                "command": cmd,
-                                "source": ".claude/settings.json",
-                            }
-                        )
+            _append_settings_hooks(data, hooks)
         except (json.JSONDecodeError, OSError):
             pass  # unreadable or malformed settings.json: nothing to report from this file
+
+
+def find_hook_scripts(repo_path):
+    """Find executable hook scripts in the repo."""
+    hooks = []
+
+    # Check .claude/settings.json for registered hooks
+    _find_settings_hooks(repo_path, hooks)
 
     # Check for standalone hook scripts in .claude/
     claude_dir = os.path.join(repo_path, ".claude")
@@ -164,6 +172,117 @@ def build_safe_env(extra_vars=None):
     if extra_vars:
         safe_env.update(extra_vars)
     return safe_env
+
+
+def _append_hook_findings(hook, payload, result, findings):
+    # Check for canary leaks (env exfiltration)
+    combined_output = result["stdout"] + result["stderr"]
+    for canary in ("CANARY_12345", "CANARY_67890"):
+        if canary in combined_output:
+            result["canary_leaked"] = True
+            findings.append(
+                core.Finding(
+                    scanner=SCANNER_NAME,
+                    severity="critical",
+                    title=f"Environment variable leaked: {hook['event']}",
+                    description=f"Hook exposed injected canary token in output during {payload['name']} test",
+                    file=hook["source"],
+                    line=0,
+                    snippet=f"Canary '{canary}' found in hook output",
+                    category="dast-env-leak",
+                )
+            )
+
+    # Check for timeout (possible infinite loop / hang)
+    if result["timed_out"]:
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="high",
+                title=f"Hook timeout: {hook['event']}",
+                description=f"Hook exceeded {EXEC_TIMEOUT}s timeout during {payload['name']} test (may hang on malicious input)",
+                file=hook["source"],
+                line=0,
+                snippet=f"Timed out after {EXEC_TIMEOUT}s with payload: {payload['name']}",
+                category="dast-timeout",
+            )
+        )
+
+    # Check for crash (segfault, signal death)
+    if result["crashed"]:
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="high",
+                title=f"Hook crashed: {hook['event']}",
+                description=f"Hook killed by signal {-result['exit_code']} during {payload['name']} test",
+                file=hook["source"],
+                line=0,
+                snippet=f"Exit code: {result['exit_code']} (signal {-result['exit_code']})",
+                category="dast-crash",
+            )
+        )
+
+    # Check for output amplification
+    total_output = result["stdout_size"] + result["stderr_size"]
+    if total_output > MAX_OUTPUT_BYTES:
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="medium",
+                title=f"Output amplification: {hook['event']}",
+                description=f"Hook produced {total_output:,} bytes during {payload['name']} test (threshold: {MAX_OUTPUT_BYTES:,})",
+                file=hook["source"],
+                line=0,
+                snippet=f"{total_output:,} bytes output",
+                category="dast-amplification",
+            )
+        )
+
+    _append_injection_findings(hook, payload, combined_output, findings)
+
+
+def _append_injection_findings(hook, payload, combined_output, findings):
+    # Check if command injection payloads appear to have been executed
+    if payload["name"] == "command_injection":
+        # If output contains uid= or username, the injection may have worked
+        for indicator in ["uid=", "gid=", "root", "whoami"]:
+            if (
+                indicator in combined_output.lower()
+                and indicator not in hook["command"].lower()
+            ):
+                findings.append(
+                    core.Finding(
+                        scanner=SCANNER_NAME,
+                        severity="critical",
+                        title=f"Possible command injection: {hook['event']}",
+                        description=f"Hook output contains '{indicator}' after command injection test",
+                        file=hook["source"],
+                        line=0,
+                        snippet=combined_output[:120],
+                        category="dast-injection",
+                    )
+                )
+                break
+
+    # Check if path traversal succeeded
+    if payload["name"] == "path_traversal":
+        for indicator in ["root:", "/bin/bash", "/bin/sh", "nobody"]:
+            if indicator in combined_output:
+                findings.append(
+                    core.Finding(
+                        scanner=SCANNER_NAME,
+                        severity="critical",
+                        title=f"Path traversal succeeded: {hook['event']}",
+                        description="Hook output contains '/etc/passwd' content after path traversal test",
+                        file=hook["source"],
+                        line=0,
+                        snippet=combined_output[:120],
+                        category="dast-traversal",
+                    )
+                )
+                break
+
 
 
 def execute_hook_with_payload(hook, payload, repo_path):
@@ -241,109 +360,7 @@ def execute_hook_with_payload(hook, payload, repo_path):
 
     result["duration_ms"] = int((time.monotonic() - start) * 1000)
 
-    # Check for canary leaks (env exfiltration)
-    combined_output = result["stdout"] + result["stderr"]
-    for canary in ("CANARY_12345", "CANARY_67890"):
-        if canary in combined_output:
-            result["canary_leaked"] = True
-            findings.append(
-                core.Finding(
-                    scanner=SCANNER_NAME,
-                    severity="critical",
-                    title=f"Environment variable leaked: {hook['event']}",
-                    description=f"Hook exposed injected canary token in output during {payload['name']} test",
-                    file=hook["source"],
-                    line=0,
-                    snippet=f"Canary '{canary}' found in hook output",
-                    category="dast-env-leak",
-                )
-            )
-
-    # Check for timeout (possible infinite loop / hang)
-    if result["timed_out"]:
-        findings.append(
-            core.Finding(
-                scanner=SCANNER_NAME,
-                severity="high",
-                title=f"Hook timeout: {hook['event']}",
-                description=f"Hook exceeded {EXEC_TIMEOUT}s timeout during {payload['name']} test (may hang on malicious input)",
-                file=hook["source"],
-                line=0,
-                snippet=f"Timed out after {EXEC_TIMEOUT}s with payload: {payload['name']}",
-                category="dast-timeout",
-            )
-        )
-
-    # Check for crash (segfault, signal death)
-    if result["crashed"]:
-        findings.append(
-            core.Finding(
-                scanner=SCANNER_NAME,
-                severity="high",
-                title=f"Hook crashed: {hook['event']}",
-                description=f"Hook killed by signal {-result['exit_code']} during {payload['name']} test",
-                file=hook["source"],
-                line=0,
-                snippet=f"Exit code: {result['exit_code']} (signal {-result['exit_code']})",
-                category="dast-crash",
-            )
-        )
-
-    # Check for output amplification
-    total_output = result["stdout_size"] + result["stderr_size"]
-    if total_output > MAX_OUTPUT_BYTES:
-        findings.append(
-            core.Finding(
-                scanner=SCANNER_NAME,
-                severity="medium",
-                title=f"Output amplification: {hook['event']}",
-                description=f"Hook produced {total_output:,} bytes during {payload['name']} test (threshold: {MAX_OUTPUT_BYTES:,})",
-                file=hook["source"],
-                line=0,
-                snippet=f"{total_output:,} bytes output",
-                category="dast-amplification",
-            )
-        )
-
-    # Check if command injection payloads appear to have been executed
-    if payload["name"] == "command_injection":
-        # If output contains uid= or username, the injection may have worked
-        for indicator in ["uid=", "gid=", "root", "whoami"]:
-            if (
-                indicator in combined_output.lower()
-                and indicator not in hook["command"].lower()
-            ):
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="critical",
-                        title=f"Possible command injection: {hook['event']}",
-                        description=f"Hook output contains '{indicator}' after command injection test",
-                        file=hook["source"],
-                        line=0,
-                        snippet=combined_output[:120],
-                        category="dast-injection",
-                    )
-                )
-                break
-
-    # Check if path traversal succeeded
-    if payload["name"] == "path_traversal":
-        for indicator in ["root:", "/bin/bash", "/bin/sh", "nobody"]:
-            if indicator in combined_output:
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="critical",
-                        title=f"Path traversal succeeded: {hook['event']}",
-                        description="Hook output contains '/etc/passwd' content after path traversal test",
-                        file=hook["source"],
-                        line=0,
-                        snippet=combined_output[:120],
-                        category="dast-traversal",
-                    )
-                )
-                break
+    _append_hook_findings(hook, payload, result, findings)
 
     return findings
 

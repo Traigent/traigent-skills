@@ -54,12 +54,7 @@ def install_network_guard() -> None:
     def _refuse(*args, **kwargs):
         raise NetworkDisabled(GUARD_MESSAGE)
 
-    for name in ("socket", "socketpair", "fromfd"):
-        if hasattr(socket, name):
-            setattr(socket, name, _RefusingSocket if name == "socket" else _refuse)
-    for name in ("create_connection", "getaddrinfo", "gethostbyname"):
-        if hasattr(socket, name):
-            setattr(socket, name, _refuse)
+    _guard_socket_module(socket, _refuse)
 
     try:
         import _socket
@@ -71,6 +66,15 @@ def install_network_guard() -> None:
     for name in ("getaddrinfo", "gethostbyname", "create_connection"):
         if hasattr(_socket, name):
             setattr(_socket, name, _refuse)
+
+
+def _guard_socket_module(socket, _refuse) -> None:
+    for name in ("socket", "socketpair", "fromfd"):
+        if hasattr(socket, name):
+            setattr(socket, name, _RefusingSocket if name == "socket" else _refuse)
+    for name in ("create_connection", "getaddrinfo", "gethostbyname"):
+        if hasattr(socket, name):
+            setattr(socket, name, _refuse)
 
 
 def verify_network_guard() -> str:
@@ -162,26 +166,23 @@ def call_scorer(target, output_value: object, expected_value: object) -> float:
     raise TypeError("the scorer returned a value that is not a number")
 
 
-def probe(request: dict) -> dict:
-    guard = verify_network_guard()
-    root = request.get("root") or os.path.dirname(request["module"])
-    try:
-        target = load_callable(request["module"], request["function"], root)
-    except BaseException as exc:  # noqa: BLE001 - deliberate: user code may raise SystemExit or KeyboardInterrupt (e.g. sys.exit); the probe must report it as a fault, not die
-        if is_guard_refusal(exc):
-            return {
-                "ran": False,
-                "network_blocked": True,
-                "network_guard": guard,
-                "stage": "load",
-            }
+def _load_fault(exc: BaseException, root: str, guard: str) -> dict:
+    if is_guard_refusal(exc):
         return {
             "ran": False,
+            "network_blocked": True,
             "network_guard": guard,
             "stage": "load",
-            **fault(exc, root),
         }
+    return {
+        "ran": False,
+        "network_guard": guard,
+        "stage": "load",
+        **fault(exc, root),
+    }
 
+
+def _probe_cases(request: dict) -> list:
     repeats = max(1, int(request.get("repeats", 5)))
     # Gold values arrive as whatever JSON kind the task's answers are (text,
     # object, list, number, boolean) and are passed to the scorer unchanged. A
@@ -191,6 +192,18 @@ def probe(request: dict) -> dict:
     if request.get("partial") is not None:
         cases.append(("partial", request["partial"], request["good"], 1))
     cases.append(("bad", request["bad"], request["good"], 1))
+    return cases
+
+
+def probe(request: dict) -> dict:
+    guard = verify_network_guard()
+    root = request.get("root") or os.path.dirname(request["module"])
+    try:
+        target = load_callable(request["module"], request["function"], root)
+    except BaseException as exc:  # noqa: BLE001 - deliberate: user code may raise SystemExit or KeyboardInterrupt (e.g. sys.exit); the probe must report it as a fault, not die
+        return _load_fault(exc, root, guard)
+
+    cases = _probe_cases(request)
     # Every case key is present, so a skipped partial reads as an empty list.
     scores: dict[str, list[float]] = {"partial": []}
     errors: list[dict] = []

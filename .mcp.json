@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "traigent-analytics": {
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/traigent-analytics-launcher",
+      "env": {
+        "TRAIGENT_API_KEY": "${TRAIGENT_API_KEY:-}",
+        "TRAIGENT_BACKEND_URL": "${TRAIGENT_BACKEND_URL:-}"
+      }
+    }
+  }
+}

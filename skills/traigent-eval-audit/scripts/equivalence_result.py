@@ -178,6 +178,10 @@ def validate_result(result: Any, sent_ids: Sequence[Any]) -> None:
     verdicts = result["verdicts"]
     if not isinstance(verdicts, list):
         raise ValueError("verdicts must be a list")
+    _validate_verdicts(verdicts, sent_ids)
+
+
+def _validate_verdicts(verdicts: list, sent_ids: Sequence[Any]) -> None:
     allowed = {json.dumps(i, sort_keys=True) for i in sent_ids}
     seen: set[str] = set()
     for entry in verdicts:

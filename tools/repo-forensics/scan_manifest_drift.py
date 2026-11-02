@@ -332,10 +332,18 @@ RUNTIME_INSTALL_PATTERNS = [
 ]
 
 
-def parse_python_requirements(repo_path):
-    """Parse declared Python dependencies from requirements.txt / pyproject.toml / setup.py."""
-    declared = set()
+def _parse_requirements_lines(f, declared):
+    for line in f:
+        line = line.strip()
+        if line and not line.startswith("#") and not line.startswith("-"):
+            # Extract package name (before any version specifier)
+            pkg = re.split(r"[><=!~\[;]", line)[0].strip().lower()
+            if pkg:
+                # Normalize: underscores and hyphens are equivalent in pip
+                declared.add(pkg.replace("-", "_"))
 
+
+def _parse_requirements_files(repo_path, declared):
     # requirements.txt
     req_files = ["requirements.txt", "requirements-dev.txt", "requirements-test.txt"]
     for req_name in req_files:
@@ -343,23 +351,20 @@ def parse_python_requirements(repo_path):
         if os.path.exists(req_path):
             try:
                 with open(req_path, "r", encoding="utf-8", errors="ignore") as f:
-                    for line in f:
-                        line = line.strip()
-                        if (
-                            line
-                            and not line.startswith("#")
-                            and not line.startswith("-")
-                        ):
-                            # Extract package name (before any version specifier)
-                            pkg = re.split(r"[><=!~\[;]", line)[0].strip().lower()
-                            if pkg:
-                                # Normalize: underscores and hyphens are equivalent in pip
-                                declared.add(pkg.replace("-", "_"))
+                    _parse_requirements_lines(f, declared)
+
             except Exception as e:
                 print(
                     f"[!] {SCANNER_NAME}: Failed to parse {req_name}: {e}",
                     file=sys.stderr,
                 )
+
+
+def parse_python_requirements(repo_path):
+    """Parse declared Python dependencies from requirements.txt / pyproject.toml / setup.py."""
+    declared = set()
+
+    _parse_requirements_files(repo_path, declared)
 
     # pyproject.toml (basic parsing)
     pyproject_path = os.path.join(repo_path, "pyproject.toml")
@@ -460,6 +465,17 @@ def extract_python_imports(file_path):
         return set()
 
 
+def _add_js_import(imports, mod):
+    if not mod.startswith("."):
+        # Get package name (scoped: @scope/pkg, unscoped: pkg/sub -> pkg).
+        if mod.startswith("@"):
+            parts = mod.split("/")
+            if len(parts) >= 2:
+                imports.add("/".join(parts[:2]).lower())
+        else:
+            imports.add(mod.split("/")[0].lower())
+
+
 def extract_js_imports(file_path):
     """Extract imported module names from JS/TS files using regex."""
     try:
@@ -473,28 +489,67 @@ def extract_js_imports(file_path):
 
     # require('module') or require("module")
     for m in re.finditer(r'require\s*\(\s*["\']([^"\']+)["\']', content):
-        mod = m.group(1)
-        if not mod.startswith("."):  # Skip relative imports
-            # Get package name (scoped: @scope/pkg -> @scope/pkg, unscoped: pkg/sub -> pkg)
-            if mod.startswith("@"):
-                parts = mod.split("/")
-                if len(parts) >= 2:
-                    imports.add("/".join(parts[:2]).lower())
-            else:
-                imports.add(mod.split("/")[0].lower())
+        _add_js_import(imports, m.group(1))
 
     # import ... from 'module' or import 'module'
     for m in re.finditer(r'(?:import|from)\s+.*?["\']([^"\']+)["\']', content):
-        mod = m.group(1)
-        if not mod.startswith("."):
-            if mod.startswith("@"):
-                parts = mod.split("/")
-                if len(parts) >= 2:
-                    imports.add("/".join(parts[:2]).lower())
-            else:
-                imports.add(mod.split("/")[0].lower())
+        _add_js_import(imports, m.group(1))
 
     return imports
+
+
+def _check_install_handlers(node, source, source_lines, findings, rel_path):
+    # Check if any exception handler has pip install or os.system
+    for handler in node.handlers:
+        handler_src = (
+            ast.get_source_segment(source, handler)
+            if hasattr(ast, "get_source_segment")
+            else ""
+        )
+        if not handler_src:
+            # Fallback: check lines in range
+            start = getattr(handler, "lineno", 0)
+            end = getattr(handler, "end_lineno", start + 5)
+            handler_src = "\n".join(source_lines[start - 1 : end]) if start > 0 else ""
+
+        if re.search(
+            r"pip\s+install|subprocess|os\.system|check_call.*install",
+            handler_src,
+        ):
+            lineno = getattr(node, "lineno", 0)
+            snippet = (
+                source_lines[lineno - 1].strip()[:120]
+                if lineno > 0 and lineno <= len(source_lines)
+                else ""
+            )
+            findings.append(
+                core.Finding(
+                    scanner=SCANNER_NAME,
+                    severity="critical",
+                    title="Conditional Import with Install Fallback",
+                    description="try/except import pattern that installs packages on failure. Package not declared in manifest.",
+                    file=rel_path,
+                    line=lineno,
+                    snippet=snippet,
+                    category="runtime-install",
+                )
+            )
+
+
+def _find_conditional_installs(tree, source, source_lines, findings, rel_path):
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Try):
+            # Check if body has an import
+            has_import = False
+            for item in node.body:
+                if isinstance(item, (ast.Import, ast.ImportFrom)):
+                    has_import = True
+                    break
+
+            if not has_import:
+                continue
+
+            _check_install_handlers(node, source, source_lines, findings, rel_path)
 
 
 def detect_conditional_install(file_path, rel_path):
@@ -521,57 +576,48 @@ def detect_conditional_install(file_path, rel_path):
 
     source_lines = source.split("\n")
 
-    for node in ast.walk(tree):
-        if isinstance(node, ast.Try):
-            # Check if body has an import
-            has_import = False
-            for item in node.body:
-                if isinstance(item, (ast.Import, ast.ImportFrom)):
-                    has_import = True
-                    break
-
-            if not has_import:
-                continue
-
-            # Check if any exception handler has pip install or os.system
-            for handler in node.handlers:
-                handler_src = (
-                    ast.get_source_segment(source, handler)
-                    if hasattr(ast, "get_source_segment")
-                    else ""
-                )
-                if not handler_src:
-                    # Fallback: check lines in range
-                    start = getattr(handler, "lineno", 0)
-                    end = getattr(handler, "end_lineno", start + 5)
-                    handler_src = (
-                        "\n".join(source_lines[start - 1 : end]) if start > 0 else ""
-                    )
-
-                if re.search(
-                    r"pip\s+install|subprocess|os\.system|check_call.*install",
-                    handler_src,
-                ):
-                    lineno = getattr(node, "lineno", 0)
-                    snippet = (
-                        source_lines[lineno - 1].strip()[:120]
-                        if lineno > 0 and lineno <= len(source_lines)
-                        else ""
-                    )
-                    findings.append(
-                        core.Finding(
-                            scanner=SCANNER_NAME,
-                            severity="critical",
-                            title="Conditional Import with Install Fallback",
-                            description="try/except import pattern that installs packages on failure. Package not declared in manifest.",
-                            file=rel_path,
-                            line=lineno,
-                            snippet=snippet,
-                            category="runtime-install",
-                        )
-                    )
+    _find_conditional_installs(tree, source, source_lines, findings, rel_path)
 
     return findings
+
+
+def _find_unused_python_dependencies(
+    has_py_manifest, py_imported, py_declared, findings
+):
+    # Declared but never imported (potential confusion decoy)
+    if has_py_manifest and py_imported:
+        py_unused = (
+            py_declared
+            - py_imported
+            - {
+                "setuptools",
+                "wheel",
+                "pip",
+                "build",
+                "twine",
+                "pytest",
+                "black",
+                "flake8",
+                "mypy",
+                "ruff",
+                "isort",
+                "pylint",
+            }
+        )
+        for pkg in sorted(py_unused):
+            if pkg and not pkg.startswith("_"):
+                findings.append(
+                    core.Finding(
+                        scanner=SCANNER_NAME,
+                        severity="low",
+                        title=f"Declared but Unused: {pkg}",
+                        description=f"Package '{pkg}' declared in manifest but never imported. Could be a dependency confusion decoy.",
+                        file="requirements",
+                        line=0,
+                        snippet=f"{pkg} in manifest, no import found",
+                        category="unused-dependency",
+                    )
+                )
 
 
 def scan_manifest_drift(repo_path):
@@ -641,40 +687,9 @@ def scan_manifest_drift(repo_path):
                 )
             )
 
-    # Declared but never imported (potential confusion decoy)
-    if has_py_manifest and py_imported:
-        py_unused = (
-            py_declared
-            - py_imported
-            - {
-                "setuptools",
-                "wheel",
-                "pip",
-                "build",
-                "twine",
-                "pytest",
-                "black",
-                "flake8",
-                "mypy",
-                "ruff",
-                "isort",
-                "pylint",
-            }
-        )
-        for pkg in sorted(py_unused):
-            if pkg and not pkg.startswith("_"):
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="low",
-                        title=f"Declared but Unused: {pkg}",
-                        description=f"Package '{pkg}' declared in manifest but never imported. Could be a dependency confusion decoy.",
-                        file="requirements",
-                        line=0,
-                        snippet=f"{pkg} in manifest, no import found",
-                        category="unused-dependency",
-                    )
-                )
+    _find_unused_python_dependencies(
+        has_py_manifest, py_imported, py_declared, findings
+    )
 
     return findings
 

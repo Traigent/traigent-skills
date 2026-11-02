@@ -130,7 +130,8 @@ def extract(text: str) -> str:
 `metric_functions` binds its arguments **by parameter name**, not by position (SDK
 `evaluators/local.py` `_build_metric_keyword_arguments`). The names available are:
 `output`/`expected` (the row's prediction + gold), `input_data` (the **nested `input` dict only**),
-`metadata` (the row's top-level extras), `config`, `example`, and `example_index`.
+`metadata` (the row's top-level extras), `llm_metrics` (alias `metrics`: this example's usage, see
+"Ranked or selected outputs" below), `config`, `example`, and `example_index`.
 
 For optional `surrogate_evaluator` mechanics and caveats, see `traigent-setup-decorator` -> "Evaluation Setup".
 
@@ -162,6 +163,62 @@ def to_sql(question: str, schema: str = "", db_id: str = "") -> str:
 A param named `input_data` would receive the nested `input` dict, **not** `db_path` — that is the
 silent trap. (Tier-4 alternative: read `example.metadata["db_path"]` directly inside a
 `custom_evaluator`.)
+
+### Ranked or selected outputs (recall at a budget)
+
+Some agents return a **ranked list under a budget** — which tests or jobs to run, which documents to
+retrieve. Score the list itself, not a string match against it:
+
+- **Row shape.** `expected_output` is the set of items that truly matter (the failing tests); per-item
+  costs and the budget are row side fields, so they reach the scorer as `metadata` — never pack them
+  into the gold JSON.
+- **Metric.** Walk the agent's list in order, charge each item its cost, stop at the first item that
+  does not fit, and report the share of `expected_output` found (recall at budget). Precision at
+  budget is the same walk divided by the items taken.
+- **Not-run or unknown items.** An item with no cost in `metadata` is not run: it spends nothing and
+  finds nothing, so padding a list with invented ids cannot help. Count the unknown ones in a second
+  metric if they matter. A row with no expected items has no recall: raise, and keep it out of this
+  metric.
+- **Compare at equal cost.** Name a parameter `llm_metrics` (or `metrics`) to receive this example's
+  usage: `total_cost` (USD, **`None` when unmeasured**), `total_tokens`, `prompt_tokens`,
+  `completion_tokens`, `response_time_ms`. Charge model spend against the same budget as the items
+  (`secs_per_usd` below); `None` raises, because unmeasured spend must not read as free.
+
+```python runnable
+def recall_at_budget(output, expected, metadata, llm_metrics) -> float:
+    """Share of the items in `expected` that the ranked `output` reaches within the budget.
+
+    metadata: {"secs": {item: seconds}, "budget": seconds, "secs_per_usd": seconds per USD}
+    llm_metrics["total_cost"]: this example's model spend in USD, None when unmeasured.
+    """
+    if not expected:
+        raise ValueError("no expected items: recall is undefined, keep this row out of the metric")
+    spend = llm_metrics["total_cost"]
+    if spend is None:
+        raise ValueError("model spend is unmeasured: it cannot be charged against the budget")
+    remaining = metadata["budget"] - spend * metadata["secs_per_usd"]
+    found, seen = 0, set()
+    for item in output:
+        if item in seen:               # a repeated item is not run twice
+            continue
+        seen.add(item)
+        seconds = metadata["secs"].get(item)
+        if seconds is None:            # not run: spends nothing, finds nothing
+            continue
+        if seconds > remaining:        # the list's order is the agent's commitment
+            break
+        remaining -= seconds
+        found += item in expected
+    return found / len(expected)
+
+
+meta = {"secs": {"a": 10, "b": 20, "c": 30}, "budget": 40, "secs_per_usd": 100}
+assert recall_at_budget(["a", "b"], ["a", "c"], meta, {"total_cost": 0.0}) == 0.5
+```
+
+Wire it as `metric_functions={"recall_at_budget": recall_at_budget}` and declare the objective by name
+(see "Tier 3"). Rows look like `{"input": {...}, "expected_output": ["a", "c"], "secs": {...},
+"budget": 40, "secs_per_usd": 100}`; every key except `input` and the gold key lands in `metadata`.
 
 ### Tier 4: custom evaluator
 

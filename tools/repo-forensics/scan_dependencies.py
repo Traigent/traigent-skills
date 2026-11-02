@@ -517,6 +517,21 @@ def _apply_l33t(name):
     return name.replace("0", "o").replace("1", "l").replace("3", "e").replace("@", "a")
 
 
+def _find_typo(dep, dep_lower, dep_l33t, popular_lower_map):
+    # Pre-filter by length to avoid expensive similarity checks on large lockfiles.
+    for pop_lower, popular in popular_lower_map.items():
+        if abs(len(dep_lower) - len(pop_lower)) > max(3, int(len(pop_lower) * 0.15)):
+            continue
+        ratio = difflib.SequenceMatcher(None, dep_lower, pop_lower).ratio()
+        if ratio > 0.85 and dep_lower != pop_lower:
+            return dep, popular, ratio
+        if dep_l33t != dep_lower:
+            ratio_l33t = difflib.SequenceMatcher(None, dep_l33t, pop_lower).ratio()
+            if ratio_l33t > 0.85 and dep_l33t != pop_lower:
+                return dep, popular, ratio_l33t
+    return None
+
+
 def check_typosquatting(dependencies, popular_list):
     # Pre-compute lowercase mapping for O(1) lookup instead of O(n) per dep
     popular_lower_map = {p.lower(): p for p in popular_list}
@@ -529,22 +544,9 @@ def check_typosquatting(dependencies, popular_list):
         if dep_lower in popular_lower_set:
             continue
 
-        # Check raw similarity (pre-filter by length to avoid O(n*m) SequenceMatcher on large lockfiles)
-        for pop_lower, popular in popular_lower_map.items():
-            if abs(len(dep_lower) - len(pop_lower)) > max(
-                3, int(len(pop_lower) * 0.15)
-            ):
-                continue  # Length difference too large for >0.85 similarity
-            ratio = difflib.SequenceMatcher(None, dep_lower, pop_lower).ratio()
-            if ratio > 0.85 and dep_lower != pop_lower:
-                suspicious.append((dep, popular, ratio))
-                break
-            # Check l33t-normalized similarity
-            if dep_l33t != dep_lower:
-                ratio_l33t = difflib.SequenceMatcher(None, dep_l33t, pop_lower).ratio()
-                if ratio_l33t > 0.85 and dep_l33t != pop_lower:
-                    suspicious.append((dep, popular, ratio_l33t))
-                    break
+        match = _find_typo(dep, dep_lower, dep_l33t, popular_lower_map)
+        if match is not None:
+            suspicious.append(match)
 
     return suspicious
 
@@ -660,6 +662,31 @@ def scan_package_json(filepath, rel_path):
     return findings
 
 
+def _requirements_deps(content, rel_path, findings):
+    deps = []
+    for line in content.split("\n"):
+        line = line.strip()
+        if line and not line.startswith("#") and not line.startswith("-"):
+            pkg = re.split(r"[>=<!\[\];]", line)[0].strip()
+            if pkg:
+                deps.append(pkg)
+            ver_m = re.search(r"[>=<]=?(\d+)", line)
+            if ver_m and int(ver_m.group(1)) >= 90:
+                findings.append(
+                    core.Finding(
+                        scanner=SCANNER_NAME,
+                        severity="high",
+                        title=f"Version Anomaly: {pkg}",
+                        description="Abnormally high version in requirements",
+                        file=rel_path,
+                        line=0,
+                        snippet=line[:120],
+                        category="dependency-confusion",
+                    )
+                )
+    return deps
+
+
 def scan_python_deps(filepath, rel_path):
     findings = []
     try:
@@ -674,27 +701,7 @@ def scan_python_deps(filepath, rel_path):
             "requirements-test.txt",
             "constraints.txt",
         ):
-            for line in content.split("\n"):
-                line = line.strip()
-                if line and not line.startswith("#") and not line.startswith("-"):
-                    pkg = re.split(r"[>=<!\[\];]", line)[0].strip()
-                    if pkg:
-                        deps.append(pkg)
-                    # Check version
-                    ver_m = re.search(r"[>=<]=?(\d+)", line)
-                    if ver_m and int(ver_m.group(1)) >= 90:
-                        findings.append(
-                            core.Finding(
-                                scanner=SCANNER_NAME,
-                                severity="high",
-                                title=f"Version Anomaly: {pkg}",
-                                description="Abnormally high version in requirements",
-                                file=rel_path,
-                                line=0,
-                                snippet=line[:120],
-                                category="dependency-confusion",
-                            )
-                        )
+            deps = _requirements_deps(content, rel_path, findings)
 
         elif basename in ("pyproject.toml", "Pipfile"):
             for m in re.finditer(r'["\']([a-zA-Z0-9_-]+)["\']', content):
@@ -784,6 +791,45 @@ def scan_lockfile(filepath, rel_path):
 # and checks them against the IOC list for supply chain attacks.
 
 
+def _collect_lockfile_packages(data, lockfile_version, all_packages):
+    # v2/v3 format: "packages" key with flattened node_modules paths
+    if "packages" in data and lockfile_version >= 2:
+        for pkg_path, pkg_info in data.get("packages", {}).items():
+            if pkg_path == "":
+                continue  # Skip root package
+            # Extract package name from path (e.g., "node_modules/foo" -> "foo")
+            parts = pkg_path.split("node_modules/")
+            if parts:
+                name = parts[-1]
+                if name:
+                    all_packages.add(name)
+
+    # v1 format: "dependencies" key with nested structure
+    if "dependencies" in data:
+        _collect_npm_deps_recursive(data["dependencies"], all_packages)
+
+
+def _check_litellm_packages(all_packages, data, rel_path, findings):
+    # Specific liteLLM version check (npm wrapper packages)
+    for pkg in all_packages:
+        if "litellm" in pkg.lower():
+            pkg_info = _find_package_info(data, pkg)
+            version = pkg_info.get("version", "") if pkg_info else ""
+            if version == "1.82.8":
+                findings.append(
+                    core.Finding(
+                        scanner=SCANNER_NAME,
+                        severity="critical",
+                        title=f"Compromised liteLLM Version: {pkg}@{version}",
+                        description="liteLLM v1.82.8 contains malicious .pth file injection (March 2026 supply chain attack)",
+                        file=rel_path,
+                        line=0,
+                        snippet=f"{pkg}@{version} (known compromised)",
+                        category="supply-chain",
+                    )
+                )
+
+
 def parse_package_lock_json(filepath, rel_path):
     """Parse package-lock.json (v1, v2, v3) to extract all transitive dependencies."""
     findings = []
@@ -794,44 +840,13 @@ def parse_package_lock_json(filepath, rel_path):
         all_packages = set()
         lockfile_version = data.get("lockfileVersion", 1)
 
-        # v2/v3 format: "packages" key with flattened node_modules paths
-        if "packages" in data and lockfile_version >= 2:
-            for pkg_path, pkg_info in data.get("packages", {}).items():
-                if pkg_path == "":
-                    continue  # Skip root package
-                # Extract package name from path (e.g., "node_modules/foo" -> "foo")
-                parts = pkg_path.split("node_modules/")
-                if parts:
-                    name = parts[-1]
-                    if name:
-                        all_packages.add(name)
-
-        # v1 format: "dependencies" key with nested structure
-        if "dependencies" in data:
-            _collect_npm_deps_recursive(data["dependencies"], all_packages)
+        _collect_lockfile_packages(data, lockfile_version, all_packages)
 
         # Check ALL transitive deps against IOC list
         if all_packages:
             findings.extend(check_known_ioc_packages(list(all_packages), rel_path))
 
-            # Specific liteLLM version check (npm wrapper packages)
-            for pkg in all_packages:
-                if "litellm" in pkg.lower():
-                    pkg_info = _find_package_info(data, pkg)
-                    version = pkg_info.get("version", "") if pkg_info else ""
-                    if version == "1.82.8":
-                        findings.append(
-                            core.Finding(
-                                scanner=SCANNER_NAME,
-                                severity="critical",
-                                title=f"Compromised liteLLM Version: {pkg}@{version}",
-                                description="liteLLM v1.82.8 contains malicious .pth file injection (March 2026 supply chain attack)",
-                                file=rel_path,
-                                line=0,
-                                snippet=f"{pkg}@{version} (known compromised)",
-                                category="supply-chain",
-                            )
-                        )
+            _check_litellm_packages(all_packages, data, rel_path, findings)
 
             # Typosquatting check on transitive deps too
             typos = check_typosquatting(list(all_packages), POPULAR_NPM)

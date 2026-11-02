@@ -3,7 +3,8 @@
 `trial.score` / `metrics["score"]` equal the primary objective only for a single
 built-in objective. A weighted multi-objective run stores its selection basis there,
 and a custom `metric_functions` objective leaves the builtin exact-match value in
-`metrics["score"]`. Each case below names the phrase the row must carry and the
+`metrics["score"]` through SDK 0.31.1; from 0.32.0 that scorer runs only when
+`accuracy` is itself an objective, so `metrics["score"]` is absent. Each case below names the phrase the row must carry and the
 relation a real offline run on the installed SDK must show.
 """
 
@@ -14,11 +15,16 @@ import subprocess
 import sys
 
 import pytest
+from packaging.version import Version
 
 from .test_runnable_snippets import _offline_mock_env
 from .test_version_matrix import _parse_matrix, repo_root
 
 FACT_ID = "score-relocation"
+
+# First SDK release whose builtin exact-match scorer is skipped unless `accuracy` is a
+# configured objective (Traigent/Traigent 0a1acf4ec; in v0.32.0, not in v0.31.1).
+EXACT_MATCH_ONLY_WHEN_CONFIGURED = (0, 32, 0)
 
 # 2 of 3 outputs exact-match their label, so the builtin exact-match value is 2/3.
 EXACT_MATCH = 2 / 3
@@ -97,6 +103,7 @@ for label, kwargs in cases.items():
         "trial_score": trial.score,
         "best_score": result.best_score,
     }
+out["_sdk_version"] = traigent.__version__
 print("RESULT " + json.dumps(out))
 """
 
@@ -135,18 +142,29 @@ def _multi_objective(r: dict) -> list[str]:
     return problems
 
 
-def _custom_metric_function(r: dict) -> list[str]:
+def _custom_metric_function(r: dict, exact_match_recorded: bool = True) -> list[str]:
     m = r["metrics"]
     problems = []
     if not _close(r["trial_score"], m.get("exec_acc")):
         problems.append(
             f"trial.score {r['trial_score']} != exec_acc {m.get('exec_acc')}"
         )
-    if not _close(m.get("score"), EXACT_MATCH):
+    if exact_match_recorded:
+        if not _close(m.get("score"), EXACT_MATCH):
+            problems.append(
+                f"metrics['score'] {m.get('score')} != exact-match {EXACT_MATCH}"
+            )
+    elif "score" in m:
         problems.append(
-            f"metrics['score'] {m.get('score')} != exact-match {EXACT_MATCH}"
+            f"metrics['score'] {m.get('score')} present; the builtin exact-match "
+            "scorer should not run when accuracy is not an objective"
         )
     return problems
+
+
+def _exact_match_recorded(sdk_version: str) -> bool:
+    """False on SDKs that skip the builtin scorer unless `accuracy` is an objective."""
+    return Version(sdk_version).release < EXACT_MATCH_ONLY_WHEN_CONFIGURED
 
 
 def _custom_scoring_function(r: dict) -> list[str]:
@@ -172,9 +190,10 @@ CASES = {
         _multi_objective,
     ),
     "custom_metric_function": (
-        "Custom `metric_functions` primary objective: `trial.score` is the objective, "
-        '`metrics["score"]` is the builtin exact-match value',
-        _custom_metric_function,
+        "Custom `metric_functions` primary objective: `trial.score` is the objective; "
+        '`metrics["score"]` is the builtin exact-match value through 0.31.1 and is '
+        "absent since 0.32.0",
+        None,  # version-dependent: see test_row_documents_the_score_relation_the_sdk_records
     ),
     "custom_scoring_function": (
         '`metrics["exact_match_default"]`',
@@ -239,7 +258,11 @@ def test_row_documents_the_score_relation_the_sdk_records(
         f"docs/version-matrix.md {FACT_ID} does not document the {case} case "
         f"(expected {phrase!r})"
     )
-    problems = relation(sdk_results[case])
+    if case == "custom_metric_function":
+        recorded = _exact_match_recorded(sdk_results["_sdk_version"])
+        problems = _custom_metric_function(sdk_results[case], recorded)
+    else:
+        problems = relation(sdk_results[case])
     assert not problems, f"{case}: SDK no longer matches the row: " + "; ".join(
         problems
     )
@@ -264,4 +287,12 @@ def test_relations_have_teeth() -> None:
     assert not _custom_metric_function(custom_ok) and _custom_metric_function(
         custom_bad
     )
+    # From 0.32.0 the builtin value is not recorded: the relation flips, and each
+    # side rejects the other's shape.
+    custom_absent = {"metrics": {"exec_acc": 1.0}, "trial_score": 1.0}
+    assert not _custom_metric_function(custom_absent, exact_match_recorded=False)
+    assert _custom_metric_function(custom_ok, exact_match_recorded=False)
+    assert _custom_metric_function(custom_absent, exact_match_recorded=True)
+    assert _exact_match_recorded("0.31.1") and not _exact_match_recorded("0.32.0")
+    assert not _exact_match_recorded("0.32.0.dev0") and not _exact_match_recorded("0.33.1")
     assert _custom_scoring_function({"metrics": {"accuracy": 1.0, "score": 1.0}})

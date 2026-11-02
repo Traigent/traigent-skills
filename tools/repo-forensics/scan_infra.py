@@ -143,6 +143,91 @@ def scan_kubernetes(file_path, rel_path):
     return findings
 
 
+def _scan_action_reference(stripped, i, rel_path, findings):
+    # Unpinned third-party actions (not pinned to SHA)
+    m = re.match(r"\s*-?\s*uses:\s*([^@\s]+)@(.+)", stripped)
+    if m:
+        action = m.group(1)
+        ref = m.group(2).strip()
+        # Official actions are lower risk, but third-party unpinned is high
+        is_official = action.startswith("actions/") or action.startswith("github/")
+        is_sha_pinned = bool(re.match(r"^[a-f0-9]{40}", ref))
+
+        if not is_sha_pinned and not is_official:
+            findings.append(
+                core.Finding(
+                    scanner=SCANNER_NAME,
+                    severity="high",
+                    title="GHA: Unpinned Third-Party Action",
+                    description=f"Action '{action}@{ref}' not pinned to commit SHA (supply chain risk)",
+                    file=rel_path,
+                    line=i + 1,
+                    snippet=stripped[:120],
+                    category="ci-cd",
+                )
+            )
+        elif not is_sha_pinned and is_official:
+            findings.append(
+                core.Finding(
+                    scanner=SCANNER_NAME,
+                    severity="low",
+                    title="GHA: Unpinned Official Action",
+                    description=f"Action '{action}@{ref}' not pinned to commit SHA",
+                    file=rel_path,
+                    line=i + 1,
+                    snippet=stripped[:120],
+                    category="ci-cd",
+                )
+            )
+
+
+def _scan_action_line(stripped, i, rel_path, findings):
+    if "pull_request_target" in stripped:
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="critical",
+                title="GHA: pull_request_target Trigger",
+                description="pull_request_target runs with write permissions on forked PRs (script injection risk)",
+                file=rel_path,
+                line=i + 1,
+                snippet=stripped[:120],
+                category="ci-cd",
+            )
+        )
+
+    _scan_action_reference(stripped, i, rel_path, findings)
+
+    if "${{ secrets." in stripped and ("run:" in stripped or "run: |" in stripped):
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="critical",
+                title="GHA: Secret in Run Block",
+                description="Secret directly interpolated in shell command (log exposure risk)",
+                file=rel_path,
+                line=i + 1,
+                snippet=stripped[:120],
+                category="ci-cd",
+            )
+        )
+
+    # GHA expression injection: attacker-controlled inputs in run blocks
+    if "${{ github.event." in stripped and ("run:" in stripped or "run: |" in stripped):
+        findings.append(
+            core.Finding(
+                scanner=SCANNER_NAME,
+                severity="critical",
+                title="GHA: Expression Injection Risk",
+                description="github.event.* is attacker-controlled in PRs and can inject shell commands",
+                file=rel_path,
+                line=i + 1,
+                snippet=stripped[:120],
+                category="ci-cd",
+            )
+        )
+
+
 def scan_github_actions(file_path, rel_path):
     findings = []
     try:
@@ -152,90 +237,7 @@ def scan_github_actions(file_path, rel_path):
         for i, line in enumerate(lines):
             stripped = line.strip()
 
-            if "pull_request_target" in stripped:
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="critical",
-                        title="GHA: pull_request_target Trigger",
-                        description="pull_request_target runs with write permissions on forked PRs (script injection risk)",
-                        file=rel_path,
-                        line=i + 1,
-                        snippet=stripped[:120],
-                        category="ci-cd",
-                    )
-                )
-
-            # Unpinned third-party actions (not pinned to SHA)
-            m = re.match(r"\s*-?\s*uses:\s*([^@\s]+)@(.+)", stripped)
-            if m:
-                action = m.group(1)
-                ref = m.group(2).strip()
-                # Official actions are lower risk, but third-party unpinned is high
-                is_official = action.startswith("actions/") or action.startswith(
-                    "github/"
-                )
-                is_sha_pinned = bool(re.match(r"^[a-f0-9]{40}", ref))
-
-                if not is_sha_pinned and not is_official:
-                    findings.append(
-                        core.Finding(
-                            scanner=SCANNER_NAME,
-                            severity="high",
-                            title="GHA: Unpinned Third-Party Action",
-                            description=f"Action '{action}@{ref}' not pinned to commit SHA (supply chain risk)",
-                            file=rel_path,
-                            line=i + 1,
-                            snippet=stripped[:120],
-                            category="ci-cd",
-                        )
-                    )
-                elif not is_sha_pinned and is_official:
-                    findings.append(
-                        core.Finding(
-                            scanner=SCANNER_NAME,
-                            severity="low",
-                            title="GHA: Unpinned Official Action",
-                            description=f"Action '{action}@{ref}' not pinned to commit SHA",
-                            file=rel_path,
-                            line=i + 1,
-                            snippet=stripped[:120],
-                            category="ci-cd",
-                        )
-                    )
-
-            if "${{ secrets." in stripped and (
-                "run:" in stripped or "run: |" in stripped
-            ):
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="critical",
-                        title="GHA: Secret in Run Block",
-                        description="Secret directly interpolated in shell command (log exposure risk)",
-                        file=rel_path,
-                        line=i + 1,
-                        snippet=stripped[:120],
-                        category="ci-cd",
-                    )
-                )
-
-            # GHA expression injection: attacker-controlled inputs in run blocks
-            if "${{ github.event." in stripped and (
-                "run:" in stripped or "run: |" in stripped
-            ):
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="critical",
-                        title="GHA: Expression Injection Risk",
-                        description="github.event.* is attacker-controlled in PRs and can inject shell commands",
-                        file=rel_path,
-                        line=i + 1,
-                        snippet=stripped[:120],
-                        category="ci-cd",
-                    )
-                )
+            _scan_action_line(stripped, i, rel_path, findings)
 
         # Multi-line run block check
         content = "".join(lines)
@@ -341,6 +343,26 @@ def scan_claude_config(file_path, rel_path):
     return findings
 
 
+def _scan_yaml(file_path, rel_path, all_findings):
+    if ".github/workflows" in file_path:
+        all_findings.extend(scan_github_actions(file_path, rel_path))
+    else:
+        # Only scan as Kubernetes if file has K8s markers.
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                yaml_content = f.read()
+            if any(
+                marker in yaml_content
+                for marker in ("apiVersion:", "kind:", "metadata:")
+            ):
+                all_findings.extend(scan_kubernetes(file_path, rel_path))
+        except Exception as e:
+            print(
+                f"[!] {SCANNER_NAME}: Failed to read {rel_path}: {e}",
+                file=sys.stderr,
+            )
+
+
 def main():
     args = core.parse_common_args(sys.argv, "Infrastructure Security Scanner")
     repo_path = args.repo_path
@@ -359,23 +381,7 @@ def main():
             all_findings.extend(scan_dockerfile(file_path, rel_path))
 
         if basename.endswith((".yaml", ".yml")):
-            if ".github/workflows" in file_path:
-                all_findings.extend(scan_github_actions(file_path, rel_path))
-            else:
-                # Only scan as Kubernetes if file has K8s markers
-                try:
-                    with open(file_path, "r", encoding="utf-8") as f:
-                        yaml_content = f.read()
-                    if any(
-                        marker in yaml_content
-                        for marker in ("apiVersion:", "kind:", "metadata:")
-                    ):
-                        all_findings.extend(scan_kubernetes(file_path, rel_path))
-                except Exception as e:
-                    print(
-                        f"[!] {SCANNER_NAME}: Failed to read {rel_path}: {e}",
-                        file=sys.stderr,
-                    )
+            _scan_yaml(file_path, rel_path, all_findings)
 
         # Claude Code / MCP config files (CVE-2025-59536, CVE-2026-21852)
         if basename in ("settings.json", "claude_desktop_config.json", ".mcp.json") or (

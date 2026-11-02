@@ -121,6 +121,51 @@ def detect_language(rel_path):
     return None
 
 
+def _find_tainted_sinks(
+    line_stripped, line_no, sinks, tainted_vars, findings, rel_path
+):
+    # Check if any tainted variable reaches a sink
+    for sink_pat in sinks:
+        if sink_pat.search(line_stripped):
+            for tvar, (src_line, src_desc) in tainted_vars.items():
+                if re.search(r"\b" + re.escape(tvar) + r"\b", line_stripped):
+                    findings.append(
+                        core.Finding(
+                            scanner=SCANNER_NAME,
+                            severity="critical",
+                            title="Tainted Data Reaches Sink",
+                            description=f"Variable '{tvar}' (from {src_desc} at line {src_line}) flows to sink",
+                            file=rel_path,
+                            line=line_no,
+                            snippet=line_stripped[:120],
+                            category="dataflow",
+                        )
+                    )
+
+
+def _analyze_tainted_line(
+    line_stripped, line_no, sources, sinks, tainted_vars, findings, rel_path
+):
+    # Check if line introduces a tainted source
+    for source_pat, source_desc in sources:
+        m = source_pat.search(line_stripped)
+        if m:
+            var_name = m.group(1)
+            tainted_vars[var_name] = (line_no, source_desc)
+
+    # Check assignment propagation: if RHS references a tainted var
+    assign_m = ASSIGN_PATTERN.match(line_stripped)
+    if assign_m:
+        lhs = assign_m.group(1)
+        rhs = assign_m.group(2)
+        for tvar in tainted_vars:
+            if re.search(r"\b" + re.escape(tvar) + r"\b", rhs):
+                tainted_vars[lhs] = tainted_vars[tvar]
+                break
+
+    _find_tainted_sinks(line_stripped, line_no, sinks, tainted_vars, findings, rel_path)
+
+
 def analyze_file(file_path, rel_path):
     """Single-pass forward taint analysis on one file."""
     lang = detect_language(rel_path)
@@ -148,40 +193,9 @@ def analyze_file(file_path, rel_path):
         if len(line_stripped) > core.MAX_LINE_LENGTH:
             continue
 
-        # Check if line introduces a tainted source
-        for source_pat, source_desc in sources:
-            m = source_pat.search(line_stripped)
-            if m:
-                var_name = m.group(1)
-                tainted_vars[var_name] = (line_no, source_desc)
-
-        # Check assignment propagation: if RHS references a tainted var
-        assign_m = ASSIGN_PATTERN.match(line_stripped)
-        if assign_m:
-            lhs = assign_m.group(1)
-            rhs = assign_m.group(2)
-            for tvar in tainted_vars:
-                if re.search(r"\b" + re.escape(tvar) + r"\b", rhs):
-                    tainted_vars[lhs] = tainted_vars[tvar]
-                    break
-
-        # Check if any tainted variable reaches a sink
-        for sink_pat in sinks:
-            if sink_pat.search(line_stripped):
-                for tvar, (src_line, src_desc) in tainted_vars.items():
-                    if re.search(r"\b" + re.escape(tvar) + r"\b", line_stripped):
-                        findings.append(
-                            core.Finding(
-                                scanner=SCANNER_NAME,
-                                severity="critical",
-                                title="Tainted Data Reaches Sink",
-                                description=f"Variable '{tvar}' (from {src_desc} at line {src_line}) flows to sink",
-                                file=rel_path,
-                                line=line_no,
-                                snippet=line_stripped[:120],
-                                category="dataflow",
-                            )
-                        )
+        _analyze_tainted_line(
+            line_stripped, line_no, sources, sinks, tainted_vars, findings, rel_path
+        )
 
     return findings
 
@@ -222,25 +236,61 @@ def build_import_graph(repo_path, ignore_patterns):
     return imports
 
 
-def main():
-    args = core.parse_common_args(sys.argv, "Dataflow Taint Tracker")
-    repo_path = args.repo_path
+def _record_cross_file_sink(content, sinks, all_findings, rel_path, tmod):
+    content_lines = content.split("\n")
+    for sink_pat in sinks:
+        m = sink_pat.search(content)
+        if m:
+            line_no = content[: m.start()].count("\n") + 1
+            snippet = (
+                content_lines[line_no - 1].strip()[:120]
+                if line_no <= len(content_lines)
+                else ""
+            )
+            all_findings.append(
+                core.Finding(
+                    scanner=SCANNER_NAME,
+                    severity="high",
+                    title="Cross-File Taint: Import from Tainted Module",
+                    description=f"File imports from '{tmod}' (which accesses sensitive data) and contains sinks",
+                    file=rel_path,
+                    line=line_no,
+                    snippet=snippet,
+                    category="dataflow",
+                )
+            )
+            break  # One finding per file per tainted module
 
-    print(f"[*] Running dataflow analysis on {repo_path}...")
 
-    ignore_patterns = core.load_ignore_patterns(repo_path)
-    all_findings = []
+def _check_tainted_import(repo_path, rel_path, tmod, all_findings):
+    # Check if this file has sinks
+    file_path_full = os.path.join(repo_path, rel_path)
+    lang = detect_language(rel_path)
+    if lang is None:
+        return
+    sinks = PYTHON_SINKS if lang == "python" else JS_SINKS
+    try:
+        with open(file_path_full, "r", encoding="utf-8", errors="ignore") as f:
+            # Filter mega-lines to prevent O(n^2) regex backtracking
+            content = "".join(line for line in f if len(line) <= core.MAX_LINE_LENGTH)
+    except Exception as e:
+        print(
+            f"[!] {SCANNER_NAME}: Failed to read {rel_path}: {e}",
+            file=sys.stderr,
+        )
+        return
 
-    # Per-file taint analysis
-    file_findings = {}
-    for file_path, rel_path in core.walk_repo(
-        repo_path, ignore_patterns, skip_binary=True
-    ):
-        findings = analyze_file(file_path, rel_path)
-        if findings:
-            file_findings[rel_path] = findings
-            all_findings.extend(findings)
+    _record_cross_file_sink(content, sinks, all_findings, rel_path, tmod)
 
+
+def _check_imported_sinks(repo_path, import_graph, tainted_modules, all_findings):
+    for rel_path, imported_modules in import_graph.items():
+        for tmod in tainted_modules:
+            if tmod in imported_modules:
+                _check_tainted_import(repo_path, rel_path, tmod, all_findings)
+
+
+def _cross_file_findings(repo_path, ignore_patterns, all_findings):
     # Cross-file: if file A has tainted sources and file B imports A and has sinks
     import_graph = build_import_graph(repo_path, ignore_patterns)
     tainted_modules = set()
@@ -268,53 +318,29 @@ def main():
                 stem = os.path.splitext(os.path.basename(rel_path))[0]
                 tainted_modules.add(stem)
 
-    for rel_path, imported_modules in import_graph.items():
-        for tmod in tainted_modules:
-            if tmod in imported_modules:
-                # Check if this file has sinks
-                file_path_full = os.path.join(repo_path, rel_path)
-                lang = detect_language(rel_path)
-                if lang is None:
-                    continue
-                sinks = PYTHON_SINKS if lang == "python" else JS_SINKS
-                try:
-                    with open(
-                        file_path_full, "r", encoding="utf-8", errors="ignore"
-                    ) as f:
-                        # Filter mega-lines to prevent O(n^2) regex backtracking
-                        content = "".join(
-                            line for line in f if len(line) <= core.MAX_LINE_LENGTH
-                        )
-                except Exception as e:
-                    print(
-                        f"[!] {SCANNER_NAME}: Failed to read {rel_path}: {e}",
-                        file=sys.stderr,
-                    )
-                    continue
+    _check_imported_sinks(repo_path, import_graph, tainted_modules, all_findings)
 
-                content_lines = content.split("\n")
-                for sink_pat in sinks:
-                    m = sink_pat.search(content)
-                    if m:
-                        line_no = content[: m.start()].count("\n") + 1
-                        snippet = (
-                            content_lines[line_no - 1].strip()[:120]
-                            if line_no <= len(content_lines)
-                            else ""
-                        )
-                        all_findings.append(
-                            core.Finding(
-                                scanner=SCANNER_NAME,
-                                severity="high",
-                                title="Cross-File Taint: Import from Tainted Module",
-                                description=f"File imports from '{tmod}' (which accesses sensitive data) and contains sinks",
-                                file=rel_path,
-                                line=line_no,
-                                snippet=snippet,
-                                category="dataflow",
-                            )
-                        )
-                        break  # One finding per file per tainted module
+
+def main():
+    args = core.parse_common_args(sys.argv, "Dataflow Taint Tracker")
+    repo_path = args.repo_path
+
+    print(f"[*] Running dataflow analysis on {repo_path}...")
+
+    ignore_patterns = core.load_ignore_patterns(repo_path)
+    all_findings = []
+
+    # Per-file taint analysis
+    file_findings = {}
+    for file_path, rel_path in core.walk_repo(
+        repo_path, ignore_patterns, skip_binary=True
+    ):
+        findings = analyze_file(file_path, rel_path)
+        if findings:
+            file_findings[rel_path] = findings
+            all_findings.extend(findings)
+
+    _cross_file_findings(repo_path, ignore_patterns, all_findings)
 
     core.output_findings(all_findings, args.format, SCANNER_NAME)
 

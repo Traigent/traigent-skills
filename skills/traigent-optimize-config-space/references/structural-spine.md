@@ -172,7 +172,7 @@ CODE_EDITING_STRUCTURAL_SPACE = {
 | `repo_context_strategy` | How the agent navigates the repository before editing (issue-linked files, targeted search, call-graph/test expansion, or a broader repo index). |
 | `file_view_window` | How many lines of surrounding file context the agent sees per view. |
 | `edit_granularity` | The size of the edit unit the agent may propose, from a minimal patch to a multi-file plan. |
-| `test_selection_strategy` | Which tests run to validate a patch, from none to a budgeted full regression. |
+| `test_selection_strategy` | Which tests run to validate a patch, from none to a budgeted full regression. If the agent's *output* is the chosen tests (a ranked list under a time budget), score it with `traigent-eval-build` -> "Ranked or selected outputs (recall at a budget)". |
 | `patch_review_mode` | Whether and how the patch is reviewed (self-review, diff+test review, or a separate reviewer stage) before it is returned. |
 
 The rest of the Explorer's public taxonomy has no counterpart in the installed guidance catalog or

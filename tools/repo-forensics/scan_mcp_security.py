@@ -343,6 +343,32 @@ MCP_SIGNALS = [
 ]
 
 
+JSON_SUFFIX = ".json"
+
+
+def _check_tool_name_injection(content, findings, rel_path, ext):
+    # Check name fields for injection (FSP — shorter but still loaded into context)
+    if ext == JSON_SUFFIX:
+        for m in TOOL_NAME_PATTERN.finditer(content):
+            name_val = m.group(1).lower()
+            for keyword in TOOL_INJECTION_KEYWORDS:
+                if keyword in name_val:
+                    line_no = content[: m.start()].count("\n") + 1
+                    findings.append(
+                        core.Finding(
+                            scanner=SCANNER_NAME,
+                            severity="critical",
+                            title="Tool Name Field Injection",
+                            description=f"Prompt injection keyword '{keyword}' found in tool name field (Full-Schema Poisoning)",
+                            file=rel_path,
+                            line=line_no,
+                            snippet=m.group(0)[:120],
+                            category="tool-poisoning",
+                        )
+                    )
+                    break
+
+
 def scan_tool_metadata_poisoning(content, rel_path, ext):
     """Check tool definition schema fields for injected prompt keywords.
     Covers Full-Schema Poisoning (FSP): description, title, summary, and name fields.
@@ -352,7 +378,7 @@ def scan_tool_metadata_poisoning(content, rel_path, ext):
 
     if ext in (".py", ".ts", ".js"):
         main_pattern = TOOL_DEF_PY_PATTERN
-    elif ext == ".json":
+    elif ext == JSON_SUFFIX:
         main_pattern = TOOL_DEF_JSON_PATTERN
     else:
         return findings
@@ -377,26 +403,7 @@ def scan_tool_metadata_poisoning(content, rel_path, ext):
                 )
                 break  # One finding per matched field block
 
-    # Check name fields for injection (FSP — shorter but still loaded into context)
-    if ext == ".json":
-        for m in TOOL_NAME_PATTERN.finditer(content):
-            name_val = m.group(1).lower()
-            for keyword in TOOL_INJECTION_KEYWORDS:
-                if keyword in name_val:
-                    line_no = content[: m.start()].count("\n") + 1
-                    findings.append(
-                        core.Finding(
-                            scanner=SCANNER_NAME,
-                            severity="critical",
-                            title="Tool Name Field Injection",
-                            description=f"Prompt injection keyword '{keyword}' found in tool name field (Full-Schema Poisoning)",
-                            file=rel_path,
-                            line=line_no,
-                            snippet=m.group(0)[:120],
-                            category="tool-poisoning",
-                        )
-                    )
-                    break
+    _check_tool_name_injection(content, findings, rel_path, ext)
 
     return findings
 
@@ -457,7 +464,7 @@ def scan_file(file_path, rel_path):
     ext = os.path.splitext(file_path)[1].lower()
     basename = os.path.basename(file_path)
 
-    target_exts = {".py", ".js", ".ts", ".json", ".toml"}
+    target_exts = {".py", ".js", ".ts", JSON_SUFFIX, ".toml"}
     if ext not in target_exts:
         return []
 
@@ -471,7 +478,7 @@ def scan_file(file_path, rel_path):
     findings = []
 
     # Tool metadata poisoning: check all potential tool definition files
-    if ext in (".py", ".js", ".ts", ".json"):
+    if ext in (".py", ".js", ".ts", JSON_SUFFIX):
         findings.extend(scan_tool_metadata_poisoning(content, rel_path, ext))
 
     # For code files, run full MCP pattern categories
@@ -523,7 +530,7 @@ def scan_file(file_path, rel_path):
             )
 
     # MCP config files (.json) — check for enableAllProjectMcpServers, ANTHROPIC_BASE_URL
-    if ext == ".json" or basename in (
+    if ext == JSON_SUFFIX or basename in (
         "settings.json",
         "claude_desktop_config.json",
         ".mcp.json",

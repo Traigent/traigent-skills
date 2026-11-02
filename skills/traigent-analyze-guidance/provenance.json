@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a1993f6aa14c58ad",
+  "doc_hash": "9c111e44caeb49d4",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -403,13 +403,24 @@
       "source_type": "agent"
     },
     {
+      "edit_id": "sweep-2026-11-02-477",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-02T00:00:00Z",
+      "doc_before_hash": "cbd4edfc0c6b2277",
+      "doc_after_hash": "d20d006906f6f15a",
+      "note": "Document that the plugin ships the analytics MCP server and add a no-MCP REST fallback for the Mode B decision brief (#477).",
+      "source_type": "agent"
+    },
+    {
       "edit_id": "issues-463-470-2026-10-29",
       "op": "manual_edit",
       "status": "accepted",
       "run_id": null,
       "timestamp": "2026-10-29T00:00:00Z",
-      "doc_before_hash": "cbd4edfc0c6b2277",
-      "doc_after_hash": "a1993f6aa14c58ad",
+      "doc_before_hash": "d20d006906f6f15a",
+      "doc_after_hash": "9c111e44caeb49d4",
       "note": "Mock dry run described as no-spend but still priced on SDK 0.31.0+ (#463).",
       "source_type": "agent"
     }

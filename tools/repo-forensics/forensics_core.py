@@ -7,6 +7,8 @@ correlation engine, and .forensicsignore support.
 Created by Alex Greenshpun
 """
 
+
+
 import os
 import json
 import fnmatch
@@ -93,10 +95,13 @@ def read_text_file_within_root(repo_root, file_path, *, encoding="utf-8", errors
         return f.read()
 
 
+IGNORE_FILENAME = '.forensicsignore'
+PROMPT_INJECTION = 'prompt injection'
+
 def load_ignore_patterns(repo_path):
     """Loads ignore patterns from a .forensicsignore file in the repo root."""
     repo_root = resolve_repo_root(repo_path)
-    ignore_file = os.path.join(repo_root, ".forensicsignore")
+    ignore_file = os.path.join(repo_root, IGNORE_FILENAME)
     patterns = []
 
     if os.path.exists(ignore_file):
@@ -120,7 +125,7 @@ DANGEROUS_IGNORE_PATTERNS = {"*", "**", "**/*", "*.*", "."}
 def warn_forensicsignore(repo_path):
     """Return warning findings if .forensicsignore exists. Escalate for broad patterns."""
     repo_root = resolve_repo_root(repo_path)
-    ignore_file = os.path.join(repo_root, ".forensicsignore")
+    ignore_file = os.path.join(repo_root, IGNORE_FILENAME)
     if not os.path.exists(ignore_file):
         return []
 
@@ -135,7 +140,7 @@ def warn_forensicsignore(repo_path):
                 severity="critical",
                 title=".forensicsignore: Wildcard Suppression",
                 description="Contains broad patterns (e.g. '*') that suppress ALL findings. Likely attacker-planted.",
-                file=".forensicsignore",
+                file=IGNORE_FILENAME,
                 line=0,
                 snippet=f"Broad patterns: {[p for p in patterns if p in DANGEROUS_IGNORE_PATTERNS]}",
                 category="configuration",
@@ -148,13 +153,25 @@ def warn_forensicsignore(repo_path):
                 severity="medium",
                 title=".forensicsignore Present",
                 description=f"Suppresses {len(patterns)} pattern(s). Verify it wasn't planted by an attacker.",
-                file=".forensicsignore",
+                file=IGNORE_FILENAME,
                 line=0,
                 snippet=f"Patterns: {patterns[:3]}",
                 category="configuration",
             )
         )
     return findings
+
+
+def _matches_ignore_pattern(rel_path, pattern):
+    if pattern.endswith("/"):
+        if rel_path.startswith(pattern) or rel_path == pattern[:-1]:
+            return True
+    if fnmatch.fnmatch(rel_path, pattern):
+        return True
+    if "*" not in pattern and "?" not in pattern:
+        if rel_path.startswith(pattern + os.sep) or rel_path == pattern:
+            return True
+    return False
 
 
 def should_ignore(file_path, repo_root, patterns):
@@ -168,16 +185,8 @@ def should_ignore(file_path, repo_root, patterns):
         return False
 
     for pattern in patterns:
-        if pattern.endswith("/"):
-            if rel_path.startswith(pattern) or rel_path == pattern[:-1]:
-                return True
-
-        if fnmatch.fnmatch(rel_path, pattern):
+        if _matches_ignore_pattern(rel_path, pattern):
             return True
-
-        if "*" not in pattern and "?" not in pattern:
-            if rel_path.startswith(pattern + os.sep) or rel_path == pattern:
-                return True
 
     return False
 
@@ -256,6 +265,20 @@ def is_binary_file(file_path):
         return True
 
 
+def _skip_walk_file(file_path, repo_path, ignore_patterns, skip_binary):
+    # Skip symlinks to prevent traversal outside repo.
+    if os.path.islink(file_path):
+        return True
+    if should_ignore(file_path, repo_path, ignore_patterns):
+        return True
+    try:
+        if os.path.getsize(file_path) > MAX_FILE_SIZE_MB * 1024 * 1024:
+            return True
+    except OSError:
+        return True
+    return bool(skip_binary and is_binary_file(file_path))
+
+
 def walk_repo(
     repo_path,
     ignore_patterns=None,
@@ -279,20 +302,7 @@ def walk_repo(
 
             file_path = os.path.join(root, filename)
 
-            # Skip symlinks to prevent traversal outside repo
-            if os.path.islink(file_path):
-                continue
-
-            if should_ignore(file_path, repo_path, ignore_patterns):
-                continue
-
-            try:
-                if os.path.getsize(file_path) > MAX_FILE_SIZE_MB * 1024 * 1024:
-                    continue
-            except OSError:
-                continue
-
-            if skip_binary and is_binary_file(file_path):
+            if _skip_walk_file(file_path, repo_path, ignore_patterns, skip_binary):
                 continue
 
             rel_path = os.path.relpath(file_path, repo_path)
@@ -300,6 +310,355 @@ def walk_repo(
 
 
 # --- Correlation Engine ---
+
+
+def _has_category(file_findings, keywords, exclude_scanner=None):
+    for f in file_findings:
+        if exclude_scanner and f.scanner == exclude_scanner:
+            continue
+        desc_lower = (f.description + " " + f.title + " " + f.category).lower()
+        for kw in keywords:
+            if kw in desc_lower:
+                return True
+    return False
+
+
+
+def _correlate_group_1(filepath, file_findings, correlated, encoding_keywords, env_keywords, exec_keywords, network_keywords, sensitive_read_keywords):
+    # Rule 1: env access + network call
+    if _has_category(file_findings, env_keywords) and _has_category(
+        file_findings, network_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Potential Data Exfiltration",
+                description="Environment/credential access combined with network call in the same file",
+                file=filepath,
+                line=0,
+                snippet="[compound: env read + network call]",
+                category="exfiltration",
+            )
+        )
+
+    # Rule 2: base64/encoding + exec/eval
+    if _has_category(file_findings, encoding_keywords) and _has_category(
+        file_findings, exec_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Obfuscated Code Execution",
+                description="Base64/encoding combined with code execution in the same file",
+                file=filepath,
+                line=0,
+                snippet="[compound: encoding + exec]",
+                category="obfuscation",
+            )
+        )
+
+    # Rule 3: sensitive file read + network call
+    if _has_category(file_findings, sensitive_read_keywords) and _has_category(
+        file_findings, network_keywords
+    ):
+        # Don't duplicate if already caught by Rule 1
+        already_flagged = any(
+            c.file == filepath and c.title == "Potential Data Exfiltration"
+            for c in correlated
+        )
+        if not already_flagged:
+            correlated.append(
+                Finding(
+                    scanner="correlation",
+                    severity="high",
+                    title="Credential Theft Pattern",
+                    description="Sensitive file read combined with network call in the same file",
+                    file=filepath,
+                    line=0,
+                    snippet="[compound: sensitive read + network call]",
+                    category="exfiltration",
+                )
+            )
+
+
+
+
+def _correlate_group_2(filepath, file_findings, correlated, exec_keywords, lifecycle_keywords, network_keywords, prompt_injection_keywords):
+    # Rule 4: prompt injection + code execution (91% of malicious skills per Snyk)
+    if _has_category(file_findings, prompt_injection_keywords) and _has_category(
+        file_findings, exec_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Prompt-Assisted Code Execution",
+                description="Prompt injection combined with code execution in the same file (top malicious skill pattern)",
+                file=filepath,
+                line=0,
+                snippet="[compound: prompt injection + code exec]",
+                category="compound-attack",
+            )
+        )
+
+    # Rule 5: lifecycle hook + network call
+    if _has_category(file_findings, lifecycle_keywords) and _has_category(
+        file_findings, network_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Install-Time Exfiltration",
+                description="Lifecycle hook combined with network call in the same file (install-time data theft)",
+                file=filepath,
+                line=0,
+                snippet="[compound: lifecycle hook + network call]",
+                category="exfiltration",
+            )
+        )
+
+    # Rule 6: SQL injection → stored prompt injection (Trend Micro TrendAI, May 2025)
+    sql_keywords = {
+        "sql-injection",
+        "string concatenation in execute",
+        "sql select",
+        "sql insert",
+    }
+    mcp_keywords = {
+        "tool-poisoning",
+        "mcp_security",
+        "skill_threats",
+        PROMPT_INJECTION,
+    }
+    if _has_category(file_findings, sql_keywords) and _has_category(
+        file_findings, mcp_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="SQL Injection Prompt Escalation",
+                description="SQL injection in MCP code can store malicious prompts for agent execution (Trend Micro TrendAI, 2025)",
+                file=filepath,
+                line=0,
+                snippet="[compound: sql injection + prompt injection in MCP file]",
+                category="mcp-escalation",
+            )
+        )
+
+
+
+
+def _correlate_group_3(filepath, file_findings, correlated, dynamic_import_keywords, exec_keywords, network_keywords):
+    # Rule 7: Tool metadata poisoning + code execution chain
+    poisoning_keywords = {
+        "tool-poisoning",
+        "tool shadowing",
+        "mcp-tool-injection",
+        "tool metadata",
+    }
+    if _has_category(file_findings, poisoning_keywords) and _has_category(
+        file_findings, exec_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Tool Metadata Poisoning Chain",
+                description="Hidden instructions in tool descriptions combined with code execution (Invariant Labs TPA pattern)",
+                file=filepath,
+                line=0,
+                snippet="[compound: tool poisoning + code execution]",
+                category="mcp-escalation",
+            )
+        )
+
+    # Rule 8: Unicode smuggling + prompt injection in documentation
+    ext_lower = os.path.splitext(filepath)[1].lower()
+    if ext_lower in (".md", ".txt", ".rst", ".adoc"):
+        smuggling_keywords = {
+            "unicode-smuggling",
+            "zero-width",
+            "rtl override",
+            "homoglyph",
+        }
+        pi_keywords = {"prompt-injection", PROMPT_INJECTION}
+        if _has_category(file_findings, smuggling_keywords) and _has_category(
+            file_findings, pi_keywords
+        ):
+            correlated.append(
+                Finding(
+                    scanner="correlation",
+                    severity="high",
+                    title="Hidden Instruction Attack in Documentation",
+                    description="Invisible unicode combined with prompt injection in documentation (text steganography attack)",
+                    file=filepath,
+                    line=0,
+                    snippet="[compound: unicode smuggling + prompt injection in doc]",
+                    category="compound-attack",
+                )
+            )
+
+    # Rule 9: Dynamic import/eval + network fetch = "Deferred Payload Loading"
+    if _has_category(file_findings, dynamic_import_keywords) and _has_category(
+        file_findings, network_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Deferred Payload Loading",
+                description="Dynamic import combined with network fetch in the same file. Code can download and load arbitrary modules at runtime.",
+                file=filepath,
+                line=0,
+                snippet="[compound: dynamic import + network fetch]",
+                category="deferred-payload",
+            )
+        )
+
+
+
+
+def _correlate_group_4(filepath, file_findings, correlated, dynamic_desc_keywords, exec_keywords, mcp_server_keywords, network_keywords, phantom_dep_keywords, time_bomb_keywords):
+    # Rule 10: Date/counter comparison + exec/eval = "Time-Triggered Malware"
+    if _has_category(file_findings, time_bomb_keywords) and _has_category(
+        file_findings, exec_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Time-Triggered Malware",
+                description="Time/counter-based activation combined with code execution. Classic time bomb pattern (Socket.dev NuGet, Nov 2025).",
+                file=filepath,
+                line=0,
+                snippet="[compound: time bomb + code execution]",
+                category="time-triggered-malware",
+            )
+        )
+
+    # Rule 11: Dynamic tool description + MCP server signals = "MCP Rug Pull Enabler"
+    if _has_category(file_findings, dynamic_desc_keywords) and _has_category(
+        file_findings, mcp_server_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="high",
+                title="MCP Rug Pull Enabler",
+                description="MCP server with dynamic tool descriptions. Tool behavior can change without code changes (Lukas Kania, March 2026).",
+                file=filepath,
+                line=0,
+                snippet="[compound: dynamic description + MCP server]",
+                category="rug-pull",
+            )
+        )
+
+    # Rule 12: Phantom dependency + network call = "Shadow Dependency with Network"
+    if _has_category(file_findings, phantom_dep_keywords) and _has_category(
+        file_findings, network_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Shadow Dependency with Network Access",
+                description="Undeclared dependency combined with network access. Potential supply chain attack via shadow dependency.",
+                file=filepath,
+                line=0,
+                snippet="[compound: phantom dependency + network call]",
+                category="shadow-dependency",
+            )
+        )
+
+
+
+
+def _correlate_group_5(filepath, file_findings, correlated, network_keywords, openclaw_keywords, pipe_exfil_keywords, prompt_injection_keywords):
+    # Rule 13: Pipe exfiltration in shell scripts
+    if _has_category(file_findings, pipe_exfil_keywords) and _has_category(
+        file_findings, network_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Shell Script Data Exfiltration Chain",
+                description="Shell script contains pipe exfiltration pattern combined with network tool. Data flows from sensitive source through pipe to external endpoint.",
+                file=filepath,
+                line=0,
+                snippet="[compound: pipe exfiltration + network sink]",
+                category="pipe-exfiltration",
+            )
+        )
+
+    # Rule 14: OpenClaw skill compound attack (cross-scanner signal only)
+    if _has_category(file_findings, openclaw_keywords) and _has_category(
+        file_findings, prompt_injection_keywords, exclude_scanner="openclaw_skills"
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Agent Skill Compound Attack",
+                description="Multiple attack vectors in agent skill: tool poisoning combined with prompt injection. Matches ClawHavoc campaign pattern.",
+                file=filepath,
+                line=0,
+                snippet="[compound: tool/config poisoning + prompt injection]",
+                category="openclaw-compound",
+            )
+        )
+
+
+
+
+def _correlate_group_6(filepath, file_findings, correlated):
+    # Rule 15: .pth file + base64/exec = "Python Startup Injection (liteLLM-style)"
+    pth_keywords = {"pth-injection", ".pth file", "pth file"}
+    pth_exec_keywords = {"exec", "eval", "compile", "base64", "obfuscat"}
+    if _has_category(file_findings, pth_keywords) and _has_category(
+        file_findings, pth_exec_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Python Startup Injection (liteLLM-style)",
+                description=".pth file with code execution or obfuscated payload. Matches March 2026 liteLLM supply chain attack pattern: .pth files execute on Python startup, exfiltrating credentials without user action.",
+                file=filepath,
+                line=0,
+                snippet="[compound: .pth file + exec/base64]",
+                category="pth-injection",
+            )
+        )
+
+    # Rule 16: .pth file + known IOC = "Known Supply Chain .pth Attack"
+    known_ioc_keywords = {
+        "known-ioc",
+        "known malicious",
+        "ioc match",
+        "ioc database",
+    }
+    if _has_category(file_findings, pth_keywords) and _has_category(
+        file_findings, known_ioc_keywords
+    ):
+        correlated.append(
+            Finding(
+                scanner="correlation",
+                severity="critical",
+                title="Known Supply Chain .pth Attack",
+                description="Known malicious .pth file from IOC database. Confirmed supply chain attack vector.",
+                file=filepath,
+                line=0,
+                snippet="[compound: .pth file + known IOC match]",
+                category="pth-injection",
+            )
+        )
+
+
 
 
 def correlate(findings):
@@ -350,7 +709,7 @@ def correlate(findings):
         "config",
     }
     prompt_injection_keywords = {
-        "prompt injection",
+        PROMPT_INJECTION,
         "instruction override",
         "persona reassignment",
         "confirmation bypass",
@@ -404,329 +763,13 @@ def correlate(findings):
         "clawhubignore-bypass",
     }
 
-    def has_category(file_findings, keywords, exclude_scanner=None):
-        for f in file_findings:
-            if exclude_scanner and f.scanner == exclude_scanner:
-                continue
-            desc_lower = (f.description + " " + f.title + " " + f.category).lower()
-            for kw in keywords:
-                if kw in desc_lower:
-                    return True
-        return False
-
     for filepath, file_findings in by_file.items():
-        # Rule 1: env access + network call
-        if has_category(file_findings, env_keywords) and has_category(
-            file_findings, network_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Potential Data Exfiltration",
-                    description="Environment/credential access combined with network call in the same file",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: env read + network call]",
-                    category="exfiltration",
-                )
-            )
-
-        # Rule 2: base64/encoding + exec/eval
-        if has_category(file_findings, encoding_keywords) and has_category(
-            file_findings, exec_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Obfuscated Code Execution",
-                    description="Base64/encoding combined with code execution in the same file",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: encoding + exec]",
-                    category="obfuscation",
-                )
-            )
-
-        # Rule 3: sensitive file read + network call
-        if has_category(file_findings, sensitive_read_keywords) and has_category(
-            file_findings, network_keywords
-        ):
-            # Don't duplicate if already caught by Rule 1
-            already_flagged = any(
-                c.file == filepath and c.title == "Potential Data Exfiltration"
-                for c in correlated
-            )
-            if not already_flagged:
-                correlated.append(
-                    Finding(
-                        scanner="correlation",
-                        severity="high",
-                        title="Credential Theft Pattern",
-                        description="Sensitive file read combined with network call in the same file",
-                        file=filepath,
-                        line=0,
-                        snippet="[compound: sensitive read + network call]",
-                        category="exfiltration",
-                    )
-                )
-
-        # Rule 4: prompt injection + code execution (91% of malicious skills per Snyk)
-        if has_category(file_findings, prompt_injection_keywords) and has_category(
-            file_findings, exec_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Prompt-Assisted Code Execution",
-                    description="Prompt injection combined with code execution in the same file (top malicious skill pattern)",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: prompt injection + code exec]",
-                    category="compound-attack",
-                )
-            )
-
-        # Rule 5: lifecycle hook + network call
-        if has_category(file_findings, lifecycle_keywords) and has_category(
-            file_findings, network_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Install-Time Exfiltration",
-                    description="Lifecycle hook combined with network call in the same file (install-time data theft)",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: lifecycle hook + network call]",
-                    category="exfiltration",
-                )
-            )
-
-        # Rule 6: SQL injection → stored prompt injection (Trend Micro TrendAI, May 2025)
-        sql_keywords = {
-            "sql-injection",
-            "string concatenation in execute",
-            "sql select",
-            "sql insert",
-        }
-        mcp_keywords = {
-            "tool-poisoning",
-            "mcp_security",
-            "skill_threats",
-            "prompt injection",
-        }
-        if has_category(file_findings, sql_keywords) and has_category(
-            file_findings, mcp_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="SQL Injection Prompt Escalation",
-                    description="SQL injection in MCP code can store malicious prompts for agent execution (Trend Micro TrendAI, 2025)",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: sql injection + prompt injection in MCP file]",
-                    category="mcp-escalation",
-                )
-            )
-
-        # Rule 7: Tool metadata poisoning + code execution chain
-        poisoning_keywords = {
-            "tool-poisoning",
-            "tool shadowing",
-            "mcp-tool-injection",
-            "tool metadata",
-        }
-        if has_category(file_findings, poisoning_keywords) and has_category(
-            file_findings, exec_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Tool Metadata Poisoning Chain",
-                    description="Hidden instructions in tool descriptions combined with code execution (Invariant Labs TPA pattern)",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: tool poisoning + code execution]",
-                    category="mcp-escalation",
-                )
-            )
-
-        # Rule 8: Unicode smuggling + prompt injection in documentation
-        ext_lower = os.path.splitext(filepath)[1].lower()
-        if ext_lower in (".md", ".txt", ".rst", ".adoc"):
-            smuggling_keywords = {
-                "unicode-smuggling",
-                "zero-width",
-                "rtl override",
-                "homoglyph",
-            }
-            pi_keywords = {"prompt-injection", "prompt injection"}
-            if has_category(file_findings, smuggling_keywords) and has_category(
-                file_findings, pi_keywords
-            ):
-                correlated.append(
-                    Finding(
-                        scanner="correlation",
-                        severity="high",
-                        title="Hidden Instruction Attack in Documentation",
-                        description="Invisible unicode combined with prompt injection in documentation (text steganography attack)",
-                        file=filepath,
-                        line=0,
-                        snippet="[compound: unicode smuggling + prompt injection in doc]",
-                        category="compound-attack",
-                    )
-                )
-
-        # Rule 9: Dynamic import/eval + network fetch = "Deferred Payload Loading"
-        if has_category(file_findings, dynamic_import_keywords) and has_category(
-            file_findings, network_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Deferred Payload Loading",
-                    description="Dynamic import combined with network fetch in the same file. Code can download and load arbitrary modules at runtime.",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: dynamic import + network fetch]",
-                    category="deferred-payload",
-                )
-            )
-
-        # Rule 10: Date/counter comparison + exec/eval = "Time-Triggered Malware"
-        if has_category(file_findings, time_bomb_keywords) and has_category(
-            file_findings, exec_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Time-Triggered Malware",
-                    description="Time/counter-based activation combined with code execution. Classic time bomb pattern (Socket.dev NuGet, Nov 2025).",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: time bomb + code execution]",
-                    category="time-triggered-malware",
-                )
-            )
-
-        # Rule 11: Dynamic tool description + MCP server signals = "MCP Rug Pull Enabler"
-        if has_category(file_findings, dynamic_desc_keywords) and has_category(
-            file_findings, mcp_server_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="high",
-                    title="MCP Rug Pull Enabler",
-                    description="MCP server with dynamic tool descriptions. Tool behavior can change without code changes (Lukas Kania, March 2026).",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: dynamic description + MCP server]",
-                    category="rug-pull",
-                )
-            )
-
-        # Rule 12: Phantom dependency + network call = "Shadow Dependency with Network"
-        if has_category(file_findings, phantom_dep_keywords) and has_category(
-            file_findings, network_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Shadow Dependency with Network Access",
-                    description="Undeclared dependency combined with network access. Potential supply chain attack via shadow dependency.",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: phantom dependency + network call]",
-                    category="shadow-dependency",
-                )
-            )
-
-        # Rule 13: Pipe exfiltration in shell scripts
-        if has_category(file_findings, pipe_exfil_keywords) and has_category(
-            file_findings, network_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Shell Script Data Exfiltration Chain",
-                    description="Shell script contains pipe exfiltration pattern combined with network tool. Data flows from sensitive source through pipe to external endpoint.",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: pipe exfiltration + network sink]",
-                    category="pipe-exfiltration",
-                )
-            )
-
-        # Rule 14: OpenClaw skill compound attack (cross-scanner signal only)
-        if has_category(file_findings, openclaw_keywords) and has_category(
-            file_findings, prompt_injection_keywords, exclude_scanner="openclaw_skills"
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Agent Skill Compound Attack",
-                    description="Multiple attack vectors in agent skill: tool poisoning combined with prompt injection. Matches ClawHavoc campaign pattern.",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: tool/config poisoning + prompt injection]",
-                    category="openclaw-compound",
-                )
-            )
-
-        # Rule 15: .pth file + base64/exec = "Python Startup Injection (liteLLM-style)"
-        pth_keywords = {"pth-injection", ".pth file", "pth file"}
-        pth_exec_keywords = {"exec", "eval", "compile", "base64", "obfuscat"}
-        if has_category(file_findings, pth_keywords) and has_category(
-            file_findings, pth_exec_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Python Startup Injection (liteLLM-style)",
-                    description=".pth file with code execution or obfuscated payload. Matches March 2026 liteLLM supply chain attack pattern: .pth files execute on Python startup, exfiltrating credentials without user action.",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: .pth file + exec/base64]",
-                    category="pth-injection",
-                )
-            )
-
-        # Rule 16: .pth file + known IOC = "Known Supply Chain .pth Attack"
-        known_ioc_keywords = {
-            "known-ioc",
-            "known malicious",
-            "ioc match",
-            "ioc database",
-        }
-        if has_category(file_findings, pth_keywords) and has_category(
-            file_findings, known_ioc_keywords
-        ):
-            correlated.append(
-                Finding(
-                    scanner="correlation",
-                    severity="critical",
-                    title="Known Supply Chain .pth Attack",
-                    description="Known malicious .pth file from IOC database. Confirmed supply chain attack vector.",
-                    file=filepath,
-                    line=0,
-                    snippet="[compound: .pth file + known IOC match]",
-                    category="pth-injection",
-                )
-            )
+        _correlate_group_1(filepath, file_findings, correlated, encoding_keywords, env_keywords, exec_keywords, network_keywords, sensitive_read_keywords)
+        _correlate_group_2(filepath, file_findings, correlated, exec_keywords, lifecycle_keywords, network_keywords, prompt_injection_keywords)
+        _correlate_group_3(filepath, file_findings, correlated, dynamic_import_keywords, exec_keywords, network_keywords)
+        _correlate_group_4(filepath, file_findings, correlated, dynamic_desc_keywords, exec_keywords, mcp_server_keywords, network_keywords, phantom_dep_keywords, time_bomb_keywords)
+        _correlate_group_5(filepath, file_findings, correlated, network_keywords, openclaw_keywords, pipe_exfil_keywords, prompt_injection_keywords)
+        _correlate_group_6(filepath, file_findings, correlated)
 
     return correlated
 
