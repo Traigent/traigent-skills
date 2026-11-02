@@ -27,14 +27,37 @@ def _servers() -> dict:
     return json.loads(MCP_JSON.read_text(encoding="utf-8"))["mcpServers"]
 
 
+LAUNCHER = ROOT / "bin" / "traigent-analytics-launcher"
+
+
 def test_the_plugin_declares_the_analytics_server_the_skills_name() -> None:
     server = _servers()[SERVER_NAME]
-    launch = json.dumps(server)
+    # The server entry points at a reviewable launcher file shipped in the plugin,
+    # not an inline `sh -c` program (a shell one-liner in a project MCP config is
+    # indistinguishable from the planted-config RCE pattern scanners look for).
+    assert server["command"] == "${CLAUDE_PLUGIN_ROOT}/bin/traigent-analytics-launcher"
+    assert not server.get("args")
+    launch = LAUNCHER.read_text(encoding="utf-8")
     assert CONSOLE_SCRIPT in launch
     # Works before the SDK is installed: an installed console script is used,
     # otherwise the server is fetched with uvx from the mcp extra.
     assert "uvx" in launch and "traigent[mcp" in launch
     assert "exit 127" in launch, "a missing launcher must fail with a message"
+
+
+def test_the_launcher_is_executable_in_git() -> None:
+    import subprocess
+
+    out = subprocess.run(
+        ["git", "ls-files", "-s", "--", "bin/traigent-analytics-launcher"],
+        cwd=ROOT, capture_output=True, text=True, check=False,
+    ).stdout
+    if not out:  # not a git checkout (sdist/zip): fall back to the filesystem bit
+        import os
+
+        assert os.access(LAUNCHER, os.X_OK)
+    else:
+        assert out.startswith("100755"), out
 
 
 def test_credentials_are_forwarded_by_reference_never_written_into_the_file() -> None:

@@ -1,11 +1,7 @@
 {
   "mcpServers": {
     "traigent-analytics": {
-      "command": "sh",
-      "args": [
-        "-c",
-        "if command -v traigent-analytics-mcp >/dev/null 2>&1; then exec traigent-analytics-mcp; elif command -v uvx >/dev/null 2>&1; then exec uvx --from 'traigent[mcp,analytics]>=0.24.0' traigent-analytics-mcp; else echo 'traigent-analytics MCP: install traigent[mcp,analytics] or uv, then reconnect (see the traigent-analyze-results skill, Prerequisites)' >&2; exit 127; fi"
-      ],
+      "command": "${CLAUDE_PLUGIN_ROOT}/bin/traigent-analytics-launcher",
       "env": {
         "TRAIGENT_API_KEY": "${TRAIGENT_API_KEY:-}",
         "TRAIGENT_BACKEND_URL": "${TRAIGENT_BACKEND_URL:-}"
