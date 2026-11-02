@@ -8,6 +8,8 @@ does NOT skip tests/ (attackers hide malware there per Snyk research).
 Created by Alex Greenshpun
 """
 
+
+
 import os
 import re
 import sys
@@ -19,12 +21,16 @@ SCANNER_NAME = "sast"
 
 # NOTE: tests/ is NOT in core.IGNORE_DIRS either (attackers hide malware there)
 
+DANGEROUS_EVAL = 'Dangerous Eval'
+EVAL_PATTERN = '\\beval\\s*\\('
+UNSAFE_HTML = 'Unsafe HTML'
+
 SAST_PATTERNS = {
     ".py": [
         {
-            "name": "Dangerous Eval",
+            "name": DANGEROUS_EVAL,
             "severity": "high",
-            "regex": re.compile(r"\beval\s*\("),
+            "regex": re.compile(EVAL_PATTERN),
             "category": "code-execution",
         },
         {
@@ -84,9 +90,9 @@ SAST_PATTERNS = {
     ],
     ".js": [
         {
-            "name": "Dangerous Eval",
+            "name": DANGEROUS_EVAL,
             "severity": "high",
-            "regex": re.compile(r"\beval\s*\("),
+            "regex": re.compile(EVAL_PATTERN),
             "category": "code-execution",
         },
         {
@@ -96,7 +102,7 @@ SAST_PATTERNS = {
             "category": "code-execution",
         },
         {
-            "name": "Unsafe HTML",
+            "name": UNSAFE_HTML,
             "severity": "high",
             "regex": re.compile(r"dangerouslySetInnerHTML"),
             "category": "xss",
@@ -138,9 +144,9 @@ SAST_PATTERNS = {
     ],
     ".ts": [
         {
-            "name": "Dangerous Eval",
+            "name": DANGEROUS_EVAL,
             "severity": "high",
-            "regex": re.compile(r"\beval\s*\("),
+            "regex": re.compile(EVAL_PATTERN),
             "category": "code-execution",
         },
         {
@@ -150,7 +156,7 @@ SAST_PATTERNS = {
             "category": "code-execution",
         },
         {
-            "name": "Unsafe HTML",
+            "name": UNSAFE_HTML,
             "severity": "high",
             "regex": re.compile(r"dangerouslySetInnerHTML"),
             "category": "xss",
@@ -164,13 +170,13 @@ SAST_PATTERNS = {
     ],
     ".tsx": [
         {
-            "name": "Dangerous Eval",
+            "name": DANGEROUS_EVAL,
             "severity": "high",
-            "regex": re.compile(r"\beval\s*\("),
+            "regex": re.compile(EVAL_PATTERN),
             "category": "code-execution",
         },
         {
-            "name": "Unsafe HTML",
+            "name": UNSAFE_HTML,
             "severity": "high",
             "regex": re.compile(r"dangerouslySetInnerHTML"),
             "category": "xss",
@@ -178,13 +184,13 @@ SAST_PATTERNS = {
     ],
     ".jsx": [
         {
-            "name": "Dangerous Eval",
+            "name": DANGEROUS_EVAL,
             "severity": "high",
-            "regex": re.compile(r"\beval\s*\("),
+            "regex": re.compile(EVAL_PATTERN),
             "category": "code-execution",
         },
         {
-            "name": "Unsafe HTML",
+            "name": UNSAFE_HTML,
             "severity": "high",
             "regex": re.compile(r"dangerouslySetInnerHTML"),
             "category": "xss",
@@ -200,7 +206,7 @@ SAST_PATTERNS = {
         {
             "name": "Eval",
             "severity": "high",
-            "regex": re.compile(r"\beval\s*\("),
+            "regex": re.compile(EVAL_PATTERN),
             "category": "code-execution",
         },
         {
@@ -254,7 +260,7 @@ SAST_PATTERNS = {
         {
             "name": "Eval",
             "severity": "high",
-            "regex": re.compile(r"\beval\s*\("),
+            "regex": re.compile(EVAL_PATTERN),
             "category": "code-execution",
         },
         {

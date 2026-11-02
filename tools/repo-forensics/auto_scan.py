@@ -362,6 +362,14 @@ def format_output(findings, command="", pattern_type=""):
     return json.dumps(output)
 
 
+def _scan_local_packages(package_names, all_findings):
+    for pkg in package_names:
+        pkg_path = os.path.realpath(pkg)
+        if os.path.isdir(pkg_path) and _is_safe_scan_path(pkg_path):
+            scan_findings = run_targeted_scan(pkg_path)
+            all_findings.extend(scan_findings)
+
+
 def main():
     # Parse hook input
     data = parse_hook_input()
@@ -403,11 +411,7 @@ def main():
 
     # For pip/npm install with a local path: scan it (with path containment)
     if pattern_type in ("pip_install", "npm_install"):
-        for pkg in package_names:
-            pkg_path = os.path.realpath(pkg)
-            if os.path.isdir(pkg_path) and _is_safe_scan_path(pkg_path):
-                scan_findings = run_targeted_scan(pkg_path)
-                all_findings.extend(scan_findings)
+        _scan_local_packages(package_names, all_findings)
 
     print(format_output(all_findings, command, pattern_type))
     sys.exit(0)

@@ -197,6 +197,55 @@ PTH_EXEC_PATTERNS = [
 ]
 
 
+def _scan_pth_base64(lines, findings, rel_path):
+    # Check for base64 content (CRITICAL)
+    # Require at least one + or = to distinguish from filesystem paths
+    base64_pattern = re.compile(r"(?=.*[+/=])[A-Za-z0-9+/]{40,}={0,2}")
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        # Skip filesystem paths (legitimate .pth content)
+        if (
+            stripped.startswith("/")
+            or stripped.startswith(".")
+            or "site-packages" in stripped
+        ):
+            continue
+        if base64_pattern.search(stripped):
+            findings.append(
+                core.Finding(
+                    scanner=SCANNER_NAME,
+                    severity="critical",
+                    title=".pth File: Base64 Content",
+                    description=".pth file contains base64-encoded data (obfuscated payload, liteLLM attack pattern)",
+                    file=rel_path,
+                    line=i + 1,
+                    snippet=line.strip()[:120],
+                    category="pth-injection",
+                )
+            )
+            break  # One finding per file for base64
+
+
+def _scan_pth_execution(lines, rel_path, findings):
+    # Check for exec/eval/compile (CRITICAL)
+    for i, line in enumerate(lines):
+        for pattern, desc in PTH_EXEC_PATTERNS:
+            if pattern.search(line):
+                findings.append(
+                    core.Finding(
+                        scanner=SCANNER_NAME,
+                        severity="critical",
+                        title=f".pth File: {desc}",
+                        description=f".pth file contains {desc}. Executes on Python startup without user action.",
+                        file=rel_path,
+                        line=i + 1,
+                        snippet=line.strip()[:120],
+                        category="pth-injection",
+                    )
+                )
+                break  # One finding per line
+
+
 def scan_pth_files(file_path, rel_path):
     """Detect malicious .pth files (Python startup injection vector).
 
@@ -230,50 +279,9 @@ def scan_pth_files(file_path, rel_path):
             )
         )
 
-    # Check for base64 content (CRITICAL)
-    # Require at least one + or = to distinguish from filesystem paths
-    base64_pattern = re.compile(r"(?=.*[+/=])[A-Za-z0-9+/]{40,}={0,2}")
-    for i, line in enumerate(lines):
-        stripped = line.strip()
-        # Skip filesystem paths (legitimate .pth content)
-        if (
-            stripped.startswith("/")
-            or stripped.startswith(".")
-            or "site-packages" in stripped
-        ):
-            continue
-        if base64_pattern.search(stripped):
-            findings.append(
-                core.Finding(
-                    scanner=SCANNER_NAME,
-                    severity="critical",
-                    title=".pth File: Base64 Content",
-                    description=".pth file contains base64-encoded data (obfuscated payload, liteLLM attack pattern)",
-                    file=rel_path,
-                    line=i + 1,
-                    snippet=line.strip()[:120],
-                    category="pth-injection",
-                )
-            )
-            break  # One finding per file for base64
+    _scan_pth_base64(lines, findings, rel_path)
 
-    # Check for exec/eval/compile (CRITICAL)
-    for i, line in enumerate(lines):
-        for pattern, desc in PTH_EXEC_PATTERNS:
-            if pattern.search(line):
-                findings.append(
-                    core.Finding(
-                        scanner=SCANNER_NAME,
-                        severity="critical",
-                        title=f".pth File: {desc}",
-                        description=f".pth file contains {desc}. Executes on Python startup without user action.",
-                        file=rel_path,
-                        line=i + 1,
-                        snippet=line.strip()[:120],
-                        category="pth-injection",
-                    )
-                )
-                break  # One finding per line
+    _scan_pth_execution(lines, rel_path, findings)
 
     # Check for import statements (MEDIUM - legitimate but worth flagging)
     import_pattern = re.compile(r"^import\s+\S+")

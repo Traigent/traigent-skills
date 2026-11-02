@@ -23,6 +23,8 @@ never reads a Traigent backend; the SDK version is read out of process with
 
 from __future__ import annotations
 
+
+
 import argparse
 import ast
 import csv
@@ -123,7 +125,10 @@ GOLD_KIND_LABEL = {
     "infinite": "infinite",
     "empty": "empty string",
 }
-DATASET_SUFFIXES = (".jsonl", ".json", ".csv")
+JSON_SUFFIX = '.json'
+JSONL_SUFFIX = '.jsonl'
+
+DATASET_SUFFIXES = (JSONL_SUFFIX, JSON_SUFFIX, ".csv")
 HOLDOUT_VALUES = frozenset({"holdout", "test", "validation", "val", "eval"})
 # A dataset file whose name carries one of these tokens, beside another dataset
 # file in the same directory, declares the holdout slice by file name — a
@@ -1366,10 +1371,10 @@ def load_rows(path: Path) -> RawDataset:
         return float(name)
 
     try:
-        if suffix == ".jsonl":
+        if suffix == JSONL_SUFFIX:
             if _read_jsonl(path, result, _constant):
                 return result
-        elif suffix == ".json":
+        elif suffix == JSON_SUFFIX:
             _read_json(path, result, _constant)
         elif suffix == ".csv":
             _read_csv(path, result)
@@ -4483,7 +4488,7 @@ def _walkthrough_holdout_files(walkthrough_files: list[Path], root: Path) -> lis
     return sorted(
         relative(path, root)
         for path in walkthrough_files
-        if path.suffix.lower() in {".jsonl", ".json", ".csv"}
+        if path.suffix.lower() in {JSONL_SUFFIX, JSON_SUFFIX, ".csv"}
         and file_names_holdout(relative(path, root))
     )
 

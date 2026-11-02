@@ -30,8 +30,10 @@ import forensics_core as core
 SCANNER_NAME = "integrity"
 
 # Critical files that attackers target for persistence/RCE
+CLAUDE_SETTINGS_PATH = ".claude/settings.json"
+
 CRITICAL_FILES = [
-    ".claude/settings.json",
+    CLAUDE_SETTINGS_PATH,
     ".claude/settings.local.json",
     "CLAUDE.md",
     ".claude/CLAUDE.md",
@@ -96,12 +98,32 @@ def sha256_file(filepath, repo_path):
         return None
 
 
-def find_critical_files(repo_path):
-    """Find critical config files and hook scripts in the repo.
-    Intentionally scoped to security-critical paths only, not all of .claude/."""
-    found = {}
-    findings = []
+def _find_critical_directory_files(repo_path, resolved_path, found, findings):
+    # Scan directory contents (e.g., .claude/commands/) - one level only
+    try:
+        for f in os.listdir(resolved_path):
+            fp = os.path.join(resolved_path, f)
+            try:
+                resolved_child = core.resolve_path_within_root(repo_path, fp)
+            except ValueError as e:
+                print(
+                    f"[!] {SCANNER_NAME}: Skipping out-of-root file {fp}: {e}",
+                    file=sys.stderr,
+                )
+                findings.append(
+                    _skip_out_of_root_finding(
+                        os.path.relpath(fp, repo_path), fp, str(e)
+                    )
+                )
+                continue
+            if os.path.isfile(resolved_child):
+                rp = os.path.relpath(resolved_child, repo_path)
+                found[rp] = resolved_child
+    except OSError:
+        pass  # unreadable directory entry: skip it
 
+
+def _find_named_critical_files(repo_path, found, findings):
     for rel in CRITICAL_FILES:
         full_path = os.path.join(repo_path, rel)
         try:
@@ -117,77 +139,119 @@ def find_critical_files(repo_path):
         if os.path.isfile(resolved_path):
             found[rel] = resolved_path
         elif os.path.isdir(resolved_path):
-            # Scan directory contents (e.g., .claude/commands/) - one level only
-            try:
-                for f in os.listdir(resolved_path):
-                    fp = os.path.join(resolved_path, f)
-                    try:
-                        resolved_child = core.resolve_path_within_root(repo_path, fp)
-                    except ValueError as e:
-                        print(
-                            f"[!] {SCANNER_NAME}: Skipping out-of-root file {fp}: {e}",
-                            file=sys.stderr,
-                        )
-                        findings.append(
-                            _skip_out_of_root_finding(
-                                os.path.relpath(fp, repo_path), fp, str(e)
-                            )
-                        )
-                        continue
-                    if os.path.isfile(resolved_child):
-                        rp = os.path.relpath(resolved_child, repo_path)
-                        found[rp] = resolved_child
-            except OSError:
-                pass  # unreadable directory entry: skip it
+            _find_critical_directory_files(repo_path, resolved_path, found, findings)
 
+
+def _find_scripts_in_command(cmd, repo_path, found, findings):
+    # Extract script paths from hook commands
+    for token in cmd.split():
+        if token.endswith((".sh", ".bash", ".py", ".js")):
+            script_path = (
+                os.path.join(repo_path, token) if not os.path.isabs(token) else token
+            )
+            try:
+                resolved_script = core.resolve_path_within_root(repo_path, script_path)
+            except ValueError as e:
+                print(
+                    f"[!] {SCANNER_NAME}: Skipping out-of-root file {script_path}: {e}",
+                    file=sys.stderr,
+                )
+                findings.append(_skip_out_of_root_finding(token, script_path, str(e)))
+                continue
+            if os.path.isfile(resolved_script):
+                rp = os.path.relpath(resolved_script, repo_path)
+                found[rp] = resolved_script
+
+
+def _find_scripts_in_hooks(data, repo_path, found, findings):
+    for event_name, hook_list in data.get("hooks", {}).items():
+        if not isinstance(hook_list, list):
+            continue
+        for hook in hook_list:
+            cmd = hook.get("command", "") if isinstance(hook, dict) else ""
+            _find_scripts_in_command(cmd, repo_path, found, findings)
+
+
+def _find_hook_script_files(repo_path, found, findings):
     # Find hook scripts referenced in settings.json
-    settings_path = os.path.join(repo_path, ".claude/settings.json")
+    settings_path = os.path.join(repo_path, CLAUDE_SETTINGS_PATH)
     if os.path.exists(settings_path):
         try:
             data = json.loads(core.read_text_file_within_root(repo_path, settings_path))
-            for event_name, hook_list in data.get("hooks", {}).items():
-                if not isinstance(hook_list, list):
-                    continue
-                for hook in hook_list:
-                    cmd = hook.get("command", "") if isinstance(hook, dict) else ""
-                    # Extract script paths from hook commands
-                    for token in cmd.split():
-                        if token.endswith((".sh", ".bash", ".py", ".js")):
-                            script_path = (
-                                os.path.join(repo_path, token)
-                                if not os.path.isabs(token)
-                                else token
-                            )
-                            try:
-                                resolved_script = core.resolve_path_within_root(
-                                    repo_path, script_path
-                                )
-                            except ValueError as e:
-                                print(
-                                    f"[!] {SCANNER_NAME}: Skipping out-of-root file {script_path}: {e}",
-                                    file=sys.stderr,
-                                )
-                                findings.append(
-                                    _skip_out_of_root_finding(
-                                        token, script_path, str(e)
-                                    )
-                                )
-                                continue
-                            if os.path.isfile(resolved_script):
-                                rp = os.path.relpath(resolved_script, repo_path)
-                                found[rp] = resolved_script
+            _find_scripts_in_hooks(data, repo_path, found, findings)
+
         except ValueError as e:
             print(
                 f"[!] {SCANNER_NAME}: Skipping out-of-root file {settings_path}: {e}",
                 file=sys.stderr,
             )
             findings.append(
-                _skip_out_of_root_finding(".claude/settings.json", settings_path, str(e))
+                _skip_out_of_root_finding(CLAUDE_SETTINGS_PATH, settings_path, str(e))
             )
         except (json.JSONDecodeError, OSError):
             pass  # malformed or unreadable settings.json: nothing more to check
 
+
+def find_critical_files(repo_path):
+    """Find critical config files and hook scripts in the repo.
+    Intentionally scoped to security-critical paths only, not all of .claude/."""
+    found = {}
+    findings = []
+
+    _find_named_critical_files(repo_path, found, findings)
+
+    _find_hook_script_files(repo_path, found, findings)
+
     return found, findings
+
+
+def _check_dangerous_hook(cmd, event_name, rel_path, findings):
+    # Check for especially dangerous patterns
+    dangerous = [
+        "curl",
+        "wget",
+        "bash -c",
+        "eval",
+        "base64",
+        "/dev/tcp",
+    ]
+    for d in dangerous:
+        if d in cmd.lower():
+            findings.append(
+                core.Finding(
+                    scanner=SCANNER_NAME,
+                    severity="critical",
+                    title=f"Dangerous command in hook: {event_name}",
+                    description=f"Hook contains '{d}' pattern (potential RCE/exfiltration)",
+                    file=rel_path,
+                    line=0,
+                    snippet=cmd[:120],
+                    category="hook-dangerous",
+                )
+            )
+            break
+
+
+def _check_hook_entries(hooks, rel_path, findings):
+    for event_name, hook_list in hooks.items():
+        if not isinstance(hook_list, list):
+            continue
+        for hook in hook_list:
+            cmd = hook.get("command", "") if isinstance(hook, dict) else str(hook)
+            if cmd:
+                findings.append(
+                    core.Finding(
+                        scanner=SCANNER_NAME,
+                        severity="high",
+                        title=f"Hook registered: {event_name}",
+                        description=f"Shell command executes on {event_name} event (verify this is intentional)",
+                        file=rel_path,
+                        line=0,
+                        snippet=cmd[:120],
+                        category="hook-configuration",
+                    )
+                )
+                _check_dangerous_hook(cmd, event_name, rel_path, findings)
 
 
 def check_hooks_in_settings(repo_path, filepath, rel_path):
@@ -199,50 +263,7 @@ def check_hooks_in_settings(repo_path, filepath, rel_path):
 
         if "hooks" in data:
             hooks = data["hooks"]
-            for event_name, hook_list in hooks.items():
-                if not isinstance(hook_list, list):
-                    continue
-                for hook in hook_list:
-                    cmd = (
-                        hook.get("command", "") if isinstance(hook, dict) else str(hook)
-                    )
-                    if cmd:
-                        findings.append(
-                            core.Finding(
-                                scanner=SCANNER_NAME,
-                                severity="high",
-                                title=f"Hook registered: {event_name}",
-                                description=f"Shell command executes on {event_name} event (verify this is intentional)",
-                                file=rel_path,
-                                line=0,
-                                snippet=cmd[:120],
-                                category="hook-configuration",
-                            )
-                        )
-                        # Check for especially dangerous patterns
-                        dangerous = [
-                            "curl",
-                            "wget",
-                            "bash -c",
-                            "eval",
-                            "base64",
-                            "/dev/tcp",
-                        ]
-                        for d in dangerous:
-                            if d in cmd.lower():
-                                findings.append(
-                                    core.Finding(
-                                        scanner=SCANNER_NAME,
-                                        severity="critical",
-                                        title=f"Dangerous command in hook: {event_name}",
-                                        description=f"Hook contains '{d}' pattern (potential RCE/exfiltration)",
-                                        file=rel_path,
-                                        line=0,
-                                        snippet=cmd[:120],
-                                        category="hook-dangerous",
-                                    )
-                                )
-                                break
+            _check_hook_entries(hooks, rel_path, findings)
 
     except (json.JSONDecodeError, OSError, KeyError, ValueError):
         pass  # malformed or unreadable file: skip remaining checks for it
@@ -476,12 +497,10 @@ def main():
     all_findings = list(containment_findings)
 
     # Check for hooks in settings.json
-    settings_path = os.path.join(repo_path, ".claude/settings.json")
+    settings_path = os.path.join(repo_path, CLAUDE_SETTINGS_PATH)
     if os.path.exists(settings_path):
         all_findings.extend(
-            check_hooks_in_settings(
-                repo_path, settings_path, ".claude/settings.json"
-            )
+            check_hooks_in_settings(repo_path, settings_path, CLAUDE_SETTINGS_PATH)
         )
 
     # Check for executable config files

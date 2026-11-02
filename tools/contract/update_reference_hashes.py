@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+
+
 import argparse
 import hashlib
 import json
@@ -26,13 +28,15 @@ def reference_hashes(skill_dir: Path) -> dict[str, str]:
     }
 
 
+PROVENANCE_FILENAME = 'provenance.json'
+
 def skill_dirs(root: Path) -> list[Path]:
     skills_root = root / "skills"
     return sorted(
         d
         for d in skills_root.iterdir()
         if d.is_dir()
-        and (d / "provenance.json").is_file()
+        and (d / PROVENANCE_FILENAME).is_file()
         and (d / "references").is_dir()
     )
 
@@ -63,7 +67,7 @@ def render(provenance: dict[str, Any], current: str) -> str:
 
 
 def update_skill(skill_dir: Path, check: bool) -> bool:
-    provenance_path = skill_dir / "provenance.json"
+    provenance_path = skill_dir / PROVENANCE_FILENAME
     current = provenance_path.read_text(encoding="utf-8")
     provenance = json.loads(current)
     updated = insert_after_doc_hash(provenance, reference_hashes(skill_dir))
@@ -102,7 +106,7 @@ def main() -> int:
     changed = []
     for target in targets:
         skill_dir = target if target.is_absolute() else root / target
-        if not (skill_dir / "provenance.json").is_file():
+        if not (skill_dir / PROVENANCE_FILENAME).is_file():
             raise SystemExit(f"{skill_dir}: missing provenance.json")
         if not (skill_dir / "references").is_dir():
             continue

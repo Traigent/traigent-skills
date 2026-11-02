@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+
+
 import argparse
 import ast
 import json
@@ -15,7 +17,9 @@ DEFAULT_REF = "origin/develop"
 DEFAULT_OUT = Path("tests/data/backend_routes_snapshot.json")
 REPO_SLUG = "Traigent/TraigentBackend"
 HTTP_SHORTHANDS = {"get", "post", "put", "patch", "delete"}
-ROOT_BLUEPRINT = ("src/app.py", "app")
+APP_SOURCE_PATH = 'src/app.py'
+
+ROOT_BLUEPRINT = (APP_SOURCE_PATH, "app")
 
 
 @dataclass(frozen=True, slots=True)
@@ -80,7 +84,7 @@ def main() -> int:
 
 def build_snapshot(*, repo: Path, ref: str) -> dict[str, Any]:
     commit_sha = _git(repo, "rev-parse", ref).strip()
-    source_files = ["src/app.py", *_route_files(repo, ref)]
+    source_files = [APP_SOURCE_PATH, *_route_files(repo, ref)]
     module_facts = [
         _parse_source(repo=repo, ref=ref, source_file=source_file)
         for source_file in source_files
@@ -91,7 +95,7 @@ def build_snapshot(*, repo: Path, ref: str) -> dict[str, Any]:
             key=ROOT_BLUEPRINT,
             name="app",
             url_prefix="",
-            source_file="src/app.py",
+            source_file=APP_SOURCE_PATH,
         )
     }
     routes: list[RouteInfo] = []
@@ -262,6 +266,48 @@ def _is_blueprint_constructor(func: ast.AST) -> bool:
     return False
 
 
+def _append_decorator_routes(decorator, source_file, imports, blueprints, constants, routes):
+    if not isinstance(decorator, ast.Call):
+        return
+    if not isinstance(decorator.func, ast.Attribute):
+        return
+
+    route_attr = decorator.func.attr
+    if route_attr != "route" and route_attr not in HTTP_SHORTHANDS:
+        return
+
+    owner = _name_from_expr(decorator.func.value)
+    if owner is None:
+        return
+    if owner == "app" and source_file == APP_SOURCE_PATH:
+        blueprint_key = ROOT_BLUEPRINT
+    else:
+        blueprint_key = _resolve_blueprint_name(
+            owner, source_file, imports, blueprints
+        )
+        if blueprint_key is None:
+            return
+
+    path = _literal_string(decorator.args[0]) if decorator.args else None
+    if path is None:
+        return
+
+    methods = (
+        (route_attr.upper(),)
+        if route_attr in HTTP_SHORTHANDS
+        else _route_methods(decorator, constants)
+    )
+    for method in methods:
+        routes.append(
+            RouteInfo(
+                method=method,
+                path=path,
+                blueprint_key=blueprint_key,
+                source_file=source_file,
+            )
+        )
+
+
 def _routes_from_function(
     node: ast.FunctionDef | ast.AsyncFunctionDef,
     *,
@@ -272,45 +318,7 @@ def _routes_from_function(
 ) -> list[RouteInfo]:
     routes: list[RouteInfo] = []
     for decorator in node.decorator_list:
-        if not isinstance(decorator, ast.Call):
-            continue
-        if not isinstance(decorator.func, ast.Attribute):
-            continue
-
-        route_attr = decorator.func.attr
-        if route_attr != "route" and route_attr not in HTTP_SHORTHANDS:
-            continue
-
-        owner = _name_from_expr(decorator.func.value)
-        if owner is None:
-            continue
-        if owner == "app" and source_file == "src/app.py":
-            blueprint_key = ROOT_BLUEPRINT
-        else:
-            blueprint_key = _resolve_blueprint_name(
-                owner, source_file, imports, blueprints
-            )
-            if blueprint_key is None:
-                continue
-
-        path = _literal_string(decorator.args[0]) if decorator.args else None
-        if path is None:
-            continue
-
-        methods = (
-            (route_attr.upper(),)
-            if route_attr in HTTP_SHORTHANDS
-            else _route_methods(decorator, constants)
-        )
-        for method in methods:
-            routes.append(
-                RouteInfo(
-                    method=method,
-                    path=path,
-                    blueprint_key=blueprint_key,
-                    source_file=source_file,
-                )
-            )
+        _append_decorator_routes(decorator, source_file, imports, blueprints, constants, routes)
     return routes
 
 
@@ -334,7 +342,7 @@ def _registration_from_call(
     if parent_name is None or child_name is None:
         return None
 
-    if parent_name == "app" and source_file == "src/app.py":
+    if parent_name == "app" and source_file == APP_SOURCE_PATH:
         parent_key = ROOT_BLUEPRINT
     else:
         resolved_parent = _resolve_blueprint_name(
@@ -451,6 +459,46 @@ def _resolve_blueprint_expr(
     return None
 
 
+def _append_inline_registration(node, env, imports, blueprints, assignments, registrations):
+    parent_key = _resolve_blueprint_expr(
+        node.func.value, env, imports, blueprints
+    )
+    child_key = _resolve_blueprint_expr(node.args[0], env, imports, blueprints)
+    if parent_key is None or child_key is None:
+        return
+    child_name = _name_from_expr(node.args[0])
+    url_prefix: str | None = None
+    url_prefix_template: str | None = None
+    prefix_expr = _keyword_expr(node, "url_prefix")
+    if prefix_expr is not None:
+        template = _prefix_template(prefix_expr, child_name, assignments)
+        if template is None:
+            return  # dynamic prefix we cannot evaluate; skip, don't guess
+        if CHILD_PREFIX_PLACEHOLDER in template:
+            url_prefix_template = template
+        else:
+            url_prefix = template
+    registrations.append(
+        Registration(
+            parent_key=parent_key,
+            child_key=child_key,
+            url_prefix=url_prefix,
+            url_prefix_template=url_prefix_template,
+        )
+    )
+
+
+def _function_assignments(func_def):
+    assignments: dict[str, ast.expr] = {}
+    for node in ast.walk(func_def):
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target = node.targets[0]
+            if isinstance(target, ast.Name):
+                assignments[target.id] = node.value
+
+    return assignments
+
+
 def _inline_function_body(
     func_def: ast.FunctionDef | ast.AsyncFunctionDef,
     *,
@@ -464,12 +512,7 @@ def _inline_function_body(
 ) -> None:
     if depth > _MAX_HELPER_DEPTH:
         return
-    assignments: dict[str, ast.expr] = {}
-    for node in ast.walk(func_def):
-        if isinstance(node, ast.Assign) and len(node.targets) == 1:
-            target = node.targets[0]
-            if isinstance(target, ast.Name):
-                assignments[target.id] = node.value
+    assignments = _function_assignments(func_def)
 
     for node in ast.walk(func_def):
         if not isinstance(node, ast.Call):
@@ -479,32 +522,7 @@ def _inline_function_body(
             and node.func.attr == "register_blueprint"
             and node.args
         ):
-            parent_key = _resolve_blueprint_expr(
-                node.func.value, env, imports, blueprints
-            )
-            child_key = _resolve_blueprint_expr(node.args[0], env, imports, blueprints)
-            if parent_key is None or child_key is None:
-                continue
-            child_name = _name_from_expr(node.args[0])
-            url_prefix: str | None = None
-            url_prefix_template: str | None = None
-            prefix_expr = _keyword_expr(node, "url_prefix")
-            if prefix_expr is not None:
-                template = _prefix_template(prefix_expr, child_name, assignments)
-                if template is None:
-                    continue  # dynamic prefix we cannot evaluate; skip, don't guess
-                if CHILD_PREFIX_PLACEHOLDER in template:
-                    url_prefix_template = template
-                else:
-                    url_prefix = template
-            registrations.append(
-                Registration(
-                    parent_key=parent_key,
-                    child_key=child_key,
-                    url_prefix=url_prefix,
-                    url_prefix_template=url_prefix_template,
-                )
-            )
+            _append_inline_registration(node, env, imports, blueprints, assignments, registrations)
         elif isinstance(node.func, ast.Name) and node.func.id in local_funcs:
             callee = local_funcs[node.func.id]
             if callee is func_def:
@@ -522,6 +540,26 @@ def _inline_function_body(
                 blueprints=blueprints,
                 registrations=registrations,
             )
+
+
+def _joined_prefix_template(
+    node: ast.JoinedStr,
+    child_name: str | None,
+    assignments: dict[str, ast.expr],
+    depth: int,
+) -> str | None:
+    parts: list[str] = []
+    for part in node.values:
+        if isinstance(part, ast.Constant) and isinstance(part.value, str):
+            parts.append(part.value)
+        elif isinstance(part, ast.FormattedValue):
+            evaluated = _prefix_template(part.value, child_name, assignments, depth + 1)
+            if evaluated is None:
+                return None
+            parts.append(evaluated)
+        else:
+            return None
+    return "".join(parts)
 
 
 def _prefix_template(
@@ -545,20 +583,7 @@ def _prefix_template(
             return None
         return _prefix_template(value, child_name, assignments, _depth + 1)
     if isinstance(node, ast.JoinedStr):
-        parts: list[str] = []
-        for part in node.values:
-            if isinstance(part, ast.Constant) and isinstance(part.value, str):
-                parts.append(part.value)
-            elif isinstance(part, ast.FormattedValue):
-                evaluated = _prefix_template(
-                    part.value, child_name, assignments, _depth + 1
-                )
-                if evaluated is None:
-                    return None
-                parts.append(evaluated)
-            else:
-                return None
-        return "".join(parts)
+        return _joined_prefix_template(node, child_name, assignments, _depth)
     if isinstance(node, ast.BoolOp) and isinstance(node.op, ast.Or) and node.values:
         # `blueprint.url_prefix or ""` — the placeholder substitution already
         # treats a missing child prefix as "", so the first operand suffices.
@@ -593,6 +618,16 @@ def _resolve_blueprint_name(
     return None
 
 
+def _registration_segment(registration: Registration, child: BlueprintInfo) -> str | None:
+    if registration.url_prefix_template is not None:
+        return registration.url_prefix_template.replace(
+            CHILD_PREFIX_PLACEHOLDER, child.url_prefix or ""
+        )
+    if registration.url_prefix is not None:
+        return registration.url_prefix
+    return child.url_prefix
+
+
 def _mount_prefixes(
     blueprints: dict[tuple[str, str], BlueprintInfo],
     registrations: list[Registration],
@@ -612,14 +647,7 @@ def _mount_prefixes(
             child = blueprints.get(registration.child_key)
             if child is None:
                 continue
-            if registration.url_prefix_template is not None:
-                child_segment = registration.url_prefix_template.replace(
-                    CHILD_PREFIX_PLACEHOLDER, child.url_prefix or ""
-                )
-            elif registration.url_prefix is not None:
-                child_segment = registration.url_prefix
-            else:
-                child_segment = child.url_prefix
+            child_segment = _registration_segment(registration, child)
             for parent_prefix in discovered.get(parent_key, ()):
                 mount = _join_paths(parent_prefix, child_segment)
                 known = discovered.setdefault(registration.child_key, set())
