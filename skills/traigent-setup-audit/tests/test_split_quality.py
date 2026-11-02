@@ -164,3 +164,17 @@ def test_distinct_holdout_inputs_raise_no_near_duplicate_finding(tmp_path: Path)
     ]
     report = _scan(_write(tmp_path / "data.jsonl", rows), tmp_path)
     assert not any("near-duplicate in the tuning slice" in f for f in report.findings)
+
+
+def test_single_label_message_does_not_claim_configurations_are_inseparable(
+    tmp_path: Path,
+) -> None:
+    rows = _structured_rows(40, 0)
+    for index, row in enumerate(rows):
+        row["input"] = f"row {index} unique text token{index}"
+    report = _scan(_write(tmp_path / "data.jsonl", rows), tmp_path, label_field="is_flaky")
+    joined = "\n".join(report.findings)
+    assert "has one value (`True`)" in joined
+    assert "no configuration can be separated" not in joined
+    assert "recall" in joined
+    assert "false-positive behaviour cannot be measured" in joined

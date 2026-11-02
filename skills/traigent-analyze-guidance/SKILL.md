@@ -233,9 +233,13 @@ Mode C for local diagnosis instead of retrying again.
 not possible, read the same brief over REST (`GET /api/v1/analytics/runs/{run_id}/decision-payload`) and present its fields verbatim, exactly as for the tool:
 
 ```bash
-curl -fsS -H "X-API-Key: $TRAIGENT_API_KEY" -H "X-Project-Id: <project_id>" \
+printf 'header = "X-API-Key: %s"\n' "$TRAIGENT_API_KEY" | curl -fsS --config - \
+  -H "X-Project-Id: <project_id>" \
   "${TRAIGENT_BACKEND_URL:-https://portal.traigent.ai}/api/v1/analytics/runs/<run_id>/decision-payload?intent=iterate"
 ```
+
+`printf` is a shell builtin, so the key is not in any process listing; curl reads the header from
+stdin (`--config -`). Never put the key in a curl argument.
 
 `intent` is `iterate`, `deploy`, `debug` or `report`. The response is wrapped as
 `{"success": true, "data": {...}}`; the brief is `data`, and it must carry `run_id`, `project_id`, `intent`, `headline`, `confidence`,

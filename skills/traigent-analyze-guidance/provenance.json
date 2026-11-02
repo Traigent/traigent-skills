@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "056f81dec1d8c3c4",
+  "doc_hash": "d20d006906f6f15a",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -409,7 +409,7 @@
       "run_id": null,
       "timestamp": "2026-11-02T00:00:00Z",
       "doc_before_hash": "cbd4edfc0c6b2277",
-      "doc_after_hash": "056f81dec1d8c3c4",
+      "doc_after_hash": "d20d006906f6f15a",
       "note": "Document that the plugin ships the analytics MCP server and add a no-MCP REST fallback for the Mode B decision brief (#477).",
       "source_type": "agent"
     }

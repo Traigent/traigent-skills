@@ -2002,7 +2002,9 @@ def _label_field_findings(
     if len(seen) < 2:
         findings.append(
             f"label field `{path}` has one value (`{seen[0]}`) in the whole file, "
-            "so no configuration can be separated from another on it"
+            "so configurations can differ only on how many of those rows they get "
+            "right (recall for that label); false-positive behaviour cannot be "
+            "measured without rows of another label"
         )
     for slice_name, counts in slices.items():
         if not rows[slice_name]:
