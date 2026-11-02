@@ -130,7 +130,7 @@ def my_function(query: str) -> str:                    # 4. The function
 Use the SDK's built-in validation tools before any optimization:
 
 ```bash
-traigent validate eval_data.jsonl --objectives accuracy -v   # dataset: valid JSON, `input` field (+ `output` for accuracy-like metrics); 5+ examples, 10-20+ recommended
+traigent validate eval_data.jsonl --objectives accuracy -v   # dataset: valid JSON, `input` field (+ `output` for accuracy-like metrics); file shape only, size it by traigent-dataset-curate (30-100 tuning, 30+ holdout, 20+/30+ rows of the rarer class)
 traigent info                                                 # SDK version, Python version, enabled features
 traigent algorithms                                           # Available algorithms with descriptions and best-use cases
 traigent check my_script.py --dry-run                         # discovers @traigent.optimize functions; validates decorator wiring only, not dataset contents

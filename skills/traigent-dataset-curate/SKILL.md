@@ -74,6 +74,18 @@ Minimum starting counts:
 | First tuning slice | 30-100 | Cover the main strata and known failure modes. |
 | Holdout slice | 30+ | Keep untouched until the final validation readout. |
 | High-variance tasks | 100+ | Add per-stratum coverage before trusting aggregate movement. |
+| Rarer class (the positive, failing, or minority case), per slice | 20+ tuning, 30+ holdout | A row count says nothing about how many rows carry the case the metric rewards. |
+
+**Enough events to separate two configurations.** For a metric measured over the rarer class (its
+recall, say), a rate that rests on `k` such rows moves `100/k` points per row: 20 rows is a 5-point
+step, 30 rows a 3-point step. These counts are a floor, not a guarantee: sampling noise on `k` rows
+is about `50/sqrt(k)` points per rate at a 50% rate (roughly 11 points at k=20, 9 at k=30), so a lift
+of a few steps can still be noise. Below the floor no run can separate the configurations, and the
+decision brief reports "not separated from noise" after the money is spent. Count the rarer class in
+**each** slice before a paid run (`--label-field` in `traigent-setup-audit` counts it inside a
+structured gold value). Below the minimum, grow the rarer class first or run only as a smoke
+check; a slice with 0 rows of a class cannot score it at all. The same arithmetic runs after the
+run in `traigent-analyze-results` ("Is the Delta Real?").
 
 Prefer fewer well-labeled examples over many vague examples. Every row should have a reason to exist: common path, edge case, high-value customer path, known failure, or safety-critical path.
 
@@ -92,8 +104,15 @@ user's original, and report every change by row id:
 
 - usable vs corrupted rows; duplicate ids; exact and near-duplicate inputs;
 - empty or constant expected outputs; a dominant label a lazy configuration could guess;
-- tuning/holdout overlap by id **and** by normalized input; a split where each recurring
-  input kind sits on one side only.
+- tuning/holdout overlap by id **and** by normalized input (an exact match across the two files;
+  the within-file near-duplicate check above does not cross them), and near-duplicate inputs
+  *across* the split, which `traigent-setup-audit` also reports;
+- a **group key**: ask what makes two rows "the same case" (intent, question template, customer,
+  normalized error signature). If nothing is obvious, fall back to near-duplicate similarity across
+  the two files. Report the share of holdout rows whose group key also appears in tuning, and score
+  seen-key and novel-key holdout rows separately. A split can pass every check above, be clean by
+  time and by source, and still put most holdout rows on cases tuning already contains; then the
+  holdout score measures recall of known cases, not generalization.
 
 Then run every gold answer through the chosen scorer: a gold that scores a right and a wrong
 answer identically (empty, case-trapped, unparseable) can separate no configuration. Exclude
@@ -167,14 +186,26 @@ the judge's calibration examples must stay out of the holdout.
 Holdout rules:
 
 - Reserve the holdout slice before the first optimization run, and record how the dataset is partitioned: tuning/search slice, optional exemplar/few-shot bank, and holdout slice.
-- Split by stable example id, customer, document, repository, or time window when near-duplicates exist.
+- Split by stable example id, customer, document, repository, or time window when near-duplicates exist. Pick the split that matches the claim: if production repeats cases at a similar rate, a time split is honest and the seen/novel breakdown above is the disclosure; if the claim is "handles new cases", split by group key.
 - Stratify by task type, difficulty, language, tenant, tool path, and known failure class.
 - The SDK does not read `split`: `eval_dataset` loads every row it is given, and `EvaluationOptions` has no holdout field (verified on 0.27.0; a first-class holdout primitive is tracked in Traigent/Traigent#2143). The tag is bookkeeping for you and for readiness checks, not a fence. Keep the holdout in its own file (`eval/holdout.jsonl`) that no `eval_dataset`, `optimize_with_guidance`, or synthesizer seed ever names — a filtered slice of one file is a predicate that has to stay right; a file the search was never given cannot leak.
 - The holdout exists to defeat selection: picking the best of N trials on the tuning rows makes that score optimistic. Score exactly **one** configuration on the holdout — the one already chosen on tuning scores — and report its number beside the tuning number. Scoring two candidates there and keeping the better is selection, and a set used for selection is no longer held out. Under ~30 rows report correct counts, not percentages, and say the gap may land lower, level, or higher.
 - Synthetic rows stay `synthetic` however carefully a human reviewed them; a holdout that contains them, or one you built and can read, is held-back and non-blind — say so beside every number it produces, and never call it production evidence.
 - Rebuild the tuning slice freely; touch the holdout only to add newly sourced, independently reviewed examples.
 - Report tune-slice movement and holdout movement separately.
-- If no holdout exists yet, say so explicitly and create one before treating any result as promotion-ready; preserve the same split across iteration rounds — never recreate or contaminate it after a run.
+- If no holdout exists yet, say so explicitly and create one before treating any result as promotion-ready; preserve the same split across iteration rounds — never recreate or contaminate it after a run. "Never recreate" holds within one round; the next section says how to replace a spent holdout.
+
+### Next holdout (replacing a spent one)
+
+A holdout that was used for selection, or whose rows were inspected, is spent. Several rounds
+will spend it; replace it by this procedure instead of reusing it or inventing a rule:
+
+- Record what was spent: the row ids, their time range, and their group keys.
+- Build the new holdout only from rows never scored or inspected (normally a later time window),
+  disjoint from the spent rows by id **and** group key.
+- Spent rows may move into tuning.
+- Name the round beside every number the new holdout produces ("holdout round 2"). Numbers from
+  different rounds are not comparable without saying so.
 
 ## Synthesize examples client-side with no backend egress
 

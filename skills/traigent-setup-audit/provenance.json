@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "875aa1e1b129386a",
+  "doc_hash": "7e2ff0b7c9ebe531",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "86c1f7ebdb50f49b"
   },
@@ -308,6 +308,28 @@
       "doc_before_hash": "4bfd8c323d3060ce",
       "doc_after_hash": "875aa1e1b129386a",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-11-02-472",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-02T00:00:00Z",
+      "doc_before_hash": "875aa1e1b129386a",
+      "doc_after_hash": "cb71f7a4ab75dcb2",
+      "note": "Read knobs declared inline as decorator keywords (model=Choices([...]), Range, IntRange, LogRange, numeric pair) and report an unreadable keyword as not inventoried instead of as no configuration space (#472).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-11-02-473-475",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-02T00:00:00Z",
+      "doc_before_hash": "cb71f7a4ab75dcb2",
+      "doc_after_hash": "7e2ff0b7c9ebe531",
+      "note": "Add --label-field (rows per class inside structured gold, per slice, with 20/30-row minority minimums), a class-balance-not-checked note, and a cross-split near-duplicate check for tagged and sibling-file holdouts (#473, #475).",
       "source_type": "agent"
     }
   ]

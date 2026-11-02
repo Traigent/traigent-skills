@@ -4,7 +4,7 @@
   "reference_hashes": {
     "references/constraints.md": "a35c82ac42e6d7c6",
     "references/parameter-types.md": "03c333a37aab008f",
-    "references/structural-spine.md": "14d1484747bd20b6"
+    "references/structural-spine.md": "621792a532462ab1"
   },
   "entries": [
     {
@@ -199,6 +199,17 @@
       "doc_before_hash": "09872a19bad8305d",
       "doc_after_hash": "4fcc7e6f5be545b2",
       "note": "Issue sweep 2026-10-21 against SDK 0.30.0: install floor >=0.24.0 with a floor-enforcing install check (#442); current Anthropic model IDs (#450); OpenAI real-run tier IDs and a litellm>=1.106.0 pin (#451); tuning-dataset path (#452); holdout reference script reads the export_config wrapper and the SDK's label keys (#453); PR-job cost limit removed and the TVL note version-stamped (#454); auth device-login and TRAIGENT_DEBUG wording (#455); ProviderValidationError, TRAIGENT_STRICT_COST_ACCOUNTING, row-metadata merge and the models --check typo claim (#447).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "sweep-2026-11-02-474",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-02T00:00:00Z",
+      "doc_before_hash": "4fcc7e6f5be545b2",
+      "doc_after_hash": "4fcc7e6f5be545b2",
+      "note": "Link the test_selection_strategy row to the ranked-output scorer recipe (#474).",
       "source_type": "agent"
     }
   ]

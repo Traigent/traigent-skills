@@ -20,6 +20,7 @@ Use this skill before configuring `@traigent.optimize()` when the user has not y
 - Prefer plain `objectives=["accuracy", "cost"]` lists when every name is a built-in metric. A custom metric name (a `metric_functions` key such as `valid_schema`) needs a declared orientation; see "From answers to objectives".
 - Use built-in metric names when they match the job: `accuracy`, `success_rate`, `error_rate`, `avg_output_length`, `cost`, `latency`.
 - Use custom `metric_functions` when the task has checkable domain logic that a built-in metric cannot express.
+- If the agent returns a ranked list or a selection under a budget (tests to run, jobs to pick, documents to retrieve), use recall (or precision) at that budget rather than string equality; the scorer, the not-run item rule and the cost-aware variant are in `traigent-eval-build` -> "Ranked or selected outputs (recall at a budget)".
 - If the key property is a must-not-violate safety condition, treat it as a gate or constraint, not as an ordinary objective.
 
 ## The metric interview
