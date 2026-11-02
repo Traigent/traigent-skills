@@ -52,9 +52,6 @@ from pathlib import Path
 from typing import Any
 
 REPO_SLUG = "Traigent/Traigent"
-# Source of truth: a detached worktree of Traigent origin/develop (see the workspace CLAUDE.md
-# "Review-freshness guard"). Override with --sdk-repo for a different checkout.
-DEFAULT_SDK_REPO = Path("/tmp/rev-sdk-dev")
 DEFAULT_REF = "HEAD"
 DEFAULT_OUT = Path("tests/data/python_api_snapshot.json")
 
@@ -73,7 +70,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Refresh the vendored Traigent (Python SDK) public API snapshot.",
     )
-    parser.add_argument("--sdk-repo", type=Path, default=DEFAULT_SDK_REPO)
+    parser.add_argument("--sdk-repo", type=Path, required=True)
     parser.add_argument("--ref", default=DEFAULT_REF)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = parser.parse_args()
