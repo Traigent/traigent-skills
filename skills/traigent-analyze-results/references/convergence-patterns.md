@@ -30,7 +30,8 @@ Read each trial's objective by its own name (for example `trial.metrics["accurac
 `trial.metrics["score"]` (see version-matrix: `score-relocation`). On SDKs after 0.21.3 `score`
 equals the objective only for a single built-in objective: a weighted multi-objective run
 records its normalised selection basis there, and a custom scorer registered under its own
-objective name (for example `quality`) leaves `score` at the built-in exact-match value.
+objective name (for example `quality`) leaves `score` at the built-in exact-match value
+through 0.31.1; from 0.32.0 `score` is absent unless `accuracy` is also an objective.
 
 ```python
 def best_score_curve(results, objective=None, maximize=True) -> list[float]:
