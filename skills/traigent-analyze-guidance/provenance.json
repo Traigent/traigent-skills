@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9c111e44caeb49d4",
+  "doc_hash": "eea06b7e36fb9f5d",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -422,6 +422,17 @@
       "doc_before_hash": "d20d006906f6f15a",
       "doc_after_hash": "9c111e44caeb49d4",
       "note": "Mock dry run described as no-spend but still priced on SDK 0.31.0+ (#463).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-rebase-traigent-analyze-guidance-2026-11-03",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-03T00:31:05Z",
+      "doc_before_hash": "9c111e44caeb49d4",
+      "doc_after_hash": "eea06b7e36fb9f5d",
+      "note": "Update the paid-run citation to the owning traigent-boost-agent workflow after rebasing the router entry onto current main.",
       "source_type": "agent"
     }
   ]

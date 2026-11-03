@@ -12,6 +12,8 @@ them before it acts on any Traigent task.
 Operating guides for Traigent work live in `.github/skills/<name>/SKILL.md` — consult the
 relevant one before any optimization task (setup, dataset curation, running an optimization,
 analyzing results, gating a promotion, etc.).
+Not sure which one? Open `.github/skills/traigent/SKILL.md` first: it reads the project and
+names the skill for the next step.
 
 Two rules are load-bearing and apply even if you don't open a skill file first:
 

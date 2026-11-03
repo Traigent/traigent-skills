@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "843c24a697d80a69",
+  "doc_hash": "34ba7984c02440c4",
   "reference_hashes": {
     "references/dspy.md": "0fd57632631c7d1e",
     "references/langchain.md": "96ea626b7e44af90",
@@ -33,7 +33,7 @@
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "2bf7d398b0a7dc94",
       "doc_after_hash": "c136eb9cba89e3f5",
-      "note": "warn that reasoning models' hidden tokens consume max_tokens before answer text \u2014 give >=1024-2048 headroom in sweeps (Traigent/traigent-skills#179)",
+      "note": "warn that reasoning models' hidden tokens consume max_tokens before answer text — give >=1024-2048 headroom in sweeps (Traigent/traigent-skills#179)",
       "source_type": "human"
     },
     {
@@ -199,6 +199,17 @@
       "doc_before_hash": "5afbc824917efbd7",
       "doc_after_hash": "843c24a697d80a69",
       "note": "Review fix on #457: the LiteLLM example no longer tunes or passes temperature alongside claude-haiku-5-5/claude-sonnet-5-5, which reject it (LiteLLM 1.106.0 UnsupportedParamsError); it tunes model and max_tokens, with a note. references/litellm.md and references/dspy.md aligned (dspy example drops the Claude 5.5 model, max_trials 6).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-traigent-setup-integrations-2026-11-02",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-02T00:00:00Z",
+      "doc_before_hash": "843c24a697d80a69",
+      "doc_after_hash": "34ba7984c02440c4",
+      "note": "Replace the removed lifecycle-skill citation with the skill that owns dry-run-first and cost approval (#75), rebased onto current main.",
       "source_type": "agent"
     }
   ]
