@@ -67,10 +67,11 @@ execution selector (`algorithm` + `ExecutionOptions(offline=...)`), and the
 **config-space permutation count** (product of value-counts across all tuned
 knobs). Give the **run-plan record** (its file name or title) a self-describing,
 unique label encoding who/weights/problem-space/**permutations**/date, and record
-the permutation count as its own field. Do not put that label in `experiment_name`:
-`experiment_name` stays the stable agent slug reused across runs (see
-`references/preflight.md` -> "Run naming"). The SDK records each run's timestamp
-and its own run label automatically. Keep the filled plan with the run, and add a
+the permutation count as its own field. Do not put that label in `agent_name` (SDK 0.27.0+;
+`experiment_name` is its deprecated alias): `agent_name` stays the stable agent slug reused
+across runs (see `references/preflight.md` -> "Run naming"). On SDK 0.27.0+ pass what this run
+tests as `run_title=` / `run_description=` on the decorator. The SDK records each run's
+timestamp automatically. Keep the filled plan with the run, and add a
 **carry-forward** note of what won/lost to seed the next run. Seed the
 carry-forward from data, not memory: before planning the next run, read the cohort
 table for this agent+dataset (`analytics_list_experiment_group_configuration_runs`;
@@ -105,7 +106,8 @@ A knob declared in the config space but not read at the real call site is a
 
 ### P10 -- Mock dry-run before spend; cap cost; start small
 
-Always do a **free mock dry-run** to validate the pipeline, then a real run with a
+Always do a **no-spend mock dry-run** to validate the pipeline (on SDK 0.31.0+ the mock run
+is still priced against the cost cap, so use a small slice of a large dataset), then a real run with a
 **hard cost cap**. Start with a small trial budget / cheap models, then scale.
 
 ### P11 -- Label significance honestly

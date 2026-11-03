@@ -79,14 +79,35 @@ When mock mode is active (`enable_mock_mode_for_quickstart()`, or the deprecated
   not guarantee that the first trial's actual cost fits within it.
 - Response times are near-instant
 
+### A mock run is still priced and gated (SDK 0.31.0+)
+
+From SDK 0.31.0 the pre-run cost estimate runs for a mock run too, and `CostLimitExceeded` can
+fire before trial 1 on a large dataset even though nothing would be spent (for example a 46-row
+dataset of several thousand input tokens per row against the $2.00 default). SDKs before 0.31.0
+skipped the estimate in mock mode. The refusal text only offers `TRAIGENT_RUN_COST_LIMIT` and
+`TRAIGENT_COST_APPROVED=true`; for a mock run use neither (approval would carry into the real
+run). Instead:
+
+- Dry-run a **small slice** (5-10 rows) of the dataset. This works on every SDK version.
+- Or, for a test-only run, set `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` together with an explicit
+  non-production environment (`ENVIRONMENT=development`; `test`, `testing`, `local`, `dev`,
+  `stage` and `staging` also qualify). With the environment unset, `ci` or production the
+  exemption is ignored and the estimate applies. It also requires mock mode to be on. Set both
+  variables on the mock process alone, never exported or committed: `ENVIRONMENT` also changes
+  other production checks, and the exemption would also skip the estimate for any call mock mode
+  does not block (`boto3`, unlisted hosts).
+
 ### What Gets Mocked
 
-- **LiteLLM** completion calls (`litellm.completion` / `litellm.acompletion`)
+- **LiteLLM** completion calls (`litellm.completion` / `litellm.acompletion`). From SDK 0.31.0 the
+  interceptors are installed when mock mode is enabled, so a standalone `litellm.completion`
+  made right after `enable_mock_mode_for_quickstart()` (no evaluator, no optimization run) gets
+  the canned reply. Before 0.31.0 they were installed only once an evaluator was built.
 - **LangChain** LLM wrappers (`ChatOpenAI`, `ChatAnthropic`, etc.) when constructed inside the decorated function
 
 ### What Is NOT Mocked
 
-> **Important:** Raw `openai` and `anthropic` clients are **not** intercepted by mock mode. If your function calls `openai.OpenAI().chat.completions.create(...)` or `anthropic.Anthropic().messages.create(...)` directly, those calls will reach the real API. Use `litellm.completion()` or LangChain wrappers for a fully keyless mock-mode experience.
+> **Important:** Raw `openai` and `anthropic` clients are **not** intercepted by mock mode: they get no canned reply. If your function calls `openai.OpenAI().chat.completions.create(...)` or `anthropic.Anthropic().messages.create(...)` directly, then on SDK 0.31.0+ the HTTP request to a known LLM provider host (the major hosted APIs, Azure OpenAI and Bedrock runtime endpoints) is blocked with `MockModeTransportBlockedError`, not billed. The block covers requests sent through httpx, aiohttp and requests; a `boto3` call and hosts outside the SDK's list are not blocked. On SDKs before 0.31.0 those calls reach the real API. Use `litellm.completion()` or LangChain wrappers for a fully keyless mock-mode experience.
 
 - Raw `openai.OpenAI` / `openai.AsyncOpenAI` clients
 - Raw `anthropic.Anthropic` / `anthropic.AsyncAnthropic` clients
@@ -145,7 +166,9 @@ This gives you a self-contained environment:
 - No API keys needed
 - No backend connection needed (zero Traigent backend egress)
 - No provider calls for LiteLLM/LangChain calls, which mock mode intercepts; a raw `openai` /
-  `anthropic` client in the function still calls the provider
+  `anthropic` client in the function gets no canned reply and, on SDK 0.31.0+, its requests to
+  known provider hosts are blocked rather than billed (before 0.31.0 it still calls the provider;
+  `boto3` and unlisted hosts are not blocked on any version)
 - If your code imports `litellm` itself, set `LITELLM_LOCAL_MODEL_COST_MAP=True` before that
   import, or LiteLLM fetches its public pricing map over the network
 - Fast execution (no real LLM latency)
@@ -162,14 +185,25 @@ Mock mode has important limitations to be aware of:
 
 4. **Provider-specific behavior is not simulated**: Rate limits, token limits, and provider-specific formatting are not mocked.
 
-5. **Evaluator scores under mock — deterministic scorers will see uniform 0.0:** The mock
+5. **Evaluator scores under mock — it depends on whether the scorer parses the reply.** The mock
    LLM always returns the same constant string (`"This is a mock response for testing."`,
-   `traigent/integrations/utils/mock_adapter.py:69`). For **output-based / deterministic
-   scorers** (exact-match, JSON-schema, SQL execution accuracy), every trial scores 0.0
-   because no output-based scorer can reward the constant mock text. This is **expected and
-   correct** — it means mock-plumbing is working, not that your agent is broken.
-   Config-aware scorers (those that read `traigent.get_config()`) will still produce varied
-   scores across trials, even in mock mode.
+   `traigent/integrations/utils/mock_adapter.py:69`).
+   - A scorer that **returns a number for any input** (exact-match, SQL execution accuracy, one
+     that catches its own parse errors) scores every trial 0.0, because no output-based scorer
+     can reward the constant mock text. This is **expected and correct**: mock plumbing is
+     working, not your agent broken. Config-aware scorers (those that read
+     `traigent.get_config()`) still produce varied scores across trials.
+   - A scorer that **parses the reply** (`json.loads`, JSON-schema validation, a
+     structured-output parser) raises on the canned text. The SDK refuses to substitute a
+     fabricated 0.0, so **every trial fails**: `All trials failed — no examples succeeded`,
+     `best_score` is `None`, and the process exits 0. This is **also expected under mock**, not a
+     broken pipeline. Do not wrap the scorer to swallow the error and return 0.0. Instead make
+     the agent return valid JSON before the model call while mock mode is on (check
+     `traigent.testing.is_mock_mode_enabled()`, preferably in a dry-run-only wrapper or
+     monkeypatch rather than in production agent code; the stub proves wiring, not parsing of real replies), or use a config-aware mock-only demo scorer. LiteLLM's `mock_response=`
+     argument does not help on SDK 0.31.1: Traigent's interception overrides it
+     (Traigent/Traigent#2798). A scorer unwrapping `traigent.with_usage(...)` reads
+     `output["text"]` (see `traigent-boost-agent` `references/instrument-recipe.md`).
 
 ## Example: CI/CD Pipeline
 

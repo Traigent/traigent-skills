@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "8e6b8576dc659574",
+  "doc_hash": "8dda20750ececb1e",
   "reference_hashes": {
-    "references/gate-workflow.md": "8a55284fcb684394",
+    "references/gate-workflow.md": "0fa3657902022bef",
     "references/in-run-safety.md": "5a47cd85dda26146"
   },
   "entries": [
@@ -218,6 +218,17 @@
       "doc_before_hash": "de9eec5fbdf0d33d",
       "doc_after_hash": "8e6b8576dc659574",
       "note": "Name the SDK 0.31.0+ safety_constraint_insufficient_evidence stop reason beside safety_constraint in the safety_constraints paragraph, matching references/in-run-safety.md; treat both as a safety halt, neither as a pass. Offline-mode/mock wording unchanged.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-463-470-2026-10-29",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-29T00:00:00Z",
+      "doc_before_hash": "8e6b8576dc659574",
+      "doc_after_hash": "8dda20750ececb1e",
+      "note": "Zero-spend CI mock is a stub or enable_mock_mode_for_quickstart(); TRAIGENT_MOCK_LLM only as a deprecated legacy note (#470); mocked optimize() is still priced on SDK 0.31.0+, exemption named (#463).",
       "source_type": "agent"
     }
   ]

@@ -12,19 +12,19 @@ throwaway demo below.
 
 ## The path
 
-1. **Mock dry-run** — keyless, zero cost, zero egress. Prove the loop works.
+1. **Mock dry-run** — keyless, no provider spend, zero egress. Prove the loop works. The demo dataset is three rows, so the pre-run cost estimate stays far below the cap; on SDK 0.31.0+ a mock run over a large dataset is still priced and gated (see `run-cost-and-limits.md`).
 2. **Watch it live** — confirm the run starts, rows land, and a result is visible.
 3. **Only then**, with explicit approval and a budget cap, a real provider run.
 
 Never reorder these. Mock is not optional, and step 3 never happens without the user
 seeing step 2 and saying go.
 
-## Step 1 — Mock dry-run (no keys, no cost, no egress)
+## Step 1 — Mock dry-run (no keys, no provider spend, no egress)
 
 This mirrors the main quickstart example but stands alone: it writes a tiny throwaway
 dataset so the user needs nothing of their own. The `mock_demo_accuracy` scorer is
 **mock-only** — in mock mode every call returns the same canned string, so a real metric
-would score every trial `0.0`. Delete it for a real run.
+would score every trial `0.0` (and a scorer that parses the reply, such as `json.loads`, would fail every trial). Delete it for a real run.
 
 ```python
 import asyncio

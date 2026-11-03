@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.10"
+  version: "1.2.11"
 ---
 
 # Traigent Analyze Guidance
@@ -148,8 +148,10 @@ Do not embed local planning intelligence in this skill:
    from this skill).
 6. Before launching, walk the preflight checklist in `references/preflight.md`.
    For program-level principles, see `references/optimization-principles.md`.
-7. Mock dry-run first. The mock must be free/no-spend and should verify that the
-   agent, dataset loader, scorer, and returned steps are wired.
+7. Mock dry-run first. The mock must be no-spend and should verify that the
+   agent, dataset loader, scorer, and returned steps are wired. On SDK 0.31.0+ a mock run
+   is still priced against the cost cap, so dry-run a small slice of a large dataset (or
+   use the SDK's documented mock exemption); do not approve spend for a mock run.
 8. Stop after the mock with a short readout: what executed, what did not execute,
    estimated cost if available, and the exact real-run command or SDK step that
    will run next. **If the mock fails** (agent, loader, or scorer unwired), do

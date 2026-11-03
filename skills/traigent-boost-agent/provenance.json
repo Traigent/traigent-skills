@@ -1,12 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "09119ea4587231be",
+  "doc_hash": "474f7317e7e144f2",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
-    "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
+    "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/insights-and-iteration.md": "e864e5ed0254be8c",
-    "references/instrument-recipe.md": "01b02e85664a2357",
-    "references/run-cost-and-limits.md": "2171222031bb8a5e"
+    "references/instrument-recipe.md": "af70c3d35f984433",
+    "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
     {
@@ -344,6 +344,17 @@
       "doc_before_hash": "7794da5274b03731",
       "doc_after_hash": "09119ea4587231be",
       "note": "Align the traigent validate comment with dataset-curate sizes instead of 5+/10-20+ (#473).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-463-470-2026-10-29",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-29T00:00:00Z",
+      "doc_before_hash": "09119ea4587231be",
+      "doc_after_hash": "474f7317e7e144f2",
+      "note": "Mock dry run is still priced and gated on SDK 0.31.0+ (small slice or the documented mock exemption, never TRAIGENT_COST_APPROVED) (#463); a reply-parsing scorer fails every trial under mock instead of scoring 0.0, split from number-returning scorers (#464); raw openai/anthropic clients are blocked, not billed, for known provider hosts on SDK 0.31.0+ (#465).",
       "source_type": "agent"
     }
   ]

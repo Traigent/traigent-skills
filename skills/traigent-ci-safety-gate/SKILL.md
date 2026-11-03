@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.11"
+  version: "1.0.12"
 ---
 
 # CI Safety Gate
@@ -142,7 +142,7 @@ answer = my_function("What is Python?")
 
 SAFETY: run a holdout regression check against a pinned baseline config.
 
-- Pull request job: run offline/mock under `TRAIGENT_OFFLINE_MODE=true` to verify wiring, script shape, and fail-closed behavior. Offline mode stops only Traigent backend communication; real LLM calls still happen, so add `TRAIGENT_MOCK_LLM=true` (or a stub) for zero model spend.
+- Pull request job: run offline/mock under `TRAIGENT_OFFLINE_MODE=true` to verify wiring, script shape, and fail-closed behavior. Offline mode stops only Traigent backend communication; real LLM calls still happen, so mock the model for zero model spend: use a stub (the reference script's `--mode mock` returns canned values and needs no SDK), or call `traigent.testing.enable_mock_mode_for_quickstart()` in the holdout script. (The legacy `TRAIGENT_MOCK_LLM=true` switch is deprecated and the SDK warns on it; do not write it into new jobs.) On SDK 0.31.0+ a mocked `optimize()` call is still priced against the cost cap, so keep the mocked job to a few rows, or use the SDK's mock exemption: `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` with an explicit non-production `ENVIRONMENT` such as `test` (ignored when the environment is unset, `ci` or production); set both on the mock step alone, never job-wide or in a committed environment. Never set `TRAIGENT_COST_APPROVED=true` to pass a mocked job.
 - Scheduled job: run the real holdout evaluation under `TRAIGENT_RUN_COST_LIMIT` with account credentials and compare candidate vs incumbent. That limit bounds only calls placed through the SDK; the holdout script's own provider calls are bounded by the script (rows × configs × a per-call cap), and it must write the **measured** `total_cost` — a `0.0` placeholder or a missing field would make `--max-cost` pass vacuously, so the holdout script refuses a `0.0` total after real calls (cost is not wired) and the gate script refuses a missing, NaN or negative field.
 
 Any CI workflow that executes `optimize()` or `optimize_sync()` in local/offline mode, including
@@ -179,8 +179,8 @@ permissions:
   contents: read
 
 jobs:
-  # PR job: offline wiring check only — static env; zero model spend needs the
-  # mock (TRAIGENT_MOCK_LLM=true) or a stub, not offline mode alone. The paid
+  # PR job: offline wiring check only — static env; zero model spend needs a
+  # stub or traigent.testing.enable_mock_mode_for_quickstart(), not offline mode alone. The paid
   # nightly job is a separate job with its own static env; see
   # references/gate-workflow.md for the full two-job workflow.
   safety-gate:
@@ -200,8 +200,11 @@ jobs:
       # two grid trials, so scale the figure to your job before trusting it.
       # Offline mode alone does NOT give zero spend: it stops only Traigent
       # backend communication, and real LLM calls still happen. Zero model
-      # spend requires mocking the model (TRAIGENT_MOCK_LLM=true or a stub).
-      # In a mocked job leave the cap unset (the $2.00 default); in the paid
+      # spend requires mocking the model (a stub, or
+      # traigent.testing.enable_mock_mode_for_quickstart() in the holdout script).
+      # In a mocked job leave the cap unset (the $2.00 default); SDK 0.31.0+ still
+      # prices a mocked optimize() against it, so keep that job to a few rows or
+      # see the Pull request job bullet above for the mock exemption. In the paid
       # job set a cap above the estimate for its dataset and trial count.
     steps:
       - uses: actions/checkout@v4

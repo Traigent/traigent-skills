@@ -1,6 +1,6 @@
 ---
 name: traigent-setup-decorator
-description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming an optimization with experiment_name (an agent identity key, not a per-run label; there is no tags/metadata argument), using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s)."
+description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming the agent with agent_name (the identity key, SDK 0.27.0+; experiment_name is its deprecated alias) and labelling one run with run_title/run_description, with no tags/metadata argument, using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s)."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.20"
+  version: "1.0.21"
 ---
 
 # Traigent Decorator Setup
@@ -21,8 +21,9 @@ Use this skill when you need to go beyond the basic `@traigent.optimize()` decor
 - Injection modes (how optimized configs reach your function)
 - Execution behavior (`algorithm` and `offline` — where and how optimization runs)
 - Multi-objective optimization with weighted objectives
-- Naming an optimization with `experiment_name` — an **agent identity key**, not a per-run
-  label (there is no `tags`/`metadata` argument)
+- Naming the agent with `agent_name` — the **agent identity key** (`experiment_name` is its
+  deprecated alias) — and labelling one run with `run_title` / `run_description` (SDK 0.27.0+;
+  there is no `tags`/`metadata` argument)
 - Portal-synced or local execution with zero Traigent backend egress
 
 ## Optimization Economics — Read This Before Sizing a Run
@@ -144,60 +145,57 @@ def my_func(query: str) -> str:
     return prompt_model(query, model=cfg["model"])
 ```
 
-## Naming: `experiment_name` identifies the agent, not the run
+## Naming: `agent_name` identifies the agent, not the run
 
-**`experiment_name` is an identity key, not a per-run label.** The backend derives the
+**`agent_name` is the identity key, not a per-run label** (SDK 0.27.0+). The backend derives the
 agent from it, and your optimization history is grouped by (agent, evaluation dataset).
-Keep it **stable across every run of the same agent**.
+Keep it **stable across every run of the same agent**. `experiment_name` is the deprecated
+alias of `agent_name` — it names the agent, not an individual run, and is kept only for
+back-compatibility; if both are given, `agent_name` wins and the SDK warns.
 
-> **Do not encode a variant, date, hypothesis, or dataset version into
-> `experiment_name`.** Each distinct value creates a *separate agent* in the portal, so
-> a per-run name splits one agent's optimization history into a pile of one-run
-> fragments — losing exactly the cross-run comparison the portal exists to give you.
+> **Do not encode a variant, date, hypothesis, or dataset version into `agent_name`.** Each
+> distinct value creates a *separate agent* in the portal, so a per-run name splits one
+> agent's optimization history into a pile of one-run fragments — losing exactly the
+> cross-run comparison the portal exists to give you.
 
-```python
-@traigent.optimize(
-    experiment_name="txt2sql_agent",   # stable identity — same string every run
-    objectives=["accuracy"],
-    configuration_space={"model": ["gpt-4o-mini", "gpt-4o"]},
-)
-def my_func(query: str) -> str:
-    cfg = traigent.get_config()
-    return prompt_model(query, model=cfg["model"])
-```
+To say what one run is testing, use the two per-run labels, also on the decorator:
+`run_title=` (a short title, trimmed to 512 characters) and `run_description=` (the hypothesis
+or intent, trimmed to 4000 characters). They are free to differ on every run and are labels
+only: they never affect agent identity, cohorting, scoring, or recommendations. Runnable
+examples, including the two labels, are in `references/agent-identity.md`.
 
 | Intent | Do |
 |---|---|
-| Name the agent being optimized | `experiment_name="txt2sql_agent"` — stable forever |
-| Distinguish two genuinely different agents | Two different `experiment_name` values |
-| Record what one run was testing | Not a decorator argument — see below |
+| Name the agent being optimized | `agent_name="txt2sql_agent"` — stable forever |
+| Distinguish two genuinely different agents | Two different `agent_name` values |
+| Record what one run was testing | `run_title="check best router model"` and optionally `run_description=` |
 | Attach tags/metadata to a run | Not supported; there is no `tags`/`metadata` argument |
 
-**Anti-pattern** — every one of these silently forks the agent:
+**Anti-pattern** — every one of these silently forks the agent (the quoted strings belong in
+`run_title`, not in the name): a variant plus config in the name (`"txt2sql v3 (claude,
+ACL>=0.8)"`), a date in the name (`f"txt2sql-{datetime.now():%Y%m%d}"`), a hypothesis in the
+name (`"check best router model"`).
 
-```python
-experiment_name="txt2sql v3 (claude, ACL>=0.8)"   # variant + config in the name
-experiment_name=f"txt2sql-{datetime.now():%Y%m%d}"  # date in the name
-experiment_name="check best router model"          # hypothesis in the name
-```
-
-To tell runs of one agent apart, use the portal: runs are already distinguished by
-timestamp, configuration space, objectives, and results. Do not reach for the name.
-
-- `experiment_name` accepts spaces and punctuation (it is not a Python identifier), but
+- `agent_name` accepts spaces and punctuation (it is not a Python identifier), but
   prefer a short stable slug.
-- Precedence, highest to lowest: explicit `experiment_name` decorator argument;
-  `TRAIGENT_EXPERIMENT_NAME` environment variable checked at access time, not decoration
-  time; self-describing default built at decoration time as
-  `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"` with at most 4 knobs shown, a
+- Precedence, highest to lowest: explicit `agent_name` decorator argument; the deprecated
+  `experiment_name` decorator argument; `TRAIGENT_EXPERIMENT_NAME` environment variable
+  checked at access time, not decoration time; self-describing default built at decoration
+  time as `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"` with at most 4 knobs shown, a
   120-character cap, and deterministic ordering; bare `func.__name__` only when no
   objectives or knobs were registered.
 - Because the default is derived from the function name, objectives, and knobs, **adding
   or removing a knob or objective changes the default identity**. If you intend a series
-  of runs to share one history while you vary the search space, set `experiment_name`
+  of runs to share one history while you vary the search space, set `agent_name`
   explicitly.
-- The name is set on the **decorator**, not on the run call — there is no
-  `experiment_name` (or `tags`) parameter on `.optimize()` / `.optimize_sync()`.
+- The names are set on the **decorator**, not on the run call — there is no `agent_name`,
+  `run_title`, or `tags` parameter on `.optimize()` / `.optimize_sync()`.
+- **SDKs before 0.27.0** have neither `agent_name` nor `run_title`/`run_description`: the
+  identity key is spelled `experiment_name` there (the name later deprecated in favour of `agent_name`; same rules) and there is no per-run label
+  argument, so keep the hypothesis in your run notes and tell runs apart in the portal by
+  timestamp, configuration space, objectives, and results.
+<!-- contract: literal "run_title" in traigent.api.decorators @ SDK 0.27.0 -->
+<!-- contract: literal "agent_name" in traigent.api.decorators @ SDK 0.27.0 -->
 
 ## Evaluation Setup
 
@@ -374,7 +372,7 @@ def my_func(query: str) -> str:
 
 > **A literal in the call is not rewritten.** `model="gpt-4o-mini"` written directly as a keyword argument, a value from `os.environ.get(...)`, or a dict-built kwarg has no matching local name, so the SDK logs `Seamless provider found no injectable targets for <fn>; no local assignment or parameter matched configuration keys [...], so the function ran with original values` and every trial runs the original configuration — and the dry-run still passes (fail-closed behaviour is tracked in Traigent/Traigent#2298). Before any paid run, prove the value reaching the provider call changes across two configurations (mock mode, diff the request); if it does not, use context mode.
 
-> **Mock intercepts this example only because it calls `litellm.completion`.** Mock mode covers LiteLLM/LangChain calls only — a raw `openai` / `anthropic` client in the body makes **real, billable calls even during a "keyless" mock dry-run**. For a genuinely free dry-run of a seamless-mode function, keep `litellm.completion` in the body or run fully offline (`offline=True`, no keys).
+> **Mock intercepts this example only because it calls `litellm.completion`.** Mock mode covers LiteLLM/LangChain calls only — a raw `openai` / `anthropic` client in the body gets no canned reply, but on SDK 0.31.0+ its HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed. Clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 such calls reach the provider and bill. For a genuinely free dry-run of a seamless-mode function, keep `litellm.completion` in the body or run fully offline (`offline=True`, no keys).
 
 ## Execution Options
 
@@ -489,6 +487,7 @@ answer = answer_question("What is the capital of France?")
 - `references/evaluation-options.md` - Full EvaluationOptions field reference
 - `references/injection-modes.md` - Detailed injection mode comparison
 - `references/execution-modes.md` - Full ExecutionOptions field reference
+- `references/agent-identity.md` - `agent_name` identity key and `run_title` / `run_description` run labels (requires `traigent>=0.27.0`)
 - `references/winner-stability-reps.md` - `winner_stability_reps` opt-in post-selection winner rerun (requires `traigent>=0.27.0`)
 - `traigent-eval-build` - Deep evaluator implementation, ExampleResult, custom evaluators, and evaluator templates
 - `traigent-eval-choose-metric` - Metric interview and objective selection before decorator wiring

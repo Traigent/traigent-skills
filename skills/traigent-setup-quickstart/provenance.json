@@ -1,12 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f219a4a11b985f77",
+  "doc_hash": "49bf0abe9aab167e",
   "reference_hashes": {
-    "references/economics-characterization.v0.md": "86c1f7ebdb50f49b",
-    "references/environment-variables.md": "110592a668669266",
-    "references/first-value-fallback.md": "cad6b9dbe375a9c7",
+    "references/economics-characterization.v0.md": "e6df1645696c6290",
+    "references/environment-variables.md": "c50fe19585bb0888",
+    "references/first-value-fallback.md": "44ea4e6b23f8632d",
     "references/installation-extras.md": "21a597989700969a",
-    "references/run-cost-and-limits.md": "2171222031bb8a5e"
+    "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
     {
@@ -451,6 +451,17 @@
       "doc_before_hash": "47a6fad70d5a2127",
       "doc_after_hash": "f219a4a11b985f77",
       "note": "Replace the 10-20 example tip with the dataset-curate sizes (#473).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-463-470-2026-10-29",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-10-29T00:00:00Z",
+      "doc_before_hash": "f219a4a11b985f77",
+      "doc_after_hash": "49bf0abe9aab167e",
+      "note": "Mock runs are priced and gated on SDK 0.31.0+ (#463); reply-parsing scorers fail every trial under mock (#464); raw-client mock scope version-qualified for SDK 0.31.0 (#465).",
       "source_type": "agent"
     }
   ]

@@ -54,8 +54,13 @@ jobs:
       # two grid trials, so scale the figure to your job before trusting it.
       # Offline mode alone does NOT give zero spend: it stops only Traigent
       # backend communication, and real LLM calls still happen. Zero model
-      # spend requires mocking the model (TRAIGENT_MOCK_LLM=true or a stub).
-      # In a mocked job leave the cap unset (the $2.00 default); in the paid
+      # spend requires mocking the model (a stub, or
+      # traigent.testing.enable_mock_mode_for_quickstart() in the holdout script).
+      # In a mocked job leave the cap unset (the $2.00 default); SDK 0.31.0+ still
+      # prices a mocked optimize() against it, so keep that job to a few rows or
+      # use TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1 with an explicit non-production
+      # ENVIRONMENT such as test (ignored when unset, ci or production), set on the mock
+      # step alone, never job-wide. In the paid
       # job set a cap above the estimate for its dataset and trial count.
     steps:
       - uses: actions/checkout@v4

@@ -52,7 +52,7 @@ def binary_cascade(
 - IR shape: `Cascade(arms=[stage(base), stage(expert)], gates=[margin_below theta], post)`.
 - Calibration recipe: calibrate `threshold` as a margin CVAR before execution; pass it in `calibrated_values`.
 - Telemetry: `escalation_rate`, `stage_selected`, `gate_margin_pass_rate`.
-- Limitations: exactly two arms; the base arm must be vote-bearing when it feeds the margin gate.
+- Limitations: exactly two arms; the base arm must be vote-bearing when it feeds the margin gate. The margin is the top-vote share (`top_count / samples`) and the gate escalates when `margin < threshold`; see the Quick Start in `SKILL.md` for the discrete threshold bands.
 
 ## `n_cascade`
 

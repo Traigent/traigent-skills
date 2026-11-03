@@ -4,6 +4,9 @@ This reference preserves the complete runnable recipe as markdown-only skill
 content. Materialize the fenced block as `quickstart_text2sql.py` outside the
 scanned `skills/` payload when you want to run it.
 
+Requires `traigent>=0.27.0`: the recipe passes `agent_name=`, which shipped in SDK 0.27.0. On older SDKs
+drop that argument (or use its deprecated alias `experiment_name=`).
+
 ```python
 """Turnkey text2SQL optimization example — SELF-CONTAINED, no external data.
 
@@ -13,11 +16,12 @@ NL->SQL questions with gold SQL, instruments a minimal agent with Traigent
 cloud-tracked optimization. This is the ice-breaker example for the QuickStart:
 it runs end-to-end with only a Traigent key + an LLM key, in minutes.
 
-    python quickstart_text2sql.py --mock     # free; validates the whole pipeline
+    python quickstart_text2sql.py --mock     # no provider spend; validates the whole pipeline
     python quickstart_text2sql.py --real      # cost-capped, portal-tracked
 
 Env (from .env): TRAIGENT_API_KEY, and an LLM key (OPENROUTER_API_KEY is easiest).
-Requires: pip install -U "traigent>=0.24.0" "litellm>=1.106.0"  (Python 3.12).
+Requires: pip install -U "traigent>=0.27.0" "litellm>=1.106.0"  (Python 3.12).
+`agent_name=` below needs traigent>=0.27.0; on 0.24.0-0.26.x drop that argument.
 `litellm>=1.106.0` is the pricing map the cost objective reads, and **which map** matters here:
 LiteLLM's bundled map prices this recipe's `openrouter/openai/gpt-4o-mini` and
 `openrouter/deepseek/deepseek-chat`, while its remote map carries no `openrouter/` prices at all.
@@ -395,13 +399,13 @@ BASELINE = {k: v[0] for k, v in CONFIG_SPACE.items()}
 
 def main() -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--mock", action="store_true", help="free dry-run (no spend)")
+    ap.add_argument("--mock", action="store_true", help="mock dry-run (no provider spend)")
     ap.add_argument("--real", action="store_true", help="cost-capped, portal-tracked")
     ap.add_argument("--trials", type=int, default=12)
     ap.add_argument("--budget", type=float, default=1.0, help="USD cost cap for --real")
     args = ap.parse_args()
     if not (args.mock or args.real):
-        print("Pick one: --mock (free) or --real (cost-capped).")
+        print("Pick one: --mock (no provider spend) or --real (cost-capped).")
         return 2
 
     build_db()
@@ -442,7 +446,7 @@ def main() -> int:
         default_config=BASELINE,
         evaluation=EvaluationOptions(eval_dataset=str(DATA_PATH), custom_evaluator=exec_eval),
         execution=ExecutionOptions(offline=offline),
-        experiment_name="quickstart_text2sql_store",
+        agent_name="quickstart_text2sql_store",
     )(run_agent)
 
     print(f"mode={'MOCK' if args.mock else 'REAL'}  offline={offline}  algorithm={algorithm}  "

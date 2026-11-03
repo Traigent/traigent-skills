@@ -57,14 +57,16 @@ run.
 
 ## Run naming
 
-Set an explicit decorator `experiment_name` to pin a **stable agent identity**.
-Name precedence is: explicit decorator argument; `TRAIGENT_EXPERIMENT_NAME`
+Set an explicit decorator `agent_name` (SDK 0.27.0+; `experiment_name` is its deprecated
+alias, and `agent_name` wins if both are given) to pin a **stable agent identity**.
+Name precedence is: explicit `agent_name` decorator argument; the deprecated
+`experiment_name` argument; `TRAIGENT_EXPERIMENT_NAME`
 checked at access time; deterministic self-describing default built at decoration
 time as `"<func_name>[<obj1>,<obj2>,...][<knob1>,...]"` with at most 4 knobs
 shown and a 120-character cap; bare `func.__name__` only when no objectives or
 knobs were registered.
 
-`experiment_name` identifies the **agent**, not the run: the portal groups
+`agent_name` identifies the **agent**, not the run: the portal groups
 optimization history by (agent, evaluation dataset). Use a short stable slug
 naming the agent — e.g. `amir_txt2sql` — and reuse it for every run of that
 agent.
@@ -97,7 +99,8 @@ run.
 2. String-encode discrete knobs; `int()` at the call site.
 3. Custom pricing for gateway models; emit real accuracy/cost/latency metrics.
 4. `ExecutionOptions(offline=False)` (DEFAULT = online/cloud; `offline=True` local-only if chosen) + `algorithm` arg; cost cap set.
-5. Mock dry-run (free) -> confirm trials run + metrics non-zero -> real run.
+5. Mock dry-run (no provider spend; on SDK 0.31.0+ still priced against the cost cap, so use a small slice of a large dataset) -> confirm trials run (a reply-parsing scorer fails every trial under mock; stub the reply, do not catch the error) -> real run.
 6. After the real run, confirm the experiment shows its trials; if not, retry.
-7. Set an explicit `experiment_name` — a stable agent slug, reused across runs. No
-   permutation count, weights, or date in the name (that forks the agent).
+7. Set an explicit `agent_name` (SDK 0.27.0+; `experiment_name` is the deprecated alias) — a
+   stable agent slug, reused across runs. No permutation count, weights, or date in the name
+   (that forks the agent); put what the run tests in `run_title=` / `run_description=`.
