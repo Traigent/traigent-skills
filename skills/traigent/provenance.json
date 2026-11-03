@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e1577373b7b14f1d",
+  "doc_hash": "92c34a175335314e",
   "entries": [
     {
       "edit_id": "router-entry-75-2026-10-08",
@@ -132,6 +132,17 @@
       "doc_before_hash": "d0ae8e1dae3ed2ff",
       "doc_after_hash": "e1577373b7b14f1d",
       "note": "Add the canonical Traigent interaction policy, compiling snippet, and request-driven skill-usage clause required by the published skill contract.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "router-entry-75-mode-b-handoff-2026-11-03",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-03T00:00:00Z",
+      "doc_before_hash": "e1577373b7b14f1d",
+      "doc_after_hash": "92c34a175335314e",
+      "note": "Follow the portal decision brief's single recommended action; make result and variable-importance detail skills conditional on user request or a supported brief drilldown.",
       "source_type": "agent"
     }
   ]

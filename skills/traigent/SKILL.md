@@ -88,7 +88,9 @@ gap as it comes up:
 
 - a checkpoint marked blocked — that checkpoint is the next action, with its owner skill;
 - a portal-tracked run — `traigent-analyze-guidance` Mode B (the decision brief) first, then
-  `traigent-analyze-results` and `traigent-analyze-variable-importance` for detail;
+  follow the brief's single recommended action. Open `traigent-analyze-results` or
+  `traigent-analyze-variable-importance` only when the user asks for that detail or the brief calls
+  for a supported drilldown;
 - an offline or local result only — `traigent-analyze-guidance` Mode C;
 - a candidate the user wants to adopt — `traigent-ci-safety-gate`;
 - records under `traigent-runs/` from the guided first run — `traigent-boost-agent`, entering
