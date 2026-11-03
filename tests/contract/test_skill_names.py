@@ -156,9 +156,7 @@ def test_retired_names_absent() -> None:
     # merge-target skills' genesis note records the retired names they were
     # merged FROM as historical lineage (same rationale as the docs/
     # carve-out below), e.g. skills/traigent-analyze-guidance/provenance.json.
-    provenance_files = {
-        p.resolve() for p in (root / "skills").rglob("provenance.json")
-    }
+    provenance_files = {p.resolve() for p in (root / "skills").rglob("provenance.json")}
 
     search_paths: list[Path] = []
     search_paths.extend((root / "skills").rglob("*"))

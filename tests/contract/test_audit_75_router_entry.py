@@ -101,6 +101,17 @@ def test_service_and_portal_advice_remain_authoritative() -> None:
     )
 
 
+def test_portal_mode_b_follows_one_recommendation_and_conditional_drilldowns() -> None:
+    text = _text()
+    returning_run = text.split("- a portal-tracked run —", maxsplit=1)[1].split(
+        ";", maxsplit=1
+    )[0]
+
+    assert "follow the brief's single recommended action" in returning_run
+    assert "only when the user asks for that detail or the brief calls" in returning_run
+    assert "a supported drilldown" in returning_run
+
+
 def test_description_has_no_bare_traigent_trigger() -> None:
     front = yaml.safe_load(ROUTER.read_text(encoding="utf-8").split("---", 2)[1])
     description = front["description"]
