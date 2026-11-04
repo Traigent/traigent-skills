@@ -1180,7 +1180,7 @@ def write_svg(
         f'<text x="80" y="655" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="17">{svg_text(caption)}</text>',
         f'<line x1="{chart_x}" y1="{chart_y - 28}" x2="{chart_x + axis_w}" y2="{chart_y - 28}" stroke="#334155" stroke-width="1"/>',
         f'<text x="{chart_x}" y="{chart_y - 42}" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="15">0 {effect_unit}</text>',
-        f'<text x="{chart_x + axis_w - 90}" y="{chart_y - 42}" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="15">{max_extent * scale:.1f} {effect_unit}</text>',
+        f'<text x="{chart_x + axis_w - 90}" y="{chart_y - 42}" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="15">{objective_number(max_extent, objective_unit, 1)} {effect_unit}</text>',
     ]
 
     for index, row in enumerate(top_rows):
@@ -1200,7 +1200,7 @@ def write_svg(
                 f'<line x1="{ci_low_x:.2f}" y1="{bar_y + bar_h + 14}" x2="{ci_high_x:.2f}" y2="{bar_y + bar_h + 14}" stroke="#dbeafe" stroke-width="3" stroke-linecap="round"/>',
                 f'<line x1="{ci_low_x:.2f}" y1="{bar_y + bar_h + 7}" x2="{ci_low_x:.2f}" y2="{bar_y + bar_h + 21}" stroke="#dbeafe" stroke-width="3"/>',
                 f'<line x1="{ci_high_x:.2f}" y1="{bar_y + bar_h + 7}" x2="{ci_high_x:.2f}" y2="{bar_y + bar_h + 21}" stroke="#dbeafe" stroke-width="3"/>',
-                f'<text x="{chart_x + axis_w + 24}" y="{y + 34}" fill="#e5f0ff" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">{row.spread * scale:.1f} {effect_unit}</text>',
+                f'<text x="{chart_x + axis_w + 24}" y="{y + 34}" fill="#e5f0ff" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">{objective_number(row.spread, objective_unit, 1)} {effect_unit}</text>',
                 f'<text x="{chart_x + axis_w + 24}" y="{y + 61}" fill="{label_color}" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">{svg_text(row.label.upper())}</text>',
             ]
         )
@@ -1224,17 +1224,17 @@ def objective_display_units(objective_unit: str) -> tuple[float, str]:
 
 
 def format_objective_delta(value: float | None, objective_unit: str) -> str:
-    scale, unit = objective_display_units(objective_unit)
-    if value is None:
-        return "n/a"
-    return f"{value * scale:+.2f} {unit}"
-
-
-def format_pp(value: float | None) -> str:
+    _, unit = objective_display_units(objective_unit)
     if value is None:
         return "n/a"
     sign = "+" if value >= 0 else ""
-    return f"{sign}{value:.2f} pp"
+    return f"{sign}{objective_number(value, objective_unit)} {unit}"
+
+
+def objective_number(value: float, objective_unit: str, decimals: int = 2) -> str:
+    """Native scales can be arbitrarily small; decimal places would erase them."""
+    scale, _ = objective_display_units(objective_unit)
+    return f"{value * scale:.{decimals}f}" if objective_unit == "fraction" else f"{value:.6g}"
 
 
 def format_pct(value: float | None) -> str:
@@ -1271,7 +1271,7 @@ def build_video_card_payload(
             {
                 "knob": row.knob,
                 "best_value": json_knob_value(row.best_value),
-                "objective_spread": round_float(row.spread),
+                "objective_spread": row.spread,
                 "cost_delta_pct": round_float_or_none(row.cost_effect_pct),
                 "label": row.label,
                 "p_value": row.p_value,
@@ -1327,7 +1327,7 @@ def build_video_card_payload(
         "alpha": alpha,
         "objective": objective,
         "objective_unit": objective_unit,
-        "heldout_objective_delta": round_float_or_none(heldout_objective_delta),
+        "heldout_objective_delta": heldout_objective_delta,
         "heldout_cost_delta_pct": round_float_or_none(heldout_cost_delta_pct),
         "caption": caption,
     }
@@ -1497,24 +1497,25 @@ def _ranking_lines(
     rows: list[KnobImportance], confidence: float, objective: str, objective_unit: str = "native"
 ) -> list[str]:
     """One numbered line per ranked knob, or the no-ranking line."""
-    scale, effect_unit = objective_display_units(objective_unit)
+    _, effect_unit = objective_display_units(objective_unit)
     if not rows:
         return ["No multi-value tuned variables were available to rank."]
     lines: list[str] = []
     for index, row in enumerate(rows, 1):
+        mean = f"{row.best_value_mean_acc:.3f}" if objective_unit == "fraction" else f"{row.best_value_mean_acc:.6g}"
         cost_clause = (
             "cost unavailable"
             if row.cost_effect is None
             else f"cost effect vs worst value {row.cost_effect:+.6f}"
         )
         lines.append(
-            f"{index}. `{row.knob}`: {row.spread * scale:.2f} {effect_unit} spread, "
+            f"{index}. `{row.knob}`: {objective_number(row.spread, objective_unit)} {effect_unit} spread, "
             f"variance share {row.variance_share:.3f}, "
-            f"{int(confidence * 100)}% CI [{row.ci_low * scale:.2f}, {row.ci_high * scale:.2f}] {effect_unit}, "
+            f"{int(confidence * 100)}% CI [{objective_number(row.ci_low, objective_unit)}, {objective_number(row.ci_high, objective_unit)}] {effect_unit}, "
             f"raw p={row.p_value:.6g}, Holm-adjusted p={row.p_adjusted:.6g} "
             f"across {row.family_size} eligible knobs, `{row.label}` "
             f"(`{row.inference_status}`). Best observed value: `{display_value(row.best_value)}` "
-            f"({row.best_value_mean_acc:.3f} mean {objective}); {cost_clause}."
+            f"({mean} mean {objective}); {cost_clause}."
         )
     return lines
 

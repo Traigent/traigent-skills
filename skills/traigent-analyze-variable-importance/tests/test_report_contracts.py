@@ -78,7 +78,20 @@ def test_explicit_fraction_retains_accuracy_compatibility(tmp_path):
     assert result.returncode == 0, result.stderr
     card = json.loads((output / 'video_card.json').read_text())
     assert card['objective_unit'] == 'fraction'
-    assert card['top_variables'][0]['objective_spread'] == 0.1
+    assert card['top_variables'][0]['objective_spread'] == pytest.approx(0.1)
     assert card['top_variables'][0]['accuracy_pp'] == 10.0
     assert '10.0 pp' in (output / 'significant_variables.svg').read_text()
     assert '20.0%' in (output / 'significant_variables.svg').read_text()
+
+
+def test_small_native_effects_preserve_nonzero_measurements(tmp_path):
+    heldout = tmp_path / 'tiny-heldout.json'
+    heldout.write_text(json.dumps({'delta': {'reward': 1e-7}}))
+    result, output = run_card(tmp_path, objective='reward', values=(0, 1e-7),
+                              extra=('--heldout', str(heldout)))
+    assert result.returncode == 0, result.stderr
+    card = json.loads((output / 'video_card.json').read_text())
+    assert card['top_variables'][0]['objective_spread'] == pytest.approx(1e-7)
+    assert card['heldout_objective_delta'] == pytest.approx(1e-7)
+    for name in ['significant_variables.svg', 'insights.md']:
+        assert '1e-07 units' in (output / name).read_text()
