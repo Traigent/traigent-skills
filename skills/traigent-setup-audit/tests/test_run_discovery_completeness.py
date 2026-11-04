@@ -5,7 +5,7 @@ import tier2_checks as tier2
 
 
 class Transport:
-    api_key = ""
+    api_key = "example_key"  # Offline fixture only; no request leaves this process.
 
     def __init__(self, experiments, responses=None, status=200):
         self.experiments = experiments
