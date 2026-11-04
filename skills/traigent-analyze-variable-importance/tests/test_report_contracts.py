@@ -49,3 +49,36 @@ def test_unsupported_card_size_preserves_previous_outputs(tmp_path, top_k):
     assert '--top-k' in result.stderr and '5' in result.stderr
     assert saved.read_text() == 'previous report'
     assert list(output.iterdir()) == [saved]
+
+
+@pytest.mark.parametrize('objective,values', [('throughput', (100, 200)), ('reward', (0.1, 0.2)), ('accuracy', (0.1, 0.2))])
+def test_native_metrics_are_not_percentage_claims(tmp_path, objective, values):
+    heldout = tmp_path / 'heldout.json'
+    heldout.write_text(json.dumps({'baseline': {objective: values[0], 'cost': 4},
+        'optimized': {objective: values[1], 'cost': 2}}))
+    result, output = run_card(tmp_path, objective=objective, values=values, extra=('--heldout', str(heldout)))
+    assert result.returncode == 0, result.stderr
+    card = json.loads((output / 'video_card.json').read_text())
+    assert card['objective_unit'] == 'native'
+    assert card['top_variables'][0]['objective_spread'] == pytest.approx(values[1] - values[0])
+    assert card['heldout_objective_delta'] == pytest.approx(values[1] - values[0])
+    assert 'accuracy_pp' not in card['top_variables'][0]
+    assert 'heldout_accuracy_pp' not in card
+    assert card['heldout_cost_delta_pct'] == -50.0
+    for name in ['significant_variables.svg', 'insights.md']:
+        text = (output / name).read_text()
+        assert ' pp' not in text
+        assert 'units' in text
+    svg = (output / 'significant_variables.svg').read_text()
+    assert '20000' not in svg
+
+
+def test_explicit_fraction_retains_accuracy_compatibility(tmp_path):
+    result, output = run_card(tmp_path, extra=('--objective-unit', 'fraction'))
+    assert result.returncode == 0, result.stderr
+    card = json.loads((output / 'video_card.json').read_text())
+    assert card['objective_unit'] == 'fraction'
+    assert card['top_variables'][0]['objective_spread'] == 0.1
+    assert card['top_variables'][0]['accuracy_pp'] == 10.0
+    assert '10.0 pp' in (output / 'significant_variables.svg').read_text()
+    assert '20.0%' in (output / 'significant_variables.svg').read_text()
