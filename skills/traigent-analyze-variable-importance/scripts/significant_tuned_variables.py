@@ -1146,9 +1146,9 @@ def write_svg(
         [row.ci_high for row in top_rows] + [row.spread for row in top_rows] + [0.01]
     )
     chart_x = 330
-    chart_y = 170
+    chart_y = 210
     chart_w = 760
-    row_h = 92
+    row_h = 82
     bar_h = 28
     axis_w = chart_w
     # An empty ranking has no confidence to describe, whatever the run size.
@@ -1523,7 +1523,7 @@ def parse_args() -> argparse.Namespace:
         "--objective", default="accuracy", help="Objective field to maximize"
     )
     parser.add_argument(
-        "--top-k", type=int, default=4, help="Number of variables on the SVG/card"
+        "--top-k", type=int, default=4, help="Number of variables on the 1280x720 SVG/card (1–5)"
     )
     parser.add_argument(
         "--confidence",
@@ -1574,8 +1574,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--confidence must be between 0 and 1")
     if not 0.0 < args.alpha <= MAX_ALPHA:
         raise ValueError(f"--alpha must satisfy 0 < alpha <= {MAX_ALPHA}")
-    if args.top_k < 1:
-        raise ValueError("--top-k must be at least 1")
+    if not 1 <= args.top_k <= 5:
+        raise ValueError("--top-k must be between 1 and 5 for the 1280x720 card; the full ranking remains in importance.json and insights.md")
     if args.bootstrap_draws < 1:
         raise ValueError("--bootstrap-draws must be at least 1")
 

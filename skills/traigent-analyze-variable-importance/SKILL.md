@@ -42,6 +42,7 @@ corrupt the ranking.
 The script accepts:
 
 - `--trials`: required JSONL, one trial per line. Each row must contain `config`; its numeric objective (such as `accuracy`) is what gets ranked, and rows without one are skipped and counted (see below).
+- `--top-k`: number of variables on the fixed 1280x720 card, from 1 to 5 (default 4). Larger requests fail before replacing artifacts; `importance.json` and `insights.md` retain the full ranking.
 - `--config-space`: optional JSON object `{knob: [values...]}`. If absent, the script infers knobs and values observed in trials.
 - `--heldout`: optional heldout report JSON with `baseline`, `optimized`, and `delta`. When present, the video card uses the heldout optimized-vs-baseline accuracy and cost deltas for context.
 - `--objective`: objective field to maximize. This must exactly match the metric key present in each
