@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6862fe75c3efe7bc",
+  "doc_hash": "4d42eb443c7c150d",
   "entries": [
     {
       "edit_id": "genesis",
@@ -205,6 +205,17 @@
       "doc_before_hash": "6ce1cf8f90afdaf5",
       "doc_after_hash": "6862fe75c3efe7bc",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issues-483-484-2026-11-04",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-04T16:34:10.879712Z",
+      "doc_before_hash": "6862fe75c3efe7bc",
+      "doc_after_hash": "4d42eb443c7c150d",
+      "note": "Document fixed-card top-k capacity and explicit native/fraction objective units, neutral metric payload fields, and accuracy compatibility migration for issues #483 and #484.",
       "source_type": "agent"
     }
   ]
