@@ -116,6 +116,8 @@ def run_cli(
         str(trials),
         "--objective",
         "accuracy",
+        "--objective-unit",
+        "fraction",
         "--top-k",
         "4",
         "--confidence",
@@ -502,6 +504,7 @@ def test_video_card_uses_per_knob_effect_not_run_level_delta(tmp_path: Path) -> 
         top_k=4,
         n_trials=len(trials),
         objective="accuracy",
+        objective_unit="fraction",
         heldout=heldout,
     )
 
@@ -1273,7 +1276,7 @@ def test_a_skipped_row_with_text_that_is_not_unicode_does_not_stop_the_run(
     ("case", "json_path"),
     [
         ("cost", 'video_card.json["top_variables"][0]["cost_delta_pct"]'),
-        ("heldout", 'video_card.json["heldout_accuracy_pp"]'),
+        ("heldout", 'video_card.json["heldout_objective_delta"]'),
     ],
 )
 def test_overflowing_derived_value_publishes_nothing_and_names_the_field(

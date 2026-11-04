@@ -374,7 +374,7 @@ def _observe_insights(rows: list, options: dict) -> dict:
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "insights.md"
         result = _call(stv.write_insights_md, path, rows, 40, "accuracy", confidence,
-                       options.pop("heldout", None), "SDK note line.", **options)
+                       options.pop("heldout", None), "SDK note line.", objective_unit="fraction", **options)
         result["written"] = path.read_text(encoding="utf-8") if path.exists() else None
     return result
 

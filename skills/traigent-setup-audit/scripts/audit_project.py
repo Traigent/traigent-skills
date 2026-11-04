@@ -1432,6 +1432,9 @@ class DatasetRow:
 @dataclass
 class RawDataset:
     rows: list[dict] = field(default_factory=list)
+    non_object_rows: int = 0
+    # One-based physical JSONL lines or JSON array positions, capped at 20.
+    non_object_positions: list[int] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     skipped: str | None = None
     # Set when the file parsed but holds no object rows: a config file in
@@ -1458,6 +1461,8 @@ class DatasetReport:
     holdout_overlap: list[int]
     label_counts: dict[str, int]
     findings: list[str]
+    non_object_rows: int = 0
+    non_object_positions: list[int] = field(default_factory=list)
     # Row indexes by normalized input: kept for the cross-file overlap check,
     # never serialised into the report.
     input_index: dict[str, list[int]] = field(default_factory=dict, repr=False)
@@ -1544,6 +1549,23 @@ def load_rows(path: Path) -> RawDataset:
     return result
 
 
+def _reject_non_object(result: RawDataset, position: int) -> None:
+    result.non_object_rows += 1
+    if len(result.non_object_positions) < 20:
+        result.non_object_positions.append(position)
+
+
+def _note_non_object_rows(result: RawDataset, position_kind: str) -> None:
+    if result.non_object_rows:
+        shown = ", ".join(map(str, result.non_object_positions))
+        limit = "first 20 " if result.non_object_rows > 20 else ""
+        result.notes.append(
+            f"{result.non_object_rows} non-object row(s) were rejected "
+            f"({limit}{position_kind} positions, one-based: {shown}); "
+            "only JSON objects were analysed"
+        )
+
+
 def _read_jsonl(
     path: Path, result: RawDataset, parse_constant: Callable[[str], float]
 ) -> bool:
@@ -1551,6 +1573,7 @@ def _read_jsonl(
     file is then recorded as damaged and ``result`` is final as it stands."""
     with path.open("r", encoding="utf-8-sig", errors="replace") as handle:
         total_lines, bad_lines, truncated = _scan_jsonl(handle, result, parse_constant)
+    _note_non_object_rows(result, "line")
     if not result.rows and bad_lines:
         # Every line failed: a damaged file, not an absent one.
         result.skipped = (
@@ -1576,7 +1599,7 @@ def _scan_jsonl(
     bad_lines = 0
     total_lines = 0
     truncated = False
-    for line in handle:
+    for line_number, line in enumerate(handle, 1):
         line = line.strip()
         if not line:
             continue
@@ -1591,6 +1614,8 @@ def _scan_jsonl(
             continue
         if isinstance(item, dict):
             result.rows.append(item)
+        else:
+            _reject_non_object(result, line_number)
     return total_lines, bad_lines, truncated
 
 
@@ -1617,7 +1642,12 @@ def _read_json(
             f"read the first {MAX_ROWS} of {len(payload)} row(s); the "
             "rest were not analysed"
         )
-    result.rows = [item for item in payload[:MAX_ROWS] if isinstance(item, dict)]
+    for position, item in enumerate(payload[:MAX_ROWS], 1):
+        if isinstance(item, dict):
+            result.rows.append(item)
+        else:
+            _reject_non_object(result, position)
+    _note_non_object_rows(result, "array")
 
 
 def _read_csv(path: Path, result: RawDataset) -> None:
@@ -2138,6 +2168,8 @@ def analyse_dataset(
     return DatasetReport(
         file=relative(path, root),
         rows=count,
+        non_object_rows=raw.non_object_rows,
+        non_object_positions=list(raw.non_object_positions),
         input_key_counts=dict(sorted(input_key_counts.items())),
         expected_key_counts=dict(sorted(expected_key_counts.items())),
         missing_expected=missing_expected[:20],
@@ -4827,6 +4859,8 @@ def _dataset_record(report: DatasetReport) -> dict:
     return {
         "file": report.file,
         "rows": report.rows,
+        "non_object_rows": report.non_object_rows,
+        "non_object_positions": report.non_object_positions,
         "input_keys": report.input_key_counts,
         "gold_keys": report.expected_key_counts,
         "missing_gold_rows": report.missing_expected,
