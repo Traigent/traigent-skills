@@ -203,14 +203,17 @@ When crews are enabled for your workspace, `@traigent.optimize(crew="<key>", rol
 declares which crew an agent belongs to and the role it plays.
 
 - Give both or neither. Keys are stable identifiers you choose once, not per-run labels:
-  `crew` is 1-128 characters of `A-Z a-z 0-9 _ -`; `role` is 1-128 characters. Do not combine
-  with `agents=`.
-- The first declaration creates the crew and role in the portal as a proposal. A portal editor
-  accepts it (the binding then reads `bound`) or dismisses it (it stays dismissed). Code never
-  overrides the portal: a conflicting declaration keeps the portal membership and warns once.
-- Read the result with `func.crew_binding.status`: `bound`, `pending_portal`, `conflict`,
-  `disabled` or `unknown`. `unknown` means the declaration was not sent (mock/offline,
-  content-less and optimization-only modes) or the backend is older.
+  `crew` is 1–128 characters using A–Z, a–z, 0–9, `_` or `-`; `role` is any string of
+  1–128 characters. Do not combine with `agents=`.
+- A declaration may produce `pending_portal` (a proposal a portal editor can accept or
+  dismiss); `bound` means the latest portal revision already binds this agent to that role. A
+  dismissed proposal stays dismissed when the code declares again. Code never overrides the
+  portal: a conflicting declaration keeps the portal membership and warns once.
+- After an optimization with a declaration, inspect `func.crew_binding.status` (it is `None`
+  before that): `bound`, `pending_portal`, `conflict`, `disabled` or `unknown`. `unknown` also
+  covers a missing, malformed or unrecognized response, or the backend returning `unknown`.
+  Paths that do not send the declaration: mock/offline, content-less, optimization-only and
+  the legacy session path.
 - Privacy: crew and role keys are customer content. On the standard path they travel only in
   the session-create request.
 
