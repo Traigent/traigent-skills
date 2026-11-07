@@ -54,3 +54,26 @@ def test_explicit_sibling_cap_reports_incomplete_dataset(
     assert report["next_step"]["branch"] == "f"
     assert "2 of 3" in report["next_step"]["line"]
     assert "not analysed" in report["next_step"]["line"]
+
+
+def test_a_probe_launch_failure_makes_no_ran_claim(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    project = tmp_path / "project"
+    shutil.copytree(FIXTURES / "healthy", project)
+
+    def refuse(*_args, **_kwargs):
+        raise OSError("no such interpreter")
+
+    monkeypatch.setattr(audit, "_run_probe_process", refuse)
+    monkeypatch.setattr(
+        audit,
+        "detect_isolation",
+        lambda: ("isolated (bwrap)", "bwrap", [*[e[1] for e in audit.ISOLATION_BACKENDS if e[0] == "bwrap"][-1]], ["--"]),
+    )
+    args = audit.parse_args(["--root", str(project)])
+    report = audit.build_report(project, args, "active")
+    assert report["scorer_probe"]["stage"] == "launch"
+    first = report["not_established"][0]
+    assert "could not start (stage: launch)" in first
+    assert "ran with" not in first and "No scorer was probed" not in first

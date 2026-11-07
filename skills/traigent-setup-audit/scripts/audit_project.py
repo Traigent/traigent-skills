@@ -5025,6 +5025,7 @@ def not_established(
     isolation_args: list[str] | None = None,
     isolation_cmd: list[str] | None = None,
     probe_ran: bool = True,
+    probe_stage: str | None = None,
 ) -> list[str]:
     items = [
         ("Repeat-scoring measures repeatability, not correctness. A scorer that "
@@ -5044,6 +5045,13 @@ def not_established(
             0,
             "No network namespace was available on this machine, so the containment "
             "is the python-level guard: " + GUARD_NOTE[GUARD_PYTHON] + ".",
+        )
+    elif probe_ran and probe_stage == "launch":
+        items.insert(
+            0,
+            "The probe subprocess could not start (stage: launch), so no scorer ran; "
+            "the backend selected was " + guard_level + ": "
+            + guard_note(guard_level, isolation_args, isolation_cmd) + ".",
         )
     elif probe_ran:
         items.insert(
@@ -5238,7 +5246,11 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         },
         "open_questions": open_questions(areas, reports),
         "not_established": not_established(
-            guard_level, isolation_args, isolation, probe_ran=probe is not None
+            guard_level,
+            isolation_args,
+            isolation,
+            probe_ran=probe is not None,
+            probe_stage=(probe or {}).get("stage"),
         ),
     }
 
