@@ -197,6 +197,23 @@ name (`"check best router model"`).
 <!-- contract: literal "run_title" in traigent.api.decorators @ SDK 0.27.0 -->
 <!-- contract: literal "agent_name" in traigent.api.decorators @ SDK 0.27.0 -->
 
+## Crews: `crew` and `role` identify a group, not a run
+
+When crews are enabled for your workspace, `@traigent.optimize(crew="<key>", role="<key>")`
+declares which crew an agent belongs to and the role it plays.
+
+- Give both or neither. Keys are stable identifiers you choose once, not per-run labels:
+  `crew` is 1-128 characters of `A-Z a-z 0-9 _ -`; `role` is 1-128 characters. Do not combine
+  with `agents=`.
+- The first declaration creates the crew and role in the portal as a proposal. A portal editor
+  accepts it (the binding then reads `bound`) or dismisses it (it stays dismissed). Code never
+  overrides the portal: a conflicting declaration keeps the portal membership and warns once.
+- Read the result with `func.crew_binding.status`: `bound`, `pending_portal`, `conflict`,
+  `disabled` or `unknown`. `unknown` means the declaration was not sent (mock/offline,
+  content-less and optimization-only modes) or the backend is older.
+- Privacy: crew and role keys are customer content. On the standard path they travel only in
+  the session-create request.
+
 ## Evaluation Setup
 
 Configure how Traigent evaluates each trial using `EvaluationOptions`.

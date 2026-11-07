@@ -137,6 +137,18 @@ backend-routed strategies in this mode.
 Honest boundary: zero-egress means no Traigent-backend egress. Calls to the
 user's own LLM provider still happen if their agent makes them.
 
+## Crews
+
+When crews are enabled for your workspace, add `crew: "<key>"` and `role: "<key>"` to the
+optimization spec to declare the group an agent belongs to and its role. They identify a
+group, not a run: pick stable keys once (both or neither; `A-Z a-z 0-9 _ -`, up to 128
+characters each). The first declaration creates a proposal in the portal; a portal editor
+accepts it (`bound`) or dismisses it. Code never overrides the portal; a conflict keeps the
+portal membership and warns once. Read the outcome from the wrapped function's `crewBinding.status`
+(`bound`, `pending_portal`, `conflict`, `disabled`, `unknown`); `unknown` means the declaration
+was not sent (offline, content-less or optimization-only modes). Keys are customer content,
+sent only in the session-create request.
+
 ## Common Fixes
 
 | Problem | Fix |
