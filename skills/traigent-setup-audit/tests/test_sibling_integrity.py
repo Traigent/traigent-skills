@@ -77,3 +77,18 @@ def test_a_probe_launch_failure_makes_no_ran_claim(
     first = report["not_established"][0]
     assert "could not start (stage: launch)" in first
     assert "ran with" not in first and "No scorer was probed" not in first
+    # Every consumer of the probe result: the full card and the JSON.
+    card = audit.render_card(report)
+    blob = json.dumps(report)
+    assert "could not start (stage: launch)" in card
+    for text in (card, blob):
+        lowered = text.lower()
+        assert "ran with" not in lowered
+        assert "in a separate process" not in lowered
+        assert "probed `" not in lowered
+        assert "was probed with" not in lowered
+    area = report["areas"]["scorer"]
+    assert area["status"] == "attention"
+    assert any("could not start (stage: launch)" in line for line in area["evidence"])
+    assert "it ran without" not in blob
+    assert report["next_step"]["branch"] != "g"

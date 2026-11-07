@@ -4473,6 +4473,18 @@ def scorer_area(
         }
 
     probe_status, probe_evidence = summarize_probe(probe)
+    if probe.get("stage") == "launch":
+        # The subprocess never started: no scorer ran, so nothing was "probed".
+        evidence.append(
+            f"the probe for `{probed.function}` at {probed.file}:{probed.line} "
+            "could not start (stage: launch); no scorer ran"
+        )
+        evidence.extend(probe_evidence)
+        return {
+            "status": "attention",
+            "evidence": evidence,
+            "meaning": UNMEASURED_MEANING,
+        }
     evidence.append(
         f"probed `{probed.function}` at {probed.file}:{probed.line} in a separate "
         f"process ({probe.get('payload_source')} probe values)"
@@ -4909,7 +4921,11 @@ def _placeholder_probe_step(
 ) -> dict | None:
     """A probe on placeholder text measured repeatability only, so the Scorer
     area is not `ok` and `g` would claim more than was tested."""
-    if probe is None or probe.get("payload_source") != "synthetic":
+    if (
+        probe is None
+        or not probe.get("ran")
+        or probe.get("payload_source") != "synthetic"
+    ):
         return None
     return {
         "branch": "e",
@@ -5153,7 +5169,11 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         probe = run_scorer_probe(
             interpreter, probed, root, payload, args.repeats, isolation
         )
-        probe["resource_limits"] = resource_limits_state()
+        probe["resource_limits"] = (
+            "not applicable: the probe did not start"
+            if probe.get("stage") == "launch"
+            else resource_limits_state()
+        )
 
     model_ids = _declared_model_ids(inventory)
     partial_reasons = scan_partial_reasons(
