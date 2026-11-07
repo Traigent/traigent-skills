@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7e2ff0b7c9ebe531",
+  "doc_hash": "57ccdea12e077991",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290"
   },
@@ -330,6 +330,17 @@
       "doc_before_hash": "cb71f7a4ab75dcb2",
       "doc_after_hash": "7e2ff0b7c9ebe531",
       "note": "Add --label-field (rows per class inside structured gold, per slice, with 20/30-row minority minimums), a class-balance-not-checked note, and a cross-split near-duplicate check for tagged and sibling-file holdouts (#473, #475).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "status-port-2026-11-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-07T00:00:00Z",
+      "doc_before_hash": "7e2ff0b7c9ebe531",
+      "doc_after_hash": "57ccdea12e077991",
+      "note": "Prefer bwrap (read-only root) over unshare and say when the filesystem is not isolated; run the probe in its own process group under rlimits; report past-run evidence by presence only, undeclared candidate tunables by name and location, a scan_state with exit 1 for a partial scan, and skip symlinks that leave the root; neutral message when the probe returns no readable result.",
       "source_type": "agent"
     }
   ]

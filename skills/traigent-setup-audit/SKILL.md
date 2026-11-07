@@ -37,7 +37,7 @@ service. This tier calls nothing.
 ## What it does, and what it costs
 
 Everything here is static inspection of the project's own files, plus one
-sandboxed call of the user's own deterministic scorer. Nothing is charged.
+contained call of the user's own deterministic scorer (how contained depends on the level below). Nothing is charged.
 
 **Say what is enforced, with the level next to it.** The audit process itself
 opens no socket. Your scorer runs in a separate process, and how strongly that
@@ -109,9 +109,31 @@ python3 <skill-dir>/scripts/audit_project.py \
   value, per slice (see the row-minimums paragraph below).
 - `--repeats` is how many times the same pair is re-scored (default 5).
 
-Exit code is `0` whenever the audit ran, whatever it found, and `2` on a usage
-error or when the report cannot be written as strict JSON (then nothing is
-written). A finding is not a failure.
+Exit code is `0` when the scan was **complete**, whatever it found (a gap is
+not a failure), `1` when it was **partial**, and `2` on a usage error or when
+the report cannot be written as strict JSON (then nothing is written). A scan is
+partial when a cap was hit (more than 4000 Python files, more than 400 data
+files, a dataset cut at 20000 rows) or a file was not read: a Python file that
+could not be parsed, a dataset file that was unreadable or over the size cap,
+or a Python or data file that is a symlink pointing outside `--root` (such a file
+is skipped without being opened and named in the report; a link that stays
+inside `--root` is read normally). The report says which in `scan_state`
+(`complete` or `partial`) and `scan_partial_reasons` (a closed list: `python_file_cap`,
+`python_unparsed`, `python_symlink_skipped`, `data_file_cap`, `data_file_not_read`,
+`data_rows_truncated`), and the card prints a `Scan state: PARTIAL` line. Treat
+exit `1` as "the verdicts rest on less than the project holds", not as a crash:
+the card and JSON are still written.
+
+The report also carries two things beside the four areas. `evaluation` says
+`not_evaluated` unless the project holds `.traigent/<run>/metadata.json`; when it does it
+says `unverified_past_run_evidence` and the artifact count. Only the files'
+presence is checked: nothing in them is read, a symlinked `.traigent`, run
+directory or file is not followed, and the count is never a score. Each entry
+point also carries `candidate_tunables`: literals such as `temperature=0.2`,
+`model="..."`, `max_tokens=`, `top_p=` or `top_k=` passed to a call inside the
+agent function body that are not in `configuration_space`. They are named with
+`file:line` only, never with their value, and the card labels them "candidate,
+not declared": they are not knobs until someone declares them.
 
 ## What it checks
 
@@ -588,7 +610,12 @@ that its zero-network property stays provable rather than inherited.
   rather than assuming it.
 - User code runs only in the probe subprocess, only for a scorer classified
   deterministic, under a 30-second timeout — inside a network namespace where one
-  is available. The project's interpreter is started for nothing else: the SDK
+  is available. The probe runs in its own process group: on timeout the whole
+  group is killed, so a helper the scorer forked does not outlive the audit, and
+  where `resource` exists the probe is capped at 2 GiB of address space and
+  CPU seconds just above the timeout. Only `isolated (bwrap)` also makes the
+  filesystem read-only; at `isolated (unshare)` and `python-level` the scorer
+  can read and write whatever your user can, and the card says so. The project's interpreter is started for nothing else: the SDK
   version is read from installed package metadata. The one git call
   (`git check-ignore` on `.env`) runs with the project's `core.fsmonitor` and
   hooks switched off and the probe's allowlisted environment, so no command the
