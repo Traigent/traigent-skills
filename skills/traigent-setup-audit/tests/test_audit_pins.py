@@ -1338,7 +1338,13 @@ def _observe_report(spec: dict) -> dict:
                                            if spec.get("dataset") else None),
                                   scorer=scorer, repeats=3, json_out=None,
                                   label_field=None)
+        # The probe script's directory is bound into a bwrap sandbox; point it at
+        # a stand-in under the scrubbed temp dir so the record holds no checkout path.
+        probe_script = tmp / "skill" / "scorer_probe.py"
+        probe_script.parent.mkdir()
+        probe_script.write_text("", encoding="utf-8")
         patches = [
+            mock.patch.object(audit, "PROBE_SCRIPT", probe_script),
             mock.patch.object(audit, "detect_isolation", lambda: isolation),
             mock.patch.object(audit, "run_scorer_probe", fake_probe),
             mock.patch.object(audit, "read_sdk_version", fake_sdk),

@@ -66,8 +66,12 @@ def _run(root: Path, out_dir: Path, *extra: str):
         timeout=300,
         check=False,
     )
-    assert completed.returncode == 0, completed.stderr
-    return strict_json(report_path.read_text(encoding="utf-8")), completed.stdout
+    report = strict_json(report_path.read_text(encoding="utf-8"))
+    # Exit contract: 0 for a complete scan (gaps found included), 1 for a partial one.
+    assert completed.returncode == (1 if report["scan_state"] == "partial" else 0), (
+        completed.stderr
+    )
+    return report, completed.stdout
 
 
 def _variant(tmp_path: Path, scorer_src: str) -> Path:
@@ -935,8 +939,10 @@ def test_a_symlink_loop_selection_is_refused_not_a_traceback(tmp_path: Path) -> 
         check=False,
     )
     assert "Traceback" not in completed.stderr, completed.stderr
-    assert completed.returncode == 0, completed.stderr
     report = strict_json(report_path.read_text(encoding="utf-8"))
+    # The loop file cannot be parsed, so the scan is partial: exit 1.
+    assert report["scan_state"] == "partial"
+    assert completed.returncode == 1, completed.stderr
     refusal = report["scorer_selection_refused"]
     assert refusal.startswith("`score` at loop.py was selected"), refusal
     assert "the module could not be parsed" in refusal
@@ -1082,12 +1088,17 @@ def test_a_selection_symlinked_out_of_the_root_is_listed_once(
         timeout=300,
         check=False,
     )
-    assert completed.returncode == 0, completed.stderr
     report = strict_json(report_path.read_text(encoding="utf-8"))
+    # The symlinked file is skipped, not read, so the scan is partial: exit 1.
+    assert report["scan_state"] == "partial"
+    assert completed.returncode == 1, completed.stderr
     assert len(report["scorers"]) == 1, report["scorers"]
     assert "selected" in report["scorers"][0]
     assert report["scorer_selection_refused"] is None
-    assert report["next_step"]["branch"] == "g"
+    # Was `g` (all clear). The discovery scan now skips the symlinked file
+    # unread, which is an inventory gap (`i`) until the real file is inside
+    # --root; the explicit --scorer selection itself is still honoured.
+    assert report["next_step"]["branch"] == "i"
 
 
 @pytest.mark.parametrize(

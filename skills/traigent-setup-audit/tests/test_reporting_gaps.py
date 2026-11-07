@@ -54,8 +54,12 @@ def _run(root: Path, out_dir: Path, *extra: str):
         timeout=300,
         check=False,
     )
-    assert completed.returncode == 0, completed.stderr
-    return json.loads(report_path.read_text(encoding="utf-8")), completed.stdout
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    # Exit contract: 0 for a complete scan (gaps found included), 1 for a partial one.
+    assert completed.returncode == (1 if report["scan_state"] == "partial" else 0), (
+        completed.stderr
+    )
+    return report, completed.stdout
 
 
 def _project(tmp_path: Path, name: str, **files: str) -> Path:

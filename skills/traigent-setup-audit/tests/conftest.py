@@ -195,7 +195,11 @@ def _tier1_report(project: Path, out_dir: Path) -> Path:
         timeout=300,
         check=False,
     )
-    assert completed.returncode == 0, completed.stderr
+    # Exit contract: 0 for a complete scan (gaps found included), 1 for a partial
+    # one (a cap hit, or a file unparsed or skipped).
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    expected = 1 if report["scan_state"] == "partial" else 0
+    assert completed.returncode == expected, completed.stderr
     return report_path
 
 

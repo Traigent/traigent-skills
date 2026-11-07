@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Tier 1 local audit of an LLM agent project: static inspection plus one
-sandboxed probe of the user's own deterministic scorer.
+contained probe of the user's own deterministic scorer.
 
 The audit process itself opens no socket. The user's scorer is never run in this
 process: it runs in a subprocess, and how strongly that subprocess is contained
@@ -592,6 +592,97 @@ def relative(path: Path, root: Path) -> str:
         return path.as_posix()
 
 
+def link_name(path: Path, root: Path) -> str:
+    """The link's own path under ``root``: the name, never the target (which
+    ``relative`` would return, and which can be a path outside the project)."""
+    try:
+        return path.relative_to(root).as_posix()
+    except ValueError:
+        return path.name
+
+
+def points_outside_root(path: Path, root: Path) -> bool:
+    """True for a symlink whose target lies outside ``root``.
+
+    Such a file is never opened: a link in the project could otherwise make the
+    audit read, and quote findings about, a file the user never meant to
+    audit (``data.jsonl -> ~/notes.jsonl``). A link that stays inside the root
+    is read like any other file.
+    """
+    try:
+        if not path.is_symlink():
+            return False
+        target = Path(os.path.realpath(path))
+        return not target.is_relative_to(Path(os.path.realpath(root)))
+    except (OSError, ValueError):
+        return True
+
+
+SYMLINK_SKIP_REASON = (
+    "is a symlink pointing outside the project root, so it was not read"
+)
+
+
+EVALUATION_NOT_EVALUATED = "not_evaluated"
+EVALUATION_UNVERIFIED = "unverified_past_run_evidence"
+
+
+def past_run_artifacts(root: Path) -> list[str]:
+    """Project-local ``.traigent/<run>/metadata.json`` files, by presence only.
+
+    Nothing is opened: no score or value is read, so the count cannot be taken
+    for a result. A symlinked ``.traigent``, run directory or metadata file is
+    never followed; it is not counted.
+    """
+    base = root / ".traigent"
+    found: list[str] = []
+    try:
+        if base.is_symlink() or not base.is_dir():
+            return found
+        children = sorted(os.listdir(base))
+    except OSError:
+        return found
+    for name in children:
+        run_dir = base / name
+        meta = run_dir / "metadata.json"
+        try:
+            if run_dir.is_symlink() or not run_dir.is_dir():
+                continue
+            if meta.is_symlink() or not meta.is_file():
+                continue
+        except OSError:
+            continue
+        found.append(f".traigent/{name}/metadata.json")
+    return found
+
+
+def evaluation_record(artifacts: list[str]) -> dict:
+    """The report's `evaluation` record: an absence or unverified evidence,
+    never a pass."""
+    if not artifacts:
+        return {
+            "state": EVALUATION_NOT_EVALUATED,
+            "artifacts": 0,
+            "paths": [],
+            "note": (
+                "not evaluated — no `.traigent/*/metadata.json` under the project "
+                "root (other stores were not inspected)"
+            ),
+        }
+    return {
+        "state": EVALUATION_UNVERIFIED,
+        "artifacts": len(artifacts),
+        "paths": artifacts[:20],
+        "note": (
+            f"unverified past-run evidence ({len(artifacts)} "
+            f"artifact{'s' if len(artifacts) != 1 else ''} at "
+            "`.traigent/*/metadata.json`): only their presence was checked; "
+            "their contents were not read, so they are no evidence of a score, "
+            "a pass or that they belong to this agent"
+        ),
+    }
+
+
 def iter_project_files(root: Path) -> list[Path]:
     found: list[Path] = []
     for dirpath, dirnames, filenames in os.walk(root):
@@ -656,6 +747,46 @@ class EntryPoint:
     line: int
     knobs: list[Knob] = field(default_factory=list)
     config_space_note: str | None = None
+    # Literals in the function body that look tunable but are not declared:
+    # ``{"name": ..., "file": ..., "line": ...}``. Never the literal's value.
+    candidate_tunables: list[dict] = field(default_factory=list)
+
+
+# Keyword names that, given a literal inside the agent function, are likely
+# tunable settings. Reported by name and location only; the value is never read
+# into the report.
+CANDIDATE_TUNABLE_NAMES = frozenset(
+    {"temperature", "model", "max_tokens", "top_p", "top_k"}
+)
+
+
+def candidate_tunables(
+    node: ast.FunctionDef | ast.AsyncFunctionDef, declared: set[str], rel_path: str
+) -> list[dict]:
+    """Tunable-looking literals in ``node``'s body that are not declared knobs.
+
+    Only keyword arguments of calls in the BODY count (the decorator is where
+    declared knobs live) and only when the value is a literal constant; a name
+    or an expression is already a variable the user can route a knob through.
+    """
+    found: dict[tuple[str, int], dict] = {}
+    for statement in node.body:
+        for child in ast.walk(statement):
+            if not isinstance(child, ast.Call):
+                continue
+            for keyword in child.keywords:
+                if (
+                    keyword.arg in CANDIDATE_TUNABLE_NAMES
+                    and keyword.arg not in declared
+                    and isinstance(keyword.value, ast.Constant)
+                ):
+                    key = (keyword.arg, keyword.value.lineno)
+                    found[key] = {
+                        "name": keyword.arg,
+                        "file": rel_path,
+                        "line": keyword.value.lineno,
+                    }
+    return [found[key] for key in sorted(found, key=lambda k: (k[1], k[0]))]
 
 
 def _traigent_aliases(tree: ast.AST) -> tuple[set[str], set[str]]:
@@ -946,6 +1077,9 @@ def collect_entry_points(tree: ast.AST, rel_path: str) -> list[EntryPoint]:
         if isinstance(decorator, ast.Call):
             _add_declared_knobs(entry, decorator, constants, node, surface, assignments)
         entry.knobs.sort(key=lambda knob: knob.name)
+        entry.candidate_tunables = candidate_tunables(
+            node, {knob.name for knob in entry.knobs}, rel_path
+        )
         entry_points.append(entry)
     entry_points.sort(key=lambda item: (item.file, item.line))
     return entry_points
@@ -1172,6 +1306,8 @@ class PythonInventory:
     files_scanned: int = 0
     files_total: int = 0
     files_unparsed: list[str] = field(default_factory=list)
+    # Python files that are symlinks leaving the root: skipped, never read.
+    files_symlink_skipped: list[str] = field(default_factory=list)
     entry_points: list[EntryPoint] = field(default_factory=list)
     llm_call_sites: list[dict] = field(default_factory=list)
     scorers: list[ScorerCandidate] = field(default_factory=list)
@@ -1370,6 +1506,9 @@ def scan_python(files: list[Path], root: Path) -> PythonInventory:
         )
     for path in considered:
         rel = relative(path, root)
+        if points_outside_root(path, root):
+            inventory.files_symlink_skipped.append(link_name(path, root))
+            continue
         tree = _parse_python(path)
         if tree is None:
             inventory.files_unparsed.append(rel)
@@ -1386,6 +1525,12 @@ def scan_python(files: list[Path], root: Path) -> PythonInventory:
         inventory.notes.append(
             f"{len(inventory.files_unparsed)} Python file(s) could not be parsed "
             "and were not inventoried"
+        )
+    if inventory.files_symlink_skipped:
+        inventory.notes.append(
+            f"{len(inventory.files_symlink_skipped)} Python file(s) "
+            "are symlinks pointing outside the project root and were skipped "
+            "without being read"
         )
     inventory.scorers.sort(key=lambda item: (item.file, item.line))
     inventory.skipped_scorers.sort(key=lambda item: (item.file, item.line))
@@ -2371,8 +2516,10 @@ def _read_dataset(
     a holdout slice or it wraps a row list in an object — those are evaluation
     assets this audit did not read, so they stay named.
     """
-    raw = load_rows(path)
+    if points_outside_root(path, root):
+        return None, f"{link_name(path, root)} {SYMLINK_SKIP_REASON}"
     rel = relative(path, root)
+    raw = load_rows(path)
     if raw.skipped:
         return None, f"{rel} {raw.skipped}"
     if raw.not_rows:
@@ -3607,6 +3754,7 @@ def entry_point_records(entry_points: list[EntryPoint]) -> list[dict]:
             "file": entry.file,
             "line": entry.line,
             "config_space_note": entry.config_space_note,
+            "candidate_tunables": entry.candidate_tunables,
             "knobs": [
                 {
                     "name": knob.name,
@@ -3797,6 +3945,11 @@ def inventory_gap(inventory: PythonInventory) -> str:
             f"only the first {MAX_PYTHON_FILES} of {inventory.files_total} Python "
             "file(s) were inventoried"
         )
+    if inventory.files_symlink_skipped:
+        return (
+            f"{len(inventory.files_symlink_skipped)} Python file(s) are symlinks "
+            "pointing outside the project root and were skipped without being read"
+        )
     return ""
 
 
@@ -3818,6 +3971,7 @@ def agent_area(inventory: PythonInventory) -> dict:
     evidence.extend(_entry_point_lines(inventory.entry_points))
     evidence.extend(_knob_lines(knobs))
     evidence.extend(_blank_entry_lines(inventory.entry_points))
+    evidence.extend(_candidate_tunable_lines(inventory.entry_points))
     # One reading, shared with the next step and Tier 2: the card cannot
     # read `ok` over a knob or inventory fact the ladder would act on.
     verdict = knob_wiring(entry_point_records(inventory.entry_points))["verdict"]
@@ -3884,6 +4038,18 @@ def _knob_lines(knobs: list[Knob]) -> list[str]:
         if not knob.values_readable
     ]
     return lines
+
+
+def _candidate_tunable_lines(entry_points: list[EntryPoint]) -> list[str]:
+    """One line per undeclared tunable-looking literal: name and location only,
+    reported as a candidate and kept apart from the declared knobs."""
+    return [
+        f"candidate, not declared: `{item['name']}` is set to a literal at "
+        f"{item['file']}:{item['line']} in `{entry.function}` — it is not in the "
+        "configuration space, so no search varies it"
+        for entry in entry_points
+        for item in entry.candidate_tunables
+    ]
 
 
 def _blank_entry_lines(entry_points: list[EntryPoint]) -> list[str]:
@@ -4524,6 +4690,10 @@ def _inventory_gap_step(inventory: PythonInventory) -> dict | None:
     if inventory.files_unparsed:
         pronoun = "it" if len(inventory.files_unparsed) == 1 else "them"
         remedy = f"fix or exclude {pronoun} and re-run this audit."
+    elif inventory.files_symlink_skipped:
+        remedy = (
+            "put the real file inside --root (or drop the link) and re-run this audit."
+        )
     else:
         remedy = "narrow --root to the project's own code and re-run this audit."
     return {
@@ -4702,6 +4872,42 @@ def not_established(guard_level: str) -> list[str]:
     return items
 
 
+def scan_partial_reasons(
+    inventory: PythonInventory,
+    reports: list[DatasetReport],
+    dataset_candidates: int,
+    skipped_files: list[str],
+    dataset_named: bool,
+) -> list[str]:
+    """Closed tags for why the scan did not cover everything, in a fixed order.
+
+    ``partial`` means the verdicts rest on less than the project holds: a cap
+    was hit or a file could not be read. A complete scan that FOUND gaps is not
+    partial.
+    """
+    reasons: list[str] = []
+    if inventory.files_total > MAX_PYTHON_FILES:
+        reasons.append("python_file_cap")
+    if inventory.files_unparsed:
+        reasons.append("python_unparsed")
+    if inventory.files_symlink_skipped:
+        reasons.append("python_symlink_skipped")
+    if dataset_candidates > MAX_DATA_FILES:
+        reasons.append("data_file_cap")
+    if skipped_files:
+        reasons.append("data_file_not_read")
+    # The row cap leaves one finding, "read the first <cap> ..."; read it from
+    # there rather than carrying a second flag through every dataset record.
+    row_cap_note = f"read the first {MAX_ROWS} "
+    if any(
+        finding.startswith(row_cap_note)
+        for report in reports
+        for finding in report.findings
+    ):
+        reasons.append("data_rows_truncated")
+    return reasons
+
+
 def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
     guard_level, backend, isolation_args, isolation_terminator = detect_isolation()
     files, walkthrough_files = split_walkthrough_files(iter_project_files(root), root)
@@ -4742,6 +4948,9 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         )
 
     model_ids = _declared_model_ids(inventory)
+    partial_reasons = scan_partial_reasons(
+        inventory, reports, dataset_candidates, skipped_files, bool(args.dataset)
+    )
 
     sdk = read_sdk_version(interpreter)
     keys = key_presence(root, files)
@@ -4758,6 +4967,9 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
 
     return {
         "schema": SCHEMA,
+        "scan_state": "partial" if partial_reasons else "complete",
+        "scan_partial_reasons": partial_reasons,
+        "evaluation": evaluation_record(past_run_artifacts(root)),
         "network_guard": guard_level,
         "network_guard_note": guard_note(guard_level),
         "audit_process_guard": guard,
@@ -4767,6 +4979,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             "python_parsed": inventory.files_scanned,
             "python_total": inventory.files_total,
             "python_unparsed": inventory.files_unparsed[:20],
+            "python_symlink_skipped": inventory.files_symlink_skipped[:20],
             "dataset_candidates": dataset_candidates,
             "dataset_files_not_analysed": skipped_files,
             "notes": inventory.notes + dataset_notes,
@@ -4973,6 +5186,16 @@ def render_card(report: dict) -> str:
         f"{report['files']['dataset_candidates']} JSONL/JSON/CSV file(s) under "
         f"`{report['root']}`."
     )
+    if report.get("scan_state") == "partial":
+        lines.append("")
+        lines.append(
+            "Scan state: PARTIAL ("
+            + ", ".join(report["scan_partial_reasons"])
+            + ") — the verdicts below rest on less than the project holds; "
+            "this run exits 1."
+        )
+    lines.append("")
+    lines.append(f"Evaluation: {report['evaluation']['note']}.")
     walkthrough = report["files"].get("walkthrough") or {}
     if walkthrough.get("count"):
         lines.append("")
@@ -5098,7 +5321,9 @@ def main(argv: list[str] | None = None) -> int:
         out_path.parent.mkdir(parents=True, exist_ok=True)
         out_path.write_text(text, encoding="utf-8")
     print(render_card(report))
-    return 0
+    # 0: the scan was complete (gaps FOUND are still 0). 1: it was partial.
+    # 2: usage errors, above.
+    return 1 if report["scan_state"] == "partial" else 0
 
 
 if __name__ == "__main__":
