@@ -384,6 +384,7 @@ MAX_ROWS = 20000
 NEAR_DUPLICATE_LIMIT = 5000
 NEAR_DUPLICATE_JACCARD = 0.9
 PROBE_TIMEOUT_SECONDS = 30
+PROBE_SCRIPT = Path(__file__).resolve().parent / "scorer_probe.py"
 # POSIX resource caps for the probe process tree (inherited by its children).
 PROBE_ADDRESS_SPACE_BYTES = 2 * 1024**3
 PROBE_CPU_SLACK_SECONDS = 5
@@ -3011,7 +3012,7 @@ def run_scorer_probe(
     repeats: int,
     isolation: list[str],
 ) -> dict:
-    probe_script = Path(__file__).resolve().parent / "scorer_probe.py"
+    probe_script = PROBE_SCRIPT
     good, partial, bad, source = payload
     module_path = (root / scorer.file).resolve()
     request = {
@@ -3103,8 +3104,8 @@ PROBE_FAILURE_SENTENCE = {
     ),
     "launch": "the probe subprocess could not be started ({fault})",
     "no-result": (
-        "the probe produced no readable result (the scorer module most likely "
-        "ended the process itself)"
+        "the probe produced no readable result; see the probe diagnostics "
+        "(`stage` and `stderr_bytes` in the JSON report)"
     ),
     "tampered-result": (
         "the probe's result line was absent, duplicated or malformed, so nothing "
@@ -4725,7 +4726,14 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         payload = build_probe_payload(reports, root)
         # The probe must still be able to READ the project and the scorer's own
         # directory inside the sandbox, or the sandbox looks like a broken scorer.
-        readable = [root, (root / probed.file).resolve().parent]
+        # The probe script's own directory too: when the audit is run from under
+        # /tmp, bwrap's tmpfs on /tmp would otherwise hide scorer_probe.py and
+        # the probe would die before it could print anything.
+        readable = [
+            root,
+            (root / probed.file).resolve().parent,
+            PROBE_SCRIPT.parent,
+        ]
         isolation = isolation_command(
             backend, isolation_args, isolation_terminator, readable
         )
