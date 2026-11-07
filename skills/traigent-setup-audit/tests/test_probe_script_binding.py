@@ -88,3 +88,19 @@ def test_the_note_names_only_what_the_selected_variant_did() -> None:
     for note in (full, fallback):
         for banned in ("cannot write", "reach nothing"):
             assert banned not in note
+
+
+def test_the_note_follows_the_final_command_and_its_later_binds() -> None:
+    widest = [e[1] for e in audit.ISOLATION_BACKENDS if e[0] == "bwrap"][0]
+    plain = [e[1] for e in audit.ISOLATION_BACKENDS if e[0] == "bwrap"][-1]
+    under_run = [*widest, "--ro-bind", "/run/user/1/proj", "/run/user/1/proj", "--"]
+    note = audit.guard_note("isolated (bwrap)", widest, under_run)
+    assert "masked except the re-bound project directories" in note
+    elsewhere = [*widest, "--ro-bind", "/srv/proj", "/srv/proj", "--"]
+    note = audit.guard_note("isolated (bwrap)", widest, elsewhere)
+    assert "/run" in note and "except" not in note
+    var_run = [*widest, "--ro-bind", "/var/run/x", "/var/run/x"]
+    assert "except" in audit.guard_note("isolated (bwrap)", widest, var_run)
+    # The plain variant never claimed a mask, whatever it binds.
+    plain_cmd = [*plain, "--ro-bind", "/run/x", "/run/x"]
+    assert "/run" not in audit.guard_note("isolated (bwrap)", plain, plain_cmd)

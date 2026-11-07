@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "47412acf69cfdb41",
+  "doc_hash": "1d95cd106e9dda83",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290"
   },
@@ -363,6 +363,17 @@
       "doc_before_hash": "44ce3dd23ff4c1c4",
       "doc_after_hash": "47412acf69cfdb41",
       "note": "Review round 2: containment by resolved path (ancestor symlinks), isolation note derived from the bwrap variant that passed preflight, scoped tripwire claim, and rlimit outcomes reported by the child.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "status-port-r3-2026-11-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-07T00:00:00Z",
+      "doc_before_hash": "47412acf69cfdb41",
+      "doc_after_hash": "1d95cd106e9dda83",
+      "note": "Review round 3: --scorer symlink check applies only to the path selection will use, /run masking stated as conditional and the note derived from the final command with its later binds, and resource caps described as requested with the outcome in resource_limits.",
       "source_type": "agent"
     }
   ]

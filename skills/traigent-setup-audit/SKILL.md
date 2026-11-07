@@ -620,10 +620,10 @@ that its zero-network property stays provable rather than inherited.
   group is killed, so a helper the scorer forked does not outlive the audit (one that
   detaches into its own session is not killed, but the audit stops waiting for it
   after a few seconds and reports a timeout), and where `resource` exists the
-  probe is capped at 2 GiB of address space and
-  CPU seconds just above the timeout (the child reports what `setrlimit` actually did, and the card says
+  audit requests caps of 2 GiB of address space and
+  CPU seconds just above the timeout (requested, not guaranteed: the child reports what `setrlimit` actually did, the report's `resource_limits` field says whether they took effect, and the card says
   `applied`, `partly applied`, `skipped` or `requested (not verified)`). Only `isolated (bwrap)` also makes the
-  filesystem read-only (and masks `/run`); at `isolated (unshare)` and `python-level` the scorer
+  filesystem read-only (and, when the selected bwrap variant supports it, masks `/run`; the card states which, and says so when the re-bound project directories sit under `/run`); at `isolated (unshare)` and `python-level` the scorer
   can read and write whatever your user can, and the card says so. The project's interpreter is started for nothing else: the SDK
   version is read from installed package metadata. The one git call
   (`git check-ignore` on `.env`) runs with the project's `core.fsmonitor` and

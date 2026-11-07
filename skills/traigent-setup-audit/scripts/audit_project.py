@@ -542,12 +542,30 @@ def isolation_command(
     return command + list(terminator)
 
 
-def bwrap_note(args: list[str]) -> str:
-    """The bwrap note derived from the variant that passed preflight: only the
-    protections actually in its argv are named."""
+def _rebound_under_run(command: list[str]) -> bool:
+    """True when a read-only bind in ``command`` lands under /run or /var/run."""
+    for i, token in enumerate(command[:-2]):
+        if token == "--ro-bind":
+            dest = command[i + 2]
+            for run in ("/run", "/var/run"):
+                if dest == run or dest.startswith(run + "/"):
+                    return True
+    return False
+
+
+def bwrap_note(args: list[str], command: list[str] | None = None) -> str:
+    """The bwrap note derived from the command actually run (``command``, with
+    its later read-only binds) or, without one, the variant that passed
+    preflight: only the protections actually in the argv are named."""
+    argv = command if command else args
     done = ["the root filesystem mounted read-only", "a private /tmp"]
-    if "/run" in args:
-        done.append("the host's /run and /var/run masked")
+    if "/run" in argv:
+        if _rebound_under_run(argv):
+            done.append(
+                "the host's /run and /var/run masked except the re-bound project directories"
+            )
+        else:
+            done.append("the host's /run and /var/run masked")
     if "--unshare-ipc" in args:
         done.append("a separate IPC namespace")
     if "--unshare-pid" in args:
@@ -560,9 +578,11 @@ def bwrap_note(args: list[str]) -> str:
     )
 
 
-def guard_note(level: str, args: list[str] | None = None) -> str:
+def guard_note(
+    level: str, args: list[str] | None = None, command: list[str] | None = None
+) -> str:
     if level == "isolated (bwrap)":
-        return bwrap_note(args) if args is not None else GUARD_NOTE["isolated"]
+        return bwrap_note(args, command) if args is not None else GUARD_NOTE["isolated"]
     if level.startswith("isolated"):
         return GUARD_NOTE["isolated-network-only"]
     return GUARD_NOTE[GUARD_PYTHON]
@@ -4992,7 +5012,11 @@ def open_questions(areas: dict, datasets: list[DatasetReport]) -> list[str]:
     return questions
 
 
-def not_established(guard_level: str, isolation_args: list[str] | None = None) -> list[str]:
+def not_established(
+    guard_level: str,
+    isolation_args: list[str] | None = None,
+    isolation_cmd: list[str] | None = None,
+) -> list[str]:
     items = [
         ("Repeat-scoring measures repeatability, not correctness. A scorer that "
         "returns the same wrong number every time passes this probe."),
@@ -5015,7 +5039,7 @@ def not_established(guard_level: str, isolation_args: list[str] | None = None) -
     else:
         items.insert(
             0,
-            "The probe subprocess ran with " + guard_level + ": " + guard_note(guard_level, isolation_args) + ".",
+            "The probe subprocess ran with " + guard_level + ": " + guard_note(guard_level, isolation_args, isolation_cmd) + ".",
         )
     return items
 
@@ -5136,7 +5160,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         "scan_partial_reasons": partial_reasons,
         "evaluation": evaluation_record(*past_run_artifacts(root)),
         "network_guard": guard_level,
-        "network_guard_note": guard_note(guard_level, isolation_args),
+        "network_guard_note": guard_note(guard_level, isolation_args, isolation),
         "audit_process_guard": guard,
         "isolation_command": isolation,
         "root": str(root.resolve()),
@@ -5198,7 +5222,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             "model_ids_declared": model_ids,
         },
         "open_questions": open_questions(areas, reports),
-        "not_established": not_established(guard_level, isolation_args),
+        "not_established": not_established(guard_level, isolation_args, isolation),
     }
 
 
@@ -5216,10 +5240,16 @@ def scorer_selection_link(selector: str | None, root: Path) -> str | None:
     if not file_part:
         return None
     given = Path(file_part).expanduser()
-    spellings = [given] if given.is_absolute() else [root / given, Path.cwd() / given]
-    for path in spellings:
-        if points_outside_root(path, root):
-            return link_name(path, root) if path.is_relative_to(root) else path.name
+    if given.is_absolute():
+        chosen = given
+    else:
+        # The path _select_scorer will use: the working-directory spelling when
+        # it resolves inside the root, else the root-relative one.
+        cwd_path = Path.cwd() / given
+        inside = relative(cwd_path, root) != cwd_path.as_posix()
+        chosen = cwd_path if inside else root / given
+    if points_outside_root(chosen, root):
+        return link_name(chosen, root) if chosen.is_relative_to(root) else chosen.name
     return None
 
 

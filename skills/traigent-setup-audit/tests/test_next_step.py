@@ -1795,3 +1795,36 @@ def test_a_gold_number_too_large_for_a_float_does_not_stop_the_probe(
     # The distance to the huge value cannot be held, so the next one is taken.
     assert (good, partial, bad, source) == (1, None, 7, "dataset")
     assert audit.answer_difference(huge, 1.5) == 0.0
+
+
+def test_a_cwd_symlink_that_selection_does_not_use_does_not_refuse_it(
+    tmp_path: Path,
+) -> None:
+    """`project/scorer.py` is a regular file selected as `scorer.py`; the
+    working directory holds an unrelated `scorer.py` symlinked outside the
+    root. Selection uses the root-relative file, so it must be honoured."""
+    root = _variant(tmp_path, _three_way())
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "elsewhere.py").write_text("def score(a, b):\n    return 0\n")
+    cwd = tmp_path / "cwd"
+    cwd.mkdir()
+    try:
+        (cwd / "scorer.py").symlink_to(outside / "elsewhere.py")
+    except OSError:
+        pytest.skip("symlinks are not available here")
+    old = os.getcwd()
+    os.chdir(cwd)
+    try:
+        assert audit.scorer_selection_link("scorer.py:score", root) is None
+    finally:
+        os.chdir(old)
+    report_path = tmp_path / "report.json"
+    subprocess.run(
+        [sys.executable, str(SCRIPT), "--root", str(root), "--json",
+         str(report_path), "--scorer", "scorer.py:score"],
+        cwd=cwd, capture_output=True, text=True, timeout=300, check=False,
+    )
+    report = strict_json(report_path.read_text(encoding="utf-8"))
+    assert not report["scorer_selection_refused"]
+    assert "scorer_symlink_refused" not in report["scan_partial_reasons"]
