@@ -38,6 +38,7 @@ import json
 import math
 import os
 import re
+import signal
 import subprocess
 import sys
 from collections import Counter, defaultdict
@@ -383,6 +384,9 @@ MAX_ROWS = 20000
 NEAR_DUPLICATE_LIMIT = 5000
 NEAR_DUPLICATE_JACCARD = 0.9
 PROBE_TIMEOUT_SECONDS = 30
+# POSIX resource caps for the probe process tree (inherited by its children).
+PROBE_ADDRESS_SPACE_BYTES = 2 * 1024**3
+PROBE_CPU_SLACK_SECONDS = 5
 # Distinct gold values of the probed kind read when choosing the known-bad
 # answer. Bounded so a large dataset is not compared value by value.
 PROBE_CANDIDATES = 32
@@ -2927,6 +2931,78 @@ def probe_environment() -> dict[str, str]:
     return {name: value for name, value in values.items() if value is not None}
 
 
+def _limit_probe_resources() -> None:
+    """``preexec_fn`` for the probe: cap address space and CPU time.
+
+    Runs in the forked child before exec. Where ``resource`` does not exist
+    (Windows) or a limit cannot be set, the probe still runs, uncapped: the
+    timeout and the process-group kill are the backstop.
+    """
+    try:
+        import resource
+    except ImportError:
+        return
+    caps = (
+        (resource.RLIMIT_AS, PROBE_ADDRESS_SPACE_BYTES),
+        (resource.RLIMIT_CPU, PROBE_TIMEOUT_SECONDS + PROBE_CPU_SLACK_SECONDS),
+    )
+    for which, wanted in caps:
+        try:
+            _, hard = resource.getrlimit(which)
+            if hard != resource.RLIM_INFINITY:
+                wanted = min(wanted, hard)
+            resource.setrlimit(which, (wanted, hard))
+        except (ValueError, OSError):
+            continue
+
+
+def _run_probe_process(
+    command: list[str], request_text: str
+) -> subprocess.CompletedProcess:
+    """Run the probe in its own session; on timeout kill the whole group.
+
+    ``subprocess.run`` kills only the direct child, so a scorer that forked a
+    helper would outlive the audit. Raises ``subprocess.TimeoutExpired`` after
+    the group is gone.
+    """
+    posix = os.name == "posix"
+    process = subprocess.Popen(
+        command,
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        env=probe_environment(),
+        start_new_session=posix,
+        preexec_fn=_limit_probe_resources if posix else None,
+    )
+    try:
+        stdout, stderr = process.communicate(
+            input=request_text, timeout=PROBE_TIMEOUT_SECONDS
+        )
+    except subprocess.TimeoutExpired:
+        _kill_probe_group(process)
+        process.communicate()
+        raise
+    except BaseException:
+        _kill_probe_group(process)
+        raise
+    # A scorer that exited but left a background child holding no pipe is still
+    # swept: nothing the probe started may outlive it.
+    _kill_probe_group(process)
+    return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def _kill_probe_group(process: subprocess.Popen) -> None:
+    try:
+        if os.name == "posix":
+            os.killpg(process.pid, signal.SIGKILL)
+        else:
+            process.kill()
+    except (ProcessLookupError, PermissionError, OSError):
+        pass
+
+
 def run_scorer_probe(
     interpreter: str,
     scorer: ScorerCandidate,
@@ -2949,15 +3025,7 @@ def run_scorer_probe(
     }
     command = [*isolation, interpreter, str(probe_script), "--request-stdin"]
     try:
-        completed = subprocess.run(
-            command,
-            input=json.dumps(request),
-            capture_output=True,
-            text=True,
-            timeout=PROBE_TIMEOUT_SECONDS,
-            check=False,
-            env=probe_environment(),
-        )
+        completed = _run_probe_process(command, json.dumps(request))
     except subprocess.TimeoutExpired:
         return {"ran": False, "stage": "timeout", "payload_source": source}
     except OSError as exc:
