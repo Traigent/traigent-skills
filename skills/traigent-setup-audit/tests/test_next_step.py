@@ -1101,6 +1101,36 @@ def test_a_selection_symlinked_out_of_the_root_is_refused_unread(
     assert "scorer_symlink_refused" in report["scan_partial_reasons"]
 
 
+def test_a_selection_through_a_symlinked_directory_is_refused_unread(
+    tmp_path: Path,
+) -> None:
+    """`project/linkdir -> outside/`; the scorer is `linkdir/scorer.py`. The
+    last component is a plain file, so only a resolved-path check catches it."""
+    root = _variant(tmp_path, _three_way())
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (root / "scorer.py").replace(outside / "scorer.py")
+    try:
+        (root / "linkdir").symlink_to(outside, target_is_directory=True)
+    except OSError:
+        pytest.skip("symlinks are not available here")
+    report_path = tmp_path / "report.json"
+    completed = subprocess.run(
+        [sys.executable, str(SCRIPT), "--root", str(root), "--json",
+         str(report_path), "--scorer", "linkdir/scorer.py:score"],
+        cwd=tmp_path, capture_output=True, text=True, timeout=300, check=False,
+    )
+    report = strict_json(report_path.read_text(encoding="utf-8"))
+    refusal = report["scorer_selection_refused"]
+    assert refusal and "symlink" in refusal and "linkdir/scorer.py" in refusal, refusal
+    assert str(outside) not in refusal and str(outside) not in completed.stdout
+    assert report["scorers"] == [] and report["scorer_probe"] is None
+    assert "scorer_symlink_refused" in report["scan_partial_reasons"]
+    # The discovery walk never descended through the linked directory either.
+    assert all(not entry["file"].startswith("linkdir") for entry in report["scorers"])
+    assert completed.returncode == 1
+
+
 @pytest.mark.parametrize(
     "literal",
     ["[0.0, 1e999]", "Choices(0.0, 1e999)", '[0.0, {"t": 1e999}]'],

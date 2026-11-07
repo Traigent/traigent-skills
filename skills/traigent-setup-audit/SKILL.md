@@ -47,7 +47,7 @@ without the level.
 
 | `network_guard` | What holds | What it means |
 |---|---|---|
-| `isolated (bwrap)` | a Linux network namespace with no route to the host network, the root filesystem mounted read-only, a private `/tmp`, the host's `/run` and `/var/run` masked, and (where the machine allows) separate IPC and PID namespaces | this is containment of a deterministic scorer, **not a security boundary**: the mounts and namespaces above are what was done, not a guarantee of what the scorer cannot reach. The host filesystem stays readable (home directory and `.env` included) |
+| `isolated (bwrap)` | a Linux network namespace with no route to the host network, the root filesystem mounted read-only, a private `/tmp`, and — only in the variant the machine accepted, named in the card — the host's `/run` and `/var/run` masked and separate IPC and PID namespaces | this is containment of a deterministic scorer, **not a security boundary**: the mounts and namespaces above are what was done, not a guarantee of what the scorer cannot reach. The host filesystem stays readable (home directory and `.env` included) |
 | `isolated (unshare)` | a Linux network namespace with no route to the host network — **the network only** | the same network guarantees, but the **filesystem is not isolated**: the scorer can read and write whatever your user can |
 | `python-level` | Python's socket entry points replaced with a refusal inside the probe | ordinary socket use is stopped, but code using ctypes, a subprocess or `_socket` is **not** stopped by it — what keeps those from running is the classifier, which is a static read, not a boundary; the **filesystem is not isolated** either |
 
@@ -130,7 +130,7 @@ says `unverified_past_run_evidence` and the artifact count. Only the files'
 presence is checked: nothing in them is read, a symlinked `.traigent`, run
 directory or file is not followed, and the count is never a score. If `.traigent`
 cannot be listed the state is `could_not_inspect`, not `not_evaluated`.
-An explicit `--scorer` naming a symlink that leaves `--root` is refused too
+An explicit `--scorer` that reaches outside `--root` through a symlink, on the file or on any directory above it, is refused too
 (by its link name; not read, classified or probed). Each entry
 point also carries `candidate_tunables`: literals such as `temperature=0.2`,
 `model="..."`, `max_tokens=`, `top_p=` or `top_k=` passed to a call inside the
@@ -621,8 +621,8 @@ that its zero-network property stays provable rather than inherited.
   detaches into its own session is not killed, but the audit stops waiting for it
   after a few seconds and reports a timeout), and where `resource` exists the
   probe is capped at 2 GiB of address space and
-  CPU seconds just above the timeout (where it is missing the card says the caps
-  were skipped). Only `isolated (bwrap)` also makes the
+  CPU seconds just above the timeout (the child reports what `setrlimit` actually did, and the card says
+  `applied`, `partly applied`, `skipped` or `requested (not verified)`). Only `isolated (bwrap)` also makes the
   filesystem read-only (and masks `/run`); at `isolated (unshare)` and `python-level` the scorer
   can read and write whatever your user can, and the card says so. The project's interpreter is started for nothing else: the SDK
   version is read from installed package metadata. The one git call
@@ -658,7 +658,7 @@ that its zero-network property stays provable rather than inherited.
 - Anything in the second tier — every paid call and every byte that leaves the
   machine — waits for an explicit approval. Silence is not approval. Offer mode
   runs under the same network guard as Tier 1 and reports the level it had, so
-  "no socket was opened" is measured rather than asserted (the test suite's tripwire proves only that the audit's parent process made no Python-level socket call before its own guard took over; it does not cover native code or the probe child); "no process was
+  the level it ran at is measured rather than asserted. The test suite's tripwire shows only that the audit's parent process made no Python-level socket call before its own guard took over; it does not cover calls the guard intercepted, native code or the probe child; "no process was
   spawned" is a property of the code path, not of that guard, and every approved
   run records both counts in its receipt, which is written to disk only when `--receipt <path>` is passed.
 

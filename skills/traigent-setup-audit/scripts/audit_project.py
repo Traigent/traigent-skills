@@ -106,8 +106,9 @@ GUARD_NOTE = {
     "isolated": (
         "the audit itself makes no network call; your scorer runs in a subprocess "
         "in a network namespace with no route to the host network, with the root "
-        "filesystem mounted read-only, a private /tmp and the host's /run masked; "
-        "this is containment of a deterministic scorer, not a security boundary"
+        "filesystem mounted read-only and a private /tmp (see the report for "
+        "which further mounts and namespaces applied); this is containment of a "
+        "deterministic scorer, not a security boundary"
     ),
     "isolated-network-only": (
         "the audit itself makes no network call; your scorer runs in a subprocess "
@@ -541,9 +542,27 @@ def isolation_command(
     return command + list(terminator)
 
 
-def guard_note(level: str) -> str:
+def bwrap_note(args: list[str]) -> str:
+    """The bwrap note derived from the variant that passed preflight: only the
+    protections actually in its argv are named."""
+    done = ["the root filesystem mounted read-only", "a private /tmp"]
+    if "/run" in args:
+        done.append("the host's /run and /var/run masked")
+    if "--unshare-ipc" in args:
+        done.append("a separate IPC namespace")
+    if "--unshare-pid" in args:
+        done.append("a separate PID namespace")
+    return (
+        "the audit itself makes no network call; your scorer runs in a subprocess "
+        "in a network namespace with no route to the host network, with "
+        + ", ".join(done)
+        + "; this is containment of a deterministic scorer, not a security boundary"
+    )
+
+
+def guard_note(level: str, args: list[str] | None = None) -> str:
     if level == "isolated (bwrap)":
-        return GUARD_NOTE["isolated"]
+        return bwrap_note(args) if args is not None else GUARD_NOTE["isolated"]
     if level.startswith("isolated"):
         return GUARD_NOTE["isolated-network-only"]
     return GUARD_NOTE[GUARD_PYTHON]
@@ -606,18 +625,21 @@ def link_name(path: Path, root: Path) -> str:
 
 
 def points_outside_root(path: Path, root: Path) -> bool:
-    """True for a symlink whose target lies outside ``root``.
+    """True when a symlink, on the final component or on any directory above
+    it, makes ``path`` resolve to somewhere outside ``root``.
 
     Such a file is never opened: a link in the project could otherwise make the
     audit read, and quote findings about, a file the user never meant to
-    audit (``data.jsonl -> ~/notes.jsonl``). A link that stays inside the root
-    is read like any other file.
+    audit (``data.jsonl -> ~/notes.jsonl``, or ``vendor -> ~/other/`` with the
+    file under it). A link that stays inside the root is read like any other
+    file; a plain path outside the root that involves no link is not this
+    function's concern (an explicitly named ``--dataset`` may live there).
     """
     try:
-        if not path.is_symlink():
-            return False
-        target = Path(os.path.realpath(path))
-        return not target.is_relative_to(Path(os.path.realpath(root)))
+        real = os.path.realpath(path)
+        if real == os.path.abspath(path):
+            return False  # no link anywhere in the path
+        return not Path(real).is_relative_to(Path(os.path.realpath(root)))
     except (OSError, ValueError):
         return True
 
@@ -3112,38 +3134,69 @@ def probe_environment() -> dict[str, str]:
     return {name: value for name, value in values.items() if value is not None}
 
 
+# What the last probe launch reported about its own setrlimit calls.
+_LAST_LIMITS: dict[str, str] = {"state": "requested (not verified)"}
+
+
 def resource_limits_state() -> str:
-    """``applied`` when the POSIX rlimit caps can be set, else why not."""
-    try:
-        import resource  # noqa: F401
-    except ImportError:
+    """The cap outcome of the most recent probe launch: ``applied``,
+    ``partly applied: <which>``, ``skipped: <why>`` or, when the child could
+    not report, ``requested (not verified)``."""
+    return _LAST_LIMITS["state"]
+
+
+def _summarise_limits(report: str) -> str:
+    """Turn the child's ``NAME:ok|failed`` lines into the state string."""
+    if not report:
+        return "requested (not verified)"
+    if report.strip() == "noresource":
         return "skipped: the `resource` module is not available on this platform"
-    return "applied"
+    outcomes = dict(
+        line.split(":", 1) for line in report.split() if ":" in line
+    )
+    failed = sorted(name for name, result in outcomes.items() if result != "ok")
+    if not outcomes:
+        return "requested (not verified)"
+    if not failed:
+        return "applied"
+    if len(failed) == len(outcomes):
+        return "skipped: setrlimit failed for " + ", ".join(failed)
+    return "partly applied: not set for " + ", ".join(failed)
 
 
-def _limit_probe_resources() -> None:
-    """``preexec_fn`` for the probe: cap address space and CPU time.
+def _limit_probe_resources(report_fd: int = -1) -> None:
+    """``preexec_fn`` for the probe: cap address space and CPU time, and write
+    what happened to ``report_fd`` so the parent reports facts, not intent.
 
     Runs in the forked child before exec. Where ``resource`` does not exist
-    (Windows) or a limit cannot be set, the probe still runs, uncapped: the
-    timeout and the process-group kill are the backstop.
+    or a limit cannot be set, the probe still runs, uncapped: the timeout and
+    the process-group kill are the backstop.
     """
+    lines = []
     try:
         import resource
     except ImportError:
-        return
-    caps = (
-        (resource.RLIMIT_AS, PROBE_ADDRESS_SPACE_BYTES),
-        (resource.RLIMIT_CPU, PROBE_TIMEOUT_SECONDS + PROBE_CPU_SLACK_SECONDS),
-    )
-    for which, wanted in caps:
+        lines = ["noresource"]
+    else:
+        caps = (
+            ("address_space", resource.RLIMIT_AS, PROBE_ADDRESS_SPACE_BYTES),
+            ("cpu", resource.RLIMIT_CPU,
+             PROBE_TIMEOUT_SECONDS + PROBE_CPU_SLACK_SECONDS),
+        )
+        for name, which, wanted in caps:
+            try:
+                _, hard = resource.getrlimit(which)
+                if hard != resource.RLIM_INFINITY:
+                    wanted = min(wanted, hard)
+                resource.setrlimit(which, (wanted, hard))
+                lines.append(f"{name}:ok")
+            except (ValueError, OSError):
+                lines.append(f"{name}:failed")
+    if report_fd >= 0:
         try:
-            _, hard = resource.getrlimit(which)
-            if hard != resource.RLIM_INFINITY:
-                wanted = min(wanted, hard)
-            resource.setrlimit(which, (wanted, hard))
-        except (ValueError, OSError):
-            continue
+            os.write(report_fd, (" ".join(lines)).encode())
+        except OSError:
+            pass
 
 
 def _run_probe_process(
@@ -3156,16 +3209,33 @@ def _run_probe_process(
     the group is gone.
     """
     posix = os.name == "posix"
-    process = subprocess.Popen(
-        command,
-        stdin=subprocess.PIPE,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=probe_environment(),
-        start_new_session=posix,
-        preexec_fn=_limit_probe_resources if posix else None,
-    )
+    read_fd, write_fd = os.pipe() if posix else (-1, -1)
+    try:
+        process = subprocess.Popen(
+            command,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            env=probe_environment(),
+            start_new_session=posix,
+            preexec_fn=(lambda: _limit_probe_resources(write_fd)) if posix else None,
+        )
+    except BaseException:
+        for fd in (read_fd, write_fd):
+            if fd >= 0:
+                os.close(fd)
+        raise
+    report = b""
+    if posix:
+        os.close(write_fd)
+        try:
+            report = os.read(read_fd, 4096)  # written before exec; never blocks long
+        except OSError:
+            pass
+        finally:
+            os.close(read_fd)
+    _LAST_LIMITS["state"] = _summarise_limits(report.decode("ascii", "replace"))
     try:
         stdout, stderr = process.communicate(
             input=request_text, timeout=PROBE_TIMEOUT_SECONDS
@@ -4380,9 +4450,11 @@ def scorer_area(
         f"process ({probe.get('payload_source')} probe values)"
     )
     evidence.extend(probe_evidence)
-    if str(probe.get("resource_limits", "applied")).startswith("skipped"):
+    limits = str(probe.get("resource_limits", "applied"))
+    if limits != "applied":
         evidence.append(
-            "the probe ran without memory and CPU caps (" + probe["resource_limits"] + ")"
+            "memory and CPU caps on the probe: " + limits
+            + (" — it ran without the full caps" if limits.startswith(("skipped", "partly")) else "")
         )
     synthetic = probe.get("payload_source") == "synthetic"
     status = "ok" if probe_status == "ok" and not synthetic else "attention"
@@ -4920,7 +4992,7 @@ def open_questions(areas: dict, datasets: list[DatasetReport]) -> list[str]:
     return questions
 
 
-def not_established(guard_level: str) -> list[str]:
+def not_established(guard_level: str, isolation_args: list[str] | None = None) -> list[str]:
     items = [
         ("Repeat-scoring measures repeatability, not correctness. A scorer that "
         "returns the same wrong number every time passes this probe."),
@@ -4943,7 +5015,7 @@ def not_established(guard_level: str) -> list[str]:
     else:
         items.insert(
             0,
-            "The probe subprocess ran with " + guard_level + ": " + guard_note(guard_level) + ".",
+            "The probe subprocess ran with " + guard_level + ": " + guard_note(guard_level, isolation_args) + ".",
         )
     return items
 
@@ -5064,7 +5136,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         "scan_partial_reasons": partial_reasons,
         "evaluation": evaluation_record(*past_run_artifacts(root)),
         "network_guard": guard_level,
-        "network_guard_note": guard_note(guard_level),
+        "network_guard_note": guard_note(guard_level, isolation_args),
         "audit_process_guard": guard,
         "isolation_command": isolation,
         "root": str(root.resolve()),
@@ -5126,12 +5198,13 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             "model_ids_declared": model_ids,
         },
         "open_questions": open_questions(areas, reports),
-        "not_established": not_established(guard_level),
+        "not_established": not_established(guard_level, isolation_args),
     }
 
 
 def scorer_selection_link(selector: str | None, root: Path) -> str | None:
-    """The link name when ``--scorer`` names a symlink that leaves ``root``.
+    """The link name when ``--scorer`` reaches outside ``root`` through a
+    symlink, on its last component or any directory above it.
 
     The check is on the path as written (absolute, against the working
     directory, or against ``root``), before anything resolves it: a resolved

@@ -403,4 +403,4 @@ def test_skipped_resource_caps_are_said_on_the_card(tmp_path: Path) -> None:
                           text=True, timeout=300, check=False)
     report = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
     assert report["scorer_probe"]["resource_limits"].startswith("skipped")
-    assert "without memory and CPU caps" in done.stdout
+    assert "memory and CPU caps on the probe: skipped" in done.stdout

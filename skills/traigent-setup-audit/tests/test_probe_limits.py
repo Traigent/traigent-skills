@@ -149,3 +149,28 @@ def test_a_detached_descendant_holding_the_pipe_cannot_hang_the_audit(
             os.kill(int(pid_file.read_text()), 9)
         except (OSError, ValueError):
             pass
+
+
+@posix_only
+def test_a_failed_setrlimit_is_reported_not_claimed(monkeypatch) -> None:
+    resource = pytest.importorskip("resource")
+    real = resource.setrlimit
+
+    def flaky(which, limits):
+        if which == resource.RLIMIT_AS:
+            raise ValueError("refused")
+        return real(which, limits)
+
+    monkeypatch.setattr(resource, "setrlimit", flaky)  # inherited by the fork
+    audit._run_probe_process([sys.executable, "-c", "pass"], "")
+    state = audit.resource_limits_state()
+    assert state.startswith("partly applied") and "address_space" in state
+
+
+def test_the_limit_summary_covers_every_outcome() -> None:
+    summarise = audit._summarise_limits
+    assert summarise("address_space:ok cpu:ok") == "applied"
+    assert summarise("") == "requested (not verified)"
+    assert summarise("noresource").startswith("skipped")
+    assert summarise("address_space:failed cpu:failed").startswith("skipped")
+    assert summarise("address_space:ok cpu:failed").startswith("partly applied")

@@ -77,8 +77,14 @@ def test_the_bwrap_variants_mask_host_sockets_and_keep_the_rebinds_after() -> No
     )
 
 
-def test_the_isolation_notes_make_no_absolute_claim() -> None:
-    note = audit.guard_note("isolated (bwrap)")
-    assert "not a security boundary" in note and "/run" in note
-    for banned in ("cannot write", "reach nothing"):
-        assert banned not in note
+def test_the_note_names_only_what_the_selected_variant_did() -> None:
+    bwrap = [entry[1] for entry in audit.ISOLATION_BACKENDS if entry[0] == "bwrap"]
+    widest, plain = bwrap[0], bwrap[-1]
+    full = audit.guard_note("isolated (bwrap)", widest)
+    assert "/run" in full and "IPC" in full and "PID" in full
+    fallback = audit.guard_note("isolated (bwrap)", plain)
+    assert "/run" not in fallback and "IPC" not in fallback and "PID" not in fallback
+    assert "read-only" in fallback and "not a security boundary" in fallback
+    for note in (full, fallback):
+        for banned in ("cannot write", "reach nothing"):
+            assert banned not in note

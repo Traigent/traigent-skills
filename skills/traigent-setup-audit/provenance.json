@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "44ce3dd23ff4c1c4",
+  "doc_hash": "47412acf69cfdb41",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290"
   },
@@ -352,6 +352,17 @@
       "doc_before_hash": "57ccdea12e077991",
       "doc_after_hash": "44ce3dd23ff4c1c4",
       "note": "Review round 1: refuse an outside-root symlink given to --scorer, mask host /run in the bwrap argv and drop absolute containment claims, bound the wait for detached probe descendants, record unreadable directories as a partial scan and unreadable .traigent as could-not-inspect, label candidates unverified when the space is unreadable, and say when rlimits are skipped.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "status-port-r2-2026-11-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-07T00:00:00Z",
+      "doc_before_hash": "44ce3dd23ff4c1c4",
+      "doc_after_hash": "47412acf69cfdb41",
+      "note": "Review round 2: containment by resolved path (ancestor symlinks), isolation note derived from the bwrap variant that passed preflight, scoped tripwire claim, and rlimit outcomes reported by the child.",
       "source_type": "agent"
     }
   ]
