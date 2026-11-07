@@ -8,9 +8,10 @@ is measured, not assumed, and reported as ``network_guard``:
 
 ``isolated (bwrap)``
     a Linux network namespace with no route to the host network AND a
-    read-only root filesystem, so ctypes, a subprocess, the private ``_socket``
-    module and a reloaded ``socket`` all reach nothing and nothing on the host
-    can be written.
+    read-only root filesystem. This is containment of a deterministic scorer,
+    not a security boundary, and it varies with the bwrap variant the machine
+    accepted (the report names which): host Unix sockets stay visible unless
+    ``/run`` is masked, and the host filesystem stays readable.
 ``isolated (unshare)``
     the same network namespace, but the NETWORK ONLY: the filesystem is not
     isolated.
@@ -54,8 +55,8 @@ GUARD_PYTHON = "python-level"
 
 # Preflighted in order; the first that exits 0 on `<prefix> true` wins. Each
 # prefix puts the probe in a network namespace with no route to the host.
-# bwrap is preferred because it also mounts the root read-only, so the scorer
-# cannot write the host filesystem; `unshare -rn` isolates the network ONLY.
+# bwrap is preferred because it also mounts the root read-only (containment,
+# not a security boundary; the host stays readable); `unshare -rn` isolates the network ONLY.
 # (backend, base arguments, terminator). `--tmpfs /tmp` hides the host's /tmp
 # from the probe, which is deliberate — but it also hides a PROJECT that lives
 # under /tmp (an extracted tarball, CI scratch, a pytest tmp_path), and the
@@ -542,10 +543,16 @@ def isolation_command(
     return command + list(terminator)
 
 
+def _has_pair(argv: list[str], flag: str, value: str) -> bool:
+    return any(
+        argv[i] == flag and argv[i + 1] == value for i in range(len(argv) - 1)
+    )
+
+
 def _rebound_under_run(command: list[str]) -> bool:
-    """True when a read-only bind in ``command`` lands under /run or /var/run."""
+    """True when a later bind destination is /run, /var/run or under them."""
     for i, token in enumerate(command[:-2]):
-        if token == "--ro-bind":
+        if token in ("--ro-bind", "--bind"):
             dest = command[i + 2]
             for run in ("/run", "/var/run"):
                 if dest == run or dest.startswith(run + "/"):
@@ -555,11 +562,12 @@ def _rebound_under_run(command: list[str]) -> bool:
 
 def bwrap_note(args: list[str], command: list[str] | None = None) -> str:
     """The bwrap note derived from the command actually run (``command``, with
-    its later read-only binds) or, without one, the variant that passed
-    preflight: only the protections actually in the argv are named."""
+    its later binds) or, without one, the variant that passed preflight: only
+    the protections actually in the argv are named. /run counts as masked only
+    on the adjacent pair ``--tmpfs /run`` (and ``--tmpfs /var/run``)."""
     argv = command if command else args
     done = ["the root filesystem mounted read-only", "a private /tmp"]
-    if "/run" in argv:
+    if _has_pair(argv, "--tmpfs", "/run") or _has_pair(argv, "--tmpfs", "/var/run"):
         if _rebound_under_run(argv):
             done.append(
                 "the host's /run and /var/run masked except the re-bound project directories"
@@ -5016,6 +5024,7 @@ def not_established(
     guard_level: str,
     isolation_args: list[str] | None = None,
     isolation_cmd: list[str] | None = None,
+    probe_ran: bool = True,
 ) -> list[str]:
     items = [
         ("Repeat-scoring measures repeatability, not correctness. A scorer that "
@@ -5036,10 +5045,16 @@ def not_established(
             "No network namespace was available on this machine, so the containment "
             "is the python-level guard: " + GUARD_NOTE[GUARD_PYTHON] + ".",
         )
-    else:
+    elif probe_ran:
         items.insert(
             0,
             "The probe subprocess ran with " + guard_level + ": " + guard_note(guard_level, isolation_args, isolation_cmd) + ".",
+        )
+    else:
+        items.insert(
+            0,
+            "No scorer was probed. Had one been, the probe subprocess would have used "
+            + guard_level + ": " + guard_note(guard_level, isolation_args, isolation_cmd) + ".",
         )
     return items
 
@@ -5222,7 +5237,9 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             "model_ids_declared": model_ids,
         },
         "open_questions": open_questions(areas, reports),
-        "not_established": not_established(guard_level, isolation_args, isolation),
+        "not_established": not_established(
+            guard_level, isolation_args, isolation, probe_ran=probe is not None
+        ),
     }
 
 

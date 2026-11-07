@@ -104,3 +104,27 @@ def test_the_note_follows_the_final_command_and_its_later_binds() -> None:
     # The plain variant never claimed a mask, whatever it binds.
     plain_cmd = [*plain, "--ro-bind", "/run/x", "/run/x"]
     assert "/run" not in audit.guard_note("isolated (bwrap)", plain, plain_cmd)
+
+
+def _bwrap_variants() -> tuple[list[str], list[str]]:
+    bwrap = [e[1] for e in audit.ISOLATION_BACKENDS if e[0] == "bwrap"]
+    return bwrap[0], bwrap[-1]
+
+
+def test_run_is_masked_only_on_the_adjacent_tmpfs_pair() -> None:
+    widest, plain = _bwrap_variants()
+    plain_cmd = [*plain, "--ro-bind", "/run", "/run", "--"]
+    assert "/run" not in audit.guard_note("isolated (bwrap)", plain, plain_cmd)
+    full_cmd = [*widest, "--ro-bind", "/run", "/run", "--"]
+    note = audit.guard_note("isolated (bwrap)", widest, full_cmd)
+    assert "masked except the re-bound project directories" in note
+    bound = [*widest, "--bind", "/var/run/x", "/var/run/x"]
+    assert "except" in audit.guard_note("isolated (bwrap)", widest, bound)
+
+
+def test_no_probe_means_no_ran_claim() -> None:
+    widest, _ = _bwrap_variants()
+    first = audit.not_established("isolated (bwrap)", widest, None, probe_ran=False)[0]
+    assert "No scorer was probed" in first and "ran with" not in first
+    ran = audit.not_established("isolated (bwrap)", widest, None, probe_ran=True)[0]
+    assert ran.startswith("The probe subprocess ran with")

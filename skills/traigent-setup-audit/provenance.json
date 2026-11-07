@@ -375,6 +375,17 @@
       "doc_after_hash": "1d95cd106e9dda83",
       "note": "Review round 3: --scorer symlink check applies only to the path selection will use, /run masking stated as conditional and the note derived from the final command with its later binds, and resource caps described as requested with the outcome in resource_limits.",
       "source_type": "agent"
+    },
+    {
+      "edit_id": "status-port-r4-2026-11-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-07T00:00:00Z",
+      "doc_before_hash": "1d95cd106e9dda83",
+      "doc_after_hash": "1d95cd106e9dda83",
+      "note": "Review round 4: /run reported masked only on the adjacent --tmpfs pair in the final argv, docstring containment wording qualified, and the probe-ran claim made only when a scorer was probed.",
+      "source_type": "agent"
     }
   ]
 }
