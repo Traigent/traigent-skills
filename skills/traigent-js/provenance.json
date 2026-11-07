@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a125c90ea80f6358",
+  "doc_hash": "fa77895e7ecf0636",
   "entries": [
     {
       "edit_id": "genesis",
@@ -117,6 +117,17 @@
       "doc_before_hash": "7a3b1393c25b62d0",
       "doc_after_hash": "a125c90ea80f6358",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "crews-section-2026-11",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-07T00:00:00Z",
+      "doc_before_hash": "a125c90ea80f6358",
+      "doc_after_hash": "fa77895e7ecf0636",
+      "note": "Add a short crew/role declaration section (stable keys, portal proposal, crew_binding status, privacy).",
       "source_type": "agent"
     }
   ]
