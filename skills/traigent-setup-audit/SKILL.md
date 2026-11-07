@@ -47,8 +47,14 @@ without the level.
 
 | `network_guard` | What holds | What it means |
 |---|---|---|
-| `isolated (unshare)` / `isolated (bwrap)` | a Linux network namespace with no route to the host network | ctypes, a subprocess, the private `_socket` module and a reloaded `socket` all reach nothing |
-| `python-level` | Python's socket entry points replaced with a refusal inside the probe | ordinary socket use is stopped, but code using ctypes, a subprocess or `_socket` is **not** stopped by it — what keeps those from running is the classifier, which is a static read, not a boundary |
+| `isolated (bwrap)` | a Linux network namespace with no route to the host network, and the root filesystem mounted read-only (only a private `/tmp` is writable) | ctypes, a subprocess, the private `_socket` module and a reloaded `socket` all reach nothing; the scorer cannot write the host filesystem, but it can still read it (home directory and `.env` included) |
+| `isolated (unshare)` | a Linux network namespace with no route to the host network — **the network only** | the same network guarantees, but the **filesystem is not isolated**: the scorer can read and write whatever your user can |
+| `python-level` | Python's socket entry points replaced with a refusal inside the probe | ordinary socket use is stopped, but code using ctypes, a subprocess or `_socket` is **not** stopped by it — what keeps those from running is the classifier, which is a static read, not a boundary; the **filesystem is not isolated** either |
+
+`bwrap` is tried first and `unshare -rn` second, because only `bwrap` also
+protects the filesystem. Never describe `unshare` or `python-level` as a
+sandbox: the card and the JSON say the filesystem is not isolated at those
+levels, and so must you.
 
 At the python-level guard: the audit itself makes no network call; your scorer
 runs in a subprocess with Python's socket entry points disabled — code that uses

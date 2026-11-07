@@ -6,15 +6,20 @@ The audit process itself opens no socket. The user's scorer is never run in this
 process: it runs in a subprocess, and how strongly that subprocess is contained
 is measured, not assumed, and reported as ``network_guard``:
 
-``isolated (unshare)`` / ``isolated (bwrap)``
-    the probe runs in a Linux network namespace with no route to the host
-    network, so ctypes, a subprocess, the private ``_socket`` module and a
-    reloaded ``socket`` all reach nothing.
+``isolated (bwrap)``
+    a Linux network namespace with no route to the host network AND a
+    read-only root filesystem, so ctypes, a subprocess, the private ``_socket``
+    module and a reloaded ``socket`` all reach nothing and nothing on the host
+    can be written.
+``isolated (unshare)``
+    the same network namespace, but the NETWORK ONLY: the filesystem is not
+    isolated.
 ``python-level``
     no namespace was available. Python's socket entry points are replaced with
     a refusal inside the probe, which stops ordinary socket use but NOT ctypes,
     a subprocess or ``_socket`` — so a scorer importing any of those is
-    classified ``executing`` and never run at all.
+    classified ``executing`` and never run at all. The filesystem is not
+    isolated at this level either.
 
 Standard library only, Python 3.11+. This script never imports ``traigent`` and
 never reads a Traigent backend; the SDK version is read out of process with
@@ -47,14 +52,14 @@ GUARD_PYTHON = "python-level"
 
 # Preflighted in order; the first that exits 0 on `<prefix> true` wins. Each
 # prefix puts the probe in a network namespace with no route to the host.
+# bwrap is preferred because it also mounts the root read-only, so the scorer
+# cannot write the host filesystem; `unshare -rn` isolates the network ONLY.
 # (backend, base arguments, terminator). `--tmpfs /tmp` hides the host's /tmp
 # from the probe, which is deliberate — but it also hides a PROJECT that lives
 # under /tmp (an extracted tarball, CI scratch, a pytest tmp_path), and the
 # scorer then fails to load for a reason that has nothing to do with the scorer.
 # `isolation_command` binds the project back in, read-only, after the tmpfs.
 ISOLATION_BACKENDS = (
-    ("unshare", ["unshare", "-rn"], []),
-    ("unshare", ["unshare", "-rn"], ["--"]),
     (
         "bwrap",
         [
@@ -74,8 +79,15 @@ ISOLATION_BACKENDS = (
         ],
         ["--"],
     ),
+    ("unshare", ["unshare", "-rn"], []),
+    ("unshare", ["unshare", "-rn"], ["--"]),
 )
 ISOLATION_PREFLIGHT_SECONDS = 5
+
+FILESYSTEM_NOT_ISOLATED = (
+    "the filesystem is NOT isolated: the scorer can read and write whatever "
+    "this user can on the host"
+)
 
 GUARD_NOTE = {
     GUARD_PYTHON: (
@@ -84,12 +96,22 @@ GUARD_NOTE = {
         "code that uses ctypes, a subprocess or the private `_socket` module can "
         "still reach the network, so only scorers classified deterministic are "
         "probed; that classification is a static read of the module's imports and "
-        "calls, not a sandbox"
+        "calls, not a sandbox; " + FILESYSTEM_NOT_ISOLATED
     ),
     "isolated": (
         "the audit itself makes no network call; your scorer runs in a subprocess "
         "inside a network namespace with no route to the host network, so ctypes, a "
-        "subprocess and the private `_socket` module reach nothing either"
+        "subprocess and the private `_socket` module reach nothing either; the "
+        "root filesystem is mounted read-only there (only a private /tmp is "
+        "writable), but this is containment of a deterministic scorer, not a "
+        "security boundary"
+    ),
+    "isolated-network-only": (
+        "the audit itself makes no network call; your scorer runs in a subprocess "
+        "inside a network namespace with no route to the host network, so ctypes, a "
+        "subprocess and the private `_socket` module reach nothing either; "
+        + FILESYSTEM_NOT_ISOLATED
+        + " (only the network is isolated)"
     ),
 }
 
@@ -511,7 +533,11 @@ def isolation_command(
 
 
 def guard_note(level: str) -> str:
-    return GUARD_NOTE["isolated" if level.startswith("isolated") else GUARD_PYTHON]
+    if level == "isolated (bwrap)":
+        return GUARD_NOTE["isolated"]
+    if level.startswith("isolated"):
+        return GUARD_NOTE["isolated-network-only"]
+    return GUARD_NOTE[GUARD_PYTHON]
 
 
 # --------------------------------------------------------------------------
@@ -4602,7 +4628,7 @@ def not_established(guard_level: str) -> list[str]:
     else:
         items.insert(
             0,
-            "The probe subprocess ran with " + guard_level + ": " + GUARD_NOTE["isolated"] + ".",
+            "The probe subprocess ran with " + guard_level + ": " + guard_note(guard_level) + ".",
         )
     return items
 
