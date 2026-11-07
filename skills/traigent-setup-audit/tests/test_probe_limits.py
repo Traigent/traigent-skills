@@ -119,3 +119,33 @@ def test_the_probe_has_an_address_space_and_cpu_cap() -> None:
 def test_a_missing_resource_module_does_not_stop_the_probe(monkeypatch) -> None:
     monkeypatch.setitem(sys.modules, "resource", None)  # import raises ImportError
     audit._limit_probe_resources()  # must simply return
+
+
+@posix_only
+def test_a_detached_descendant_holding_the_pipe_cannot_hang_the_audit(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """A grandchild that calls setsid() leaves the killed group and keeps
+    stdout open; the audit must still return within the reap bound."""
+    monkeypatch.setattr(audit, "PROBE_TIMEOUT_SECONDS", 1)
+    monkeypatch.setattr(audit, "PROBE_REAP_SECONDS", 1)
+    pid_file = tmp_path / "detached.pid"
+    code = (
+        "import os, sys, time\n"
+        "if os.fork() == 0:\n"
+        "    os.setsid()\n"
+        "    open(sys.argv[1], 'w').write(str(os.getpid()))\n"
+        "    time.sleep(60)\n"
+        "    os._exit(0)\n"
+        "time.sleep(60)\n"
+    )
+    started = time.monotonic()
+    try:
+        with pytest.raises(subprocess.TimeoutExpired):
+            audit._run_probe_process([sys.executable, "-c", code, str(pid_file)], "")
+        assert time.monotonic() - started < 10
+    finally:
+        try:
+            os.kill(int(pid_file.read_text()), 9)
+        except (OSError, ValueError):
+            pass

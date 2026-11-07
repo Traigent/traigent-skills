@@ -547,7 +547,8 @@ def _stored_probe_metrics(probe: dict) -> dict:
         return {"verdict": "none"}
     # Report metadata was added by the parent, never by the child.
     metadata = {"requested_repeats", "payload_source", "stderr_bytes",
-                "framed_result_lines", "dropped_keys", "partial_probed"}
+                "framed_result_lines", "dropped_keys", "partial_probed",
+                "resource_limits"}
     payload = {key: value for key, value in probe.items() if key not in metadata}
     if "requested_repeats" in probe and probe["requested_repeats"] is None:
         raise ValueError("requested repeats must be a positive integer")

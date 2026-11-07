@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "57ccdea12e077991",
+  "doc_hash": "44ce3dd23ff4c1c4",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290"
   },
@@ -341,6 +341,17 @@
       "doc_before_hash": "7e2ff0b7c9ebe531",
       "doc_after_hash": "57ccdea12e077991",
       "note": "Prefer bwrap (read-only root) over unshare and say when the filesystem is not isolated; run the probe in its own process group under rlimits; report past-run evidence by presence only, undeclared candidate tunables by name and location, a scan_state with exit 1 for a partial scan, and skip symlinks that leave the root; neutral message when the probe returns no readable result.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "status-port-r1-2026-11-07",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-07T00:00:00Z",
+      "doc_before_hash": "57ccdea12e077991",
+      "doc_after_hash": "44ce3dd23ff4c1c4",
+      "note": "Review round 1: refuse an outside-root symlink given to --scorer, mask host /run in the bwrap argv and drop absolute containment claims, bound the wait for detached probe descendants, record unreadable directories as a partial scan and unreadable .traigent as could-not-inspect, label candidates unverified when the space is unreadable, and say when rlimits are skipped.",
       "source_type": "agent"
     }
   ]

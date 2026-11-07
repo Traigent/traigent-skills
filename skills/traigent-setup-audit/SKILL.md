@@ -47,7 +47,7 @@ without the level.
 
 | `network_guard` | What holds | What it means |
 |---|---|---|
-| `isolated (bwrap)` | a Linux network namespace with no route to the host network, and the root filesystem mounted read-only (only a private `/tmp` is writable) | ctypes, a subprocess, the private `_socket` module and a reloaded `socket` all reach nothing; the scorer cannot write the host filesystem, but it can still read it (home directory and `.env` included) |
+| `isolated (bwrap)` | a Linux network namespace with no route to the host network, the root filesystem mounted read-only, a private `/tmp`, the host's `/run` and `/var/run` masked, and (where the machine allows) separate IPC and PID namespaces | this is containment of a deterministic scorer, **not a security boundary**: the mounts and namespaces above are what was done, not a guarantee of what the scorer cannot reach. The host filesystem stays readable (home directory and `.env` included) |
 | `isolated (unshare)` | a Linux network namespace with no route to the host network — **the network only** | the same network guarantees, but the **filesystem is not isolated**: the scorer can read and write whatever your user can |
 | `python-level` | Python's socket entry points replaced with a refusal inside the probe | ordinary socket use is stopped, but code using ctypes, a subprocess or `_socket` is **not** stopped by it — what keeps those from running is the classifier, which is a static read, not a boundary; the **filesystem is not isolated** either |
 
@@ -115,12 +115,12 @@ the report cannot be written as strict JSON (then nothing is written). A scan is
 partial when a cap was hit (more than 4000 Python files, more than 400 data
 files, a dataset cut at 20000 rows) or a file was not read: a Python file that
 could not be parsed, a dataset file that was unreadable or over the size cap,
-or a Python or data file that is a symlink pointing outside `--root` (such a file
+, a directory that could not be listed, or a Python or data file that is a symlink pointing outside `--root` (such a file
 is skipped without being opened and named in the report; a link that stays
 inside `--root` is read normally). The report says which in `scan_state`
 (`complete` or `partial`) and `scan_partial_reasons` (a closed list: `python_file_cap`,
 `python_unparsed`, `python_symlink_skipped`, `data_file_cap`, `data_file_not_read`,
-`data_rows_truncated`), and the card prints a `Scan state: PARTIAL` line. Treat
+`data_rows_truncated`, `directory_unreadable`, `scorer_symlink_refused`), and the card prints a `Scan state: PARTIAL` line. Treat
 exit `1` as "the verdicts rest on less than the project holds", not as a crash:
 the card and JSON are still written.
 
@@ -128,12 +128,18 @@ The report also carries two things beside the four areas. `evaluation` says
 `not_evaluated` unless the project holds `.traigent/<run>/metadata.json`; when it does it
 says `unverified_past_run_evidence` and the artifact count. Only the files'
 presence is checked: nothing in them is read, a symlinked `.traigent`, run
-directory or file is not followed, and the count is never a score. Each entry
+directory or file is not followed, and the count is never a score. If `.traigent`
+cannot be listed the state is `could_not_inspect`, not `not_evaluated`.
+An explicit `--scorer` naming a symlink that leaves `--root` is refused too
+(by its link name; not read, classified or probed). Each entry
 point also carries `candidate_tunables`: literals such as `temperature=0.2`,
 `model="..."`, `max_tokens=`, `top_p=` or `top_k=` passed to a call inside the
 agent function body that are not in `configuration_space`. They are named with
 `file:line` only, never with their value, and the card labels them "candidate,
-not declared": they are not knobs until someone declares them.
+not declared": they are not knobs until someone declares them. When the
+configuration space itself could not be read statically, the label is
+"candidate; declaration unverified (space not statically readable)" instead,
+because the space may already hold that name.
 
 ## What it checks
 
@@ -611,10 +617,13 @@ that its zero-network property stays provable rather than inherited.
 - User code runs only in the probe subprocess, only for a scorer classified
   deterministic, under a 30-second timeout — inside a network namespace where one
   is available. The probe runs in its own process group: on timeout the whole
-  group is killed, so a helper the scorer forked does not outlive the audit, and
-  where `resource` exists the probe is capped at 2 GiB of address space and
-  CPU seconds just above the timeout. Only `isolated (bwrap)` also makes the
-  filesystem read-only; at `isolated (unshare)` and `python-level` the scorer
+  group is killed, so a helper the scorer forked does not outlive the audit (one that
+  detaches into its own session is not killed, but the audit stops waiting for it
+  after a few seconds and reports a timeout), and where `resource` exists the
+  probe is capped at 2 GiB of address space and
+  CPU seconds just above the timeout (where it is missing the card says the caps
+  were skipped). Only `isolated (bwrap)` also makes the
+  filesystem read-only (and masks `/run`); at `isolated (unshare)` and `python-level` the scorer
   can read and write whatever your user can, and the card says so. The project's interpreter is started for nothing else: the SDK
   version is read from installed package metadata. The one git call
   (`git check-ignore` on `.env`) runs with the project's `core.fsmonitor` and
@@ -649,7 +658,7 @@ that its zero-network property stays provable rather than inherited.
 - Anything in the second tier — every paid call and every byte that leaves the
   machine — waits for an explicit approval. Silence is not approval. Offer mode
   runs under the same network guard as Tier 1 and reports the level it had, so
-  "no socket was opened" is measured rather than asserted; "no process was
+  "no socket was opened" is measured rather than asserted (the test suite's tripwire proves only that the audit's parent process made no Python-level socket call before its own guard took over; it does not cover native code or the probe child); "no process was
   spawned" is a property of the code path, not of that guard, and every approved
   run records both counts in its receipt, which is written to disk only when `--receipt <path>` is passed.
 

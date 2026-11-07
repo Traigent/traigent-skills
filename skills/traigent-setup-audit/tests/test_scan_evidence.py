@@ -19,6 +19,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 TESTS_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = TESTS_DIR.parent / "scripts"
 SCRIPT = SCRIPTS_DIR / "audit_project.py"
@@ -304,10 +306,14 @@ atexit.register(lambda: open(os.environ["TRIPWIRE_OUT"], "w").write(json.dumps(H
 '''
 
 
-def test_the_audit_process_makes_no_network_attempt(tmp_path: Path) -> None:
-    """A real subprocess, with the tripwire installed by `sitecustomize` before
-    `audit_project.py` starts, so even an attempt the script's own guard would
-    have refused is counted."""
+def test_the_audit_parent_makes_no_python_level_socket_call(tmp_path: Path) -> None:
+    """What this proves, and no more: in a real subprocess, no Python-level
+    `socket.connect`, `getaddrinfo`, `gethostbyname` or `create_connection` call
+    reached the originals from the audit's PARENT process. The tripwire is
+    installed by `sitecustomize` before the script starts, so it counts calls
+    made before the audit's own guard replaces those entry points. It does not
+    see calls that arrive at the guard afterwards (the guard's self-test makes
+    four on purpose), native-code network use, or anything in the probe child."""
     wire = tmp_path / "wire"
     wire.mkdir()
     (wire / "sitecustomize.py").write_text(TRIPWIRE, encoding="utf-8")
@@ -319,3 +325,82 @@ def test_the_audit_process_makes_no_network_attempt(tmp_path: Path) -> None:
     assert done.returncode == 0, done.stderr
     assert report["scorer_probe"]["ran"] is True  # the probe really ran
     assert json.loads(out.read_text(encoding="utf-8"))["network"] == []
+
+
+# --------------------------------------------------------------------------
+# unreadable directories, candidate wording, resource caps
+# --------------------------------------------------------------------------
+
+needs_non_root = pytest.mark.skipif(
+    hasattr(os, "geteuid") and os.geteuid() == 0,
+    reason="root can read a mode-000 directory",
+)
+
+
+@needs_non_root
+def test_an_unreadable_directory_makes_the_scan_partial(tmp_path: Path) -> None:
+    root = _healthy(tmp_path)
+    locked = root / "locked"
+    locked.mkdir()
+    (locked / "hidden.py").write_text("X = 1\n", encoding="utf-8")
+    locked.chmod(0)
+    try:
+        done, report = _audit(root, tmp_path / "out")
+    finally:
+        locked.chmod(0o755)
+    assert done.returncode == 1, done.stderr
+    assert "directory_unreadable" in report["scan_partial_reasons"]
+    assert report["files"]["directories_unreadable"] == ["locked"]
+
+
+@needs_non_root
+def test_an_unreadable_traigent_directory_is_could_not_inspect(tmp_path: Path) -> None:
+    root = _healthy(tmp_path)
+    base = root / ".traigent"
+    base.mkdir()
+    base.chmod(0)
+    try:
+        done, report = _audit(root, tmp_path / "out")
+    finally:
+        base.chmod(0o755)
+    assert report["evaluation"]["state"] == "could_not_inspect", report["evaluation"]
+    assert "Evaluation: could not inspect" in done.stdout
+
+
+def test_candidates_are_unverified_when_the_space_is_not_readable(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+    (root / "agent.py").write_text(
+        "import traigent\n\n"
+        "@traigent.optimize(configuration_space=build_space())\n"
+        "def answer(q):\n"
+        "    return call(temperature=0.2)\n",
+        encoding="utf-8",
+    )
+    done, report = _audit(root, tmp_path / "out")
+    entry = report["entry_points"][0]
+    assert entry["candidate_tunables"], entry
+    assert entry["candidate_declaration"] == "unverified"
+    assert "candidate; declaration unverified (space not statically readable)" in done.stdout
+    assert "candidate, not declared" not in done.stdout
+
+
+def test_the_probe_reports_its_resource_caps(tmp_path: Path) -> None:
+    _, report = _audit(_healthy(tmp_path), tmp_path / "out")
+    assert report["scorer_probe"]["resource_limits"] == "applied"
+
+
+def test_skipped_resource_caps_are_said_on_the_card(tmp_path: Path) -> None:
+    code = (
+        "import sys\n"
+        f"sys.path.insert(0, {str(SCRIPTS_DIR)!r})\n"
+        "sys.modules['resource'] = None\n"
+        "import audit_project as a\n"
+        f"sys.exit(a.main(['--root', {str(_healthy(tmp_path))!r}, '--json', "
+        f"{str(tmp_path / 'r.json')!r}]))\n"
+    )
+    done = subprocess.run([sys.executable, "-c", code], capture_output=True,
+                          text=True, timeout=300, check=False)
+    report = json.loads((tmp_path / "r.json").read_text(encoding="utf-8"))
+    assert report["scorer_probe"]["resource_limits"].startswith("skipped")
+    assert "without memory and CPU caps" in done.stdout

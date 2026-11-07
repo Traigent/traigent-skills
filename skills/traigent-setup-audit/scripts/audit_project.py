@@ -39,6 +39,7 @@ import math
 import os
 import re
 import signal
+import stat
 import subprocess
 import sys
 from collections import Counter, defaultdict
@@ -60,26 +61,29 @@ GUARD_PYTHON = "python-level"
 # under /tmp (an extracted tarball, CI scratch, a pytest tmp_path), and the
 # scorer then fails to load for a reason that has nothing to do with the scorer.
 # `isolation_command` binds the project back in, read-only, after the tmpfs.
+_BWRAP_BASE = [
+    "bwrap",
+    "--unshare-net",
+    "--unshare-user-try",
+    "--die-with-parent",
+    "--ro-bind",
+    "/",
+    "/",
+    "--dev",
+    "/dev",
+    "--proc",
+    "/proc",
+    "--tmpfs",
+    "/tmp",
+]
+# Host service sockets (a container daemon's, for one) live under /run; a
+# read-only mount does not stop a connect() to them, so they are masked.
+_BWRAP_MASK_RUN = ["--tmpfs", "/run", "--tmpfs", "/var/run"]
+# Tried widest first; a variant the machine refuses falls through to the next.
 ISOLATION_BACKENDS = (
-    (
-        "bwrap",
-        [
-            "bwrap",
-            "--unshare-net",
-            "--unshare-user-try",
-            "--die-with-parent",
-            "--ro-bind",
-            "/",
-            "/",
-            "--dev",
-            "/dev",
-            "--proc",
-            "/proc",
-            "--tmpfs",
-            "/tmp",
-        ],
-        ["--"],
-    ),
+    ("bwrap", [*_BWRAP_BASE, *_BWRAP_MASK_RUN, "--unshare-ipc", "--unshare-pid"], ["--"]),
+    ("bwrap", [*_BWRAP_BASE, *_BWRAP_MASK_RUN], ["--"]),
+    ("bwrap", list(_BWRAP_BASE), ["--"]),
     ("unshare", ["unshare", "-rn"], []),
     ("unshare", ["unshare", "-rn"], ["--"]),
 )
@@ -101,16 +105,13 @@ GUARD_NOTE = {
     ),
     "isolated": (
         "the audit itself makes no network call; your scorer runs in a subprocess "
-        "inside a network namespace with no route to the host network, so ctypes, a "
-        "subprocess and the private `_socket` module reach nothing either; the "
-        "root filesystem is mounted read-only there (only a private /tmp is "
-        "writable), but this is containment of a deterministic scorer, not a "
-        "security boundary"
+        "in a network namespace with no route to the host network, with the root "
+        "filesystem mounted read-only, a private /tmp and the host's /run masked; "
+        "this is containment of a deterministic scorer, not a security boundary"
     ),
     "isolated-network-only": (
         "the audit itself makes no network call; your scorer runs in a subprocess "
-        "inside a network namespace with no route to the host network, so ctypes, a "
-        "subprocess and the private `_socket` module reach nothing either; "
+        "inside a network namespace with no route to the host network; "
         + FILESYSTEM_NOT_ISOLATED
         + " (only the network is isolated)"
     ),
@@ -388,6 +389,9 @@ PROBE_SCRIPT = Path(__file__).resolve().parent / "scorer_probe.py"
 # POSIX resource caps for the probe process tree (inherited by its children).
 PROBE_ADDRESS_SPACE_BYTES = 2 * 1024**3
 PROBE_CPU_SLACK_SECONDS = 5
+# After the group is killed, how long to wait for the pipes to close. A
+# descendant that left the group (setsid) can hold them open indefinitely.
+PROBE_REAP_SECONDS = 3
 # Distinct gold values of the probed kind read when choosing the known-bad
 # answer. Bounded so a large dataset is not compared value by value.
 PROBE_CANDIDATES = 32
@@ -625,10 +629,13 @@ SYMLINK_SKIP_REASON = (
 
 EVALUATION_NOT_EVALUATED = "not_evaluated"
 EVALUATION_UNVERIFIED = "unverified_past_run_evidence"
+EVALUATION_UNINSPECTABLE = "could_not_inspect"
 
 
-def past_run_artifacts(root: Path) -> list[str]:
-    """Project-local ``.traigent/<run>/metadata.json`` files, by presence only.
+def past_run_artifacts(root: Path) -> tuple[list[str], bool]:
+    """``(artifacts, inspected)``: project-local ``.traigent/<run>/metadata.json``
+    files, by presence only; ``inspected`` is False when something under
+    ``.traigent`` could not be listed or stat-ed.
 
     Nothing is opened: no score or value is read, so the count cannot be taken
     for a result. A symlinked ``.traigent``, run directory or metadata file is
@@ -637,28 +644,45 @@ def past_run_artifacts(root: Path) -> list[str]:
     base = root / ".traigent"
     found: list[str] = []
     try:
-        if base.is_symlink() or not base.is_dir():
-            return found
+        mode = os.lstat(base).st_mode
+    except FileNotFoundError:
+        return found, True
+    except OSError:
+        return found, False
+    if not stat.S_ISDIR(mode):
+        return found, True
+    try:
         children = sorted(os.listdir(base))
     except OSError:
-        return found
+        return found, False
+    inspected = True
     for name in children:
         run_dir = base / name
-        meta = run_dir / "metadata.json"
         try:
-            if run_dir.is_symlink() or not run_dir.is_dir():
+            if not stat.S_ISDIR(os.lstat(run_dir).st_mode):
                 continue
-            if meta.is_symlink() or not meta.is_file():
-                continue
-        except OSError:
+            if stat.S_ISREG(os.lstat(run_dir / "metadata.json").st_mode):
+                found.append(f".traigent/{name}/metadata.json")
+        except FileNotFoundError:
             continue
-        found.append(f".traigent/{name}/metadata.json")
-    return found
+        except OSError:
+            inspected = False
+    return found, inspected
 
 
-def evaluation_record(artifacts: list[str]) -> dict:
-    """The report's `evaluation` record: an absence or unverified evidence,
-    never a pass."""
+def evaluation_record(artifacts: list[str], inspected: bool = True) -> dict:
+    """The report's `evaluation` record: an absence, an unverified presence or
+    an inspection that failed, never a pass."""
+    if not inspected and not artifacts:
+        return {
+            "state": EVALUATION_UNINSPECTABLE,
+            "artifacts": 0,
+            "paths": [],
+            "note": (
+                "could not inspect `.traigent` (a directory there could not be "
+                "listed), so whether past runs exist is unknown"
+            ),
+        }
     if not artifacts:
         return {
             "state": EVALUATION_NOT_EVALUATED,
@@ -683,9 +707,18 @@ def evaluation_record(artifacts: list[str]) -> dict:
     }
 
 
-def iter_project_files(root: Path) -> list[Path]:
+def iter_project_files(
+    root: Path, unreadable: list[str] | None = None
+) -> list[Path]:
+    """Every file under ``root``; a directory that cannot be listed is recorded
+    in ``unreadable`` by its path under the root (never its content)."""
     found: list[Path] = []
-    for dirpath, dirnames, filenames in os.walk(root):
+
+    def _record(error: OSError) -> None:
+        if unreadable is not None:
+            unreadable.append(link_name(Path(error.filename or root), root))
+
+    for dirpath, dirnames, filenames in os.walk(root, onerror=_record):
         dirnames[:] = sorted(
             name
             for name in dirnames
@@ -3079,6 +3112,15 @@ def probe_environment() -> dict[str, str]:
     return {name: value for name, value in values.items() if value is not None}
 
 
+def resource_limits_state() -> str:
+    """``applied`` when the POSIX rlimit caps can be set, else why not."""
+    try:
+        import resource  # noqa: F401
+    except ImportError:
+        return "skipped: the `resource` module is not available on this platform"
+    return "applied"
+
+
 def _limit_probe_resources() -> None:
     """``preexec_fn`` for the probe: cap address space and CPU time.
 
@@ -3130,7 +3172,7 @@ def _run_probe_process(
         )
     except subprocess.TimeoutExpired:
         _kill_probe_group(process)
-        process.communicate()
+        _reap_probe(process)
         raise
     except BaseException:
         _kill_probe_group(process)
@@ -3139,6 +3181,23 @@ def _run_probe_process(
     # swept: nothing the probe started may outlive it.
     _kill_probe_group(process)
     return subprocess.CompletedProcess(command, process.returncode, stdout, stderr)
+
+
+def _reap_probe(process: subprocess.Popen) -> None:
+    """Collect the killed probe's output, but never wait on a detached holder."""
+    try:
+        process.communicate(timeout=PROBE_REAP_SECONDS)
+    except subprocess.TimeoutExpired:
+        for stream in (process.stdin, process.stdout, process.stderr):
+            try:
+                if stream is not None:
+                    stream.close()
+            except OSError:
+                pass
+        try:
+            process.wait(timeout=PROBE_REAP_SECONDS)
+        except subprocess.TimeoutExpired:
+            pass
 
 
 def _kill_probe_group(process: subprocess.Popen) -> None:
@@ -3755,6 +3814,9 @@ def entry_point_records(entry_points: list[EntryPoint]) -> list[dict]:
             "line": entry.line,
             "config_space_note": entry.config_space_note,
             "candidate_tunables": entry.candidate_tunables,
+            "candidate_declaration": (
+                "unverified" if entry.config_space_note is not None else "not_declared"
+            ),
             "knobs": [
                 {
                     "name": knob.name,
@@ -4043,13 +4105,23 @@ def _knob_lines(knobs: list[Knob]) -> list[str]:
 def _candidate_tunable_lines(entry_points: list[EntryPoint]) -> list[str]:
     """One line per undeclared tunable-looking literal: name and location only,
     reported as a candidate and kept apart from the declared knobs."""
-    return [
-        f"candidate, not declared: `{item['name']}` is set to a literal at "
-        f"{item['file']}:{item['line']} in `{entry.function}` — it is not in the "
-        "configuration space, so no search varies it"
-        for entry in entry_points
-        for item in entry.candidate_tunables
-    ]
+    lines = []
+    for entry in entry_points:
+        unverified = entry.config_space_note is not None
+        for item in entry.candidate_tunables:
+            where = f"{item['file']}:{item['line']} in `{entry.function}`"
+            if unverified:
+                lines.append(
+                    f"candidate; declaration unverified (space not statically "
+                    f"readable): `{item['name']}` is set to a literal at {where}"
+                )
+            else:
+                lines.append(
+                    f"candidate, not declared: `{item['name']}` is set to a "
+                    f"literal at {where} — it is not in the configuration "
+                    "space, so no search varies it"
+                )
+    return lines
 
 
 def _blank_entry_lines(entry_points: list[EntryPoint]) -> list[str]:
@@ -4308,6 +4380,10 @@ def scorer_area(
         f"process ({probe.get('payload_source')} probe values)"
     )
     evidence.extend(probe_evidence)
+    if str(probe.get("resource_limits", "applied")).startswith("skipped"):
+        evidence.append(
+            "the probe ran without memory and CPU caps (" + probe["resource_limits"] + ")"
+        )
     synthetic = probe.get("payload_source") == "synthetic"
     status = "ok" if probe_status == "ok" and not synthetic else "attention"
     meaning = _probe_meaning(probe_status, synthetic, probe)
@@ -4910,7 +4986,10 @@ def scan_partial_reasons(
 
 def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
     guard_level, backend, isolation_args, isolation_terminator = detect_isolation()
-    files, walkthrough_files = split_walkthrough_files(iter_project_files(root), root)
+    unreadable_dirs: list[str] = []
+    files, walkthrough_files = split_walkthrough_files(
+        iter_project_files(root, unreadable_dirs), root
+    )
     python_files = [path for path in files if path.suffix == ".py"]
     inventory = scan_python(python_files, root)
 
@@ -4923,7 +5002,16 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             files, root, args.label_field
         )
 
-    selected, probed, refusal = _choose_scorer(args.scorer, inventory, root)
+    scorer_link = scorer_selection_link(args.scorer, root)
+    if scorer_link:
+        selected, probed = None, None
+        refusal = (
+            f"the scorer named with --scorer (`{scorer_link}`) is a symlink "
+            f"pointing outside the project root, so it was refused: it was not "
+            "read, classified or probed"
+        )
+    else:
+        selected, probed, refusal = _choose_scorer(args.scorer, inventory, root)
 
     interpreter = project_interpreter(root)
     probe: dict | None = None
@@ -4946,11 +5034,16 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         probe = run_scorer_probe(
             interpreter, probed, root, payload, args.repeats, isolation
         )
+        probe["resource_limits"] = resource_limits_state()
 
     model_ids = _declared_model_ids(inventory)
     partial_reasons = scan_partial_reasons(
         inventory, reports, dataset_candidates, skipped_files, bool(args.dataset)
     )
+    if unreadable_dirs:
+        partial_reasons.append("directory_unreadable")
+    if scorer_link:
+        partial_reasons.append("scorer_symlink_refused")
 
     sdk = read_sdk_version(interpreter)
     keys = key_presence(root, files)
@@ -4969,7 +5062,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         "schema": SCHEMA,
         "scan_state": "partial" if partial_reasons else "complete",
         "scan_partial_reasons": partial_reasons,
-        "evaluation": evaluation_record(past_run_artifacts(root)),
+        "evaluation": evaluation_record(*past_run_artifacts(root)),
         "network_guard": guard_level,
         "network_guard_note": guard_note(guard_level),
         "audit_process_guard": guard,
@@ -4980,6 +5073,7 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
             "python_total": inventory.files_total,
             "python_unparsed": inventory.files_unparsed[:20],
             "python_symlink_skipped": inventory.files_symlink_skipped[:20],
+            "directories_unreadable": sorted(set(unreadable_dirs))[:20],
             "dataset_candidates": dataset_candidates,
             "dataset_files_not_analysed": skipped_files,
             "notes": inventory.notes + dataset_notes,
@@ -5034,6 +5128,26 @@ def build_report(root: Path, args: argparse.Namespace, guard: str) -> dict:
         "open_questions": open_questions(areas, reports),
         "not_established": not_established(guard_level),
     }
+
+
+def scorer_selection_link(selector: str | None, root: Path) -> str | None:
+    """The link name when ``--scorer`` names a symlink that leaves ``root``.
+
+    The check is on the path as written (absolute, against the working
+    directory, or against ``root``), before anything resolves it: a resolved
+    path would already be the outside file.
+    """
+    if not selector:
+        return None
+    file_part = selector.rpartition(":")[0]
+    if not file_part:
+        return None
+    given = Path(file_part).expanduser()
+    spellings = [given] if given.is_absolute() else [root / given, Path.cwd() / given]
+    for path in spellings:
+        if points_outside_root(path, root):
+            return link_name(path, root) if path.is_relative_to(root) else path.name
+    return None
 
 
 def _choose_scorer(

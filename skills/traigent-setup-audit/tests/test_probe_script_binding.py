@@ -60,3 +60,25 @@ def test_no_readable_result_does_not_blame_the_scorer() -> None:
     assert "ended the process" not in sentence
     assert "most likely" not in sentence
     assert "probe diagnostics" in sentence
+
+
+def test_the_bwrap_variants_mask_host_sockets_and_keep_the_rebinds_after() -> None:
+    bwrap = [entry for entry in audit.ISOLATION_BACKENDS if entry[0] == "bwrap"]
+    assert len(bwrap) >= 2
+    widest = bwrap[0][1]
+    assert widest.count("--tmpfs") == 3 and "/run" in widest and "/var/run" in widest
+    assert "--unshare-ipc" in widest and "--unshare-pid" in widest
+    # The plain argv stays as the last bwrap fallback.
+    assert "/run" not in bwrap[-1][1]
+    command = audit.isolation_command("bwrap", widest, ["--"], [Path(__file__).parent])
+    here = str(Path(__file__).parent.resolve())
+    assert command.index(here) > max(
+        i for i, token in enumerate(command) if token == "--tmpfs"
+    )
+
+
+def test_the_isolation_notes_make_no_absolute_claim() -> None:
+    note = audit.guard_note("isolated (bwrap)")
+    assert "not a security boundary" in note and "/run" in note
+    for banned in ("cannot write", "reach nothing"):
+        assert banned not in note

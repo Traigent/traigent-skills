@@ -1055,12 +1055,13 @@ def test_two_files_that_differ_only_in_case_stay_separate(
     assert report["next_step"]["branch"] == "g"
 
 
-def test_a_selection_symlinked_out_of_the_root_is_listed_once(
+def test_a_selection_symlinked_out_of_the_root_is_refused_unread(
     tmp_path: Path,
 ) -> None:
-    """`scorer.py` in the root is a symlink to a file outside it. Selected by
-    its absolute path, it is the scorer the inventory already found, so it is
-    listed once, as the selection, and not a second time by its target."""
+    """`scorer.py` in the root is a symlink to a file outside it. Naming it with
+    --scorer does not make it readable: it is refused by its link name, never
+    read, classified or probed, and the scan is partial. (This replaces the
+    earlier "honoured and listed once" contract.)"""
     root = _variant(tmp_path, _three_way())
     outside = tmp_path / "outside"
     outside.mkdir()
@@ -1092,13 +1093,12 @@ def test_a_selection_symlinked_out_of_the_root_is_listed_once(
     # The symlinked file is skipped, not read, so the scan is partial: exit 1.
     assert report["scan_state"] == "partial"
     assert completed.returncode == 1, completed.stderr
-    assert len(report["scorers"]) == 1, report["scorers"]
-    assert "selected" in report["scorers"][0]
-    assert report["scorer_selection_refused"] is None
-    # Was `g` (all clear). The discovery scan now skips the symlinked file
-    # unread, which is an inventory gap (`i`) until the real file is inside
-    # --root; the explicit --scorer selection itself is still honoured.
-    assert report["next_step"]["branch"] == "i"
+    refusal = report["scorer_selection_refused"]
+    assert refusal and "symlink" in refusal and "`scorer.py`" in refusal, refusal
+    assert str(outside) not in refusal and str(outside) not in completed.stdout
+    assert report["scorers"] == []
+    assert report["scorer_probe"] is None
+    assert "scorer_symlink_refused" in report["scan_partial_reasons"]
 
 
 @pytest.mark.parametrize(
