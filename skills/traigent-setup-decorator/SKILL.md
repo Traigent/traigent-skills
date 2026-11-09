@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.28"
+  version: "1.0.29"
 ---
 
 # Traigent Decorator Setup
@@ -436,7 +436,7 @@ fully no-network run also needs `LITELLM_LOCAL_MODEL_COST_MAP=True` set before `
 
 **Confidential prompt text or other private tuned values.** When the user says prompt text (or any value you would tune) must stay private and also wants the run in the portal:
 1. Tune an opaque id, e.g. `configuration_space={"prompt_id": ["a", "b", "c"]}`, and load the text locally inside the function from `traigent.get_config()["prompt_id"]`. Never put the text itself in `configuration_space` or `default_config`, and never copy it into new files or your reply.
-2. In your reply, say this in plain words: on connected (portal-tracked) runs Traigent receives the search space, each trial's configuration values and numeric metrics, so prompt text placed in the config would leave their network. That is why the prompt is tuned as an id.
+2. In your reply, include this sentence (adapt the key name): "On a portal-tracked run, Traigent receives the search space and every trial's configuration values, so if the prompt text itself were a config value it would leave your network; that is why the run tunes `prompt_id` and your code loads the text locally." Do not shorten this to "only IDs are sent": that hides the reason.
 3. Say what does not leave as text: dataset rows and model outputs. Per-example ids are sent, and when a project API key is set, keyed digests (HMAC) of each example and output are sent too.
 4. State the trade-off: `offline=True` sends nothing to Traigent, but then the run does not appear in the portal.
 
