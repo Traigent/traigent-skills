@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "5b6bc47155e28034",
+  "doc_hash": "92ae441aee978763",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -455,6 +455,17 @@
       "doc_before_hash": "5b6bc47155e28034",
       "doc_after_hash": "5b6bc47155e28034",
       "note": "Round 3: preflight inlines per-session recovery (traigent sync <session_id> / traigent local sync --session-id), never --all (SKILL.md unchanged, no version bump).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r4",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "5b6bc47155e28034",
+      "doc_after_hash": "92ae441aee978763",
+      "note": "Round 4: removed the fixed first-run search size and the about-20 generalisation; SDK analyzer floors kept.",
       "source_type": "agent"
     }
   ]

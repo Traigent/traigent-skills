@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.13"
+  version: "1.2.14"
 ---
 
 # Traigent Analyze Guidance
@@ -435,7 +435,7 @@ print(analyzer.get_top_parameters(importance, top_k=5))
 
 If importance is empty, do not infer that no knob matters. Common reasons are too few successful trials, flat objective variance, missing objective metrics, or a configuration space that did not vary enough.
 
-Below about 20 completed trials — a first-run search is 12 — read `importance_score`,
+With few completed trials (below the analyzer floors named next), read `importance_score`,
 `optimization_priority`, and the insights `recommendations` as directional, the label the
 `traigent-analyze-variable-importance` script gives the same data. The analyzer's sample floors
 are explicit: `analyze_variance_based` and the correlation method return `{}` under 10 successful

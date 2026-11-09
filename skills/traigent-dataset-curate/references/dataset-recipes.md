@@ -7,7 +7,7 @@ Use these recipes when shaping an evaluation dataset for a specific agent patter
 Example shape:
 
 ```json
-{"input": {"question": "Which SLA applies to enterprise support?", "documents": [{"id": "policy-7", "text": "Enterprise support has a 4 hour response SLA."}]}, "expected_output": "Enterprise support has a 4 hour response SLA.", "metadata": {"task": "rag_qa", "split": "tune", "source_doc_ids": ["policy-7"]}}
+{"id": "row-001", "input": {"question": "Which SLA applies to enterprise support?", "documents": [{"id": "policy-7", "text": "Enterprise support has a 4 hour response SLA."}]}, "expected_output": "Enterprise support has a 4 hour response SLA.", "metadata": {"task": "rag_qa", "split": "tune", "source_doc_ids": ["policy-7"]}}
 ```
 
 Gold-label sourcing:
@@ -32,7 +32,7 @@ Holdout sizing:
 Example shape:
 
 ```json
-{"input": {"task": "Add a Python function that normalizes email addresses.", "files": {"utils.py": ""}, "tests": "assert normalize_email(' A@EXAMPLE.COM ') == 'a@example.com'"}, "expected_output": {"test_status": "pass"}, "metadata": {"task": "code_gen", "split": "tune", "language": "python"}}
+{"id": "row-002", "input": {"task": "Add a Python function that normalizes email addresses.", "files": {"utils.py": ""}, "tests": "assert normalize_email(' A@EXAMPLE.COM ') == 'a@example.com'"}, "expected_output": {"test_status": "pass"}, "metadata": {"task": "code_gen", "split": "tune", "language": "python"}}
 ```
 
 Gold-label sourcing:
@@ -57,7 +57,7 @@ Holdout sizing:
 Example shape:
 
 ```json
-{"input": {"user_request": "Find unpaid invoices for Acme and draft a reminder.", "available_tools": ["search_invoices", "draft_email"]}, "expected_output": {"required_tools": ["search_invoices", "draft_email"], "forbidden_tools": []}, "metadata": {"task": "tool_use", "split": "holdout", "risk": "billing"}}
+{"id": "row-003", "input": {"user_request": "Find unpaid invoices for Acme and draft a reminder.", "available_tools": ["search_invoices", "draft_email"]}, "expected_output": {"required_tools": ["search_invoices", "draft_email"], "forbidden_tools": []}, "metadata": {"task": "tool_use", "split": "holdout", "risk": "billing"}}
 ```
 
 Gold-label sourcing:
@@ -82,7 +82,7 @@ Holdout sizing:
 Example shape:
 
 ```json
-{"input": {"text": "Invoice INV-193 is overdue by 12 days."}, "expected_output": {"label": "billing_followup", "invoice_id": "INV-193", "days_overdue": 12}, "metadata": {"task": "classification_extraction", "split": "tune", "schema_version": "v1"}}
+{"id": "row-004", "input": {"text": "Invoice INV-193 is overdue by 12 days."}, "expected_output": {"label": "billing_followup", "invoice_id": "INV-193", "days_overdue": 12}, "metadata": {"task": "classification_extraction", "split": "tune", "schema_version": "v1"}}
 ```
 
 Gold-label sourcing:

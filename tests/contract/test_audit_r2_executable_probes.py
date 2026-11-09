@@ -57,7 +57,7 @@ def test_reference_free_judge_runs_with_no_gold_and_refuses_a_blank_rubric(
 ) -> None:
     body = """
     install_replies(lambda model, messages: '{"score": 0.8, "reason": "ok"}')
-    write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+    write_prepared_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
     ns = load_block(sys.argv[1])
     build = ns["build_reference_free_judge_prompt"]
 
@@ -106,7 +106,7 @@ def test_example_id_helper_requires_a_row_id(path: Path, count: int) -> None:
 
 
 def _prep_helpers() -> tuple[Any, Any]:
-    (block,) = _blocks(EVAL_BUILD, "def check_row_ids")
+    (block,) = _blocks(EVAL_BUILD, "def assign_row_ids")
     namespace: dict[str, Any] = {}
     exec(compile(block, "<dataset-prep>", "exec"), namespace)
     return namespace["assign_row_ids"], namespace["check_row_ids"]
@@ -195,3 +195,175 @@ def test_round3_cues_are_present() -> None:
     assert "traigent sync <session_id>" in flat and "Never use the whole-store `--all`" in flat
     build = EVAL_BUILD.read_text(encoding="utf-8")
     assert "Every trial fails or scores 0.0?" in build and "not 'tuple'" in build
+
+
+# --- round 4: whole-dataset, effective-id validation before any model call ---------------------
+
+CURATE = SKILLS / "traigent-dataset-curate" / "SKILL.md"
+
+
+def _check_copies() -> list[tuple[str, Any]]:
+    """Every taught check_row_ids: the SKILL.md prep block, its Tier 4 block, and the templates."""
+    found = []
+    for path in (EVAL_BUILD, TEMPLATES):
+        for block in _blocks(path, "def check_row_ids"):
+            found.append((path.name, _function_namespace(block, "check_row_ids")))
+    return found
+
+
+def _normalised_sources() -> set[str]:
+    sources = set()
+    for path in (EVAL_BUILD, TEMPLATES):
+        for block in _blocks(path, "def check_row_ids"):
+            node = next(
+                n for n in ast.parse(block).body
+                if isinstance(n, ast.FunctionDef) and n.name == "check_row_ids"
+            )
+            sources.add(ast.dump(node))
+    return sources
+
+
+def _check_with_json_and_path() -> list[Any]:
+    helpers = []
+    for path in (EVAL_BUILD, TEMPLATES):
+        for block in _blocks(path, "def check_row_ids"):
+            node = next(
+                n for n in ast.parse(block).body
+                if isinstance(n, ast.FunctionDef) and n.name == "check_row_ids"
+            )
+            namespace: dict[str, Any] = {"json": json, "Path": Path}
+            exec(compile(ast.Module([node], []), "<check>", "exec"), namespace)
+            helpers.append(namespace["check_row_ids"])
+    return helpers
+
+
+def test_every_custom_template_validates_the_dataset_with_one_identical_check() -> None:
+    assert len(_normalised_sources()) == 1
+    # Tier 4 block + prep block in SKILL.md, plus the three id-using templates.
+    assert len(_check_with_json_and_path()) == 5
+    for path in (EVAL_BUILD, TEMPLATES):
+        for block in _blocks(path, "def _example_id"):
+            tree = ast.parse(block)
+            calls = [
+                n.lineno for n in ast.walk(tree)
+                if isinstance(n, ast.Call) and getattr(n.func, "id", "") == "check_row_ids"
+            ]
+            decorated = [
+                n.lineno for n in ast.walk(tree)
+                if isinstance(n, ast.FunctionDef) and n.decorator_list
+            ]
+            assert calls and decorated and min(calls) < min(decorated), "check must run at import"
+
+
+EFFECTIVE_CASES = {
+    "nested duplicates": ([{"metadata": {"id": "shared"}}, {"metadata": {"id": "shared"}}], "repeats id"),
+    "distinct top-level, shared nested": ([{"id": "a", "metadata": {"id": "shared"}}, {"id": "b", "metadata": {"id": "shared"}}], "conflicting"),
+    "nested null override": ([{"id": "a", "metadata": {"id": None}}], "conflicting|no 'id'"),
+    "nested empty override": ([{"id": "a", "metadata": {"id": ""}}], "conflicting|no 'id'"),
+    "conflicting locations": ([{"id": "a", "metadata": {"id": "b"}}], "conflicting"),
+    "nested equals other top-level": ([{"id": "a"}, {"id": "z", "metadata": {"id": "a"}}], "conflicting|repeats"),
+    "missing": ([{"input": 1}], "no 'id'"),
+    "empty top-level": ([{"id": ""}], "no 'id'"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(EFFECTIVE_CASES))
+def test_check_row_ids_validates_the_effective_id(case: str, tmp_path: Path) -> None:
+    rows, message = EFFECTIVE_CASES[case]
+    dataset = tmp_path / "d.jsonl"
+    dataset.write_text("".join(json.dumps({"input": "x", **r}) + "\n" for r in rows))
+    for check in _check_with_json_and_path():
+        with pytest.raises(ValueError, match=message):
+            check(str(dataset))
+
+
+def test_check_row_ids_accepts_distinct_effective_ids(tmp_path: Path) -> None:
+    dataset = tmp_path / "d.jsonl"
+    rows = [{"id": "a"}, {"id": "b", "metadata": {"id": "b"}}, {"metadata": {"id": "c"}}]
+    dataset.write_text("".join(json.dumps({"input": "x", **r}) + "\n" for r in rows))
+    for check in _check_with_json_and_path():
+        check(str(dataset))
+
+
+def _published_rows() -> list[dict[str, Any]]:
+    text = CURATE.read_text(encoding="utf-8")
+    start = text.index("`eval/tuning.jsonl`")
+    block = re.search(r"```json\n(.*?)```", text[start:], re.S).group(1)
+    return [json.loads(line) for line in block.splitlines() if line.strip()]
+
+
+def test_published_curate_rows_carry_ids() -> None:
+    text = CURATE.read_text(encoding="utf-8")
+    rows = [
+        json.loads(line)
+        for line in text.splitlines()
+        if line.startswith('{"id"') or line.startswith('{"input"')
+    ]
+    assert rows and all(row.get("id") for row in rows)
+    assert len({row["id"] for row in rows}) == len(rows)
+
+
+def test_idless_published_example_fails_before_any_model_call_unless_prepped(
+    tmp_path: Path,
+) -> None:
+    published = _published_rows()
+    idless = [{k: v for k, v in row.items() if k != "id"} for row in published]
+    body = f"""
+    install_replies(lambda model, messages: '{{"score": 0.8, "reason": "ok"}}')
+    rows = {idless!r}
+    write_rows("qa.jsonl", rows)              # exactly as published minus the id
+    outcome = {{}}
+    try:
+        load_block(sys.argv[1])
+        outcome["skipped_prep"] = "loaded"
+    except ValueError as exc:
+        outcome["skipped_prep"] = str(exc)
+    outcome["calls_after_skipped_prep"] = len(CALLS)
+
+    write_prepared_rows("qa.jsonl", rows)      # the documented prep step
+    ns = load_block(sys.argv[1])
+    outcome["prepped"] = "loaded"
+    outcome["calls_after_prep"] = len(CALLS)
+    emit(outcome)
+    """
+    result = _run_driver(tmp_path, _python_block(TEMPLATES, "def llm_judge_evaluator"), body)
+    assert "no 'id'" in result["skipped_prep"], result
+    assert result["calls_after_skipped_prep"] == 0
+    assert result["prepped"] == "loaded" and result["calls_after_prep"] == 0
+
+    (tmp_path / "ok").mkdir()
+    ready = f"""
+    write_rows("qa.jsonl", {published!r})      # the published rows, ids included, no prep
+    load_block(sys.argv[1])
+    emit({{"loaded": True, "calls": len(CALLS)}})
+    """
+    ok = _run_driver(tmp_path / "ok", _python_block(TEMPLATES, "def llm_judge_evaluator"), ready)
+    assert ok == {"loaded": True, "calls": 0}
+
+
+# --- round 4: wording that must not return --------------------------------------------------------
+
+
+def test_round4_wording() -> None:
+    build = EVAL_BUILD.read_text(encoding="utf-8")
+    assert "a connected run can reject duplicate ids" not in build
+    assert "outcome_matrix.py:293-303" in build and "metadata_helpers.py:637-645" in build
+    assert "built-in flows" in build.lower() or "Built-in" in build
+    text2sql = (SKILLS / "traigent-recipe-text2sql" / "SKILL.md").read_text(encoding="utf-8")
+    assert "premium, a mid-priced and a cheap model" not in text2sql
+    assert "hold the high-impact structural levers" not in text2sql.lower()
+    assert "weight accuracy first" not in text2sql
+    guidance = (SKILLS / "traigent-analyze-guidance" / "SKILL.md").read_text(encoding="utf-8")
+    assert "a first-run search is 12" not in guidance
+    curate = CURATE.read_text(encoding="utf-8")
+    assert "inside the noise" not in curate
+    assert "Is the Delta Real?" in curate and "approximate 95%" in curate
+
+
+def test_nested_null_or_empty_override_alone_is_rejected(tmp_path: Path) -> None:
+    for nested in (None, ""):
+        dataset = tmp_path / "d.jsonl"
+        dataset.write_text(json.dumps({"input": "x", "metadata": {"id": nested}}) + "\n")
+        for check in _check_with_json_and_path():
+            with pytest.raises(ValueError, match="no 'id'"):
+                check(str(dataset))

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.18"
+  version: "1.1.19"
 ---
 
 # Traigent Curate Dataset
@@ -86,9 +86,12 @@ it first or treat the run as a smoke check; a slice with 0 rows of a class canno
 all. Assess the paired evidence after the run in `traigent-analyze-results` ("Is the Delta Real?").
 
 **Illustrative arithmetic, not a threshold.** On a set of `n = 12` rows, one row moves accuracy by
-`100/12`, about 8 points, and a 95% binomial interval around an observed accuracy of 0.5 is about
-plus or minus 28 points (`1.96 * sqrt(0.5 * 0.5 / 12)`). A 5-point gain on 12 rows is therefore
-inside the noise. Do the same two-line calculation for your own `n` and say it when you report.
+`100/12`, about 8 points, and an approximate 95% binomial interval around one observed accuracy of
+0.5 is roughly plus or minus 28 points (`1.96 * sqrt(0.5 * 0.5 / 12)`). That interval describes how
+well a single accuracy is pinned down. It says nothing about the difference between two
+configurations scored on the same rows: judge that with the paired evidence in
+`traigent-analyze-results` ("Is the Delta Real?"), not from this interval. Say how coarse the set is
+when you report.
 
 **Dedupe before splitting**, so a duplicate row cannot land on both sides of the tuning/holdout
 split and quietly leak the holdout into the search.
@@ -135,18 +138,18 @@ keep extending its working copy rather than the original.
 
 ## JSONL format and holdout discipline
 
-Use one JSON object per line. Put model inputs under `input` or `input_data`, the expected answer under `expected_output` or an accepted alias, and non-label context in `metadata`.
+Use one JSON object per line. Give every row a stable, unique top-level `"id"` (assigned once, kept when rows are reordered or edited): the custom-evaluator templates in `traigent-eval-build` require it and validate the whole file before any model call; for an existing id-less file run its `assign_row_ids`. Built-in id-less flows still work. Put model inputs under `input` or `input_data`, the expected answer under `expected_output` or an accepted alias, and non-label context in `metadata`.
 
 `eval/tuning.jsonl` — the file `eval_dataset` names:
 
 ```json
-{"input": {"question": "What is the refund window for annual plans?"}, "expected_output": "Annual plans are refundable within 30 days.", "metadata": {"split": "tune", "source": "reviewed-policy", "task": "qa"}}
+{"id": "qa-001", "input": {"question": "What is the refund window for annual plans?"}, "expected_output": "Annual plans are refundable within 30 days.", "metadata": {"split": "tune", "source": "reviewed-policy", "task": "qa"}}
 ```
 
 `eval/holdout.jsonl` — a separate file the search is never given (see the holdout rules below):
 
 ```json
-{"input": {"question": "Can I pause a monthly subscription?"}, "expected_output": "Monthly subscriptions can be paused from billing settings.", "metadata": {"split": "holdout", "source": "curated-support", "task": "qa"}}
+{"id": "qa-002", "input": {"question": "Can I pause a monthly subscription?"}, "expected_output": "Monthly subscriptions can be paused from billing settings.", "metadata": {"split": "holdout", "source": "curated-support", "task": "qa"}}
 ```
 
 Declare where each row came from twice: `source` (or `provenance`) for the **question** — a word
@@ -173,7 +176,7 @@ flat `{"input": "...", "output": "..."}` is just this contract with scalar value
 So a nested, execution-scored row is fully supported:
 
 ```json
-{"input": {"question": "...", "schema": "CREATE TABLE ...", "db_id": "sales"}, "output": {"sql": "SELECT COUNT(*) FROM customers;"}, "db_path": "data/sales.db"}
+{"id": "qa-003", "input": {"question": "...", "schema": "CREATE TABLE ...", "db_id": "sales"}, "output": {"sql": "SELECT COUNT(*) FROM customers;"}, "db_path": "data/sales.db"}
 ```
 
 Here `input` → `example.input_data` (the nested dict), `output` → `example.expected_output`

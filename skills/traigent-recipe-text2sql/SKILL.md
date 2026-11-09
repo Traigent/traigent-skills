@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.15"
+  version: "1.0.16"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -28,38 +28,25 @@ the tuning slice, not a held-out result — see "The winner on this slice" below
 predate the `result_eq` comparator taught below and were not re-scored with it, so they are
 not directly comparable to a score you get from this recipe as written.
 
-## The two-run lesson arc (the demo that lands)
-> **Scope: this minimal-first teaching arc is for the text2SQL EXAMPLE only.** It starts
-> small on purpose so the *lesson* lands. For a customer's **real agent** (usually a given),
-> do the opposite: ask `traigent-analyze-guidance` (Mode A) for the plan, which sets model
-> variety, the knobs and the sizes of the search.
+## What we observed on this benchmark (history, not a plan)
+> **Scope: this is an observation about the text2SQL EXAMPLE, not a procedure to copy.** The
+> models, knobs, space sizes and number of runs for any agent (this one included) come from the
+> service plan: ask `traigent-analyze-guidance` (Mode A) and execute the choices it returns.
 
 **Always state the permutation count** — when you present the plan, when you launch,
 and when you report results. Repeat it every time; it's how the user sees the space
-the optimizer is searching.
+the optimizer is searching. Call a search whose trial budget is much smaller than the space a
+**probe**, not coverage.
 
-**Run 1 — the raw model/cost picture (minor knobs only).**
-- **Models:** a premium, a mid-priced and a cheap model, so the cost spread is visible.
-- **Vary only minor knobs** (for example temperature, few-shot count, repair, output mode) and
-  **hold the high-impact structural levers at basic defaults** (`generation_path=direct`,
-  `schema_context=ddl_fk`, `fewshot_selector=fixed`).
-- State the permutation count and the trial count you run, and call the result a **probe**,
-  not coverage: a random search over a space much larger than its trial budget samples only
-  part of it.
-- **What it typically shows:** with nothing structural optimized, the picture is usually *"you
-  get what you pay for"* — the model tier tends to dominate and the cheap model hasn't shone
-  yet. Treat a small random read as suggestive; to actually *claim* tier dominance, add
-  trials/seeds or run a `grid` pass over a reduced space.
+In the original field run we first searched a space that varied only minor settings, and the
+picture was the usual *"you get what you pay for"*: model price tracked accuracy and the cheap
+model had not shone. When the structural levers were added to the space (how the schema is
+presented, how few-shot examples are chosen, whether the agent plans before writing SQL), the
+**low-cost model rose to match or beat the premium one at a fraction of the cost.** *That
+jump — structural optimization on a cheap model — is the Traigent value.* Treat it as a
+direction, not a promise: on a new agent report it only after enough trials (or a grid pass on a
+reduced space) to support it.
 
-**Run 2 — make the low-cost model SHINE (add the structural levers).**
-- Keep the cheap model, and **add the high-impact knobs that were held back:**
-  `schema_context = {ddl_fk_rows, m_schema, compact}`, `fewshot_selector = similar`,
-  `generation_path = {direct, plan_then_sql}`, keep `output_mode` unpinned.
-- State the new permutation count; weight accuracy first.
-- **What it teaches:** in the original field run, the **low-cost model leapt up to match or
-  beat the premium at a fraction of the cost.** *That jump — structural optimization on a
-  cheap model — is the Traigent value.* Expect the direction, not exact numbers: budget enough
-  trials (or a grid pass on the pruned space) before reporting the jump on a new agent.
 - Caveat: don't pair `plan_then_sql`/`cot` with `output_mode=sql_only` (they conflict —
   sql-only forbids the reasoning the plan path wants); keep output_mode unpinned so the
   optimizer pairs them correctly.
@@ -154,9 +141,10 @@ of 0.28.0. Read everything in a **custom_evaluator** `(func, config, example) ->
 ExampleResult` (it can call the agent with both `question` and `db_id`). See
 `traigent-eval-build`.
 
-`ExampleResult.example_id` must be unique per example (a row id or a content
-hash) — a constant like the `db_id` collides every row, and the backend rejects
-the submission (HTTP 400), causing a local-only fallback.
+`ExampleResult.example_id` must be unique per example: use the row's stable `id`
+(see "Dataset prep: stable unique row ids" in `traigent-eval-build`). A constant
+like the `db_id`, or a hash of identical rows, gives several rows one id and they
+overwrite each other's cell in the local outcome matrix.
 
 ## 3. Configuration space — model + STRUCTURAL knobs
 

@@ -88,6 +88,7 @@ Three things the template does on purpose:
 
 ```python
 import json
+from pathlib import Path
 import math
 import threading
 import time
@@ -110,6 +111,26 @@ def _example_id(example) -> str:
     if explicit is None or str(explicit) == "":
         raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
     return str(explicit)
+
+
+def check_row_ids(path: str) -> None:
+    """Call once at import, before any model call: validate the EFFECTIVE id of every row."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text().splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        # The SDK merges a row's own "metadata" over its top-level keys, so a nested id wins.
+        row_id = nested["id"] if "id" in nested else row.get("id")
+        top = row.get("id")
+        if "id" in nested and top not in (None, "") and str(top) != str(nested["id"]):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no 'id' (or an empty one): run assign_row_ids first")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
 
 
 JUDGE_MODEL = "judge-model-name"
@@ -296,6 +317,9 @@ def llm_judge_evaluator(func, config, example, budget: JudgeBudget | None = None
         },
     )
 
+# Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
+check_row_ids("eval/qa.jsonl")
+
 @traigent.optimize(
     evaluation=EvaluationOptions(
         eval_dataset="eval/qa.jsonl",
@@ -338,6 +362,7 @@ The repetition count is part of the measuring instrument, not a knob: agreement 
 
 ```python
 import json
+from pathlib import Path
 import time
 from collections import Counter
 
@@ -356,6 +381,26 @@ def _example_id(example) -> str:
     if explicit is None or str(explicit) == "":
         raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
     return str(explicit)
+
+
+def check_row_ids(path: str) -> None:
+    """Call once at import, before any model call: validate the EFFECTIVE id of every row."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text().splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        # The SDK merges a row's own "metadata" over its top-level keys, so a nested id wins.
+        row_id = nested["id"] if "id" in nested else row.get("id")
+        top = row.get("id")
+        if "id" in nested and top not in (None, "") and str(top) != str(nested["id"]):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no 'id' (or an empty one): run assign_row_ids first")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
 
 
 def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
@@ -396,6 +441,9 @@ def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
         },
     )
 
+# Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
+check_row_ids("eval/qa.jsonl")
+
 @traigent.optimize(
     evaluation=EvaluationOptions(
         eval_dataset="eval/qa.jsonl",
@@ -415,6 +463,7 @@ Use this when invalid outputs should fail before spending judge calls. Rows that
 
 ```python
 import json
+from pathlib import Path
 import math
 import threading
 import time
@@ -436,6 +485,26 @@ def _example_id(example) -> str:
     if explicit is None or str(explicit) == "":
         raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
     return str(explicit)
+
+
+def check_row_ids(path: str) -> None:
+    """Call once at import, before any model call: validate the EFFECTIVE id of every row."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text().splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        # The SDK merges a row's own "metadata" over its top-level keys, so a nested id wins.
+        row_id = nested["id"] if "id" in nested else row.get("id")
+        top = row.get("id")
+        if "id" in nested and top not in (None, "") and str(top) != str(nested["id"]):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no 'id' (or an empty one): run assign_row_ids first")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
 
 
 JUDGE_MODEL = "judge-model-name"
@@ -612,6 +681,9 @@ def hybrid_evaluator(func, config, example, budget: JudgeBudget | None = None) -
             "judge_reason": reason,
         },
     )
+
+# Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
+check_row_ids("eval/extraction.jsonl")
 
 @traigent.optimize(
     evaluation=EvaluationOptions(

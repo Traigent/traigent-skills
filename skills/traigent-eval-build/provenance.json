@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "227081333421af5b",
+  "doc_hash": "7eb31b5eb7ad560d",
   "reference_hashes": {
-    "references/evaluator-templates.md": "1f769417be61c7c2"
+    "references/evaluator-templates.md": "d51e083d87ad94a0"
   },
   "entries": [
     {
@@ -283,6 +283,17 @@
       "doc_before_hash": "29d96129e23ed2aa",
       "doc_after_hash": "227081333421af5b",
       "note": "Round 3: top-of-pitfalls cue for a scorer that returns a tuple (verified: trials fail, not score 0.0, on 0.33.0).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r4",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "227081333421af5b",
+      "doc_after_hash": "7eb31b5eb7ad560d",
+      "note": "Round 4: custom templates validate the whole dataset's EFFECTIVE ids (metadata.id overrides id) once at import, before any model call; built-in id-less flows stay valid; local outcome-matrix collision explained separately from the canonicalized wire id.",
       "source_type": "agent"
     }
   ]

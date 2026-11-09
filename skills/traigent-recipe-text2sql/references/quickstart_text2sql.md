@@ -485,7 +485,7 @@ def main() -> int:
             fallback = metadata.get("fallback_reason")
             source = metadata.get("source")
             if rejection:
-                # A backend rejection (e.g. duplicate example_id) — not a key
+                # A backend rejection of the submission — not a key
                 # or connectivity problem. Fix the request, not the credentials.
                 print(f"[traigent] WARNING: --real run has no cloud_url — the backend "
                       f"REJECTED the submission: persistence_rejection_reason={rejection!r} "

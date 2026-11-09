@@ -43,7 +43,7 @@ def test_every_trial_uses_the_same_reps_and_per_sample_accuracy(
         position[0] += 1
         return value
     install_replies(reply)
-    write_rows("qa.jsonl", [{{"input": {{"question": f"Q{{i}}?"}}, "output": "paris"}} for i in range({ROWS})])
+    write_prepared_rows("qa.jsonl", [{{"input": {{"question": f"Q{{i}}?"}}, "output": "paris"}} for i in range({ROWS})])
     ns = load_block(sys.argv[1])
     calls_per_config = collections.Counter()
     real_prompt_model = ns["prompt_model"]

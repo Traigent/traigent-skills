@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.20"
+  version: "1.0.21"
 ---
 
 # Traigent Build Evaluator
@@ -225,6 +225,7 @@ Wire it as `metric_functions={"recall_at_budget": recall_at_budget}` and declare
 
 ```python
 import json
+from pathlib import Path
 import time
 
 import traigent
@@ -241,6 +242,26 @@ def _example_id(example) -> str:
     if explicit is None or str(explicit) == "":
         raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
     return str(explicit)
+
+
+def check_row_ids(path: str) -> None:
+    """Call once at import, before any model call: validate the EFFECTIVE id of every row."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text().splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        # The SDK merges a row's own "metadata" over its top-level keys, so a nested id wins.
+        row_id = nested["id"] if "id" in nested else row.get("id")
+        top = row.get("id")
+        if "id" in nested and top not in (None, "") and str(top) != str(nested["id"]):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no 'id' (or an empty one): run assign_row_ids first")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
 
 def evaluate_answer(func, config, example) -> ExampleResult:
     started = time.perf_counter()
@@ -268,6 +289,9 @@ def evaluate_answer(func, config, example) -> ExampleResult:
         error_message=error_message,
         metadata={"method": "deterministic_exact_match"},
     )
+
+# Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
+check_row_ids("eval/qa.jsonl")
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
@@ -330,12 +354,26 @@ ValidationError custom_evaluator must accept (func, config, example), got 2 requ
 
 ## Dataset prep: stable unique row ids
 
-Give every dataset row a stable, unique top-level `"id"` when you build or curate the file (it lands
-in `example.metadata["id"]`). Two rows with the same id overwrite each other's cell in the outcome
-matrix, and a connected run can reject duplicate ids, so the evaluator's `_example_id` reads this id
-and fails closed when it is missing. Do not derive ids by hashing row content: identical or
-near-identical rows (repeated prompts, same input with different labels) hash alike and cannot be
-told apart. Ids must be assigned once and kept when rows are reordered or edited.
+**Only the custom-evaluator templates need this.** The built-in flows (`eval_dataset` with the
+default accuracy, a `scoring_function`, `metric_functions`) work on id-less rows exactly as before;
+the SDK numbers those rows itself. The Tier 4 evaluator and the templates in
+`references/evaluator-templates.md` return an `ExampleResult`, and its `example_id` has to be a
+stable, unique id for each row. Give every row a top-level `"id"` when you build or curate the file
+(`traigent-dataset-curate` writes them), or run `assign_row_ids` once on an existing id-less file.
+
+Why: the outcome matrix keys cells by `example_id`, so two rows that share one id overwrite each
+other's cell locally (SDK `traigent/utils/outcome_matrix.py:293-303`). The id sent to the backend is
+a different thing: `traigent/core/metadata_helpers.py:637-645` canonicalizes customer ids by row
+position, so a duplicate does not become a duplicate on the wire, but your local analysis is still
+corrupted. Do not derive ids by hashing row content: identical or near-identical rows (repeated
+prompts, same input with different labels) hash alike and cannot be told apart. Assign ids once and
+keep them when rows are reordered or edited.
+
+The check validates the **effective** id, the one the SDK hands the evaluator: a row's own
+`metadata` object is merged over its top-level keys, so a `metadata.id` overrides `id`. It rejects a
+missing, null or empty id, conflicting top-level and nested ids, and any repeat. Each custom template
+calls `check_row_ids("eval/....jsonl")` once at import, so the whole dataset is validated before the
+first model call; if prep was skipped the run stops there, not after paid calls.
 
 ```python
 import json
@@ -343,29 +381,40 @@ from pathlib import Path
 
 
 def assign_row_ids(path: str, prefix: str = "row") -> None:
-    """One-time: write a stable id on every row that lacks one (never renumber existing ids)."""
+    """One-time: write a stable id on every row that has none (never renumber existing ids)."""
     rows = [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
-    used = {str(row["id"]) for row in rows if row.get("id") not in (None, "")}
+
+    def nested(row):
+        return row["metadata"] if isinstance(row.get("metadata"), dict) else {}
+
+    used = {str(nested(r).get("id", r.get("id"))) for r in rows if nested(r).get("id", r.get("id")) not in (None, "")}
     counter = 0
     for row in rows:
-        if row.get("id") in (None, ""):
+        if "id" in nested(row) or row.get("id") not in (None, ""):
+            continue  # has an id (a bad nested one is reported by check_row_ids, not overwritten)
+        counter += 1
+        while f"{prefix}-{counter:05d}" in used:
             counter += 1
-            while f"{prefix}-{counter:05d}" in used:
-                counter += 1
-            row["id"] = f"{prefix}-{counter:05d}"
-            used.add(row["id"])
+        row["id"] = f"{prefix}-{counter:05d}"
+        used.add(row["id"])
     Path(path).write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows))
 
 
 def check_row_ids(path: str) -> None:
-    """Run before every evaluation: raise on a missing or duplicate row id."""
+    """Call once at import, before any model call: validate the EFFECTIVE id of every row."""
     seen: dict[str, int] = {}
     for number, line in enumerate(Path(path).read_text().splitlines(), start=1):
         if not line.strip():
             continue
-        row_id = json.loads(line).get("id")
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        # The SDK merges a row's own "metadata" over its top-level keys, so a nested id wins.
+        row_id = nested["id"] if "id" in nested else row.get("id")
+        top = row.get("id")
+        if "id" in nested and top not in (None, "") and str(top) != str(nested["id"]):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
         if row_id is None or str(row_id) == "":
-            raise ValueError(f"{path}:{number} has no 'id'")
+            raise ValueError(f"{path}:{number} has no 'id' (or an empty one): run assign_row_ids first")
         if str(row_id) in seen:
             raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
         seen[str(row_id)] = number
