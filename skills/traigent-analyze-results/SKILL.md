@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.35"
+  version: "1.1.36"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -81,12 +81,18 @@ paid run**, an explicit spend cap, and the recorded stop rule. The service sets
 
 Do these steps in order whenever the user asks which config to ship or whether a gap is real:
 
-1. Find each config's example count `n` (for example `n_examples`) and its score.
-2. For every accuracy you quote, write the 95% interval next to it, as `0.70 (0.48-0.85)`. Compute it
-   with `wilson` below; with no way to run code, use the formula in the docstring by hand.
-3. If two intervals overlap, say so with the numbers: "these configs are not separated; the ranking among
-   them is unresolved". Never write "within noise" without the interval beside it.
-4. With per-example scores, also report `paired_delta` (see "Is the Delta Real?" below).
+1. Find out what the scores are. Per-example scores for both configs? Then go to step 4: the paired
+   comparison decides whether a gap is real, and overlapping per-config intervals do not.
+2. Aggregates only, and the score is a binary pass rate (built-in accuracy)? Write the 95% interval next
+   to each accuracy, as `0.70 (0.48-0.85)`, using `wilson` below with the number of examples that were
+   actually scored (rows without a gold answer are not scored, so do not use the total row count).
+   With no way to run code, use the formula in the docstring by hand.
+3. Aggregates only: say that the intervals describe how precise each number is, and that whether the
+   configs differ cannot be established from aggregates; ask for the per-example scores. Never write
+   "within noise" without the interval and this limit beside it.
+4. With per-example scores, report `paired_delta` (see "Is the Delta Real?" below) instead.
+5. Float or custom scores (not pass/fail)? `wilson` does not apply. Use an interval on the mean score from
+   the per-example values, or say that the information is insufficient.
 
 ```python runnable
 import math

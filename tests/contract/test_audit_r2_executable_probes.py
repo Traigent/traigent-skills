@@ -531,3 +531,36 @@ def test_interval_is_labelled_approximate_and_demoted_below_the_sign_test() -> N
     text = (SKILLS / "traigent-analyze-results" / "SKILL.md").read_text(encoding="utf-8")
     assert "approximate percentile-bootstrap 95% interval" in text
     assert "lead with\n`sign_test_p`" in text or "lead with `sign_test_p`" in " ".join(text.split())
+
+
+# --- round 7: aggregate intervals must not be read as a ranking verdict ---------------------------
+
+
+def _analyze_block(marker: str) -> dict[str, Any]:
+    text = (SKILLS / "traigent-analyze-results" / "SKILL.md").read_text(encoding="utf-8")
+    (block,) = [b for b in FENCE_RE.findall(text) if marker in b]
+    namespace: dict[str, Any] = {"__name__": "analyze_snippet"}
+    exec(compile(block, "<analyze>", "exec"), namespace)
+    return namespace
+
+
+def test_paired_comparison_separates_configs_whose_wilson_intervals_overlap() -> None:
+    wilson = _analyze_block("def wilson")["wilson"]
+    paired = _analyze_block("def paired_delta")["paired_delta"]
+    a = [1] * 60 + [0] * 40
+    b = [1] * 70 + [0] * 30  # B fixes 10 examples A got wrong and breaks none
+    a_hi, b_lo = wilson(60, 100)[1], wilson(70, 100)[0]
+    assert a_hi > b_lo  # per-config intervals overlap
+    out = paired(a, b)
+    assert (out["wins"], out["losses"]) == (10, 0)
+    assert out["sign_test_p"] < 0.01
+    assert out["ci95"][0] > 0
+    text = (SKILLS / "traigent-analyze-results" / "SKILL.md").read_text(encoding="utf-8")
+    assert "ranking among\n   them is unresolved" not in text
+    assert "overlapping per-config intervals do not" in text
+
+
+def test_optimize_run_does_not_require_varied_outputs_for_real_inference() -> None:
+    text = (SKILLS / "traigent-optimize-run" / "SKILL.md").read_text(encoding="utf-8")
+    assert "outputs vary between trials" not in text
+    assert "Identical outputs\n   across trials can be a real deterministic run" in text

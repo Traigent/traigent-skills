@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.15"
+  version: "1.2.16"
 ---
 
 # Traigent Analyze Guidance
@@ -76,9 +76,11 @@ paid run**, an explicit spend cap, and the recorded stop rule. Economics governs
 invest — and here that number comes from the service; it never affects *whether* approval is
 required — it always is.
 
-> **Picking between configs from a results file?** Put a 95% interval next to every accuracy you
-> quote (`wilson` in `traigent-analyze-results`, section "Before You Name a Winner"), and say which
-> configs' intervals overlap. "Within noise" with no interval beside it is not an answer.
+> **Picking between configs from a results file?** With per-example scores, the paired comparison decides
+> (`paired_delta` in `traigent-analyze-results`). With aggregates only and a binary pass rate, put a 95%
+> interval (`wilson`, using the number of rows actually scored) next to each accuracy, and say that
+> separation cannot be established without per-example scores. For float or custom scores `wilson` does
+> not apply. "Within noise" with no interval beside it is not an answer.
 
 ## Mode Arbitration
 
