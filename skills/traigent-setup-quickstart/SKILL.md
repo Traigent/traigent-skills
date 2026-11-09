@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.40"
+  version: "1.0.41"
 ---
 
 # Traigent Quickstart
@@ -404,7 +404,7 @@ enable_mock_mode_for_quickstart()
 1. Say so: mock mode cannot intercept this client, so a plain mock dry run would give no canned reply.
 2. Offer, and ask before doing it: switch the call to `litellm.completion(model=..., messages=...)`. Then mock mode works unchanged.
 3. Or, without touching the user's files, write a NEW `dry_run.py` that stubs the client (template below). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run with zero provider calls. Give the user the command `python dry_run.py`.
-4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap (`max_trials`, `cost_limit`).
+4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap: every real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()` / `optimize_sync()`, and no `__main__` block starts a paid run by default.
 
 ```python
 # dry_run.py: a NEW file; edit nothing else. Replace agent / client / canned reply with the user's own.

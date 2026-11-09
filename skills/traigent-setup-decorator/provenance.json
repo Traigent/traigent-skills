@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "823540bf658ccc87",
+  "doc_hash": "f152b67b561dd40c",
   "reference_hashes": {
     "references/agent-identity.md": "16206658c40f65e2",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -331,6 +331,17 @@
       "doc_before_hash": "b29977d245b3a62e",
       "doc_after_hash": "823540bf658ccc87",
       "note": "Round 8: raw-client dry-run steps (litellm or stubbed dry_run.py), never a first paid run; question/answer rows converted to input rows.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "823540bf658ccc87",
+      "doc_after_hash": "f152b67b561dd40c",
+      "note": "Round 8b: real-run commands carry max_trials and are never started from __main__.",
       "source_type": "agent"
     }
   ]

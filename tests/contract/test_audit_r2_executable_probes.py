@@ -576,6 +576,7 @@ def test_raw_client_dry_run_and_dataset_conversion_are_taught() -> None:
         assert "If the agent uses a raw provider client" in text
         assert "litellm.completion" in text and "dry_run.py" in text
         assert "Never make the first test a real paid run" in text
+        assert "no `__main__` block starts a paid run by default" in text
     assert "agent.client.chat.completions.create = canned_create" in quick
     assert "Existing rows with other keys" in quick
     assert "Missing 'input' (or 'input_data') field" in decorator
