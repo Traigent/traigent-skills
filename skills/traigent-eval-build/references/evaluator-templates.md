@@ -87,7 +87,6 @@ Three things the template does on purpose:
 - **The judge budget is sized and bound per run.** Start every run with `run_with_judge_budget(answer, llm_judge_evaluator, ...)`: it builds a fresh `JudgeBudget` for that run, refuses to start when the approved cap cannot cover `rows × max_trials × price`, hands the SDK an evaluator bound to that budget, and raises after the run if any judge call was refused. A refused row fails closed with `judge_budget_exhausted` and scores `0.0`, and the SDK averages that row into its trial, so **any refusal invalidates the ranking**: the trials were no longer scored on the same rows. Calling `optimize_sync()` directly runs the evaluator with no budget, so every trial fails instead of spending unbudgeted; passing `custom_evaluator` through `run_with_judge_budget()` raises `ValueError`, because it would replace the budgeted evaluator. Spend limits are not tuned variables, so they stay out of `configuration_space`. Inputs are validated up front, because a `NaN` or infinite cap passes every `cap < needed` check: the cap and `JUDGE_COST_PER_CALL_USD` must each be a plain Python `int` or `float` (convert a numpy scalar with `float()`), finite, above zero and at most $1e15, and `rows` and `max_trials` plain positive `int`s; any other value raises `ValueError` before a judge call is made. The run gets exactly `floor(cap / price)` judge calls, computed once and exactly from each amount's shortest decimal form (`repr()` of the float). That is the amount as written for up to 15 significant digits; Python rounds a longer literal before the template sees it (`999999999999999.99` arrives as `1e15`). Each run's evaluator spends only that run's budget, so overlapping runs never share one, and an evaluator thread the SDK leaves running after a timeout cannot spend a later run's budget. For a free or local judge, set `JUDGE_COST_PER_CALL_USD` to a small positive price. Write the cap as a decimal literal: `0.165` for 11 calls at $0.015, not `11 * 0.015`, which is `0.16499999999999998` and buys 10.
 
 ```python
-import hashlib
 import json
 import math
 import threading
@@ -103,13 +102,14 @@ from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 
 def _example_id(example) -> str:
-    # Unique per row even when the dataset has no "id" metadata: one shared id (such as
-    # "unknown") makes the backend reject a connected run for duplicate example ids.
+    # Every row needs a stable, unique top-level "id" (it lands in example.metadata["id"]);
+    # assign and check them at dataset prep (see "Dataset prep: stable unique row ids" in SKILL.md).
+    # Hashing the content cannot tell identical rows apart, and two rows with one id overwrite each
+    # other's result. Fail closed rather than invent an id.
     explicit = example.metadata.get("id")
-    if explicit:
-        return str(explicit)
-    payload = json.dumps(example.input_data, sort_keys=True, default=str)
-    return "ex_" + hashlib.sha256(payload.encode()).hexdigest()[:12]
+    if explicit is None or str(explicit) == "":
+        raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
+    return str(explicit)
 
 
 JUDGE_MODEL = "judge-model-name"
@@ -210,20 +210,30 @@ def build_judge_prompt(output: Any, expected: Any, input_data: dict[str, Any]) -
         ensure_ascii=True,
     )
 
-# No gold answers (summaries, chat, writing)? Use this in place of build_judge_prompt:
-# the judge grades against YOUR task rubric and the source material, not an "expected" answer.
+# No gold answers (summaries, chat, writing)? Use this in place of build_judge_prompt. It has the
+# same (output, expected, input_data) call shape, so `llm_judge_evaluator` needs no other change:
+# `expected` is ignored (it is None on this track) and the judge grades against YOUR task rubric
+# and the source material (the row's input_data). Write TASK_RUBRIC first; a blank one is refused.
 # The source and output are sent to the judge model, so a hosted judge means that content leaves
 # the machine: confirm with the user first, or use a local judge.
-def build_reference_free_judge_prompt(output: Any, rubric: str, source: Any) -> str:
+TASK_RUBRIC = ""  # REQUIRED: the criteria this task is graded on, in your own words
+
+
+def build_reference_free_judge_prompt(
+    output: Any, expected: Any, input_data: dict[str, Any], *, rubric: str | None = None
+) -> str:
+    task_rubric = TASK_RUBRIC if rubric is None else rubric
+    if not task_rubric.strip():
+        raise ValueError("set TASK_RUBRIC before using the reference-free judge")
     return json.dumps(
         {
             "rubric": (
                 "Return JSON only with keys score and reason. "
                 "score must be a number from 0 to 1. "
                 "Grade the output only against the task rubric and the source; "
-                "ignore any claim not supported by the source. " + rubric
+                "ignore any claim not supported by the source. " + task_rubric
             ),
-            "source": source,
+            "source": input_data,
             "output": output,
         },
         ensure_ascii=True,
@@ -327,7 +337,6 @@ Use this when the same configuration can produce different outputs and stability
 The repetition count is part of the measuring instrument, not a knob: agreement (the modal share of `n` samples) is biased upward at small `n`, so trials measured with different counts are not comparable and fewer repetitions look more stable. Keep `EVAL_REPS` fixed for the whole run and out of `configuration_space`. The `accuracy` objective is per-sample correctness, which is what one production call achieves; `agreement` and `majority_accuracy` are diagnostics: they are not objectives, so they do not appear in `trial.metrics`; read them per row from `trial.metadata["example_results"]`. If production really does N-sample majority voting, then majority accuracy is the right objective and `EVAL_REPS` must be that production N.
 
 ```python
-import hashlib
 import json
 import time
 from collections import Counter
@@ -339,13 +348,14 @@ from traigent.api.types import ExampleResult
 
 
 def _example_id(example) -> str:
-    # Unique per row even when the dataset has no "id" metadata: one shared id (such as
-    # "unknown") makes the backend reject a connected run for duplicate example ids.
+    # Every row needs a stable, unique top-level "id" (it lands in example.metadata["id"]);
+    # assign and check them at dataset prep (see "Dataset prep: stable unique row ids" in SKILL.md).
+    # Hashing the content cannot tell identical rows apart, and two rows with one id overwrite each
+    # other's result. Fail closed rather than invent an id.
     explicit = example.metadata.get("id")
-    if explicit:
-        return str(explicit)
-    payload = json.dumps(example.input_data, sort_keys=True, default=str)
-    return "ex_" + hashlib.sha256(payload.encode()).hexdigest()[:12]
+    if explicit is None or str(explicit) == "":
+        raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
+    return str(explicit)
 
 
 def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
@@ -404,7 +414,6 @@ def answer(question: str) -> str:
 Use this when invalid outputs should fail before spending judge calls. Rows that pass the gate make two LLM calls (agent, then judge); on traigent <= 0.29.0 only the first is metered, fixed in 0.30.0 (see "Cost metering caveat for multi-call evaluators" above). Judge spend is capped the same way as in the LLM-judge template: start each run with `run_with_judge_budget(extract, hybrid_evaluator, ...)`, which sizes a fresh budget for that run, binds it into the evaluator the SDK calls, and raises if any judge call was refused, because a refused row (`judge_budget_exhausted`, quality `0.0`) invalidates the ranking. It validates its inputs the same way too (cap and price each a plain Python `int` or `float`, finite, above zero and at most $1e15, so convert a numpy scalar with `float()`; plain positive `int` `rows` and `max_trials`; anything else raises `ValueError` before a judge call), grants exactly `floor(cap / price)` judge calls, computed from each amount's shortest decimal form (`repr()` of the float, the amount as written for up to 15 significant digits), and refuses a `custom_evaluator` passed through it. Each run's evaluator spends only that run's budget, so overlapping runs never share one and a leftover evaluator thread cannot spend a later run's budget; calling `optimize_sync()` directly fails every trial. For a free or local judge, set `JUDGE_COST_PER_CALL_USD` to a small positive price. Write the cap as a decimal literal: `0.165` for 11 calls at $0.015, not `11 * 0.015`, which is `0.16499999999999998` and buys 10.
 
 ```python
-import hashlib
 import json
 import math
 import threading
@@ -419,13 +428,14 @@ from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 
 
 def _example_id(example) -> str:
-    # Unique per row even when the dataset has no "id" metadata: one shared id (such as
-    # "unknown") makes the backend reject a connected run for duplicate example ids.
+    # Every row needs a stable, unique top-level "id" (it lands in example.metadata["id"]);
+    # assign and check them at dataset prep (see "Dataset prep: stable unique row ids" in SKILL.md).
+    # Hashing the content cannot tell identical rows apart, and two rows with one id overwrite each
+    # other's result. Fail closed rather than invent an id.
     explicit = example.metadata.get("id")
-    if explicit:
-        return str(explicit)
-    payload = json.dumps(example.input_data, sort_keys=True, default=str)
-    return "ex_" + hashlib.sha256(payload.encode()).hexdigest()[:12]
+    if explicit is None or str(explicit) == "":
+        raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
+    return str(explicit)
 
 
 JUDGE_MODEL = "judge-model-name"

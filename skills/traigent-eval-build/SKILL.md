@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.18"
+  version: "1.0.19"
 ---
 
 # Traigent Build Evaluator
@@ -43,7 +43,7 @@ A `custom_evaluator` does not produce `latency`. If `latency` is an objective, p
 **No `expected_output` at all?** Tiers 1-3 assume a gold label to compare against. For
 subjective/generative tasks with no labels, skip straight to Tier 4 with the **"LLM judge with
 rubric, strict parse, and cost guardrails"** template in `references/evaluator-templates.md`
-(swap its `build_judge_prompt` for `build_reference_free_judge_prompt`, which grades against your rubric and the source instead of an `expected` answer) —
+(call `build_reference_free_judge_prompt` in place of `build_judge_prompt`: same call shape, so nothing else changes once you set its `TASK_RUBRIC`; it grades against your rubric and the source instead of an `expected` answer) —
 and treat `traigent-eval-audit` as mandatory, because the judge owns the whole quality
 signal (see `traigent-eval-choose-metric` → "The no-gold track").
 
@@ -224,7 +224,6 @@ Wire it as `metric_functions={"recall_at_budget": recall_at_budget}` and declare
 ### Tier 4: custom evaluator
 
 ```python
-import hashlib
 import json
 import time
 
@@ -234,13 +233,14 @@ from traigent.api.types import ExampleResult
 
 
 def _example_id(example) -> str:
-    # Unique per row even when the dataset has no "id" metadata: one shared id (such as
-    # "unknown") makes the backend reject a connected run for duplicate example ids.
+    # Every row needs a stable, unique top-level "id" (it lands in example.metadata["id"]);
+    # assign and check them at dataset prep (see "Dataset prep: stable unique row ids" in SKILL.md).
+    # Hashing the content cannot tell identical rows apart, and two rows with one id overwrite each
+    # other's result. Fail closed rather than invent an id.
     explicit = example.metadata.get("id")
-    if explicit:
-        return str(explicit)
-    payload = json.dumps(example.input_data, sort_keys=True, default=str)
-    return "ex_" + hashlib.sha256(payload.encode()).hexdigest()[:12]
+    if explicit is None or str(explicit) == "":
+        raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
+    return str(explicit)
 
 def evaluate_answer(func, config, example) -> ExampleResult:
     started = time.perf_counter()
@@ -326,6 +326,49 @@ The decorator validates `custom_evaluator` signature at decoration time. The req
 
 ```text
 ValidationError custom_evaluator must accept (func, config, example), got 2 required parameters: ['func', 'config']
+```
+
+## Dataset prep: stable unique row ids
+
+Give every dataset row a stable, unique top-level `"id"` when you build or curate the file (it lands
+in `example.metadata["id"]`). Two rows with the same id overwrite each other's cell in the outcome
+matrix, and a connected run can reject duplicate ids, so the evaluator's `_example_id` reads this id
+and fails closed when it is missing. Do not derive ids by hashing row content: identical or
+near-identical rows (repeated prompts, same input with different labels) hash alike and cannot be
+told apart. Ids must be assigned once and kept when rows are reordered or edited.
+
+```python
+import json
+from pathlib import Path
+
+
+def assign_row_ids(path: str, prefix: str = "row") -> None:
+    """One-time: write a stable id on every row that lacks one (never renumber existing ids)."""
+    rows = [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+    used = {str(row["id"]) for row in rows if row.get("id") not in (None, "")}
+    counter = 0
+    for row in rows:
+        if row.get("id") in (None, ""):
+            counter += 1
+            while f"{prefix}-{counter:05d}" in used:
+                counter += 1
+            row["id"] = f"{prefix}-{counter:05d}"
+            used.add(row["id"])
+    Path(path).write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows))
+
+
+def check_row_ids(path: str) -> None:
+    """Run before every evaluation: raise on a missing or duplicate row id."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text().splitlines(), start=1):
+        if not line.strip():
+            continue
+        row_id = json.loads(line).get("id")
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no 'id'")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
 ```
 
 ## The interview when nothing exists

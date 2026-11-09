@@ -62,6 +62,9 @@ DRIVER_PRELUDE = textwrap.dedent(
     def write_rows(name, rows):
         path = Path("eval") / name
         path.parent.mkdir(exist_ok=True)
+        # Dataset prep gives every row a stable unique id (eval-build "Dataset prep"); the
+        # taught evaluators fail closed on a row without one.
+        rows = [{"id": f"row-{n:05d}", **row} for n, row in enumerate(rows, start=1)]
         path.write_text("".join(json.dumps(row) + "\\n" for row in rows), encoding="utf-8")
 
     def emit(result):
