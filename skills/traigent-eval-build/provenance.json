@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0498ce5784947bb9",
+  "doc_hash": "fb984a2bcea5cda7",
   "reference_hashes": {
     "references/evaluator-templates.md": "4557a4363b935c04"
   },
@@ -327,6 +327,17 @@
       "doc_before_hash": "8887cecc687c426d",
       "doc_after_hash": "0498ce5784947bb9",
       "note": "Gaps round 2: reply must carry the verify step and the human spot-sample wording.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-argon-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "0498ce5784947bb9",
+      "doc_after_hash": "fb984a2bcea5cda7",
+      "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
       "source_type": "agent"
     }
   ]

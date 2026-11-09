@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.37"
+  version: "1.1.38"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -101,6 +101,8 @@ import math
 def wilson(correct: int, n: int, z: float = 1.96) -> tuple[float, float]:
     """95% Wilson interval for correct/n. By hand: centre (p + z*z/(2n)) / (1 + z*z/n), half-width
     z * sqrt(p*(1-p)/n + z*z/(4*n*n)) / (1 + z*z/n), with p = correct/n."""
+    if n <= 0 or not 0 <= correct <= n:
+        raise ValueError("need n > 0 and 0 <= correct <= n")
     p = correct / n
     d = 1 + z * z / n
     centre = (p + z * z / (2 * n)) / d
@@ -774,9 +776,9 @@ if results.metadata.get("persistence_status") == "failed":
 When this is `"failed"`, **do not assume the run synced** — the local `OptimizationResult` can look
 complete while the backend session is left `RUNNING` on the portal. Follow this order before reporting a portal-tracked result as final:
 
-1. Keep the local result; read `persistence_status`, `persistence_error` and `source` (for example `local`), and quote them in your reply. Do not rerun.
+1. Keep the local result; read `results.metadata.get("persistence_status")`, `results.metadata.get("persistence_error")` and `results.metadata.get("source")` (for example `local`), and quote them in your reply. Do not rerun.
 2. Check the portal for that session id.
-3. Portal has NO session for this run: upload the local record with `traigent sync <results.sync_session_id> --dry-run`, then without `--dry-run`. `sync_session_id` is the id in your local store (not the portal id); it may be `None` if the run was tracked end to end on the backend. Say that the upload may appear as a new session in the portal.
+3. Portal has NO session for this run: upload the local record with `traigent sync <results.sync_session_id> --dry-run`, then without `--dry-run`. If the run raised instead of returning, use `exc.sync_session_id` in place of `results.sync_session_id`. `sync_session_id` is the id in your local store (not the portal id); it may be `None` if the run was tracked end to end on the backend. Say that the upload may appear as a new session in the portal.
    Portal HAS a session but it is unfinalized or partial: do not describe sync as repairing it. Report that state and keep the local result. A sync would create a separate session unless an earlier sync attempt for this run exists (only then does it resume that attempt's cloud session), and `--dry-run` does not tell you which. Never pass `--all`, and never run `traigent local sync` without `--session-id`.
 4. In your reply, say in these words: a rerun is a separate paid action that needs your explicit approval and a cost cap, and it is only for the case where the local result cannot be uploaded or used. (Newer SDK builds
 — the fix merged as Traigent#1731 — also expose this as `results.persistence_failed`, a bool

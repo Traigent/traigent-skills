@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "bfe8e8cc10b82aeb",
+  "doc_hash": "b8f16a7cbf1de7e3",
   "reference_hashes": {
     "references/agent-identity.md": "16206658c40f65e2",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -375,6 +375,17 @@
       "doc_before_hash": "3f60e5af6791ad84",
       "doc_after_hash": "bfe8e8cc10b82aeb",
       "note": "Point 2 gives the exact boundary sentence, keeping the counterfactual.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-argon-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "bfe8e8cc10b82aeb",
+      "doc_after_hash": "b8f16a7cbf1de7e3",
+      "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
       "source_type": "agent"
     }
   ]

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.24"
+  version: "1.0.25"
 ---
 
 # Traigent Build Evaluator
@@ -426,6 +426,7 @@ def assign_row_ids(path: str, prefix: str = "row") -> None:
             row["id"] = f"{prefix}-{counter:05d}"
             used.add(row["id"])
     Path(path).write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
+    check_row_ids(path)  # surface duplicate or conflicting ids now, not at import time
 
 
 def dataset_path(relative: str) -> str:

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.43"
+  version: "1.0.44"
 ---
 
 # Traigent Quickstart
@@ -403,7 +403,7 @@ enable_mock_mode_for_quickstart()
 
 1. Say so: mock mode cannot intercept this client, so a plain mock dry run would give no canned reply.
 2. Offer, and ask before doing it: switch the call to `litellm.completion(model=..., messages=...)`. Then mock mode works unchanged.
-3. Or, without touching the user's files, write a NEW `dry_run.py` that stubs the client (template below). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run against a fake client instead of the provider. Give the user the command `python dry_run.py`.
+3. Or, if the agent is synchronous and uses `openai.OpenAI()` (only then; for `anthropic`, `AsyncOpenAI` or `async def` agents use the `litellm.completion` path of option 2), without touching the user's files, write a NEW `dry_run.py` that stubs the client (template below). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run against a fake client instead of the provider. Give the user the command `python dry_run.py`.
 4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap: every real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()` / `optimize_sync()`, and no `__main__` block starts a paid run by default.
 
 ```python
@@ -425,8 +425,9 @@ enable_mock_mode_for_quickstart()  # safety net: on SDK 0.31.0+ real provider HT
 class FakeOpenAI:  # installed BEFORE the user's module is imported, so import-time code cannot reach a real client
     def __init__(self, *args, **kwargs):
         reply = SimpleNamespace(message=SimpleNamespace(content="canned reply"))
-        create = lambda **kw: SimpleNamespace(choices=[reply])  # noqa: E731
+        create = lambda *a, **kw: SimpleNamespace(choices=[reply])  # noqa: E731
         self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
+        self.responses = SimpleNamespace(create=lambda *a, **kw: SimpleNamespace(output_text="canned reply"))
 
 
 openai.OpenAI = FakeOpenAI

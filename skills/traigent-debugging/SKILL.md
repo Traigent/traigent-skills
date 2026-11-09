@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.20"
+  version: "1.0.21"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -102,9 +102,9 @@ A key the backend **rejects** never falls back — the run stops with a category
 
 **A finished paid run that is missing from the portal: do these steps in this order, and say so in your reply.**
 
-1. Keep the local result (it is complete) and read `persistence_status`, the error (`persistence_error`) and where the result lives (`source`, for example `local`) from the result or the run log, and quote them in your reply. Do not rerun.
+1. Keep the local result (it is complete) and read `results.metadata.get("persistence_status")`, the error (`results.metadata.get("persistence_error")`) and where the result lives (`results.metadata.get("source")`, for example `local`) from the result or the run log, and quote them in your reply. Do not rerun.
 2. Check the portal for that session id. A run that raised after paid trials carries `exc.sync_session_id` (SDK 0.27.0+; below that, take the id from the run log).
-3. Portal has NO session for this run: upload the local record with `traigent sync <results.sync_session_id> --dry-run`, then without `--dry-run`. `sync_session_id` is the id in your local store (not the portal id); it may be `None` if the run was tracked end to end on the backend. Say that the upload may appear as a new session in the portal.
+3. Portal has NO session for this run: upload the local record with `traigent sync <results.sync_session_id> --dry-run`, then without `--dry-run`. If the run raised instead of returning, use `exc.sync_session_id` in place of `results.sync_session_id`. `sync_session_id` is the id in your local store (not the portal id); it may be `None` if the run was tracked end to end on the backend. Say that the upload may appear as a new session in the portal.
    Portal HAS a session but it is unfinalized or partial: do not describe sync as repairing it. Report that state and keep the local result. A sync would create a separate session unless an earlier sync attempt for this run exists (only then does it resume that attempt's cloud session), and `--dry-run` does not tell you which. Never pass `--all`, and never run `traigent local sync` without `--session-id`.
 4. In your reply, say in these words: a rerun is a separate paid action that needs your explicit approval and a cost cap, and it is only for the case where the local result cannot be uploaded or used.
 

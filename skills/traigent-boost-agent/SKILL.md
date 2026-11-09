@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.24"
+  version: "2.1.25"
 ---
 
 # Traigent Boost Agent
@@ -387,7 +387,7 @@ my_function.export_config("candidate_config.json")
    - Use JSONL with scoreable `input` and `output` fields when a built-in evaluator can score the task.
    - Existing rows with other keys (`question` / `answer`): write a NEW converted file with `{"input": {"<param name>": ...}, "output": ...}` rows, leave the original, and tell the user (see `traigent-setup-quickstart`, dataset section).
    - Mock/offline-check a tiny slice before any backend generation or paid provider work.
-     If the agent calls a raw `openai`/`anthropic` client, mock mode cannot intercept it: offer `litellm.completion` or write a new `dry_run.py` that stubs the client (`traigent-setup-quickstart`, "Mock scope"). Never make the first test a real paid run: any real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()`, needs the user's explicit go, and is not started from a `__main__` block.
+     If the agent calls a raw `openai`/`anthropic` client, mock mode cannot intercept it: offer `litellm.completion`, or, only for a synchronous agent using `openai.OpenAI()` (for `anthropic`, `AsyncOpenAI` or `async def` agents use `litellm.completion`), write a new `dry_run.py` that stubs the client (`traigent-setup-quickstart`, "Mock scope"). Never make the first test a real paid run: any real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()`, needs the user's explicit go, and is not started from a `__main__` block.
    - DELEGATE (required): `traigent-dataset-curate` owns dataset recipes, growth, example scoring, and quality loops.
 
 3. CHOOSE the metric.
