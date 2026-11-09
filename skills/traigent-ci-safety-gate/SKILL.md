@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.15"
+  version: "1.0.16"
 ---
 
 # CI Safety Gate
@@ -142,7 +142,7 @@ approves.
 ```python
 # In the separate candidate process that ran the search (optimize_sync() already applied the
 # winner to that process's instance; apply=False is currently rejected), export the candidate
-# only if the search result clears the bar and the winner is not tied with the runner-up:
+# only if the search result clears the bar and the result does not report a statistical tie:
 results = my_function.optimize_sync()
 
 # best_config_margin exists from SDK 0.26.0; getattr keeps this runnable on the 0.24.0 floor (verdict None there)
@@ -159,7 +159,7 @@ else:
 # my_function.set_config(<flat candidate config read from candidate_config.json>)
 ```
 
-Both checks run on the search slice and only decide whether to export a candidate. In your reply, say that promotion still needs a candidate-vs-incumbent comparison on a holdout the search never scored (PromotionGate below), and that until then the serving process keeps the incumbent.
+Both checks run on the search slice and only decide whether to export a candidate. In your reply, say that promotion still needs a candidate-vs-incumbent comparison on a holdout the search never scored (PromotionGate above), and that until then the serving process keeps the incumbent.
 
 ## The Two CI Checks
 
