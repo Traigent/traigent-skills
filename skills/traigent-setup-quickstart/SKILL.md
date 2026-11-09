@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.37"
+  version: "1.0.38"
 ---
 
 # Traigent Quickstart
@@ -444,7 +444,7 @@ OPENAI_API_KEY=sk-...
 TRAIGENT_DEBUG=1
 ```
 
-Shell commands do not read `.env` either. For a CLI command that needs a key (such as `traigent plan`), load the file into the current shell with `set -a; . ./.env; set +a` — no key is typed, so none lands in shell history. It runs `.env` as shell code: use it only for a `.env` written as plain `KEY=value` lines.
+The `traigent` CLI loads `.env` itself at startup (verified on 0.33.0): it reads the project `.env` found by walking up from the current directory to the nearest project marker, never a parent workspace's, and then a package-adjacent one. Set `TRAIGENT_SKIP_DOTENV=1` to turn that off. So run CLI commands such as `traigent plan` from inside the project; no shell sourcing is needed, and no key is typed, so none lands in shell history. If a command on an older release reports a missing key, check the version first (`traigent --version`) rather than sourcing the file, which would run `.env` as shell code.
 
 #### Recommended: have the user paste keys into `.env`, never into the chat
 

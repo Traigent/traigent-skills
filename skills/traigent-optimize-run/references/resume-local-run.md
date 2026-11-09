@@ -12,9 +12,19 @@ from traigent.utils.persistence import PersistenceManager
 manager = PersistenceManager(".traigent")           # where results are saved
 saved_name = manager.save_result(first_results)      # persists the result with an integrity manifest
 
-# Later (same dataset, scorer, agent and configuration space):
-results = my_function.optimize_sync(max_trials=20, resume_from=saved_name)
+# Later (same dataset, scorer, agent and configuration space). Repeat the SAME local
+# execution selector the first run used: the explicit local `algorithm` ("grid", "random", ...)
+# if you passed one per call, or leave it out only if the function was declared offline/local.
+results = my_function.optimize_sync(
+    algorithm="grid",  # whatever the first run used; do not drop it
+    max_trials=20,
+    resume_from=saved_name,
+)
 ```
+
+A function declared with the default `auto` execution that was first run with a per-call local
+`algorithm` resolves to connected execution when the resume call omits that argument, and resume
+then raises the local-only `ValueError` below. Copy the first run's `algorithm` into the resume call.
 
 `resume_from` also accepts an in-memory `OptimizationResult`. Keep `save_result` output as the
 integrity-verified source of truth.

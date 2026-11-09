@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.12"
+  version: "1.2.13"
 ---
 
 # Traigent Analyze Guidance
@@ -129,7 +129,7 @@ Do not embed local planning intelligence in this skill:
    - objectives the user cares about,
    - budget or maximum spend for the run.
 2. Fetch the plan from the Traigent service:
-   - Prefer `traigent plan` when the CLI is available. All of these flags are required except `--has-holdout/--no-holdout`; load the key into the shell first (the CLI does not read `.env`):
+   - Prefer `traigent plan` when the CLI is available. All of these flags are required except `--has-holdout/--no-holdout`; run it from inside the project so the CLI finds the project `.env` (it loads it itself at startup; `TRAIGENT_SKIP_DOTENV=1` turns that off):
 
      ```bash
      traigent plan --task-description "<short task summary>" --dataset-size 50 --has-holdout \

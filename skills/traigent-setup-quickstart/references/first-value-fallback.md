@@ -143,7 +143,7 @@ Only after the user has seen the mock result and explicitly approved spend. A re
    `offline=True` decorator flag **and** the `os.environ["TRAIGENT_OFFLINE_MODE"] = "true"` line (removing only the decorator flag leaves the run offline), and `mock_demo_accuracy`; let Traigent score real model output
    against your labels.
 
-Keys go in `.env` via "`.env` File Support" in `environment-variables.md` in this folder (its checks run before any key is written). The demo script above does not read `.env`: add `from dotenv import load_dotenv; load_dotenv()` at its top, before the provider client is created. Never type a key into an `export` at a shell prompt. A CLI command that needs a key (such as `traigent plan`) does not read `.env` either: load it into that shell with `set -a; . ./.env; set +a`, which types no key, so none lands in shell history. It runs `.env` as shell code, so use it only for a `.env` written as plain `KEY=value` lines.
+Keys go in `.env` via "`.env` File Support" in `environment-variables.md` in this folder (its checks run before any key is written). The demo script above does not read `.env`: add `from dotenv import load_dotenv; load_dotenv()` at its top, before the provider client is created. Never type a key into an `export` at a shell prompt. A CLI command that needs a key (such as `traigent plan`) loads the project `.env` itself at startup (verified on 0.33.0; found by walking up from the current directory to the nearest project marker, and switched off by `TRAIGENT_SKIP_DOTENV=1`), so run it from inside the project; no key is typed, so none lands in shell history. Do not source `.env` into the shell: that runs it as shell code.
 
 ```bash
 # Store TRAIGENT_API_KEY in .env (portal-issued key), not exported here
