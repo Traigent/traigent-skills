@@ -644,3 +644,21 @@ def test_stub_dry_run_blocks_an_import_time_client_call(tmp_path: Path) -> None:
     # a real client would raise APIConnectionError at 127.0.0.1:9; the fake answers instead
     assert done.returncode == 0, done.stderr[-2000:]
     assert "APIConnectionError" not in done.stderr
+
+
+def test_lost_portal_sync_order_is_numbered_in_debugging_and_analyze_results() -> None:
+    for name in ("traigent-debugging", "traigent-analyze-results"):
+        text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
+        assert "traigent sync <session_id> --dry-run" in text
+        assert "Never" in text and "traigent sync --all" in text
+        assert "separate paid action" in text
+        portal = text.index("Check the portal for that session id")
+        assert portal < text.index("traigent sync <session_id> --dry-run")
+
+
+def test_dry_run_template_is_restricted_to_sync_agents_and_names_the_public_alternative() -> None:
+    quick = (SKILLS / "traigent-setup-quickstart" / "SKILL.md").read_text(encoding="utf-8")
+    template = _dry_run_template()
+    assert "SYNCHRONOUS agent" in template and "version-bound workaround" in template
+    assert "do not adapt this template" in quick and "AsyncOpenAI" in quick
+    assert "return `traigent.with_usage(text, total_cost=0)` at its return boundary" in quick

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.19"
+  version: "1.0.20"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -100,10 +100,15 @@ A key the backend **rejects** never falls back — the run stops with a category
 - `expired API key` / `rate limited` / `edge blocked` — the text is the diagnosis; retrying blindly
   changes nothing.
 
-A run that raised **after** paid trials carries `exc.sync_session_id` (SDK 0.27.0+; below that, take the session id from the run log): `traigent sync <session_id>`
-uploads what was logged locally. For a run that returned but did not persist, read
-`results.metadata["persistence_status"]` — `traigent-analyze-results` → "Verify the Run Actually
-Persisted" owns that table (degraded is kept, failed is synced, neither is re-paid).
+**A finished paid run that is missing from the portal: do these steps in this order, and say so in your reply.**
+
+1. Keep the local result (it is complete) and read `persistence_status` and the error (`persistence_error`) from the result or the run log. Do not rerun.
+2. Check the portal for that session id. A run that raised after paid trials carries `exc.sync_session_id` (SDK 0.27.0+; below that, take the id from the run log).
+3. Only if the session is missing or unfinalized there, repair that one session: `traigent sync <session_id> --dry-run` first, then `traigent sync <session_id>`. Never run an unscoped `traigent local sync` or `traigent sync --all`: an offline sync can create a NEW backend session and duplicate the run.
+4. A rerun is a separate paid action. It needs the user's explicit approval and a cost cap, and only if the sync cannot recover the run.
+
+For a run that returned but did not persist, `traigent-analyze-results` → "Verify the Run Actually
+Persisted" owns the `persistence_status` table (degraded is kept, failed is synced, neither is re-paid).
 
 ### ConfigurationError
 

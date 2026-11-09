@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.36"
+  version: "1.1.37"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -772,8 +772,12 @@ if results.metadata.get("persistence_status") == "failed":
 ```
 
 When this is `"failed"`, **do not assume the run synced** — the local `OptimizationResult` can look
-complete while the backend session is left `RUNNING` on the portal. Re-check the run on the portal
-(or run `traigent local sync`) before reporting a portal-tracked result as final. (Newer SDK builds
+complete while the backend session is left `RUNNING` on the portal. Follow this order before reporting a portal-tracked result as final:
+
+1. Keep the local result; read `persistence_status` and `persistence_error`. Do not rerun.
+2. Check the portal for that session id.
+3. Only if it is missing or unfinalized, repair that one session: `traigent sync <session_id> --dry-run` first, then `traigent sync <session_id>`. Never an unscoped `traigent local sync` or `traigent sync --all`.
+4. A rerun is a separate paid action: explicit user approval and a cost cap, only if sync cannot recover it. (Newer SDK builds
 — the fix merged as Traigent#1731 — also expose this as `results.persistence_failed`, a bool
 shorthand for the same check; check the metadata key directly if your installed SDK predates it.)
 
@@ -784,7 +788,7 @@ The status is not binary — read it precisely (field-verified on SDK 0.21.0 rea
 | `"succeeded"` (or `"skipped"`/absent when backend tracking is off) | fully synced | none |
 | `"degraded"` (benign) | **partial, not broken** — trial results *and* finalize synced (the portal link works; trial views and per-example diagnostics are live), only the session aggregation rollup was dropped, so summary aggregates may lag | keep the run; do **not** re-run (and re-pay) |
 | `"degraded"` (backend-rejected) | the backend actively **refused** the persistence — `persistence_rejected` is True and `persistence_rejection_reason` explains why (quota/auth/tenant) | inspect `persistence_rejection_reason`; treat as a real problem, do **not** assume it's safe |
-| `"failed"` | finalize lost after retries | recover via `traigent local sync`; re-run only if sync can't recover |
+| `"failed"` | finalize lost after retries | the four steps above (portal check, then per-session sync); re-run only with approval and a cost cap, if sync can't recover |
 
 The two `"degraded"` cases are distinguished by metadata: benign rollup-lag sets
 `persistence_degraded_reason` (trial results and session finalize both persisted — keep the run);

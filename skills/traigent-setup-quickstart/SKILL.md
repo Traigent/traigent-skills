@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.42"
+  version: "1.0.43"
 ---
 
 # Traigent Quickstart
@@ -407,7 +407,8 @@ enable_mock_mode_for_quickstart()
 4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap: every real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()` / `optimize_sync()`, and no `__main__` block starts a paid run by default.
 
 ```python
-# dry_run.py: a NEW file; edit nothing else. Replace `agent`, `answer` and the canned reply with the user's own.
+# dry_run.py: a NEW file; edit nothing else. For a SYNCHRONOUS agent that uses the sync `OpenAI` client.
+# Replace `agent`, `answer` and the canned reply with the user's own.
 import os
 from types import SimpleNamespace
 
@@ -431,13 +432,13 @@ class FakeOpenAI:  # installed BEFORE the user's module is imported, so import-t
 openai.OpenAI = FakeOpenAI
 import agent  # noqa: E402  (the user's module; now it can only get the fake client)
 
-for name in ("func", "_wrapped_func"):  # the callables Traigent invokes for each example
+for name in ("func", "_wrapped_func"):  # version-bound workaround (SDK 0.27-0.33): private attributes, no public hook
     inner = getattr(agent.answer, name)
     setattr(agent.answer, name, (lambda f: lambda *a, **kw: traigent.with_usage(f(*a, **kw), total_cost=0))(inner))
 print(agent.answer.optimize_sync(max_trials=2).best_config)
 ```
 
-The fake client is installed before your module is imported, so import-time code gets the fake too. The $0 cost is reported only inside this script, so cost limits and strict cost accounting stay on and are not changed. Scores from this run mean nothing (the reply is canned); it proves the wiring only. It covers the `OpenAI` client; for `AsyncOpenAI`, `anthropic` or another client, fake that class the same way, and calls made through a client you did not fake can still be real. Checked against traigent 0.33.0, including with `TRAIGENT_RUN_COST_LIMIT` set.
+The fake client is installed before your module is imported, so import-time code gets the fake too. The $0 cost is reported only inside this script, so cost limits and strict cost accounting stay on and are not changed. Scores from this run mean nothing (the reply is canned); it proves the wiring only. It covers the synchronous `OpenAI` client and synchronous agent functions only. For an async agent (`AsyncOpenAI`, `async def`) or another client such as `anthropic`, do not adapt this template: use the `litellm.completion` path above. Calls made through a client you did not fake can still be real. The two `for name` lines mutate private attributes of the optimized function, so they are a workaround verified on SDK 0.27-0.33 only. The public alternative, if the user agrees to edit their function: return `traigent.with_usage(text, total_cost=0)` at its return boundary on the stub path, and delete those two lines. Checked against traigent 0.33.0, including with `TRAIGENT_RUN_COST_LIMIT` set.
 
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.24.0"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.24.0"`.)
 - **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local. A `TRAIGENT_API_KEY` in the project `.env` counts as set on 0.28.0+ (see "Using a .env File"); use `TRAIGENT_OFFLINE_MODE=true` or `offline=True` for zero egress.

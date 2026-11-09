@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c3411dc8fdef87ee",
+  "doc_hash": "2c64b609ebe7b36b",
   "reference_hashes": {
     "references/error-reference.md": "02ac48de17fe6c9e",
     "references/logging-config.md": "158e07e3237bfb61",
@@ -254,6 +254,28 @@
       "doc_before_hash": "9b8b2aa1d5c7367f",
       "doc_after_hash": "c3411dc8fdef87ee",
       "note": "Graceful-fallback example uses a candidate process because apply=False is withdrawn; incumbent stays explicit.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "c3411dc8fdef87ee",
+      "doc_after_hash": "d220e0c0e2827d1f",
+      "note": "Round 10: numbered recovery order for a paid run missing from the portal (portal check before a per-session sync; rerun is separate and approved).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "d220e0c0e2827d1f",
+      "doc_after_hash": "2c64b609ebe7b36b",
+      "note": "Round 10-11: recovery order uses the per-session sync only; dry-run template restricted to sync agents, private-attribute wrapper labelled version-bound.",
       "source_type": "agent"
     }
   ]
