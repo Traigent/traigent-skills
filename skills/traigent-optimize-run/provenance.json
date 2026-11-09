@@ -1,13 +1,13 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a72d6d08c9af227b",
+  "doc_hash": "a681ffb185de8e7d",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "cb123f7353702556",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/execution-budget.md": "23d17308f849017b",
     "references/parallel-config.md": "2938f82d7a778d5f",
-    "references/resume-local-run.md": "465de4061144eb9d",
+    "references/resume-local-run.md": "f5cc90c580a80dfc",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
@@ -500,6 +500,17 @@
       "doc_before_hash": "58db4cfd2b46d8c4",
       "doc_after_hash": "a72d6d08c9af227b",
       "note": "Guarded candidate run for live functions; apply_best_config is not the default for serving code.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-released-ci",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "a72d6d08c9af227b",
+      "doc_after_hash": "a681ffb185de8e7d",
+      "note": "Version-correct apply=False and resume_from statements for released SDKs.",
       "source_type": "agent"
     }
   ]

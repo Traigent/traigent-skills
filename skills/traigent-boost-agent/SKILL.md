@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.25"
+  version: "2.1.26"
 ---
 
 # Traigent Boost Agent
@@ -349,7 +349,7 @@ For algorithm choices, parallel execution, and further cost-limit controls, cros
 
 ```python
 # `optimize_sync()` has already applied a nonempty winner to this instance, and
-# `apply=False` is currently rejected with ConfigurationError. If an incumbent must keep
+# `apply=False` is rejected with ConfigurationError from SDK 0.31.0 (it does not exist before 0.29.0). If an incumbent must keep
 # serving until approval, run the search above in a SEPARATE candidate process with its own
 # decorated function instance (never the serving one), then export from that process:
 my_function.export_config("candidate_config.json")

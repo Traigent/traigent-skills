@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.21"
+  version: "1.0.22"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -614,7 +614,7 @@ print("traigent log level:", logging.getLevelName(logging.getLogger("traigent").
 
 ## Graceful Fallback Pattern
 
-When optimization might fail, keep the serving incumbent explicit. `optimize()` / `optimize_sync()` apply a nonempty winner to the instance before returning, and `apply=False` (candidate runs) is currently rejected with `ConfigurationError`. A score check *after* the run therefore cannot undo the application, and a printed "using default" message changes nothing. Run the search in a separate candidate process with its own decorated function instance, export the result, and promote it in the serving process only after your own gate:
+When optimization might fail, keep the serving incumbent explicit. `optimize()` / `optimize_sync()` apply a nonempty winner to the instance before returning, and `apply=False` (candidate runs) is rejected with `ConfigurationError` from SDK 0.31.0 (it does not exist before 0.29.0). A score check *after* the run therefore cannot undo the application, and a printed "using default" message changes nothing. Run the search in a separate candidate process with its own decorated function instance, export the result, and promote it in the serving process only after your own gate:
 
 ```python
 # candidate_optimize.py -- a separate OS process, never the serving process

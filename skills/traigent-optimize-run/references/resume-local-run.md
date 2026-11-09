@@ -1,7 +1,7 @@
 # Continue a Saved Local Run (`resume_from`)
 
 Use this when the user wants to continue an interrupted or budget-limited **local** search without
-paying again for trials that already finished. Requires an SDK that ships `resume_from` (check
+paying again for trials that already finished. Requires SDK 0.32.0 or newer: `resume_from` and the `traigent.core.resume` module do not exist in 0.31.x and earlier, so on an older SDK say so and do not improvise. Requires an SDK that ships `resume_from` (check
 `inspect.signature(fn.optimize_sync).parameters`); if it is absent, say so and do not improvise.
 
 ## Recipe
@@ -33,7 +33,7 @@ integrity-verified source of truth.
 
 - **Local runs only.** Cloud and hybrid runs raise `ValueError` ("resume_from supports local runs
   only for now").
-  <!-- contract: literal "resume_from supports local runs only for now" in traigent.core.resume -->
+  <!-- contract: literal "resume_from supports local runs only for now" in traigent.core.resume @ SDK 0.32.0 -->
 - **Compatibility is checked.** Prior trials are reused only when the dataset, scorer, agent and
   configuration-space fingerprints all match the current run, and the trial completed. Unfinished
   trials are never reused or retried. If anything changed, expect a fresh search, not a reuse.
@@ -43,4 +43,4 @@ integrity-verified source of truth.
 - **Integrity is verified.** A corrupted or tampered saved result raises `ValueError`. Report it and
   stop. Do not work around it: `allow_unverified_resume=True` trusts legacy results without a
   verifying manifest and is **unsafe**; use it only if the user explicitly accepts that risk.
-  <!-- contract: raises ValueError in traigent.core.resume -->
+  <!-- contract: raises ValueError in traigent.core.resume @ SDK 0.32.0 -->

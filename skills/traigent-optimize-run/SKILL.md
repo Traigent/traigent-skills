@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.37"
+  version: "1.0.38"
 ---
 
 # Running Traigent Optimization
@@ -592,11 +592,11 @@ After optimization, for a function that is not serving live traffic, `func.apply
 
 ### When the live function must not change until approval
 
-`optimize()` / `optimize_sync()` applies the winner to the instance it ran on (`apply=False` is currently rejected), so run the search in a separate script or process that the server never imports, with its own decorated copy of the function:
+`optimize()` / `optimize_sync()` applies the winner to the instance it ran on (`apply=False`, the candidate-run flag, is rejected from SDK 0.31.0 and does not exist before 0.29.0; the separate process works on every version), so run the search in a separate script or process that the server never imports, with its own decorated copy of the function:
 
 ```python
 # In the separate candidate process that ran the search (optimize_sync() already applied the
-# winner to that process's instance; apply=False is currently rejected), export the candidate
+# winner to that process's instance; apply=False is rejected from SDK 0.31.0), export the candidate
 # only if the search result clears the bar and the result does not report a statistical tie:
 results = my_function.optimize_sync()
 

@@ -37,8 +37,10 @@ def test_sdk_rejects_apply_false_and_has_set_config() -> None:
     import inspect
 
     traigent = pytest.importorskip("traigent")
-    if Version(traigent.__version__) < Version("0.30.0"):
-        pytest.skip("apply=False withdrawal is asserted on 0.30.0 and above")
+    # apply=False is accepted on 0.29.0-0.30.0 (isolated candidate copy) and withdrawn from 0.31.0
+    # (Traigent v0.31.0 optimized_function.py: _APPLY_FALSE_WITHDRAWN_MESSAGE).
+    if Version(traigent.__version__) < Version("0.31.0"):
+        pytest.skip("apply=False withdrawal is asserted on 0.31.0 and above")
     optimized_function = pytest.importorskip("traigent.core.optimized_function")
     cls = optimized_function.OptimizedFunction
     assert "apply" in inspect.signature(cls.optimize_sync).parameters

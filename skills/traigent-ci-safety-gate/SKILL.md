@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.16"
+  version: "1.0.17"
 ---
 
 # CI Safety Gate
@@ -141,7 +141,7 @@ approves.
 
 ```python
 # In the separate candidate process that ran the search (optimize_sync() already applied the
-# winner to that process's instance; apply=False is currently rejected), export the candidate
+# winner to that process's instance; apply=False is rejected from SDK 0.31.0), export the candidate
 # only if the search result clears the bar and the result does not report a statistical tie:
 results = my_function.optimize_sync()
 

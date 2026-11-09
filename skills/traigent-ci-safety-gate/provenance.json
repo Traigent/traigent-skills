@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0739ee887fff014d",
+  "doc_hash": "e9701f5c650f4f21",
   "reference_hashes": {
     "references/gate-workflow.md": "3c7a8e4099db45ba",
     "references/in-run-safety.md": "5a47cd85dda26146"
@@ -273,6 +273,17 @@
       "doc_before_hash": "eab38a0df6a741de",
       "doc_after_hash": "0739ee887fff014d",
       "note": "Tie-check wording and PromotionGate position.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-released-ci",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "0739ee887fff014d",
+      "doc_after_hash": "e9701f5c650f4f21",
+      "note": "Version-correct apply=False and resume_from statements for released SDKs.",
       "source_type": "agent"
     }
   ]

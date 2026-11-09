@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "76147c542b44f4e2",
+  "doc_hash": "e27971f3fb79c7b6",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -399,6 +399,17 @@
       "doc_before_hash": "e1d3cc6d63527ce2",
       "doc_after_hash": "76147c542b44f4e2",
       "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-released-ci",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "76147c542b44f4e2",
+      "doc_after_hash": "e27971f3fb79c7b6",
+      "note": "Version-correct apply=False and resume_from statements for released SDKs.",
       "source_type": "agent"
     }
   ]

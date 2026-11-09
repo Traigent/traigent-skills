@@ -633,7 +633,9 @@ def test_stub_dry_run_completes_with_a_cost_limit_and_strict_accounting_on(tmp_p
     _write_dry_run_project(tmp_path, _RAW_CLIENT_AGENT.format(import_time=""))
     done = _run_dry_run(tmp_path, {"TRAIGENT_RUN_COST_LIMIT": "1"})
     assert done.returncode == 0, done.stderr[-2000:]
-    assert "max_trials=2 reached" in (done.stdout + done.stderr)
+    # The stop banner ("max_trials=2 reached") exists only on newer SDKs; the trial table header
+    # reports the completed trial count on every released version.
+    assert "(2 trials)" in (done.stdout + done.stderr)
     assert "{'model':" in done.stdout
 
 
