@@ -101,7 +101,7 @@ answerQuestion.applyBestConfig(result);
 
 - Native/local algorithms are `grid` and `random`.
 - Smart strategy names accepted by the JS SDK's algorithm contract are the `bayesian`/`optuna`/`tpe` family plus `cmaes`/`nsga2` variants (`SMART_OPTIMIZATION_ALGORITHMS` in `src/optimization/algorithm-contract.ts`). They are backend-routed surfaces, not native local search implementations — this skill does not claim they currently execute. **`hyperband` and `frontier_scout` are not accepted JS `algorithm` values** (the JS SDK throws `ValidationError`). In a TVL spec, `exploration.strategy: pareto_optimal` is rejected by the native JS runtime (hybrid/server only), and `frontier_scout` is rejected outright.
-- **Backend availability (verified server-side 2026-07-02):** the backend's **classic session-create path** — the one the Python decorator uses — executes only `grid`/`random` and rejects other algorithm names. A **separate typed/interactive backend session API** does support `optimization_strategy.algorithm="optuna"` with TPE/random/CMA-ES samplers. Whether the JS SDK's smart strategies route to that typed path has **not been verified** — confirm live behavior against your backend before promising a smart strategy runs; do not present them as verified-working values.
+- **Backend availability:** whether the JS SDK's smart strategies reach a backend route that executes them has **not been verified** — confirm that route live against your backend before promising a smart strategy runs; do not present them as verified-working values. This says nothing about the Python SDK, which has its own supported connected smart strategies.
 - `evaluation.data` or `evaluation.loadData` is required for high-level native optimization.
 <!-- PROTECTED -->
 - `budget.maxCostUsd` is enforced from numeric `metrics.total_cost` or `metrics.cost`; provider billing remains the user's responsibility.
@@ -144,7 +144,7 @@ user's own LLM provider still happen if their agent makes them.
 | Python decorator suggested in JS | Use `optimize(spec)(agentFn)` from `@traigent/sdk`. |
 | No evaluation data | Add `evaluation.data` or `evaluation.loadData`. |
 | Context missing in delayed callbacks | Use `wrapCallback` or run host-managed execution inside `TrialContext.run(...)`. |
-| Smart strategy expected to run locally | Use native `grid`/`random`. Backend routing helps only if the request reaches the backend's typed interactive session API — the classic session path serves only `grid`/`random`, and JS routing to the typed path is unverified (see Runtime Rules). |
+| Smart strategy expected to run locally | Use native `grid`/`random`. Backend routing helps only if the request reaches a backend route that executes the strategy; JS smart-strategy execution through the intended route is unverified (see Runtime Rules). |
 | Cost budget not enforced | Return numeric `metrics.total_cost`, `metrics.cost`, or `metrics.input_cost` plus `metrics.output_cost` for every trial. |
 | Metric cannot be aggregated | Return numeric or boolean metrics with stable names. |
 

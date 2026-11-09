@@ -47,6 +47,8 @@ and do not force an exact-match metric. Route onto the judge track:
 2. Build the metric from `traigent-eval-build`'s **"LLM judge with rubric, strict parse,
    and cost guardrails"** template — the judge score is the primary quality KPI (label it for
    what it is, e.g. `judge_quality`; the accuracy-labeled default does not apply here — say so).
+   Use the template's reference-free prompt (`build_reference_free_judge_prompt`) with your rubric
+   and the source material; the default prompt grades against an `expected` answer you do not have.
 3. `traigent-eval-audit` is **mandatory** on this track, not optional: the judge now owns
    the entire quality signal, so its agreement/stability audit is the only thing standing
    between you and optimizing noise.

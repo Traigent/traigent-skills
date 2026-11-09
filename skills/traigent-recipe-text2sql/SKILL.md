@@ -101,10 +101,12 @@ multi-DB — each example carries a `db_id`; resolve schema + connection per `db
   (`SELECT CountryCode, max(Percentage)` when only codes were asked). The
   convention forgives column *order*, never missing/extra columns.
 
-Before the first paid run, execute every gold once and exclude, by id, any that errors or
-returns zero rows: an empty gold scores 1.0 for every wrong query that also returns nothing,
-and a gold that fails to run scores 0.0 for every candidate, so neither separates
-configurations. Report accuracy on the scoreable subset with that count. Run candidate SQL
+Before the first paid run, execute every gold once and exclude, by id, any that errors: a gold
+that fails to run scores 0.0 for every candidate, so it separates nothing. Keep a gold that runs
+and returns zero rows when that is the correct answer (for example "which invoices are overdue"
+when none are): it still separates a correct query from one that wrongly returns rows. Such a
+row also credits a wrong query that returns nothing, so count the empty-answer rows and report
+them separately. Report accuracy with the excluded count. Run candidate SQL
 only on a read-only handle with a watchdog and a size cap — never on the writable DB the agent
 could mutate (the runnable reference below does both). Bound the watchdog by wall-clock time,
 not by a VM-step count: a step cap also aborts correct SQL on a real-size table and scores it 0
@@ -123,7 +125,7 @@ def result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
     if len(pred_rows) != len(gold_rows):
         return False
     if not gold_rows:
-        return False  # an empty gold was excluded upstream; never a free point
+        return True  # both empty: a legitimate empty answer (an execution error never reaches here)
     n = len(gold_rows[0])
     if len(pred_rows[0]) != n:
         return False

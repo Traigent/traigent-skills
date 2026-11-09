@@ -440,21 +440,19 @@ if len(sorted_trials) >= 2:
 
 ### Is the Delta Real? Rerun Noise, Paired Comparisons, and Non-Portable Winners
 
-Before reporting any config-A-vs-config-B difference, know the noise floor — field-measured on
-real benchmark runs (2026-07): **the same config on the same data, nothing changed,
-moved ±5–10 pp across days at n=40 examples per cell** (one cell measured 82.5 → 87.5 → 95.0
-across three passes). Three rules follow:
+Before reporting any config-A-vs-config-B difference, measure your own noise: the same config
+on the same data can move between passes, so rerun a baseline config and treat any gap inside the
+spread you measured as unreported. Three rules follow:
 
-1. **Resolution rule:** rerun noise follows a √k law — the same-config SD is ≈ `50/√k` pp at
-   p≈0.5 (≈8 pp at k=40, consistent with the ±5–10 pp above), so a k-example evaluation resolves
-   only gaps several times that. Marginal means pooled over ≥4 cells (n ≥ 160) roughly halve the
-   noise (4× the samples → √4 = 2× tighter); single-cell deltas under ~10 pp are unreportable.
-2. **Pair, don't cross-compare:** never compare numbers measured in different sessions/days.
-   Case study: an apparent 12-pp effort-knob gap dissolved to +1.2 pp (2 answers in 160 — noise)
-   once both sides were rerun same-day on the same fold. Cross-day deltas were the artifact.
-3. **Ship deltas with a bootstrap CI** over held-out examples (≥1,000 resamples); a win is
-   claimable only if the CI excludes zero. The same skepticism applies to public leaderboard
-   gaps of a few points.
+1. **Resolution rule:** sampling noise shrinks as the number of examples grows, so a small
+   evaluation resolves only large gaps. Pooling across cells tightens the estimate. Judge a delta
+   against your measured spread and the actual evidence, not a fixed cutoff.
+2. **Pair, don't cross-compare:** compare configurations on the same examples in the same
+   session. Numbers measured on different days (or model versions) are not directly comparable;
+   rerun both sides together before calling a gap an effect.
+3. **Ship deltas with an interval** (for example a bootstrap over held-out examples); a win is
+   claimable only if the interval excludes zero. The same skepticism applies to public leaderboard
+   gaps.
 
 **Read the SDK's own winner verdict before any local delta test (SDK >= 0.26.0).**
 `results.best_config_margin` qualifies `best_config` without changing it: a paired test of the

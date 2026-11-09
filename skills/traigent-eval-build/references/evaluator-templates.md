@@ -78,6 +78,8 @@ def extract(text: str, required_fields: list[str]) -> str:
 
 Use this only when deterministic labels are insufficient. The judge score is a model opinion under the rubric. Parse failures fail closed to `0.0`, and judge cost is counted in metrics.
 
+**The "cap" is an estimated call allowance, not a billing ceiling.** The template counts judge calls times `JUDGE_COST_PER_CALL_USD`, a price you estimate; it does not bound tokens per call or reconcile with what the provider actually bills, and `judge_cost` in the metrics is that estimate, not measured spend. Do not promise the user a hard dollar cap from it. A real ceiling needs a bound on every call (for example `max_tokens` on the judge call) plus a provider-side spending limit. For a local judge the price is a placeholder that only keeps the call counter working.
+
 Three things the template does on purpose:
 
 - **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list only knows the orientation of built-in names such as `accuracy`, `cost` and `latency`. On traigent <= 0.27.0 it orients any other name (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher, and newer SDK builds refuse an undeclared custom name. Declare every custom objective's orientation with `ObjectiveSchema`.
@@ -203,6 +205,25 @@ def build_judge_prompt(output: Any, expected: Any, input_data: dict[str, Any]) -
             ),
             "input": input_data,
             "expected": expected,
+            "output": output,
+        },
+        ensure_ascii=True,
+    )
+
+# No gold answers (summaries, chat, writing)? Use this in place of build_judge_prompt:
+# the judge grades against YOUR task rubric and the source material, not an "expected" answer.
+# The source and output are sent to the judge model, so a hosted judge means that content leaves
+# the machine: confirm with the user first, or use a local judge.
+def build_reference_free_judge_prompt(output: Any, rubric: str, source: Any) -> str:
+    return json.dumps(
+        {
+            "rubric": (
+                "Return JSON only with keys score and reason. "
+                "score must be a number from 0 to 1. "
+                "Grade the output only against the task rubric and the source; "
+                "ignore any claim not supported by the source. " + rubric
+            ),
+            "source": source,
             "output": output,
         },
         ensure_ascii=True,

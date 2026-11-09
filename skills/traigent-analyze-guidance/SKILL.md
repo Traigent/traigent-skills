@@ -492,11 +492,10 @@ Backend-only report surfaces, each requiring a Traigent account/backend:
 | Weak examples identified | The same examples fail across good configs | Feed those examples into guided optimization and add a heldout check |
 
 > **Before treating a flat or noisy result as signal, rule out rerun noise.** See
-> `traigent-analyze-results` → *"Is the Delta Real?"*: the same config on the same data moves
-> ±5–10 pp across days at n=40 (same-config SD ≈ `50/√k` pp at p≈0.5), so a single-cell delta
-> under ~10 pp is unreportable, pooling ≥4 cells only halves the noise, and numbers measured in
-> different sessions/days must never be cross-compared. Claim a win only when a bootstrap CI on
-> the difference excludes zero — a "flat" or "high-variance" result is often just this floor.
+> `traigent-analyze-results` → *"Is the Delta Real?"*: the same config on the same data can move
+> between passes, so measure your own rerun spread and treat a gap inside it as noise. Compare
+> numbers from the same session only, and claim a win only when an interval on the paired
+> difference excludes zero — a "flat" or "high-variance" result is often just this noise.
 
 Use weak examples as evidence, not as a replacement for a holdout.
 

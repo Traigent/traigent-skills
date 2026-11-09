@@ -66,7 +66,7 @@ Inventory real examples before synthesizing:
 - Logs and traces: sample real inputs, then redact secrets and PII before labeling.
 - Failure reports: keep the original failure input, expected behavior, and the bug class in metadata.
 
-Minimum starting counts:
+Starting counts (planning heuristics, not requirements; judge the actual evidence for your task):
 
 | Use | Count | Notes |
 |---|---:|---|
@@ -77,15 +77,13 @@ Minimum starting counts:
 | Rarer class (the positive, failing, or minority case), per slice | 20+ tuning, 30+ holdout | A row count says nothing about how many rows carry the case the metric rewards. |
 
 **Enough events to separate two configurations.** For a metric measured over the rarer class (its
-recall, say), a rate that rests on `k` such rows moves `100/k` points per row: 20 rows is a 5-point
-step, 30 rows a 3-point step. These counts are a floor, not a guarantee: sampling noise on `k` rows
-is about `50/sqrt(k)` points per rate at a 50% rate (roughly 11 points at k=20, 9 at k=30), so a lift
-of a few steps can still be noise. Below the floor no run can separate the configurations, and the
-decision brief reports "not separated from noise" after the money is spent. Count the rarer class in
-**each** slice before a paid run (`--label-field` in `traigent-setup-audit` counts it inside a
-structured gold value). Below the minimum, grow the rarer class first or run only as a smoke
-check; a slice with 0 rows of a class cannot score it at all. The same arithmetic runs after the
-run in `traigent-analyze-results` ("Is the Delta Real?").
+recall, say), a rate that rests on `k` such rows moves in steps of `100/k` points per row, and
+sampling noise on so few rows can be as large as a small lift. These counts are planning
+heuristics, not guarantees: a small paired set may still show clear differences, and a large one
+may not. Count the rarer class in **each** slice before a paid run (`--label-field` in
+`traigent-setup-audit` counts it inside a structured gold value); with few rows of a class, grow
+it first or treat the run as a smoke check; a slice with 0 rows of a class cannot score it at
+all. Assess the paired evidence after the run in `traigent-analyze-results` ("Is the Delta Real?").
 
 Prefer fewer well-labeled examples over many vague examples. Every row should have a reason to exist: common path, edge case, high-value customer path, known failure, or safety-critical path.
 
@@ -197,11 +195,14 @@ Holdout rules:
 
 ### Next holdout (replacing a spent one)
 
-A holdout that was used for selection, or whose rows were inspected, is spent. Several rounds
+A holdout that was used for selection is spent, and so is one whose scores or rows were fed back
+into changes to the system. Reading rows for label quality is not by itself selection: record who
+saw what and whether it influenced any change, and say so beside the holdout number. A holdout
+reviewed only for label correctness, with no adaptation to it, can stay a holdout. Several rounds
 will spend it; replace it by this procedure instead of reusing it or inventing a rule:
 
 - Record what was spent: the row ids, their time range, and their group keys.
-- Build the new holdout only from rows never scored or inspected (normally a later time window),
+- Build the new holdout only from rows never scored or used to adapt the system (normally a later time window),
   disjoint from the spent rows by id **and** group key.
 - Spent rows may move into tuning.
 - Name the round beside every number the new holdout produces ("holdout round 2"). Numbers from

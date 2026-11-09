@@ -50,9 +50,10 @@ never with `offline=True`. Use **`offline=True`** for a local run with zero Trai
 egress (grid/random only) ONLY when explicitly chosen; never switch silently. It stops Traigent
 backend traffic only: your agent's model-provider calls still go out, and LiteLLM fetches its
 pricing map at import unless `LITELLM_LOCAL_MODEL_COST_MAP=True` is set. After a run, **confirm the experiment
-appears in the portal with its trials**. If it doesn't show up, it's likely a
-temporary connectivity issue -- **retry the run** and confirm the printed `View`
-link populates. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
+appears in the portal with its trials**. If it doesn't show up, the local result is still valid
+and only persistence failed: keep the local result, read `results.metadata["persistence_status"]`,
+and recover the sync (`traigent-analyze-results` → "Verify the Run Actually Persisted"). Repeating
+the optimization is a separate paid action that needs the user's approval. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
 run.
 
 ## Run naming
@@ -100,7 +101,7 @@ run.
 3. Custom pricing for gateway models; emit real accuracy/cost/latency metrics.
 4. `ExecutionOptions(offline=False)` (DEFAULT = online/cloud; `offline=True` local-only if chosen) + `algorithm` arg; cost cap set.
 5. Mock dry-run (no provider spend; on SDK 0.31.0+ still priced against the cost cap, so use a small slice of a large dataset) -> confirm trials run (a reply-parsing scorer fails every trial under mock; stub the reply, do not catch the error) -> real run.
-6. After the real run, confirm the experiment shows its trials; if not, retry.
+6. After the real run, confirm the experiment shows its trials; if not, keep the local result and recover the sync (do not re-run the paid search without approval).
 7. Set an explicit `agent_name` (SDK 0.27.0+; `experiment_name` is the deprecated alias) — a
    stable agent slug, reused across runs. No permutation count, weights, or date in the name
    (that forks the agent); put what the run tests in `run_title=` / `run_description=`.

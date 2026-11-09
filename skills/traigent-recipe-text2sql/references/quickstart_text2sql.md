@@ -227,9 +227,10 @@ def _result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
     if len(pred_rows) != len(gold_rows):
         return False
     if not gold_rows:
-        # An empty gold hands a free point to every wrong query that also returns
-        # nothing; such rows are excluded upstream (run every gold once first).
-        return False
+        # Both results are empty: a legitimate empty answer (an execution error
+        # never reaches here). It also credits a wrong query that returns nothing,
+        # so check_golds() counts these rows and you report them separately.
+        return True
     n = len(gold_rows[0])
     if len(pred_rows[0]) != n:
         return False
@@ -242,15 +243,20 @@ def _result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
 
 def check_golds() -> None:
     # Run every gold once before spending: a gold that errors scores 0.0 for every
-    # candidate and an empty gold would score 1.0 for every wrong-but-empty query,
-    # so neither can separate configurations. Fail loudly instead of scoring them.
-    bad = []
+    # candidate, so it cannot separate configurations. Fail loudly instead of scoring it.
+    # A gold that runs and returns zero rows is a legitimate empty answer: keep it, but
+    # count it, because a wrong query that also returns nothing earns the same point.
+    bad, empty = [], []
     for i, (_, gold) in enumerate(TESTBED):
         ok, rows = _run(gold)
-        if not ok or not rows:
-            bad.append((f"store_q{i}", "errors" if not ok else "returns zero rows"))
+        if not ok:
+            bad.append((f"store_q{i}", "errors"))
+        elif not rows:
+            empty.append(f"store_q{i}")
     if bad:
         raise SystemExit(f"gold SQL cannot separate configurations, exclude these rows first: {bad}")
+    if empty:
+        print(f"note: {len(empty)} empty-answer gold row(s) kept: {empty}; report them separately")
 
 
 def exec_match(pred_sql: str, gold_sql: str) -> float:

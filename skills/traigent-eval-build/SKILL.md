@@ -42,7 +42,8 @@ A `custom_evaluator` does not produce `latency`. If `latency` is an objective, p
 
 **No `expected_output` at all?** Tiers 1-3 assume a gold label to compare against. For
 subjective/generative tasks with no labels, skip straight to Tier 4 with the **"LLM judge with
-rubric, strict parse, and cost guardrails"** template in `references/evaluator-templates.md` —
+rubric, strict parse, and cost guardrails"** template in `references/evaluator-templates.md`
+(swap its `build_judge_prompt` for `build_reference_free_judge_prompt`, which grades against your rubric and the source instead of an `expected` answer) —
 and treat `traigent-eval-audit` as mandatory, because the judge owns the whole quality
 signal (see `traigent-eval-choose-metric` → "The no-gold track").
 
