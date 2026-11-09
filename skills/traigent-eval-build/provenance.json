@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a81eb2db84540d62",
+  "doc_hash": "ed4c6bd1ad36374a",
   "reference_hashes": {
-    "references/evaluator-templates.md": "d51e083d87ad94a0"
+    "references/evaluator-templates.md": "4557a4363b935c04"
   },
   "entries": [
     {
@@ -294,6 +294,17 @@
       "doc_before_hash": "227081333421af5b",
       "doc_after_hash": "a81eb2db84540d62",
       "note": "Round 4: custom templates validate the whole dataset's EFFECTIVE ids (metadata.id overrides id) once at import, before any model call; built-in id-less flows stay valid; local outcome-matrix collision explained separately from the canonicalized wire id.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "a81eb2db84540d62",
+      "doc_after_hash": "ed4c6bd1ad36374a",
+      "note": "Round 5: validation and EvaluationOptions share one dataset path resolved like the SDK (TRAIGENT_DATASET_ROOT, else cwd); top-level ids required on every supported SDK and a valid nested id is promoted by prep; id helpers read and write utf-8.",
       "source_type": "agent"
     }
   ]

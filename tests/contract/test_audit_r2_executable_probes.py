@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import ast
 import json
+import os
 import re
 from pathlib import Path
 from types import SimpleNamespace
@@ -121,7 +122,7 @@ def test_dataset_prep_flags_duplicate_and_missing_ids_and_assigns_unique_ones(
     dataset.write_text(
         "".join(json.dumps(r) + "\n" for r in [identical, identical, {**identical, "id": "keep"}])
     )
-    with pytest.raises(ValueError, match="no 'id'"):
+    with pytest.raises(ValueError, match="no top-level 'id'"):
         check(str(dataset))
     assign(str(dataset))
     check(str(dataset))  # identical rows now carry distinct ids
@@ -231,7 +232,7 @@ def _check_with_json_and_path() -> list[Any]:
                 n for n in ast.parse(block).body
                 if isinstance(n, ast.FunctionDef) and n.name == "check_row_ids"
             )
-            namespace: dict[str, Any] = {"json": json, "Path": Path}
+            namespace: dict[str, Any] = {"json": json, "Path": Path, "os": os}
             exec(compile(ast.Module([node], []), "<check>", "exec"), namespace)
             helpers.append(namespace["check_row_ids"])
     return helpers
@@ -256,14 +257,15 @@ def test_every_custom_template_validates_the_dataset_with_one_identical_check() 
 
 
 EFFECTIVE_CASES = {
-    "nested duplicates": ([{"metadata": {"id": "shared"}}, {"metadata": {"id": "shared"}}], "repeats id"),
+    "nested duplicates, no top-level": ([{"metadata": {"id": "shared"}}, {"metadata": {"id": "shared"}}], "no top-level 'id'"),
     "distinct top-level, shared nested": ([{"id": "a", "metadata": {"id": "shared"}}, {"id": "b", "metadata": {"id": "shared"}}], "conflicting"),
-    "nested null override": ([{"id": "a", "metadata": {"id": None}}], "conflicting|no 'id'"),
-    "nested empty override": ([{"id": "a", "metadata": {"id": ""}}], "conflicting|no 'id'"),
+    "nested null override": ([{"id": "a", "metadata": {"id": None}}], "conflicting"),
+    "nested empty override": ([{"id": "a", "metadata": {"id": ""}}], "conflicting"),
     "conflicting locations": ([{"id": "a", "metadata": {"id": "b"}}], "conflicting"),
-    "nested equals other top-level": ([{"id": "a"}, {"id": "z", "metadata": {"id": "a"}}], "conflicting|repeats"),
-    "missing": ([{"input": 1}], "no 'id'"),
-    "empty top-level": ([{"id": ""}], "no 'id'"),
+    "nested-only id": ([{"metadata": {"id": "r1"}}], "no top-level 'id'"),
+    "repeated top-level": ([{"id": "a"}, {"id": "a"}], "repeats id"),
+    "missing": ([{"input": 1}], "no top-level 'id'"),
+    "empty top-level": ([{"id": ""}], "no top-level 'id'"),
 }
 
 
@@ -279,7 +281,7 @@ def test_check_row_ids_validates_the_effective_id(case: str, tmp_path: Path) -> 
 
 def test_check_row_ids_accepts_distinct_effective_ids(tmp_path: Path) -> None:
     dataset = tmp_path / "d.jsonl"
-    rows = [{"id": "a"}, {"id": "b", "metadata": {"id": "b"}}, {"metadata": {"id": "c"}}]
+    rows = [{"id": "a"}, {"id": "b", "metadata": {"id": "b"}}, {"id": "c", "metadata": {"split": "x"}}]
     dataset.write_text("".join(json.dumps({"input": "x", **r}) + "\n" for r in rows))
     for check in _check_with_json_and_path():
         check(str(dataset))
@@ -327,7 +329,7 @@ def test_idless_published_example_fails_before_any_model_call_unless_prepped(
     emit(outcome)
     """
     result = _run_driver(tmp_path, _python_block(TEMPLATES, "def llm_judge_evaluator"), body)
-    assert "no 'id'" in result["skipped_prep"], result
+    assert "no top-level 'id'" in result["skipped_prep"], result
     assert result["calls_after_skipped_prep"] == 0
     assert result["prepped"] == "loaded" and result["calls_after_prep"] == 0
 
@@ -360,10 +362,112 @@ def test_round4_wording() -> None:
     assert "Is the Delta Real?" in curate and "approximate 95%" in curate
 
 
-def test_nested_null_or_empty_override_alone_is_rejected(tmp_path: Path) -> None:
-    for nested in (None, ""):
-        dataset = tmp_path / "d.jsonl"
-        dataset.write_text(json.dumps({"input": "x", "metadata": {"id": nested}}) + "\n")
-        for check in _check_with_json_and_path():
-            with pytest.raises(ValueError, match="no 'id'"):
-                check(str(dataset))
+# --- round 5: one dataset path, top-level ids on every SDK, utf-8 ---------------------------------
+
+
+def _helper_nodes() -> dict[str, set[str]]:
+    dumps: dict[str, set[str]] = {}
+    for path in (EVAL_BUILD, TEMPLATES):
+        for block in _blocks(path, "def check_row_ids"):
+            for node in ast.parse(block).body:
+                if isinstance(node, ast.FunctionDef) and node.name in {"check_row_ids", "dataset_path"}:
+                    dumps.setdefault(node.name, set()).add(ast.dump(node))
+    return dumps
+
+
+def test_dataset_path_and_check_are_identical_in_every_copy() -> None:
+    dumps = _helper_nodes()
+    assert {k: len(v) for k, v in dumps.items()} == {"check_row_ids": 1, "dataset_path": 1}
+
+
+def test_every_text_io_in_the_id_helpers_names_utf8() -> None:
+    for path in (EVAL_BUILD, TEMPLATES):
+        for block in _blocks(path, "def check_row_ids"):
+            tree = ast.parse(block)
+            for fn in (n for n in ast.walk(tree) if isinstance(n, ast.FunctionDef)
+                       and n.name in {"check_row_ids", "assign_row_ids"}):
+                calls = [c for c in ast.walk(fn) if isinstance(c, ast.Call)
+                         and isinstance(c.func, ast.Attribute) and c.func.attr in {"read_text", "write_text"}]
+                assert calls
+                for call in calls:
+                    assert any(k.arg == "encoding" and getattr(k.value, "value", None) == "utf-8"
+                               for k in call.keywords), ast.unparse(call)
+
+
+def test_templates_pass_the_same_resolved_path_to_check_and_eval_dataset() -> None:
+    for path in (EVAL_BUILD, TEMPLATES):
+        for block in _blocks(path, "def _example_id"):
+            tree = ast.parse(block)
+            check_args = [ast.unparse(c.args[0]) for c in ast.walk(tree)
+                          if isinstance(c, ast.Call) and getattr(c.func, "id", "") == "check_row_ids"]
+            eval_args = [ast.unparse(k.value) for c in ast.walk(tree) if isinstance(c, ast.Call)
+                         for k in c.keywords if k.arg == "eval_dataset"]
+            assert check_args == ["DATASET"] and eval_args == ["DATASET"], (check_args, eval_args)
+
+
+def test_dataset_root_differing_from_cwd_validates_the_file_the_sdk_loads(tmp_path: Path) -> None:
+    body = """
+    import os
+    root = Path("sdk_root"); root.mkdir()
+    (root / "eval").mkdir()
+    bad = [{"input": {"question": "q"}, "output": "a"}]          # no ids
+    good = [{"id": "r1", "input": {"question": "q"}, "output": "a"}]
+    source = Path(sys.argv[1]).read_text(encoding="utf-8")        # NOT rewritten: real resolution
+    outcome = {}
+
+    def attempt(label, cwd_rows, root_rows):
+        write_rows("qa.jsonl", cwd_rows)                           # ./eval/qa.jsonl
+        (root / "eval" / "qa.jsonl").write_text("".join(json.dumps(r) + "\\n" for r in root_rows))
+        os.environ["TRAIGENT_DATASET_ROOT"] = str(root.resolve())
+        namespace = {"__name__": "template_under_test"}
+        try:
+            exec(compile(source, "template_under_test", "exec"), namespace)
+            outcome[label] = "loaded:" + namespace["DATASET"]
+        except ValueError as exc:
+            outcome[label] = "refused:" + str(exc)
+
+    attempt("root_good_cwd_bad", bad, good)
+    attempt("root_bad_cwd_good", good, bad)
+    outcome["root"] = str(root.resolve())
+    emit(outcome)
+    """
+    result = _run_driver(tmp_path, _python_block(TEMPLATES, "def llm_judge_evaluator"), body)
+    root = result["root"]
+    assert result["root_good_cwd_bad"] == f"loaded:{root}/eval/qa.jsonl"
+    assert result["root_bad_cwd_good"].startswith("refused:") and root in result["root_bad_cwd_good"]
+
+
+def _assign_and_check() -> tuple[Any, Any]:
+    (block,) = _blocks(EVAL_BUILD, "def assign_row_ids")
+    namespace: dict[str, Any] = {}
+    exec(compile(block, "<dataset-prep>", "exec"), namespace)
+    return namespace["assign_row_ids"], namespace["check_row_ids"]
+
+
+def test_prep_promotes_a_nested_id_and_both_sdk_shapes_expose_it(tmp_path: Path) -> None:
+    assign, check = _assign_and_check()
+    dataset = tmp_path / "qa.jsonl"
+    rows = [
+        {"input": "q1", "output": "a", "metadata": {"id": "keep-me", "split": "x"}},
+        {"input": "q2", "output": "a"},
+        {"input": "q3", "output": "a", "id": "row-00001"},
+    ]
+    dataset.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    with pytest.raises(ValueError, match="no top-level 'id'"):
+        check(str(dataset))
+    assign(str(dataset))
+    check(str(dataset))
+    prepared = [json.loads(line) for line in dataset.read_text(encoding="utf-8").splitlines()]
+    assert prepared[0]["id"] == "keep-me", "a valid nested id is promoted, not renumbered"
+    assert len({r["id"] for r in prepared}) == 3 and prepared[2]["id"] == "row-00001"
+
+    (block,) = _blocks(EVAL_BUILD, "def _example_id")
+    helper = _function_namespace(block, "_example_id")
+    for row in prepared:
+        # SDK >= 0.28: a row's own metadata object is merged over the top-level keys.
+        merged = {**{k: v for k, v in row.items() if k not in {"input", "output", "metadata"}},
+                  **row.get("metadata", {})}
+        # SDK 0.24-0.27: the nested object stays nested; only top-level keys are metadata.
+        legacy = {k: v for k, v in row.items() if k not in {"input", "output"}}
+        for metadata in (merged, legacy):
+            assert helper(SimpleNamespace(input_data={}, expected_output=None, metadata=metadata)) == row["id"]

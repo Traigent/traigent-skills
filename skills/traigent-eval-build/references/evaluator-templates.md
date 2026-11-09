@@ -88,6 +88,7 @@ Three things the template does on purpose:
 
 ```python
 import json
+import os
 from pathlib import Path
 import math
 import threading
@@ -113,21 +114,27 @@ def _example_id(example) -> str:
     return str(explicit)
 
 
+def dataset_path(relative: str) -> str:
+    """The absolute path the SDK loads: a relative path resolves under TRAIGENT_DATASET_ROOT, else the cwd."""
+    root = Path(os.environ.get("TRAIGENT_DATASET_ROOT") or Path.cwd()).expanduser()
+    return str((root / relative).resolve())
+
+
 def check_row_ids(path: str) -> None:
-    """Call once at import, before any model call: validate the EFFECTIVE id of every row."""
+    """Call once at import, before any model call: every row needs a unique top-level id."""
     seen: dict[str, int] = {}
-    for number, line in enumerate(Path(path).read_text().splitlines(), start=1):
+    for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
             continue
         row = json.loads(line)
         nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
-        # The SDK merges a row's own "metadata" over its top-level keys, so a nested id wins.
-        row_id = nested["id"] if "id" in nested else row.get("id")
-        top = row.get("id")
-        if "id" in nested and top not in (None, "") and str(top) != str(nested["id"]):
-            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        row_id = row.get("id")
+        # A nested metadata.id is invisible to SDKs before 0.28 and overrides "id" on newer ones,
+        # so the top-level id is required and any nested id must equal it.
         if row_id is None or str(row_id) == "":
-            raise ValueError(f"{path}:{number} has no 'id' (or an empty one): run assign_row_ids first")
+            raise ValueError(f"{path}:{number} has no top-level 'id': run assign_row_ids first")
+        if "id" in nested and str(nested["id"]) != str(row_id):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
         if str(row_id) in seen:
             raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
         seen[str(row_id)] = number
@@ -318,11 +325,12 @@ def llm_judge_evaluator(func, config, example, budget: JudgeBudget | None = None
     )
 
 # Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
-check_row_ids("eval/qa.jsonl")
+DATASET = dataset_path("eval/qa.jsonl")
+check_row_ids(DATASET)
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
-        eval_dataset="eval/qa.jsonl",
+        eval_dataset=DATASET,
         custom_evaluator=llm_judge_evaluator,
     ),
     objectives=ObjectiveSchema.from_objectives([
@@ -362,6 +370,7 @@ The repetition count is part of the measuring instrument, not a knob: agreement 
 
 ```python
 import json
+import os
 from pathlib import Path
 import time
 from collections import Counter
@@ -383,21 +392,27 @@ def _example_id(example) -> str:
     return str(explicit)
 
 
+def dataset_path(relative: str) -> str:
+    """The absolute path the SDK loads: a relative path resolves under TRAIGENT_DATASET_ROOT, else the cwd."""
+    root = Path(os.environ.get("TRAIGENT_DATASET_ROOT") or Path.cwd()).expanduser()
+    return str((root / relative).resolve())
+
+
 def check_row_ids(path: str) -> None:
-    """Call once at import, before any model call: validate the EFFECTIVE id of every row."""
+    """Call once at import, before any model call: every row needs a unique top-level id."""
     seen: dict[str, int] = {}
-    for number, line in enumerate(Path(path).read_text().splitlines(), start=1):
+    for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
             continue
         row = json.loads(line)
         nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
-        # The SDK merges a row's own "metadata" over its top-level keys, so a nested id wins.
-        row_id = nested["id"] if "id" in nested else row.get("id")
-        top = row.get("id")
-        if "id" in nested and top not in (None, "") and str(top) != str(nested["id"]):
-            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        row_id = row.get("id")
+        # A nested metadata.id is invisible to SDKs before 0.28 and overrides "id" on newer ones,
+        # so the top-level id is required and any nested id must equal it.
         if row_id is None or str(row_id) == "":
-            raise ValueError(f"{path}:{number} has no 'id' (or an empty one): run assign_row_ids first")
+            raise ValueError(f"{path}:{number} has no top-level 'id': run assign_row_ids first")
+        if "id" in nested and str(nested["id"]) != str(row_id):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
         if str(row_id) in seen:
             raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
         seen[str(row_id)] = number
@@ -442,11 +457,12 @@ def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
     )
 
 # Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
-check_row_ids("eval/qa.jsonl")
+DATASET = dataset_path("eval/qa.jsonl")
+check_row_ids(DATASET)
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
-        eval_dataset="eval/qa.jsonl",
+        eval_dataset=DATASET,
         custom_evaluator=statistical_agreement_evaluator,
     ),
     objectives=["accuracy", "cost"],
@@ -463,6 +479,7 @@ Use this when invalid outputs should fail before spending judge calls. Rows that
 
 ```python
 import json
+import os
 from pathlib import Path
 import math
 import threading
@@ -487,21 +504,27 @@ def _example_id(example) -> str:
     return str(explicit)
 
 
+def dataset_path(relative: str) -> str:
+    """The absolute path the SDK loads: a relative path resolves under TRAIGENT_DATASET_ROOT, else the cwd."""
+    root = Path(os.environ.get("TRAIGENT_DATASET_ROOT") or Path.cwd()).expanduser()
+    return str((root / relative).resolve())
+
+
 def check_row_ids(path: str) -> None:
-    """Call once at import, before any model call: validate the EFFECTIVE id of every row."""
+    """Call once at import, before any model call: every row needs a unique top-level id."""
     seen: dict[str, int] = {}
-    for number, line in enumerate(Path(path).read_text().splitlines(), start=1):
+    for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
         if not line.strip():
             continue
         row = json.loads(line)
         nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
-        # The SDK merges a row's own "metadata" over its top-level keys, so a nested id wins.
-        row_id = nested["id"] if "id" in nested else row.get("id")
-        top = row.get("id")
-        if "id" in nested and top not in (None, "") and str(top) != str(nested["id"]):
-            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        row_id = row.get("id")
+        # A nested metadata.id is invisible to SDKs before 0.28 and overrides "id" on newer ones,
+        # so the top-level id is required and any nested id must equal it.
         if row_id is None or str(row_id) == "":
-            raise ValueError(f"{path}:{number} has no 'id' (or an empty one): run assign_row_ids first")
+            raise ValueError(f"{path}:{number} has no top-level 'id': run assign_row_ids first")
+        if "id" in nested and str(nested["id"]) != str(row_id):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
         if str(row_id) in seen:
             raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
         seen[str(row_id)] = number
@@ -683,11 +706,12 @@ def hybrid_evaluator(func, config, example, budget: JudgeBudget | None = None) -
     )
 
 # Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
-check_row_ids("eval/extraction.jsonl")
+DATASET = dataset_path("eval/extraction.jsonl")
+check_row_ids(DATASET)
 
 @traigent.optimize(
     evaluation=EvaluationOptions(
-        eval_dataset="eval/extraction.jsonl",
+        eval_dataset=DATASET,
         custom_evaluator=hybrid_evaluator,
     ),
     objectives=ObjectiveSchema.from_objectives([
