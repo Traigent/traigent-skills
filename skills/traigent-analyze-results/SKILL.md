@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.33"
+  version: "1.1.34"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -467,6 +467,8 @@ def paired_delta(a: list[float], b: list[float], n_boot: int = 2000, seed: int =
     if len(a) != len(b) or not a:
         raise ValueError("need equal-length, non-empty per-example scores")
     diffs = [y - x for x, y in zip(a, b)]
+    if not all(math.isfinite(v) for v in (*a, *b, *diffs)):
+        raise ValueError("scores and differences must be finite (no NaN or inf)")
     wins, losses = sum(d > 0 for d in diffs), sum(d < 0 for d in diffs)
     n = wins + losses  # ties carry no sign information
     k = min(wins, losses)
@@ -476,14 +478,17 @@ def paired_delta(a: list[float], b: list[float], n_boot: int = 2000, seed: int =
     return {
         "mean_delta": sum(diffs) / len(diffs), "wins": wins, "losses": losses,
         "ties": len(diffs) - n, "sign_test_p": p,
-        "ci95": (means[int(0.025 * n_boot)], means[int(0.975 * n_boot) - 1]),
+        "ci95": (means[int(0.025 * n_boot)], means[int(0.975 * n_boot) - 1]),  # approximate percentile-bootstrap
     }
 
 
 print(paired_delta([1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 1, 1, 1, 1, 0, 1]))
 ```
 
-Report that dictionary (wins, losses, interval, p-value) in place of the words "within noise".
+Report that dictionary (wins, losses, interval, p-value) in place of the words "within noise". `ci95`
+is an approximate percentile-bootstrap 95% interval. On small or degenerate samples (for example 5
+rows that are all wins) it can exclude zero even when the exact sign test does not, so lead with
+`sign_test_p` and treat the interval as descriptive.
 
 **Read the SDK's own winner verdict before any local delta test (SDK >= 0.26.0).**
 `results.best_config_margin` qualifies `best_config` without changing it: a paired test of the

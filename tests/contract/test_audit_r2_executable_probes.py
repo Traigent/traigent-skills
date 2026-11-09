@@ -500,6 +500,14 @@ def test_paired_delta_snippet_reports_wins_losses_and_exact_sign_test() -> None:
     balanced = paired([1, 0, 1, 0], [0, 1, 0, 1])
     assert (balanced["wins"], balanced["losses"], balanced["sign_test_p"]) == (2, 2, 1.0)
     assert paired([1, 1], [1, 1])["sign_test_p"] == 1.0
+    assert paired([0] * 5, [1] * 5)["sign_test_p"] == pytest.approx(0.0625)  # exact, not significant
+    for bad in (float("nan"), float("inf"), float("-inf")):
+        with pytest.raises(ValueError, match="finite"):
+            paired([0.0, 1.0], [bad, 1.0])
+        with pytest.raises(ValueError, match="finite"):
+            paired([bad, 1.0], [0.0, 1.0])
+    with pytest.raises(ValueError, match="finite"):
+        paired([float("inf")], [float("inf")])  # inf - inf is NaN
     with pytest.raises(ValueError):
         paired([1.0], [])
 
@@ -517,3 +525,9 @@ def test_offline_disclosure_is_taught() -> None:
     text = (SKILLS / "traigent-optimize-run" / "SKILL.md").read_text(encoding="utf-8")
     assert "When you run offline, tell the user" in text
     assert "LITELLM_LOCAL_MODEL_COST_MAP=True" in text
+
+
+def test_interval_is_labelled_approximate_and_demoted_below_the_sign_test() -> None:
+    text = (SKILLS / "traigent-analyze-results" / "SKILL.md").read_text(encoding="utf-8")
+    assert "approximate percentile-bootstrap 95% interval" in text
+    assert "lead with\n`sign_test_p`" in text or "lead with `sign_test_p`" in " ".join(text.split())
