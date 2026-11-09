@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "301468792cf69dc9",
+  "doc_hash": "5b6bc47155e28034",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
-    "references/optimization-principles.md": "974d0fa22a68adcf",
-    "references/preflight.md": "5fba530397924ad1",
+    "references/optimization-principles.md": "016bf557d2893cad",
+    "references/preflight.md": "59cc88246f96dd5b",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -433,6 +433,17 @@
       "doc_before_hash": "9c111e44caeb49d4",
       "doc_after_hash": "301468792cf69dc9",
       "note": "Customer-owned key no longer implies local inference; plan CLI flags shown; numeric noise floors and local planning ladders removed; portal-missing guidance preserves the local result; lifecycle-skill reference fixed; description boundary.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "301468792cf69dc9",
+      "doc_after_hash": "5b6bc47155e28034",
+      "note": "Round 2: CLI loads the project .env itself (no 'CLI does not read .env' claim); P4 and preflight scrubbed of the numeric trial floor, knob-replacement procedure and tuning-slice anecdote; missing-portal-record diagnosis no longer assumes persistence-only failure.",
       "source_type": "agent"
     }
   ]

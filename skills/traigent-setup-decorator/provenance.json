@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c582eeae8beda7c2",
+  "doc_hash": "97446845d1009f59",
   "reference_hashes": {
     "references/agent-identity.md": "16206658c40f65e2",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -298,6 +298,17 @@
       "doc_before_hash": "4ffc1e0dce2cb9c7",
       "doc_after_hash": "c582eeae8beda7c2",
       "note": "Seamless example returns message content; config values (prompt text) cross to the backend on synced runs; reapply comment; description boundary.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "c582eeae8beda7c2",
+      "doc_after_hash": "97446845d1009f59",
+      "note": "Round 2: uniform probe scores are an investigation cue, matching optimize-run and quickstart.",
       "source_type": "agent"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "53a04a746ac01584",
+  "doc_hash": "3d03cdbdd53f8bad",
   "reference_hashes": {
     "references/quickstart_text2sql.md": "23b7d4df55190f61"
   },
@@ -228,6 +228,17 @@
       "doc_before_hash": "5479f72fb4d9af92",
       "doc_after_hash": "53a04a746ac01584",
       "note": "ObjectiveSchema.from_objectives; no upfront COST_APPROVED; legitimate empty-answer golds kept; See-also deduplicated.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "53a04a746ac01584",
+      "doc_after_hash": "3d03cdbdd53f8bad",
+      "note": "Round 2: two-run arc is qualitative; removed tier, permutation-count and trial-count ladder (planning is service-owned).",
       "source_type": "agent"
     }
   ]

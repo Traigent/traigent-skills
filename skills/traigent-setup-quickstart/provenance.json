@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0712db97c34d3562",
+  "doc_hash": "684612c68940f382",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/environment-variables.md": "c50fe19585bb0888",
-    "references/first-value-fallback.md": "6da04fa90a4dcb8d",
+    "references/first-value-fallback.md": "3c78730d2f89aec2",
     "references/installation-extras.md": "21a597989700969a",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
@@ -473,6 +473,17 @@
       "doc_before_hash": "49bf0abe9aab167e",
       "doc_after_hash": "0712db97c34d3562",
       "note": "Literal first run refuses to overwrite existing files; fallback clears both offline controls; tiny-probe wording; lifecycle-skill reference fixed; description boundary.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "0712db97c34d3562",
+      "doc_after_hash": "684612c68940f382",
+      "note": "Round 2: CLI loads the project .env itself (verified 0.33.0); removed the mandatory shell-sourcing of .env.",
       "source_type": "agent"
     }
   ]

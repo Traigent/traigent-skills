@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4c8ccfc5c218933e",
+  "doc_hash": "29d96129e23ed2aa",
   "reference_hashes": {
-    "references/evaluator-templates.md": "f41dc03b8b5797c9"
+    "references/evaluator-templates.md": "1f769417be61c7c2"
   },
   "entries": [
     {
@@ -261,6 +261,17 @@
       "doc_before_hash": "41566cb4849ab327",
       "doc_after_hash": "4c8ccfc5c218933e",
       "note": "Judge cap described as an estimated call allowance; reference-free judge prompt; unique example_id fallback.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "4c8ccfc5c218933e",
+      "doc_after_hash": "29d96129e23ed2aa",
+      "note": "Round 2: reference-free judge builder keeps the (output, expected, input_data) call shape and refuses a blank rubric; row ids are assigned and checked at dataset prep and _example_id fails closed instead of hashing content.",
       "source_type": "agent"
     }
   ]

@@ -7,7 +7,7 @@
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/execution-budget.md": "23d17308f849017b",
     "references/parallel-config.md": "2938f82d7a778d5f",
-    "references/resume-local-run.md": "64063a5bd9d53c9e",
+    "references/resume-local-run.md": "465de4061144eb9d",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
@@ -434,6 +434,17 @@
       "doc_before_hash": "608e75616080a264",
       "doc_after_hash": "fccf55df7625f843",
       "note": "Offline is not mock; mock provenance via results.metadata; tiny-probe wording; new references/resume-local-run.md for resume_from.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "fccf55df7625f843",
+      "doc_after_hash": "fccf55df7625f843",
+      "note": "Round 2: resume recipe repeats the first run's explicit local algorithm (SKILL.md unchanged, no version bump).",
       "source_type": "agent"
     }
   ]
