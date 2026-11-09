@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.31"
+  version: "1.0.32"
 ---
 
 # Running Traigent Optimization

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.10"
+  version: "1.0.11"
 ---
 
 # Traigent Framework Integrations

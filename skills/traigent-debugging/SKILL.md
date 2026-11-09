@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.18"
+  version: "1.0.19"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -101,7 +101,7 @@ A key the backend **rejects** never falls back — the run stops with a category
   changes nothing.
 
 A run that raised **after** paid trials carries `exc.sync_session_id` (SDK 0.27.0+; below that, take the session id from the run log): `traigent sync <session_id>`
-(or `traigent local sync --session-id <session_id>`) uploads what was logged locally. For a run that returned but did not persist, read
+uploads what was logged locally. For a run that returned but did not persist, read
 `results.metadata["persistence_status"]` — `traigent-analyze-results` → "Verify the Run Actually
 Persisted" owns that table (degraded is kept, failed is synced, neither is re-paid).
 
@@ -655,6 +655,7 @@ The serving process never runs this search. It keeps the incumbent explicit and 
 # serving process
 INCUMBENT_CONFIG = {"model": "gpt-4o-mini", "temperature": 0.0}
 classify.set_config(INCUMBENT_CONFIG)  # stays active until a gated candidate is promoted
+print(f"Serving incumbent: {INCUMBENT_CONFIG}")
 ```
 
 ## Reference Files

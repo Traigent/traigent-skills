@@ -1,12 +1,13 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "608e75616080a264",
+  "doc_hash": "fccf55df7625f843",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "cb123f7353702556",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/execution-budget.md": "23d17308f849017b",
     "references/parallel-config.md": "2938f82d7a778d5f",
+    "references/resume-local-run.md": "64063a5bd9d53c9e",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
@@ -422,6 +423,17 @@
       "doc_before_hash": "a3ad34a0f92f7e2c",
       "doc_after_hash": "608e75616080a264",
       "note": "Mock mode no longer described as skipping the pre-run estimate on SDK 0.31.0+; small-slice and exemption routes added (#463).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "608e75616080a264",
+      "doc_after_hash": "fccf55df7625f843",
+      "note": "Offline is not mock; mock provenance via results.metadata; tiny-probe wording; new references/resume-local-run.md for resume_from.",
       "source_type": "agent"
     }
   ]

@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9c111e44caeb49d4",
+  "doc_hash": "301468792cf69dc9",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
-    "references/optimization-principles.md": "545f6e354e23dbe0",
-    "references/preflight.md": "3c101bb6ebfaf77c",
+    "references/optimization-principles.md": "974d0fa22a68adcf",
+    "references/preflight.md": "5fba530397924ad1",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -422,6 +422,17 @@
       "doc_before_hash": "d20d006906f6f15a",
       "doc_after_hash": "9c111e44caeb49d4",
       "note": "Mock dry run described as no-spend but still priced on SDK 0.31.0+ (#463).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "9c111e44caeb49d4",
+      "doc_after_hash": "301468792cf69dc9",
+      "note": "Customer-owned key no longer implies local inference; plan CLI flags shown; numeric noise floors and local planning ladders removed; portal-missing guidance preserves the local result; lifecycle-skill reference fixed; description boundary.",
       "source_type": "agent"
     }
   ]

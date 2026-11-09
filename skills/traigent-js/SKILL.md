@@ -8,7 +8,7 @@ metadata:
   traigent-stage: javascript
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.11"
+  version: "1.0.12"
 ---
 
 # Traigent JS/TS SDK

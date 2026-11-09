@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.11"
+  version: "1.2.12"
 ---
 
 # Traigent Analyze Guidance

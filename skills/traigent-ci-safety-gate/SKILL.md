@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # CI Safety Gate

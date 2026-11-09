@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "41566cb4849ab327",
+  "doc_hash": "4c8ccfc5c218933e",
   "reference_hashes": {
-    "references/evaluator-templates.md": "b82fb09b9b98bbfe"
+    "references/evaluator-templates.md": "f41dc03b8b5797c9"
   },
   "entries": [
     {
@@ -250,6 +250,17 @@
       "doc_before_hash": "ba23a7346d413a3b",
       "doc_after_hash": "41566cb4849ab327",
       "note": "Document the llm_metrics/metrics metric parameter and add a Ranked or selected outputs (recall at a budget) recipe with a runnable cost-aware scorer (#474).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "41566cb4849ab327",
+      "doc_after_hash": "4c8ccfc5c218933e",
+      "note": "Judge cap described as an estimated call allowance; reference-free judge prompt; unique example_id fallback.",
       "source_type": "agent"
     }
   ]

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.14"
+  version: "1.1.15"
 ---
 
 # Evaluator Audit

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.16"
+  version: "1.1.17"
 ---
 
 # Traigent Curate Dataset

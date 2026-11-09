@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "843c24a697d80a69",
+  "doc_hash": "96469bf75d8bf5d1",
   "reference_hashes": {
     "references/dspy.md": "0fd57632631c7d1e",
-    "references/langchain.md": "96ea626b7e44af90",
+    "references/langchain.md": "ab5495c81b8ce3ca",
     "references/litellm.md": "b4adcba1828166af"
   },
   "entries": [
@@ -199,6 +199,17 @@
       "doc_before_hash": "5afbc824917efbd7",
       "doc_after_hash": "843c24a697d80a69",
       "note": "Review fix on #457: the LiteLLM example no longer tunes or passes temperature alongside claude-haiku-5-5/claude-sonnet-5-5, which reject it (LiteLLM 1.106.0 UnsupportedParamsError); it tunes model and max_tokens, with a note. references/litellm.md and references/dspy.md aligned (dspy example drops the Claude 5.5 model, max_trials 6).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "843c24a697d80a69",
+      "doc_after_hash": "96469bf75d8bf5d1",
+      "note": "Auto-override fixed in 0.28.0; lifecycle-skill reference fixed.",
       "source_type": "agent"
     }
   ]

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "8dda20750ececb1e",
+  "doc_hash": "69d2b168c4e91635",
   "reference_hashes": {
     "references/gate-workflow.md": "0fa3657902022bef",
     "references/in-run-safety.md": "5a47cd85dda26146"
@@ -229,6 +229,17 @@
       "doc_before_hash": "8e6b8576dc659574",
       "doc_after_hash": "8dda20750ececb1e",
       "note": "Zero-spend CI mock is a stub or enable_mock_mode_for_quickstart(); TRAIGENT_MOCK_LLM only as a deprecated legacy note (#470); mocked optimize() is still priced on SDK 0.31.0+, exemption named (#463).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "8dda20750ececb1e",
+      "doc_after_hash": "69d2b168c4e91635",
+      "note": "Export from a separate candidate process and promote via set_config; no post-hoc apply_best_config.",
       "source_type": "agent"
     }
   ]

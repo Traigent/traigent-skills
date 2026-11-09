@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.21"
+  version: "2.1.22"
 ---
 
 # Traigent Boost Agent

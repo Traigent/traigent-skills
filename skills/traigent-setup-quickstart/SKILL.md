@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.36"
+  version: "1.0.37"
 ---
 
 # Traigent Quickstart

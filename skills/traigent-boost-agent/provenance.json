@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "474f7317e7e144f2",
+  "doc_hash": "fff90a31fe4c551d",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -355,6 +355,17 @@
       "doc_before_hash": "09119ea4587231be",
       "doc_after_hash": "474f7317e7e144f2",
       "note": "Mock dry run is still priced and gated on SDK 0.31.0+ (small slice or the documented mock exemption, never TRAIGENT_COST_APPROVED) (#463); a reply-parsing scorer fails every trial under mock instead of scoring 0.0, split from number-returning scorers (#464); raw openai/anthropic clients are blocked, not billed, for known provider hosts on SDK 0.31.0+ (#465).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "474f7317e7e144f2",
+      "doc_after_hash": "fff90a31fe4c551d",
+      "note": "Candidate-process promotion (apply=False is withdrawn in the SDK); mock provenance check via results.metadata; tiny-probe uniform scores are a cue not a failure; ValidationError/TypeError row; narrower description.",
       "source_type": "agent"
     }
   ]

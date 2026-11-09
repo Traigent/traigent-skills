@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "49bf0abe9aab167e",
+  "doc_hash": "0712db97c34d3562",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/environment-variables.md": "c50fe19585bb0888",
-    "references/first-value-fallback.md": "44ea4e6b23f8632d",
+    "references/first-value-fallback.md": "6da04fa90a4dcb8d",
     "references/installation-extras.md": "21a597989700969a",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
@@ -462,6 +462,17 @@
       "doc_before_hash": "f219a4a11b985f77",
       "doc_after_hash": "49bf0abe9aab167e",
       "note": "Mock runs are priced and gated on SDK 0.31.0+ (#463); reply-parsing scorers fail every trial under mock (#464); raw-client mock scope version-qualified for SDK 0.31.0 (#465).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "49bf0abe9aab167e",
+      "doc_after_hash": "0712db97c34d3562",
+      "note": "Literal first run refuses to overwrite existing files; fallback clears both offline controls; tiny-probe wording; lifecycle-skill reference fixed; description boundary.",
       "source_type": "agent"
     }
   ]

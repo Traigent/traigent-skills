@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.10"
+  version: "1.1.11"
 ---
 
 # Traigent Choose Metric
