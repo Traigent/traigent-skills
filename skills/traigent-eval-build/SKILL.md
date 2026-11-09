@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.25"
+  version: "1.0.26"
 ---
 
 # Traigent Build Evaluator
@@ -83,6 +83,8 @@ def answer(question: str) -> str:
 
 ### Tier 3: metric functions
 
+Model output can be None or a non-string (a failed or empty call); treat that as a wrong answer (0.0), not an exception.
+
 ```python
 import json
 
@@ -93,7 +95,7 @@ from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 def valid_json_metric(output, expected, input_data) -> float:
     try:
         json.loads(output)
-    except json.JSONDecodeError:
+    except (TypeError, json.JSONDecodeError):
         return 0.0
     return 1.0
 
@@ -104,7 +106,7 @@ def expected_field_metric(output, expected, input_data) -> float:
     # EvaluationError instead of a fake 0.0 the search would rank as "wrong answer".
     try:
         data = json.loads(output)
-    except json.JSONDecodeError:
+    except (TypeError, json.JSONDecodeError):
         return 0.0
     if not isinstance(data, dict):
         return 0.0

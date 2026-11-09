@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "fb984a2bcea5cda7",
+  "doc_hash": "82e16463e141dc38",
   "reference_hashes": {
     "references/evaluator-templates.md": "4557a4363b935c04"
   },
@@ -338,6 +338,17 @@
       "doc_before_hash": "0498ce5784947bb9",
       "doc_after_hash": "fb984a2bcea5cda7",
       "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-scorer-none-output",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "fb984a2bcea5cda7",
+      "doc_after_hash": "82e16463e141dc38",
+      "note": "Example scorers treat None or non-string model output as a wrong answer.",
       "source_type": "agent"
     }
   ]
