@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.23"
+  version: "1.0.24"
 ---
 
 # Traigent Build Evaluator
@@ -49,9 +49,9 @@ signal (see `traigent-eval-choose-metric` → "The no-gold track").
 
 **No gold: your reply to the user must contain these three statements** (a comment in the code does not replace them):
 
-1. "Built-in `accuracy` needs expected outputs, so it would be meaningless here; I dropped it and use `<your score name>` instead."
+1. "Built-in `accuracy` needs expected outputs (gold summaries), so it would be meaningless here; I dropped it and use `<your score name>` instead."
 2. The rubric dimensions the score uses, one line each, and what it cannot tell: it is a heuristic, not human-judged quality.
-3. "Before trusting the score, read a small sample of summaries yourself and check that the score ranks them the way you would."
+3. "Before trusting the score, have a human check a small spot sample of outputs (read a few yourself) and confirm the score ranks them the way you would."
 
 Keep customer text local: a hosted judge would send the source text out, so say that when you choose a local scorer.
 

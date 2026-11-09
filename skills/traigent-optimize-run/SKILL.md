@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.34"
+  version: "1.0.35"
 ---
 
 # Running Traigent Optimization
@@ -35,7 +35,10 @@ a local Ollama endpoint, follow these steps:
 3. Write the run script so it states the scope itself, as in the template below.
 4. Your reply to the user must include this sentence in your own words: "Offline stops only Traigent
    backend traffic; the model calls to your local endpoint still run for real, and offline and mock
-   are independent switches."
+   are independent switches." Put it in the message itself, not only in the script.
+5. Also tell the user how to confirm the run was real: `results.metadata.get("mock_llm_run")` is
+   `False`, latencies are positive, and outputs vary between trials; the Traigent backend sees
+   nothing because of `offline=True`.
 
 ```python
 import os

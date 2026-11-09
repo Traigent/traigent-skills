@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4601cfef6f6ac110",
+  "doc_hash": "e101f1b97077d896",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "cb123f7353702556",
@@ -467,6 +467,17 @@
       "doc_before_hash": "df045308e45c490c",
       "doc_after_hash": "4601cfef6f6ac110",
       "note": "Gaps round: reply-checklist and copyable template placed where the agent acts.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "4601cfef6f6ac110",
+      "doc_after_hash": "e101f1b97077d896",
+      "note": "Gaps round 2: reply must carry the verify step and the human spot-sample wording.",
       "source_type": "agent"
     }
   ]
