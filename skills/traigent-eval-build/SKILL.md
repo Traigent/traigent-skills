@@ -389,7 +389,7 @@ Validation and loading must read the **same file**. `dataset_path()` resolves a 
 the SDK does (under `TRAIGENT_DATASET_ROOT`, else the current directory), and each custom template
 passes that one absolute path to both `check_row_ids` and `eval_dataset`, once at import, so the whole
 dataset is validated before the first model call; if prep was skipped the run stops there, not after
-paid calls. Run `assign_row_ids(dataset_path("eval/qa.jsonl"))` once to prepare an existing file.
+paid calls. Run `assign_row_ids(dataset_path(<the same relative path>))` once to prepare an existing file.
 
 ```python
 import json
