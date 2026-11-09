@@ -223,11 +223,23 @@ Wire it as `metric_functions={"recall_at_budget": recall_at_budget}` and declare
 ### Tier 4: custom evaluator
 
 ```python
+import hashlib
+import json
 import time
 
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
+
+
+def _example_id(example) -> str:
+    # Unique per row even when the dataset has no "id" metadata: one shared id (such as
+    # "unknown") makes the backend reject a connected run for duplicate example ids.
+    explicit = example.metadata.get("id")
+    if explicit:
+        return str(explicit)
+    payload = json.dumps(example.input_data, sort_keys=True, default=str)
+    return "ex_" + hashlib.sha256(payload.encode()).hexdigest()[:12]
 
 def evaluate_answer(func, config, example) -> ExampleResult:
     started = time.perf_counter()
@@ -245,7 +257,7 @@ def evaluate_answer(func, config, example) -> ExampleResult:
 
     elapsed_s = time.perf_counter() - started
     return ExampleResult(
-        example_id=str(example.metadata.get("id", "unknown")),
+        example_id=_example_id(example),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=prediction,

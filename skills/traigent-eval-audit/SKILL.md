@@ -113,9 +113,9 @@ When the Traigent service recommends the operation `check_scorer_equivalence` fo
 **`references/scorer-equivalence-check.md`** (read it from this skill's directory). In short: the
 agent fetches the example ids the check refers to, verifies them against the instruction's digest
 (`scripts/equivalence_result.py verify-selection`; stop if it fails), then for each id judges the example's distinct failing
-answers against the reference **locally**, with the user's own model key and a frozen judge prompt
+answers against the reference with the user's own model (never a Traigent-hosted judge) and a frozen judge prompt
 (protocol `p3b-v1`), in both orders with a strict one-word parse, after the user approves the paid
-calls. Then it reports **only** a closed result of enums per example id through the existing
+calls. A customer-owned key does not make the judge local: a hosted judge receives the question, reference and answers. For content that must stay on the machine, use a verified local inference endpoint or local review. Then it reports **only** a closed result of enums per example id through the existing
 report-progress path, built with `scripts/equivalence_result.py`.
 
 **NEVER include question, reference or answer text, judge rationale, or any free text in that

@@ -25,8 +25,8 @@ pip install langchain-openai langchain-anthropic langchain-google-genai
 
 > **Released SDK caveat:** on `traigent<=0.27.0` auto-override is a silent no-op — every trial
 > constructs the client with the literal values in your code, and the run still ranks the trials
-> and reports a `best_config`. Until a release that fixes it, use manual injection (the Basic
-> Pattern: build the client from `traigent.get_config()`). Before any paid run, verify in mock mode
+> and reports a `best_config`. Fixed in `traigent>=0.28.0` (Traigent/Traigent#2420); on older
+> releases use manual injection (the Basic Pattern: build the client from `traigent.get_config()`). Before any paid run, verify in mock mode
 > that the constructed client's `model_name` differs across two trials (the preflight in
 > [Verify the override before a paid run](#verify-the-override-before-a-paid-run) below).
 
@@ -95,7 +95,7 @@ print("auto-override applied:", sorted(built))
 ```
 
 On `traigent<=0.27.0` this check exits with `auto-override did not apply` — that is expected on
-those versions; use manual injection.
+those versions; use manual injection. On `traigent>=0.28.0` it should apply.
 
 ### How It Works
 

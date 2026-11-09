@@ -391,7 +391,7 @@ print(sat)
 # validator only enumerates FINITE spaces of up to 10,000 combinations. Choices and IntRange are
 # finite (an IntRange step defaults to 1); a Range without `step=` (like `temperature` above) is
 # not, and neither is any space above the cap. Either returns SatStatus.UNKNOWN = "not checked".
-from traigent_validation import SatStatus
+from traigent_validation import SatStatus  # ships inside the traigent distribution
 
 if sat.status is SatStatus.UNSAT:
     # Every finite combination is ruled out, so no trial can ever run. `sat.unsat_core` lists

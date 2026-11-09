@@ -43,7 +43,7 @@ def my_func(query: str) -> str:
   traffic at all (air-gapped / strict-no-network), also set `LITELLM_LOCAL_MODEL_COST_MAP=True` before
   importing `litellm`, and use mock mode or a local model.
 
-> **Data flow.** Portal-synced runs send configuration IDs and numeric metrics, not dataset example inputs, prompts, or outputs. For zero Traigent backend traffic, use `offline=True`; for zero outbound traffic at all, see the `offline=True` bullet above.
+> **Data flow.** Portal-synced runs send the search space and the chosen configuration values, plus numeric metrics. Configuration values can contain tuned prompt text. Keep confidential prompt variants behind content-free IDs that your code resolves locally (e.g. `prompt_id=Choices(["v1", "v2"])`), or use `offline=True`; never synchronize customer content. For zero Traigent backend traffic, use `offline=True`; for zero outbound traffic at all, see the `offline=True` bullet above.
 
 ## Result sync
 

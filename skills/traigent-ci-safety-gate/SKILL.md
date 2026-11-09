@@ -130,12 +130,12 @@ holdout/promotion gate, then apply only after the gate passes and the user
 approves.
 
 ```python
-# Export the winning config as a CANDIDATE artifact for review/gating
+# In the separate candidate process that ran the search (optimize_sync() already applied the
+# winner to that process's instance; apply=False is currently rejected), export the candidate:
 my_function.export_config("candidate_config.json")
 
-# After the holdout/promotion gate passes and the user approves:
-my_function.apply_best_config(results)
-answer = my_function("What is Python?")
+# Serving process, only after the holdout/promotion gate passes and the user approves:
+# my_function.set_config(<flat candidate config read from candidate_config.json>)
 ```
 
 ## The Two CI Checks

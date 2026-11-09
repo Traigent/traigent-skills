@@ -459,7 +459,7 @@ async def compute_example_scores(run_id: str) -> dict:
     # at module scope, which yields un-subscriptable coroutine objects).
     async with ExampleInsightsClient(
         backend_url="https://portal.traigent.ai/api/v1",
-        api_key="uk_...",
+        # api_key is read from the TRAIGENT_API_KEY environment variable; never inline a key.
     ) as client:
         job = await client.compute_scores(experiment_run_id=run_id)
         status = await client.get_job_status(job_id=job["job_id"])
@@ -530,9 +530,8 @@ Flag-to-curation-action guide for step 3:
 - `traigent-eval-choose-metric` - choosing objectives before labeling examples
 - `traigent-eval-build` - implementing scoring functions and custom evaluators
 - `traigent-boost-agent` - end-to-end optimization workflow for an existing agent
-- `traigent-analyze-guidance` - fetch server recommendations
-- `traigent-analyze-guidance` - fetch and confirm the next service plan
-- `traigent-analyze-guidance` - local result inspection when the user requests it
+- `traigent-analyze-guidance` - fetch and confirm the service run-plan before a run and the next-step brief after one
+- `traigent-analyze-results` - local result inspection when the user requests it
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

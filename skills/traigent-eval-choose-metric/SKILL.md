@@ -100,6 +100,7 @@ def prompt_model(prompt: str, *, model: str, temperature: float = 0.0) -> str:
     return response.choices[0].message.content or ""
 
 @traigent.optimize(
+    eval_dataset="eval/qa.jsonl",
     objectives=["accuracy", "cost"],
     configuration_space={
         "model": ["gpt-4o-mini", "gpt-4o"],

@@ -1,6 +1,6 @@
 ---
 name: traigent-setup-quickstart
-description: "Install and wire the Traigent SDK in an existing project, and get first value from it. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize; a brand-new user with an agent to optimize is better served by the guided first run (Traigent/traigent-first-run), which this skill points at. Covers pip install, API-key setup, mock mode, a linear first-value walkthrough, and running a first optimization."
+description: "Install and wire the Traigent SDK in an existing project, and get first value from it. Use when the user wants to install traigent, set up their first optimization, or get started with @traigent.optimize; for a standalone dataset, evaluator, result-analysis or CI-gate request use the matching specialist skill; a brand-new user with an agent to optimize is better served by the guided first run (Traigent/traigent-first-run), which this skill points at. Covers pip install, API-key setup, mock mode, a linear first-value walkthrough, and running a first optimization."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -157,13 +157,22 @@ PY
 
 ### Literal First Run (execution-only agents)
 
-Run this entire block in the foreground and wait for it to finish. Do not split it,
+Run this standalone demo in a newly created empty directory and report its path to the user; never write these demo files over existing project files (the block stops if they exist). Run this entire block in the foreground and wait for it to finish. Do not split it,
 background it, or continue after a failed command. The final expected line is
 `TRAIGENT-DRY-RUN-OK`.
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
+
+# Run in a new, empty directory: never overwrite existing project files.
+for f in ticket_eval.jsonl ticket_classifier.py; do
+  if [ -e "$f" ]; then
+    echo "STOP: $f already exists here; run this demo in a new empty directory" >&2
+    exit 1
+  fi
+done
+echo "Demo directory: $(pwd)"
 
 # Mock/offline env is set in bash, BEFORE python imports anything.
 export TRAIGENT_OFFLINE_MODE=true
@@ -511,7 +520,7 @@ See `references/environment-variables.md` for all available environment variable
 
 ## Your First Optimization
 
-> **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+> **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. See the `traigent-boost-agent` skill for the mandatory dry-run-first / cost-approval workflow.
 >
 > **Real LLM runs require the user's approval — the SDK's cost handshake is conditional, not a
 > gate you can lean on.** The SDK prompts only when its pre-run estimate exceeds
@@ -525,7 +534,7 @@ See `references/environment-variables.md` for all available environment variable
 
 ### Tiny Real Cost and KPI Probe
 
-After the mock dry-run passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check both surfaces before scaling up: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, wire it first — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, `TRAIGENT_STRICT_COST_ACCOUNTING`).
+After the mock dry-run passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check both surfaces before scaling up: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with finite, populated values. Uniform scores (all `0.0`/all `1.0`) on a 1-2 example probe are an investigation cue, not proof of broken wiring: check the scorer on a known-good and a known-bad answer. The probe validates plumbing, not lift. If either surface fails, wire it first — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, `TRAIGENT_STRICT_COST_ACCOUNTING`).
 
 > **Objective naming rule:** Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
@@ -754,7 +763,7 @@ traigent onboard         # guided first-run setup wizard
 ## Next Steps
 
 - **Configure your decorator for a real optimization** -- The example above is the *minimal* decorator. To make it optimization-ready -- custom evaluators / `metric_functions`, injection mode, execution (`algorithm`/`offline`), and weighted objectives -- use the `traigent-setup-decorator` skill, then launch with `traigent-optimize-run`. This `decorator-setup` → `run-optimization` pair is the standard two-step cycle for going from "first run" to a real optimization.
-- **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
+- **Dry-run before a real run** -- See the `traigent-boost-agent` skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
 - **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-optimize-run` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-optimize-config-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
 - **Choose an optimization algorithm** -- For connected real runs, omit `algorithm` or use `"auto"`; use `"grid"`/`"random"` for explicit local/offline search. `traigent algorithms` lists auto + smart names since 0.20.1 (see version-matrix: `algorithms-cli`) — the full public selector surface with a local/connected availability column (on 0.20.0 the CLI omitted `auto` and the smart names: Traigent/Traigent#1751). Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): `bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random` bind to the typed backend Optuna strategy, while unsupported smart names such as `nsga2`/`cmaes` fail fast with a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no smart name executed end-to-end). With `offline=True` every smart name still raises `ConfigurationError` at decoration time (verified on 0.21.0). The `traigent-optimize-run` skill owns the full selector contract.

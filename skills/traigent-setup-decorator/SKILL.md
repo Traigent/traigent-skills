@@ -1,6 +1,6 @@
 ---
 name: traigent-setup-decorator
-description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming the agent with agent_name (the identity key, SDK 0.27.0+; experiment_name is its deprecated alias) and labelling one run with run_title/run_description, with no tags/metadata argument, using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s)."
+description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming the agent with agent_name (the identity key, SDK 0.27.0+; experiment_name is its deprecated alias) and labelling one run with run_title/run_description, with no tags/metadata argument, using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s). For installation and a first run use traigent-setup-quickstart."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -363,11 +363,12 @@ No `get_config()` call. Traigent rewrites the function's AST per trial — but o
 def my_func(query: str) -> str:
     model = "gpt-4o-mini"      # seamless rewrites THIS local assignment per trial
     temperature = 0.5          # a matching local name (or parameter) is required
-    return litellm.completion(
+    response = litellm.completion(
         model=model,
         temperature=temperature,
         messages=[{"role": "user", "content": query}],
     )
+    return response.choices[0].message.content
 ```
 
 > **A literal in the call is not rewritten.** `model="gpt-4o-mini"` written directly as a keyword argument, a value from `os.environ.get(...)`, or a dict-built kwarg has no matching local name, so the SDK logs `Seamless provider found no injectable targets for <fn>; no local assignment or parameter matched configuration keys [...], so the function ran with original values` and every trial runs the original configuration — and the dry-run still passes (fail-closed behaviour is tracked in Traigent/Traigent#2298). Before any paid run, prove the value reaching the provider call changes across two configurations (mock mode, diff the request); if it does not, use context mode.
@@ -415,8 +416,9 @@ def my_func(query: str) -> str:
 | `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/`"cmaes"`/`"nsga2"` | Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): supported names (`bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random`) bind to the typed backend Optuna strategy on authenticated connected runs; unsupported names (`nsga2`/`cmaes`) fail fast with a capability message (Traigent/Traigent#1752, #1758). Never local: `ConfigurationError` with `offline=True`, `OptimizationError` from the local registry. Use `"auto"` for the default connected smart path; use `"grid"`/`"random"` only for explicit local/offline search. |
 | `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
 
-The synced path sends configuration IDs and numeric metrics for portal result history, not
-example inputs/outputs/prompts. Use `offline=True` only when zero backend traffic is required; a
+The synced path sends the search space, configuration values and numeric metrics for portal result
+history. Configuration values can contain tuned prompt text, so keep confidential prompt variants
+behind content-free IDs resolved locally (or use `offline=True`). Use `offline=True` only when zero backend traffic is required; a
 fully no-network run also needs `LITELLM_LOCAL_MODEL_COST_MAP=True` set before `litellm` is imported
 (see `references/execution-modes.md`).
 To optimize an external HTTP/MCP service, put the service call in your decorated function or
@@ -475,7 +477,8 @@ def answer_question(question: str) -> str:
 # Run optimization
 results = answer_question.optimize_sync(max_trials=10, algorithm="random")
 
-# Apply best configuration for production
+# optimize_sync() already applied a nonempty winner to this instance; this reapplies it.
+# To keep an incumbent serving, search in a separate candidate process (see traigent-analyze-results).
 answer_question.apply_best_config(results)
 
 # Use in production

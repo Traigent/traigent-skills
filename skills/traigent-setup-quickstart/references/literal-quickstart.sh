@@ -1,6 +1,15 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# Run in a new, empty directory: never overwrite existing project files.
+for f in ticket_eval.jsonl ticket_classifier.py; do
+  if [ -e "$f" ]; then
+    echo "STOP: $f already exists here; run this demo in a new empty directory" >&2
+    exit 1
+  fi
+done
+echo "Demo directory: $(pwd)"
+
 # Mock/offline env is set in bash, BEFORE python imports anything.
 export TRAIGENT_OFFLINE_MODE=true
 export LITELLM_LOCAL_MODEL_COST_MAP=True

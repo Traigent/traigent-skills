@@ -605,8 +605,9 @@ print(df.columns.tolist())  # confirm the exact metric column names for your run
 #                units. A gap smaller than your own noise is not a gap.
 import math
 
-MIN_SAMPLES = None
-TIE_BAND = None
+MIN_SAMPLES = None  # REQUIRED: replace with your predeclared repetition count (int >= 1)
+TIE_BAND = None     # REQUIRED: replace with your measured rerun spread (float >= 0)
+# Both are left as None on purpose; the script exits below until you set them.
 # Validate values, not just types: a negative tie band inverts the domination test and a NaN
 # one makes every comparison False, either of which corrupts the frontier silently.
 # `isinstance(True, int)` is True in Python, so booleans are excluded explicitly.

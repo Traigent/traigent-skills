@@ -1,6 +1,6 @@
 ---
 name: traigent-analyze-guidance
-description: "What should this Traigent optimization run be, and what next? Three modes: (A) pre-run — fetch the service run-plan, present objectives/models/knobs/search/budget/offline options, apply preflight; (B) post-run, portal-tracked — fetch the backend decision brief via the `analytics_get_run_decision_brief` MCP tool, present its headline, confidence, recommended action, evidence, and warnings verbatim, then hand off to the matching skill; (C) offline/local fallback — diagnose flat/noisy/negative local results, which knob mattered, example evidence, form the next iteration hypothesis when offline=True or no service payload. Portal-tracked decisions come from Traigent, never local markdown."
+description: "What should this Traigent optimization run be, and what next? Three modes: (A) pre-run — fetch the service run-plan, present objectives/models/knobs/search/budget/offline options, apply preflight; (B) post-run, portal-tracked — fetch the backend decision brief via the `analytics_get_run_decision_brief` MCP tool, present its headline, confidence, recommended action, evidence, and warnings verbatim, then hand off to the matching skill; (C) offline/local fallback — diagnose flat/noisy/negative local results, which knob mattered, example evidence, form the next iteration hypothesis when offline=True or no service payload. Portal-tracked decisions come from Traigent, never local markdown. Use when the user asks what to run or what to do next; to read result fields, trial tables, charts or export a config, use traigent-analyze-results."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -129,7 +129,12 @@ Do not embed local planning intelligence in this skill:
    - objectives the user cares about,
    - budget or maximum spend for the run.
 2. Fetch the plan from the Traigent service:
-   - Prefer `traigent plan` when the CLI is available.
+   - Prefer `traigent plan` when the CLI is available. All of these flags are required except `--has-holdout/--no-holdout`; load the key into the shell first (the CLI does not read `.env`):
+
+     ```bash
+     traigent plan --task-description "<short task summary>" --dataset-size 50 --has-holdout \
+       --objective accuracy --max-trials 12 --cost-limit 2.0 --json
+     ```
    - Use `get_optimization_plan` when working through the Traigent MCP surface.
    - Pass only the short summary and any existing run id or portal context the user approved.
 3. Validate the response shape before presenting it. The allowlisted top-level
@@ -502,7 +507,7 @@ weak_examples = [
 ]
 
 def my_rewrite_llm(prompt: str) -> str:
-    """Your own model call, on your own provider key. Example content stays on your machine."""
+    """Your own model call. Examples are sent to whichever model endpoint this calls."""
     ...
 
 results = answer.optimize_with_guidance(
@@ -515,9 +520,9 @@ results = answer.optimize_with_guidance(
 )
 ```
 
-`optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). `rewrite_llm` is required (a callable `fn(prompt) -> str` or a constructed client); `provider` supplies the guidance plan. `weak_examples` are `(input, expected, actual)` tuples, and only a `plan_kind="prompt_rewrite"` plan reads them: it rewrites the prompt variants of the knob named by `prompt_param` (a tuned knob whose values are prompt strings). Under the default `benchmark_guide` plan they are ignored. Keep the provider and rewrite model project-specific, and confirm the new candidate still improves on a heldout slice.
+`optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). A customer-owned key does not make inference local: if `rewrite_llm` calls a hosted model, the weak examples leave the machine to that provider. For content that must stay customer-side, use a verified local inference endpoint or skip prompt rewriting; confirm with the user before sending examples to a hosted model. `rewrite_llm` is required (a callable `fn(prompt) -> str` or a constructed client); `provider` supplies the guidance plan. `weak_examples` are `(input, expected, actual)` tuples, and only a `plan_kind="prompt_rewrite"` plan reads them: it rewrites the prompt variants of the knob named by `prompt_param` (a tuned knob whose values are prompt strings). Under the default `benchmark_guide` plan they are ignored. Keep the provider and rewrite model project-specific, and confirm the new candidate still improves on a heldout slice.
 
-This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent` lifecycle skill).
+This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent-boost-agent` skill).
 
 Before iterating, note that flat/negative scores can also mean: (a) the base model
 isn't capable enough — structural knobs fix *form*, not reasoning the model lacks;

@@ -140,7 +140,7 @@ Only after the user has seen the mock result and explicitly approved spend. A re
    agent's client may not be) — see `run-cost-and-limits.md` in this folder. See the
    `traigent-optimize-run` skill for `cost_limit` behavior and stop conditions.
 3. **Drops the mock scaffolding.** Remove `enable_mock_mode_for_quickstart()`, the
-   `offline=True` flag, and `mock_demo_accuracy`; let Traigent score real model output
+   `offline=True` decorator flag **and** the `os.environ["TRAIGENT_OFFLINE_MODE"] = "true"` line (removing only the decorator flag leaves the run offline), and `mock_demo_accuracy`; let Traigent score real model output
    against your labels.
 
 Keys go in `.env` via "`.env` File Support" in `environment-variables.md` in this folder (its checks run before any key is written). The demo script above does not read `.env`: add `from dotenv import load_dotenv; load_dotenv()` at its top, before the provider client is created. Never type a key into an `export` at a shell prompt. A CLI command that needs a key (such as `traigent plan`) does not read `.env` either: load it into that shell with `set -a; . ./.env; set +a`, which types no key, so none lands in shell history. It runs `.env` as shell code, so use it only for a `.env` written as plain `KEY=value` lines.
@@ -153,7 +153,10 @@ export TRAIGENT_COST_APPROVED=true                      # only in this run's she
 ```
 
 ```python
-# A real run: no mock, no offline, a budget cap on the optimize call.
+# A real run: no mock, no offline (neither the decorator flag nor TRAIGENT_OFFLINE_MODE),
+# a budget cap on the optimize call. For a private local run with no Traigent traffic,
+# keep both offline controls and use a local model instead. Retaining random search
+# alone does not stop portal sync. Verify the backend URL before promising portal tracking.
 # `cost_limit` caps the paid sweep; a pre-run estimate over it stops before spending.
 results = classify_query.optimize_sync(max_trials=6, cost_limit=1.00)
 ```

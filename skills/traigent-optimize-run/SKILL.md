@@ -23,6 +23,7 @@ Use this skill after you have decorated a function with `@traigent.optimize()` a
 - Configure parallel trial execution
 - Handle cost limit exceptions
 - Interpret stop reasons and results
+- Continue an interrupted or budget-limited local search without repaying finished trials (`references/resume-local-run.md`)
 
 ## Optimization Economics — Read This Before Sizing a Run
 
@@ -101,21 +102,27 @@ See `traigent-analyze-results` for the full field reference.
 > the `traigent-setup-integrations` skill for multi-provider verification.
 
 <!-- PROTECTED -->
-> **Never mock the real run.** Mock/offline mode (`enable_mock_mode_for_quickstart()`,
-> `TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`) is for the DRY RUN only — never the run you're
-> about to bill, score, or report as real. The mock LLM returns a constant response and near-zero
-> cost, and that signature silently produces garbage scores if it leaks into what was supposed to
-> be a real paid run. Before treating any run as real, verify it actually was:
+> **Never mock the real run.** Mock mode (`enable_mock_mode_for_quickstart()`, `TRAIGENT_MOCK_LLM`)
+> is for the DRY RUN only — never the run you're about to bill, score, or report as real. The
+> mock LLM returns a constant response and near-zero cost, and that silently produces garbage
+> scores if it leaks into what was supposed to be a real paid run. Offline mode
+> (`offline=True`, `TRAIGENT_OFFLINE_MODE`) is separate: it only stops Traigent backend
+> communication, and offline runs can still perform real inference. Keep it whenever Traigent
+> backend traffic is prohibited. Before treating any run as real, verify it actually was:
 >
-> - `results.total_cost` must be a positive number. Mock runs cost ~0.
-> - Per-trial outputs must vary. A constant mock response collapses every trial to the same,
->   uniform score.
+> - `results.metadata.get("mock_llm_run")` must be `False`, and `mock_llm_mixed` must be absent
+>   (mixed means some trials were mocked). If this provenance is missing, the run is
+>   **unverified**; do not infer real or mock from the data.
+> - Check cost wiring separately: `results.total_cost` should be positive when billed models ran
+>   (`None`/`0.0` can also mean an unpriced model, see the Cost Wiring Probe). Identical outputs
+>   across trials can happen on a real deterministic run, so output uniformity is only a cue to
+>   look at the provenance.
 >
-> If a "real" run shows this signature (cost ~0, constant outputs, uniform scores), it was **not**
-> real — do not report those numbers. Check that mock mode wasn't left enabled
-> (`enable_mock_mode_for_quickstart()` sets process-local state that survives inside a long-lived
-> interpreter/notebook — start a fresh interpreter for the real run) and that `TRAIGENT_MOCK_LLM` /
-> `TRAIGENT_OFFLINE_MODE` are unset in the environment, then rerun.
+> If provenance shows a mocked or mixed run, do not report those numbers. Check that mock mode
+> wasn't left enabled (`enable_mock_mode_for_quickstart()` sets process-local state that
+> survives inside a long-lived interpreter/notebook — start a fresh interpreter for the real
+> run) and that `TRAIGENT_MOCK_LLM` is unset, then rerun. Unset `TRAIGENT_OFFLINE_MODE` only if
+> backend communication is wanted.
 <!-- /PROTECTED -->
 
 ```python
@@ -294,7 +301,7 @@ by the provider but show as `$0` or `None`, so the cap cannot stop them.
 Before any full paid run, do a tiny real optimization after mock validation: 1-2 dataset examples, minimal trials, and the cheapest candidate model. This is paid but should cost pennies, and it proves the billing and objective plumbing before scaling up. Check **both surfaces**:
 
 - `results.total_cost` is `float | None`. `None` means cost tracking is unavailable. `0.0` with real calls means the model was unpriced, so the provider may bill while Traigent reports zero. Treat both as cost **not wired**.
-- Each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with real non-degenerate values. If all objective values are `0.0` or all are `1.0`, fix the evaluator/KPI wiring before the full run.
+- Each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with real, finite, populated values. Uniform scores (all `0.0` or all `1.0`) on a 1-2 example probe are an investigation cue, not proof of broken wiring: check the scorer on a known-good and a known-bad answer, and do not alter a correct scorer to manufacture variation. The probe validates plumbing, not optimization lift.
 
 If cost or other KPIs are not picked up for custom services, self-hosted endpoints, or unknown models, fix in this order:
 
@@ -667,6 +674,7 @@ asyncio.run(main())
 - `references/algorithms.md` - Detailed algorithm comparison
 - `references/parallel-config.md` - Full ParallelConfig reference
 - `references/cost-management.md` - Cost enforcement details
+- `references/resume-local-run.md` - Continue a saved local run without repaying completed trials (`resume_from`)
 - `references/run-cost-and-limits.md` - Plain-language cost card: what a run costs, guards in order, what is and isn't measured
 - `traigent-boost-agent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
 - `traigent-setup-quickstart` - Installation and first optimization with mock mode
