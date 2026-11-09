@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "bfdea70e449cd4a3",
+  "doc_hash": "1164c3e3abbc1f1d",
   "reference_hashes": {
     "references/constraints.md": "a35c82ac42e6d7c6",
     "references/parameter-types.md": "03c333a37aab008f",
@@ -221,6 +221,17 @@
       "doc_before_hash": "4fcc7e6f5be545b2",
       "doc_after_hash": "bfdea70e449cd4a3",
       "note": "Note that traigent_validation ships inside the traigent distribution.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-private-prompt",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "bfdea70e449cd4a3",
+      "doc_after_hash": "1164c3e3abbc1f1d",
+      "note": "Tell the user what a connected run sends when prompt text must stay private.",
       "source_type": "agent"
     }
   ]

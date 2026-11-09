@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.13"
+  version: "1.0.14"
 ---
 
 # Traigent Configuration Space
@@ -157,6 +157,8 @@ temperature = Choices([0.0, 0.3, 0.7, 1.0])
 # With a default
 model = Choices(["gpt-6-luna", "gpt-5.6-sol"], default="gpt-6-luna")
 ```
+
+Private prompt text: tune an id, not the text; see traigent-setup-decorator, 'Confidential prompt text or other private tuned values'.
 
 See `references/parameter-types.md` for complete API details.
 

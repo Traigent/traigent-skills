@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.27"
+  version: "1.0.28"
 ---
 
 # Traigent Decorator Setup
@@ -433,6 +433,13 @@ history. Configuration values can contain tuned prompt text, so keep confidentia
 behind content-free IDs resolved locally (or use `offline=True`). Use `offline=True` only when zero backend traffic is required; a
 fully no-network run also needs `LITELLM_LOCAL_MODEL_COST_MAP=True` set before `litellm` is imported
 (see `references/execution-modes.md`).
+
+**Confidential prompt text or other private tuned values.** When the user says prompt text (or any value you would tune) must stay private and also wants the run in the portal:
+1. Tune an opaque id, e.g. `configuration_space={"prompt_id": ["a", "b", "c"]}`, and load the text locally inside the function from `traigent.get_config()["prompt_id"]`. Never put the text itself in `configuration_space` or `default_config`, and never copy it into new files or your reply.
+2. In your reply, say this in plain words: on connected (portal-tracked) runs Traigent receives the search space, each trial's configuration values and numeric metrics, so prompt text placed in the config would leave their network. That is why the prompt is tuned as an id.
+3. Say what does not leave as text: dataset rows and model outputs. Per-example ids are sent, and when a project API key is set, keyed digests (HMAC) of each example and output are sent too.
+4. State the trade-off: `offline=True` sends nothing to Traigent, but then the run does not appear in the portal.
+
 To optimize an external HTTP/MCP service, put the service call in your decorated function or
 custom evaluator; keep optimization strategy on the same `algorithm`/`offline` knobs.
 
