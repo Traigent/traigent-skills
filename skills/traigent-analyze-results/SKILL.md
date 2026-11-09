@@ -776,8 +776,9 @@ complete while the backend session is left `RUNNING` on the portal. Follow this 
 
 1. Keep the local result; read `persistence_status` and `persistence_error`. Do not rerun.
 2. Check the portal for that session id.
-3. Only if it is missing or unfinalized, repair that one session: `traigent sync <session_id> --dry-run` first, then `traigent sync <session_id>`. Always name the session id: never pass `--all`, and never run `traigent local sync` without `--session-id`.
-4. A rerun is a separate paid action: explicit user approval and a cost cap, only if sync cannot recover it. (Newer SDK builds
+3. Portal has NO session for this run: upload the local record with `traigent sync <results.sync_session_id> --dry-run`, then without `--dry-run`. `sync_session_id` is the id in your local store (not the portal id); it may be `None` if the run was tracked end to end on the backend. Say that the upload may appear as a new session in the portal.
+   Portal HAS a session but it is unfinalized or partial: do not describe sync as repairing it. Report that state and keep the local result. A sync would create a separate session unless an earlier sync attempt for this run exists (only then does it resume that attempt's cloud session), and `--dry-run` does not tell you which. Never pass `--all`, and never run `traigent local sync` without `--session-id`.
+4. A rerun is a separate paid action: explicit user approval and a cost cap, only if the local result cannot be uploaded or used. (Newer SDK builds
 — the fix merged as Traigent#1731 — also expose this as `results.persistence_failed`, a bool
 shorthand for the same check; check the metadata key directly if your installed SDK predates it.)
 
@@ -788,7 +789,7 @@ The status is not binary — read it precisely (field-verified on SDK 0.21.0 rea
 | `"succeeded"` (or `"skipped"`/absent when backend tracking is off) | fully synced | none |
 | `"degraded"` (benign) | **partial, not broken** — trial results *and* finalize synced (the portal link works; trial views and per-example diagnostics are live), only the session aggregation rollup was dropped, so summary aggregates may lag | keep the run; do **not** re-run (and re-pay) |
 | `"degraded"` (backend-rejected) | the backend actively **refused** the persistence — `persistence_rejected` is True and `persistence_rejection_reason` explains why (quota/auth/tenant) | inspect `persistence_rejection_reason`; treat as a real problem, do **not** assume it's safe |
-| `"failed"` | finalize lost after retries | the four steps above (portal check, then per-session sync); re-run only with approval and a cost cap, if sync can't recover |
+| `"failed"` | finalize lost after retries | the four steps above (portal check first; sync only uploads the local record and may create a new session); re-run only with approval and a cost cap |
 
 The two `"degraded"` cases are distinguished by metadata: benign rollup-lag sets
 `persistence_degraded_reason` (trial results and session finalize both persisted — keep the run);

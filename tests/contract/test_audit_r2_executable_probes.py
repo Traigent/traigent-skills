@@ -649,11 +649,15 @@ def test_stub_dry_run_blocks_an_import_time_client_call(tmp_path: Path) -> None:
 def test_lost_portal_sync_order_is_numbered_in_debugging_and_analyze_results() -> None:
     for name in ("traigent-debugging", "traigent-analyze-results"):
         text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
-        assert "traigent sync <session_id> --dry-run" in text
-        assert "never pass `--all`" in text and "without `--session-id`" in text
+        assert "traigent sync <results.sync_session_id> --dry-run" in text
+        assert "Never pass `--all`" in text and "without `--session-id`" in text
+        assert "results.sync_session_id" in text and "may appear as a new session" in text
+        assert "do not describe sync as repairing it" in text
+        assert "separate session unless an earlier sync attempt" in text
+        assert "repair that one session" not in text
         assert "separate paid action" in text
         portal = text.index("Check the portal for that session id")
-        assert portal < text.index("traigent sync <session_id> --dry-run")
+        assert portal < text.index("traigent sync <results.sync_session_id> --dry-run")
 
 
 def test_dry_run_template_is_restricted_to_sync_agents_and_names_the_public_alternative() -> None:
