@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "29d96129e23ed2aa",
+  "doc_hash": "227081333421af5b",
   "reference_hashes": {
     "references/evaluator-templates.md": "1f769417be61c7c2"
   },
@@ -272,6 +272,17 @@
       "doc_before_hash": "4c8ccfc5c218933e",
       "doc_after_hash": "29d96129e23ed2aa",
       "note": "Round 2: reference-free judge builder keeps the (output, expected, input_data) call shape and refuses a blank rubric; row ids are assigned and checked at dataset prep and _example_id fails closed instead of hashing content.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "29d96129e23ed2aa",
+      "doc_after_hash": "227081333421af5b",
+      "note": "Round 3: top-of-pitfalls cue for a scorer that returns a tuple (verified: trials fail, not score 0.0, on 0.33.0).",
       "source_type": "agent"
     }
   ]

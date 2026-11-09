@@ -176,3 +176,22 @@ def test_no_skill_says_the_cli_ignores_dotenv_or_tells_the_user_to_source_it() -
                 line = text.count("\n", 0, match.start()) + 1
                 offenders.append(f"{path.relative_to(ROOT)}:{line}: {match.group(0)}")
     assert not offenders, offenders
+
+
+# --- round 3 wording cues --------------------------------------------------------------------
+
+
+def test_round3_cues_are_present() -> None:
+    quick = (SKILLS / "traigent-setup-quickstart" / "SKILL.md").read_text(encoding="utf-8")
+    assert "In an existing project, still deliver one" in quick and "dry_run.py" in quick
+    curate = (SKILLS / "traigent-dataset-curate" / "SKILL.md").read_text(encoding="utf-8")
+    assert "Illustrative arithmetic, not a threshold" in curate
+    assert "Dedupe before splitting" in curate
+    flat = " ".join(
+        (SKILLS / "traigent-analyze-guidance" / "references" / "preflight.md")
+        .read_text(encoding="utf-8")
+        .split()
+    )
+    assert "traigent sync <session_id>" in flat and "Never use the whole-store `--all`" in flat
+    build = EVAL_BUILD.read_text(encoding="utf-8")
+    assert "Every trial fails or scores 0.0?" in build and "not 'tuple'" in build

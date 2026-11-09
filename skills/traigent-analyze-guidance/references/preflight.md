@@ -54,8 +54,11 @@ appears in the portal with its trials**. If it doesn't show up, do not classify 
 keep the local result first, then inspect the run's provenance, its completed trial count,
 `results.metadata["persistence_status"]` and any rejection reason (a missing portal record can mean
 a backend rejection or a local fallback, not only a failed sync), and follow `traigent-analyze-results`
-→ "Verify the Run Actually Persisted". Never repeat the optimization automatically: that is a
-separate paid action that needs the user's approval. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
+→ "Verify the Run Actually Persisted". To recover, first check the portal for the run's session id,
+then sync that one session: `traigent sync <session_id>` (or `traigent local sync --session-id
+<session_id>`; add `--dry-run` first to preview). Never use the whole-store `--all` (or an
+unscoped `traigent local sync`, which syncs every pending session). Re-running the optimization is
+a separate paid action that needs the user's approval. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
 run.
 
 ## Run naming

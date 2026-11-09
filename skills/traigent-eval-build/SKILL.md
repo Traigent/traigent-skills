@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.19"
+  version: "1.0.20"
 ---
 
 # Traigent Build Evaluator
@@ -393,6 +393,11 @@ Use compact patterns inline and the full versions in `references/evaluator-templ
 | `llm_based` | Custom evaluator calls a judge with a rubric, parses strict JSON, counts judge cost, and returns `0.0` on parse failure. |
 | `statistical` | Custom evaluator repeats the same example, scores agreement or pass rate across reps, and reports variance metadata. |
 | `hybrid` | Deterministic gate first; call the judge only if the output passes the gate. |
+
+> **Every trial fails or scores 0.0?** First check whether the scorer returns a tuple such as
+> `(score, reason)` instead of a float. On SDK 0.33.0 a tuple from a `scoring_function` /
+> `metric_functions` scorer fails the trial with `float() argument must be a string or a real
+> number, not 'tuple'` ("All trials failed"); return the float and put the reason elsewhere.
 
 ## Known pitfall: tuple returns and custom scorers
 

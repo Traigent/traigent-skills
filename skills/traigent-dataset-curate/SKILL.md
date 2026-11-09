@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.17"
+  version: "1.1.18"
 ---
 
 # Traigent Curate Dataset
@@ -84,6 +84,14 @@ may not. Count the rarer class in **each** slice before a paid run (`--label-fie
 `traigent-setup-audit` counts it inside a structured gold value); with few rows of a class, grow
 it first or treat the run as a smoke check; a slice with 0 rows of a class cannot score it at
 all. Assess the paired evidence after the run in `traigent-analyze-results` ("Is the Delta Real?").
+
+**Illustrative arithmetic, not a threshold.** On a set of `n = 12` rows, one row moves accuracy by
+`100/12`, about 8 points, and a 95% binomial interval around an observed accuracy of 0.5 is about
+plus or minus 28 points (`1.96 * sqrt(0.5 * 0.5 / 12)`). A 5-point gain on 12 rows is therefore
+inside the noise. Do the same two-line calculation for your own `n` and say it when you report.
+
+**Dedupe before splitting**, so a duplicate row cannot land on both sides of the tuning/holdout
+split and quietly leak the holdout into the search.
 
 Prefer fewer well-labeled examples over many vague examples. Every row should have a reason to exist: common path, edge case, high-value customer path, known failure, or safety-critical path.
 

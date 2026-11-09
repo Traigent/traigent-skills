@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "684612c68940f382",
+  "doc_hash": "7ae4f47040753be9",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/environment-variables.md": "c50fe19585bb0888",
@@ -484,6 +484,17 @@
       "doc_before_hash": "0712db97c34d3562",
       "doc_after_hash": "684612c68940f382",
       "note": "Round 2: CLI loads the project .env itself (verified 0.33.0); removed the mandatory shell-sourcing of .env.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "684612c68940f382",
+      "doc_after_hash": "7ae4f47040753be9",
+      "note": "Round 3: overwrite ban scoped to the literal demo files; existing projects get a dry run in a new file with the exact command.",
       "source_type": "agent"
     }
   ]

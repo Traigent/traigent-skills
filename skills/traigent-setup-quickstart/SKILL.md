@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.38"
+  version: "1.0.39"
 ---
 
 # Traigent Quickstart
@@ -160,6 +160,13 @@ PY
 Run this standalone demo in a newly created empty directory and report its path to the user; never write these demo files over existing project files (the block stops if they exist). Run this entire block in the foreground and wait for it to finish. Do not split it,
 background it, or continue after a failed command. The final expected line is
 `TRAIGENT-DRY-RUN-OK`.
+
+The overwrite ban covers only this demo's own files (`ticket_eval.jsonl`, `ticket_classifier.py`).
+It is not a ban on giving the user a dry run. **In an existing project, still deliver one**: write
+the mock dry-run into a NEW file that does not exist yet (for example `dry_run.py`; pick another name
+if it is taken), built from the user's own decorated function and dataset with
+`enable_mock_mode_for_quickstart()` and `offline=True`, and give the exact command to run it, such as
+`python dry_run.py`. Never modify the user's existing files to do it.
 
 ```bash
 #!/usr/bin/env bash

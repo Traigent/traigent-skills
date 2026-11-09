@@ -5,7 +5,7 @@
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
     "references/optimization-principles.md": "016bf557d2893cad",
-    "references/preflight.md": "59cc88246f96dd5b",
+    "references/preflight.md": "5adbc12c9738ef36",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -444,6 +444,17 @@
       "doc_before_hash": "301468792cf69dc9",
       "doc_after_hash": "5b6bc47155e28034",
       "note": "Round 2: CLI loads the project .env itself (no 'CLI does not read .env' claim); P4 and preflight scrubbed of the numeric trial floor, knob-replacement procedure and tuning-slice anecdote; missing-portal-record diagnosis no longer assumes persistence-only failure.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "5b6bc47155e28034",
+      "doc_after_hash": "5b6bc47155e28034",
+      "note": "Round 3: preflight inlines per-session recovery (traigent sync <session_id> / traigent local sync --session-id), never --all (SKILL.md unchanged, no version bump).",
       "source_type": "agent"
     }
   ]
