@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b8c50f4f837edc9b",
+  "doc_hash": "5ef7e03e3ad6a83b",
   "reference_hashes": {
     "references/convergence-patterns.md": "793c3c1c2f20e5ad",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -462,6 +462,17 @@
       "doc_before_hash": "797f3bf9704c2eb6",
       "doc_after_hash": "b8c50f4f837edc9b",
       "note": "Noise-floor numbers and case study removed from 'Is the Delta Real?'; Pareto placeholders flagged as required.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r6",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "b8c50f4f837edc9b",
+      "doc_after_hash": "5ef7e03e3ad6a83b",
+      "note": "Round 6: paired-delta snippet (wins, losses, exact sign test, bootstrap interval) to report instead of 'within noise'.",
       "source_type": "agent"
     }
   ]

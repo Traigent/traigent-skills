@@ -471,3 +471,49 @@ def test_prep_promotes_a_nested_id_and_both_sdk_shapes_expose_it(tmp_path: Path)
         legacy = {k: v for k, v in row.items() if k not in {"input", "output"}}
         for metadata in (merged, legacy):
             assert helper(SimpleNamespace(input_data={}, expected_output=None, metadata=metadata)) == row["id"]
+
+
+# --- round 6: paired-delta snippet, fail-closed gate, offline disclosure ------------------------
+
+
+def _paired_delta() -> Any:
+    text = (SKILLS / "traigent-analyze-results" / "SKILL.md").read_text(encoding="utf-8")
+    (block,) = [b for b in FENCE_RE.findall(text) if "def paired_delta" in b]
+    namespace: dict[str, Any] = {"__name__": "paired_delta_snippet"}
+    exec(compile(block, "<paired_delta>", "exec"), namespace)
+    return namespace["paired_delta"]
+
+
+def test_paired_delta_snippet_reports_wins_losses_and_exact_sign_test() -> None:
+    paired = _paired_delta()
+    out = paired([1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 1, 1, 1, 1, 0, 1])
+    assert (out["wins"], out["losses"], out["ties"]) == (2, 0, 6)
+    assert out["sign_test_p"] == pytest.approx(0.5)  # 2 * C(2,0) / 2**2
+    assert out["mean_delta"] == pytest.approx(0.25)
+    low, high = out["ci95"]
+    assert low <= out["mean_delta"] <= high
+
+    lopsided = paired([0.0] * 12, [1.0] * 12)
+    assert (lopsided["wins"], lopsided["losses"]) == (12, 0)
+    assert lopsided["sign_test_p"] == pytest.approx(2 / 2**12)
+
+    balanced = paired([1, 0, 1, 0], [0, 1, 0, 1])
+    assert (balanced["wins"], balanced["losses"], balanced["sign_test_p"]) == (2, 2, 1.0)
+    assert paired([1, 1], [1, 1])["sign_test_p"] == 1.0
+    with pytest.raises(ValueError):
+        paired([1.0], [])
+
+
+def test_gate_script_fails_closed_on_anything_but_promote() -> None:
+    script = (SKILLS / "traigent-ci-safety-gate" / "references" / "gate-workflow.md").read_text(encoding="utf-8")
+    assert 'if decision.decision != "promote":' in script
+    assert 'decision.decision == "reject":' not in script
+    skill = (SKILLS / "traigent-ci-safety-gate" / "SKILL.md").read_text(encoding="utf-8")
+    assert 'if decision.decision != "promote":' in skill
+    assert "no_decision" in skill and "optimistic" in skill
+
+
+def test_offline_disclosure_is_taught() -> None:
+    text = (SKILLS / "traigent-optimize-run" / "SKILL.md").read_text(encoding="utf-8")
+    assert "When you run offline, tell the user" in text
+    assert "LITELLM_LOCAL_MODEL_COST_MAP=True" in text

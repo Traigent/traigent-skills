@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.32"
+  version: "1.1.33"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -453,6 +453,37 @@ spread you measured as unreported. Three rules follow:
 3. **Ship deltas with an interval** (for example a bootstrap over held-out examples); a win is
    claimable only if the interval excludes zero. The same skepticism applies to public leaderboard
    gaps.
+
+**Quantify the delta; never write "within noise" on its own.** From the per-example scores of two
+configs on the same examples, report the wins, the losses and an exact interval or sign-test p-value:
+
+```python runnable
+import math
+import random
+
+
+def paired_delta(a: list[float], b: list[float], n_boot: int = 2000, seed: int = 0) -> dict:
+    """Compare config B to config A on the same examples (equal-length per-example scores)."""
+    if len(a) != len(b) or not a:
+        raise ValueError("need equal-length, non-empty per-example scores")
+    diffs = [y - x for x, y in zip(a, b)]
+    wins, losses = sum(d > 0 for d in diffs), sum(d < 0 for d in diffs)
+    n = wins + losses  # ties carry no sign information
+    k = min(wins, losses)
+    p = min(1.0, 2 * sum(math.comb(n, i) for i in range(k + 1)) / 2**n) if n else 1.0
+    rng = random.Random(seed)
+    means = sorted(sum(rng.choice(diffs) for _ in diffs) / len(diffs) for _ in range(n_boot))
+    return {
+        "mean_delta": sum(diffs) / len(diffs), "wins": wins, "losses": losses,
+        "ties": len(diffs) - n, "sign_test_p": p,
+        "ci95": (means[int(0.025 * n_boot)], means[int(0.975 * n_boot) - 1]),
+    }
+
+
+print(paired_delta([1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 1, 1, 1, 1, 0, 1]))
+```
+
+Report that dictionary (wins, losses, interval, p-value) in place of the words "within noise".
 
 **Read the SDK's own winner verdict before any local delta test (SDK >= 0.26.0).**
 `results.best_config_margin` qualifies `best_config` without changing it: a paired test of the

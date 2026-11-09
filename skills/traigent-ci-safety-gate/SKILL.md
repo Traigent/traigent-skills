@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.13"
+  version: "1.0.14"
 ---
 
 # CI Safety Gate
@@ -98,12 +98,22 @@ objectives = [
 ]
 
 gate = PromotionGate(policy=policy, objectives=objectives)
+# Score both configs on HOLDOUT rows only: the tuning rows picked the winner, so its score there is optimistic.
 decision = gate.evaluate(
     incumbent_metrics={"accuracy": [0.81, 0.82, 0.80], "latency_ms": [880, 900, 870]},
     candidate_metrics={"accuracy": [0.84, 0.85, 0.83], "latency_ms": [910, 905, 920]},
 )
 print(decision.decision, decision.reason)
+# Fail closed: only an explicit "promote" passes; "reject", "no_decision" and anything else stop here.
+if decision.decision != "promote":
+    raise SystemExit(f"gate failed closed: {decision.decision}: {decision.reason}")
 ```
+
+**The gate script exits non-zero unless the decision is exactly `promote`.** `reject` and
+`no_decision` (not enough evidence either way) both fail the job, and so do an exception from
+`evaluate`, a missing or empty holdout file, and a missing or NaN metric. Never write
+`if decision.decision == "reject": fail` and let everything else exit 0: that makes an inconclusive
+comparison look like a pass.
 
 A statistical gate can tell you whether the candidate has enough evidence to promote, reject, or remain undecided on the measured evaluation dataset. It cannot prove universal safety, discover unmeasured regressions, or rescue a biased evaluator.
 

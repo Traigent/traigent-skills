@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "69d2b168c4e91635",
+  "doc_hash": "3e0955278da4c6b7",
   "reference_hashes": {
-    "references/gate-workflow.md": "0fa3657902022bef",
+    "references/gate-workflow.md": "3c7a8e4099db45ba",
     "references/in-run-safety.md": "5a47cd85dda26146"
   },
   "entries": [
@@ -240,6 +240,17 @@
       "doc_before_hash": "8dda20750ececb1e",
       "doc_after_hash": "69d2b168c4e91635",
       "note": "Export from a separate candidate process and promote via set_config; no post-hoc apply_best_config.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r6",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "69d2b168c4e91635",
+      "doc_after_hash": "3e0955278da4c6b7",
+      "note": "Round 6: the gate fails closed - only an explicit promote passes (reject, no_decision, errors and a missing holdout exit non-zero); holdout-vs-tuning reason stated at the code.",
       "source_type": "agent"
     }
   ]

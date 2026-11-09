@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.32"
+  version: "1.0.33"
 ---
 
 # Running Traigent Optimization
@@ -124,6 +124,10 @@ See `traigent-analyze-results` for the full field reference.
 > run) and that `TRAIGENT_MOCK_LLM` is unset, then rerun. Unset `TRAIGENT_OFFLINE_MODE` only if
 > backend communication is wanted.
 <!-- /PROTECTED -->
+
+**When you run offline, tell the user:** offline stops only Traigent backend traffic; model
+inference still runs for real against your provider or local endpoint; LiteLLM may fetch its pricing
+map unless `LITELLM_LOCAL_MODEL_COST_MAP=True`.
 
 ```python
 import asyncio

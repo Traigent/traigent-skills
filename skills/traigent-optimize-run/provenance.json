@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "fccf55df7625f843",
+  "doc_hash": "df045308e45c490c",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "cb123f7353702556",
@@ -445,6 +445,17 @@
       "doc_before_hash": "fccf55df7625f843",
       "doc_after_hash": "fccf55df7625f843",
       "note": "Round 2: resume recipe repeats the first run's explicit local algorithm (SKILL.md unchanged, no version bump).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r6",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "fccf55df7625f843",
+      "doc_after_hash": "df045308e45c490c",
+      "note": "Round 6: explicit instruction to tell the user what offline does and does not stop.",
       "source_type": "agent"
     }
   ]
