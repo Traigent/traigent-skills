@@ -54,7 +54,11 @@ def test_p4_names_the_sample_floor_and_links_mode_c(repo_root: Path) -> None:
     text = (repo_root / PRINCIPLES).read_text(encoding="utf-8")
     p4 = _flat(_section(text, "### P4"))
     assert "Drop knobs with ~zero impact" not in p4
-    assert "at least about 20 completed trials" in p4
+    # Public text points at Mode C / the analyzer for when a ranking is trustworthy and does not
+    # carry the numeric trial floor or a knob-replacement procedure itself (service-owned planning).
+    assert "at least about 20 completed trials" not in p4
+    assert not re.search(r"\b\d+/\d+\b", p4)
+    assert "plan rather than choosing replacements locally" in " ".join(p4.split())
     assert "not yet measured" in p4
     assert "Mode C" in p4
     assert "traigent-analyze-variable-importance" in p4

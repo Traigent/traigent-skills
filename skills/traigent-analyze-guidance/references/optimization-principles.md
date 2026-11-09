@@ -5,7 +5,7 @@ run-plan. The first six are the core must-dos; the rest keep results trustworthy
 and reproducible. They are field-tested from taking a text2SQL agent from 20/30
 to 27/30 on its 30-row tuning slice at lower cost — a tuning-slice count chosen
 by the search, so it is optimistic; the held-out number is the claim. These counts
-(here and in P4) predate the text2SQL recipe's `result_eq` comparator and were not
+(here) predate the text2SQL recipe's `result_eq` comparator and were not
 re-scored with it.
 
 ## Core recommendations
@@ -35,16 +35,13 @@ are reproducible and so a later run can promote it to a tuned knob.
 ### P4 -- Replace knobs that show no impact
 
 After a run with enough evidence, rank each knob's impact on the objective. **Drop a
-knob only if it was sampled enough and still shows ~zero impact**: the run had at
-least about 20 completed trials (Mode C in `SKILL.md` reads any ranking below that as
-directional, and the importance analyzer returns nothing below 10), each of the
-knob's values was observed several times, and it still does not move the objective
-(especially if it adds cost -- e.g. self-consistency that doesn't raise accuracy).
-Below that floor a flat or empty ranking means "not yet measured": keep the knob and
-treat the ranking as directional (see Mode C in `SKILL.md` and
-`traigent-analyze-variable-importance`). Then **swap in better structural knobs**.
-This run-over-run swap is where the ceiling moves (it took us 25/30 -> 27/30 on the
-tuning slice). See `traigent-analyze-guidance`.
+knob only if the evidence supports it**: Mode C in `SKILL.md` and
+`traigent-analyze-variable-importance` state when a ranking is trustworthy and when it is only
+directional or not yet measured. Below that, a flat or empty ranking means "not yet measured":
+keep the knob and treat the ranking as directional. A knob that is well measured and still does
+not move the objective (especially if it adds cost -- e.g. self-consistency that doesn't raise
+accuracy) is a candidate to drop. The service plan decides what to swap in; ask for a refreshed
+plan rather than choosing replacements locally. See `traigent-analyze-guidance`.
 
 ### P5 -- Revisit the objective weights across runs
 

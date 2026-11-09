@@ -50,10 +50,12 @@ never with `offline=True`. Use **`offline=True`** for a local run with zero Trai
 egress (grid/random only) ONLY when explicitly chosen; never switch silently. It stops Traigent
 backend traffic only: your agent's model-provider calls still go out, and LiteLLM fetches its
 pricing map at import unless `LITELLM_LOCAL_MODEL_COST_MAP=True` is set. After a run, **confirm the experiment
-appears in the portal with its trials**. If it doesn't show up, the local result is still valid
-and only persistence failed: keep the local result, read `results.metadata["persistence_status"]`,
-and recover the sync (`traigent-analyze-results` → "Verify the Run Actually Persisted"). Repeating
-the optimization is a separate paid action that needs the user's approval. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
+appears in the portal with its trials**. If it doesn't show up, do not classify the cause yet:
+keep the local result first, then inspect the run's provenance, its completed trial count,
+`results.metadata["persistence_status"]` and any rejection reason (a missing portal record can mean
+a backend rejection or a local fallback, not only a failed sync), and follow `traigent-analyze-results`
+→ "Verify the Run Actually Persisted". Never repeat the optimization automatically: that is a
+separate paid action that needs the user's approval. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
 run.
 
 ## Run naming

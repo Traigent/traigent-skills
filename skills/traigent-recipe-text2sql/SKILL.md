@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.14"
+  version: "1.0.15"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -31,36 +31,35 @@ not directly comparable to a score you get from this recipe as written.
 ## The two-run lesson arc (the demo that lands)
 > **Scope: this minimal-first teaching arc is for the text2SQL EXAMPLE only.** It starts
 > small on purpose so the *lesson* lands. For a customer's **real agent** (usually a given),
-> do the opposite — push for model variety (hi/med/low + ≥2 vendors) and SIGNIFICANT,
-> low-latency knobs from run 1, sized with `traigent-analyze-guidance` (Mode A).
+> do the opposite: ask `traigent-analyze-guidance` (Mode A) for the plan, which sets model
+> variety, the knobs and the sizes of the search.
 
 **Always state the permutation count** — when you present the plan, when you launch,
 and when you report results. Repeat it every time; it's how the user sees the space
 the optimizer is searching.
 
-**Run 1 — the raw model/cost picture (~100 perms, 3 model tiers, MINOR knobs only).**
-- **Models: span 3 tiers** — high/premium (e.g. `gpt-5.6-sol`), mid (e.g. `gpt-5.6-terra`),
-  low/cheap (e.g. `gpt-6-luna` or `claude-haiku-5-5`).
-- **Vary only MINOR knobs:** temperature{0,0.2,0.4} · fewshot_k{0,2,4} · repair{off,on} ·
-  output_mode{sql_only, allow_prose}. **Hold the high-impact STRUCTURAL levers at basic
-  defaults** — `generation_path=direct`, `schema_context=ddl_fk`, `fewshot_selector=fixed`.
-- `3 · 3 · 3 · 2 · 2 = 108` perms; `algorithm="random"` ~18 trials, plateau on. ~18 random
-  trials over 108 perms is a **probe**, not coverage — it samples roughly a sixth of the space.
+**Run 1 — the raw model/cost picture (minor knobs only).**
+- **Models:** a premium, a mid-priced and a cheap model, so the cost spread is visible.
+- **Vary only minor knobs** (for example temperature, few-shot count, repair, output mode) and
+  **hold the high-impact structural levers at basic defaults** (`generation_path=direct`,
+  `schema_context=ddl_fk`, `fewshot_selector=fixed`).
+- State the permutation count and the trial count you run, and call the result a **probe**,
+  not coverage: a random search over a space much larger than its trial budget samples only
+  part of it.
 - **What it typically shows:** with nothing structural optimized, the picture is usually *"you
   get what you pay for"* — the model tier tends to dominate and the cheap model hasn't shone
-  yet. Treat an 18-trial random read as suggestive; to actually *claim* tier dominance, add
-  trials/seeds or run a `grid` pass over the reduced space.
+  yet. Treat a small random read as suggestive; to actually *claim* tier dominance, add
+  trials/seeds or run a `grid` pass over a reduced space.
 
 **Run 2 — make the low-cost model SHINE (add the structural levers).**
-- Keep the cheap model (+ maybe one mid), and **add the high-impact knobs that were held
-  back:** `schema_context = {ddl_fk_rows, m_schema, compact}`, `fewshot_selector = similar`,
+- Keep the cheap model, and **add the high-impact knobs that were held back:**
+  `schema_context = {ddl_fk_rows, m_schema, compact}`, `fewshot_selector = similar`,
   `generation_path = {direct, plan_then_sql}`, keep `output_mode` unpinned.
-- Keep the space at **~several hundred perms** and state the count; weight accuracy-first.
+- State the new permutation count; weight accuracy first.
 - **What it teaches:** in the original field run, the **low-cost model leapt up to match or
   beat the premium at a fraction of the cost.** *That jump — structural optimization on a
-  cheap model — is the Traigent value.* Expect the direction, not the exact numbers: with
-  random search, budget enough trials (or a grid pass on the pruned space) before reporting
-  the jump on a new agent.
+  cheap model — is the Traigent value.* Expect the direction, not exact numbers: budget enough
+  trials (or a grid pass on the pruned space) before reporting the jump on a new agent.
 - Caveat: don't pair `plan_then_sql`/`cot` with `output_mode=sql_only` (they conflict —
   sql-only forbids the reasoning the plan path wants); keep output_mode unpinned so the
   optimizer pairs them correctly.
