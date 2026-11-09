@@ -564,3 +564,18 @@ def test_optimize_run_does_not_require_varied_outputs_for_real_inference() -> No
     text = (SKILLS / "traigent-optimize-run" / "SKILL.md").read_text(encoding="utf-8")
     assert "outputs vary between trials" not in text
     assert "Identical outputs\n   across trials can be a real deterministic run" in text
+
+
+# --- round 8: raw-client dry run and question/answer dataset conversion ---------------------------
+
+
+def test_raw_client_dry_run_and_dataset_conversion_are_taught() -> None:
+    quick = (SKILLS / "traigent-setup-quickstart" / "SKILL.md").read_text(encoding="utf-8")
+    decorator = (SKILLS / "traigent-setup-decorator" / "SKILL.md").read_text(encoding="utf-8")
+    for text in (quick, decorator):
+        assert "If the agent uses a raw provider client" in text
+        assert "litellm.completion" in text and "dry_run.py" in text
+        assert "Never make the first test a real paid run" in text
+    assert "agent.client.chat.completions.create = canned_create" in quick
+    assert "Existing rows with other keys" in quick
+    assert "Missing 'input' (or 'input_data') field" in decorator

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.22"
+  version: "2.1.23"
 ---
 
 # Traigent Boost Agent
@@ -385,7 +385,9 @@ my_function.export_config("candidate_config.json")
    - Reserve the holdout slice BEFORE the first optimization run and record the partition (tuning slice / optional exemplar bank / holdout slice); if none exists yet, create one before any result counts as promotion-ready.
    - Keep tuning and holdout slices separate, stratify by known input classes, and report sample count, source, label quality, and exclusions.
    - Use JSONL with scoreable `input` and `output` fields when a built-in evaluator can score the task.
+   - Existing rows with other keys (`question` / `answer`): write a NEW converted file with `{"input": {"<param name>": ...}, "output": ...}` rows, leave the original, and tell the user (see `traigent-setup-quickstart`, dataset section).
    - Mock/offline-check a tiny slice before any backend generation or paid provider work.
+     If the agent calls a raw `openai`/`anthropic` client, mock mode cannot intercept it: offer `litellm.completion` or write a new `dry_run.py` that stubs the client (`traigent-setup-quickstart`, "Mock scope"). Never make the first test a real paid run.
    - DELEGATE (required): `traigent-dataset-curate` owns dataset recipes, growth, example scoring, and quality loops.
 
 3. CHOOSE the metric.

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "fff90a31fe4c551d",
+  "doc_hash": "60b79e9bf1efe91b",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -366,6 +366,17 @@
       "doc_before_hash": "474f7317e7e144f2",
       "doc_after_hash": "fff90a31fe4c551d",
       "note": "Candidate-process promotion (apply=False is withdrawn in the SDK); mock provenance check via results.metadata; tiny-probe uniform scores are a cue not a failure; ValidationError/TypeError row; narrower description.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "fff90a31fe4c551d",
+      "doc_after_hash": "60b79e9bf1efe91b",
+      "note": "Round 8: raw-client dry-run steps (litellm or stubbed dry_run.py), never a first paid run; question/answer rows converted to input rows.",
       "source_type": "agent"
     }
   ]

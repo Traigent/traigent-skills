@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7ae4f47040753be9",
+  "doc_hash": "d7460d04670420b2",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/environment-variables.md": "c50fe19585bb0888",
@@ -495,6 +495,17 @@
       "doc_before_hash": "684612c68940f382",
       "doc_after_hash": "7ae4f47040753be9",
       "note": "Round 3: overwrite ban scoped to the literal demo files; existing projects get a dry run in a new file with the exact command.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "7ae4f47040753be9",
+      "doc_after_hash": "d7460d04670420b2",
+      "note": "Round 8: raw-client dry-run steps (litellm or stubbed dry_run.py), never a first paid run; question/answer rows converted to input rows.",
       "source_type": "agent"
     }
   ]

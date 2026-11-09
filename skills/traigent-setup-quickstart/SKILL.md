@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.39"
+  version: "1.0.40"
 ---
 
 # Traigent Quickstart
@@ -398,6 +398,41 @@ enable_mock_mode_for_quickstart()
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted (no canned reply). On SDK 0.31.0+ their HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed; clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 a raw-client call in mock mode reaches the provider and bills. Use LiteLLM in examples that must run keyless.
+
+**If the agent uses a raw provider client (`openai.OpenAI()`, `anthropic.Anthropic()`), do this:**
+
+1. Say so: mock mode cannot intercept this client, so a plain mock dry run would give no canned reply.
+2. Offer, and ask before doing it: switch the call to `litellm.completion(model=..., messages=...)`. Then mock mode works unchanged.
+3. Or, without touching the user's files, write a NEW `dry_run.py` that stubs the client (template below). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run with zero provider calls. Give the user the command `python dry_run.py`.
+4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap (`max_trials`, `cost_limit`).
+
+```python
+# dry_run.py: a NEW file; edit nothing else. Replace agent / client / canned reply with the user's own.
+import os
+from types import SimpleNamespace
+
+os.environ.setdefault("OPENAI_API_KEY", "dry-run-placeholder")  # never used: the client is stubbed below
+os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
+os.environ["TRAIGENT_STRICT_COST_ACCOUNTING"] = "false"  # dry run only: the stub reports no tokens
+os.environ["TRAIGENT_REQUIRE_COST_TRACKING"] = "false"
+
+from traigent.testing import enable_mock_mode_for_quickstart
+
+enable_mock_mode_for_quickstart()  # safety net: on SDK 0.31.0+ real provider HTTP is blocked
+
+import agent  # the user's module; its client is created at import
+
+
+def canned_create(**kwargs):
+    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="canned reply"))])
+
+
+agent.client.chat.completions.create = canned_create  # no provider call is possible from here on
+print(agent.answer.optimize_sync(max_trials=2).best_config)
+```
+
+Scores from this run mean nothing (the reply is canned); it only proves the wiring. Checked against traigent 0.33.0.
+
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.24.0"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.24.0"`.)
 - **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local. A `TRAIGENT_API_KEY` in the project `.env` counts as set on 0.28.0+ (see "Using a .env File"); use `TRAIGENT_OFFLINE_MODE=true` or `offline=True` for zero egress.
 - **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer). A scorer that **parses** the reply (`json.loads`, JSON-schema) cannot score the canned text: every trial fails (`All trials failed — no examples succeeded`, `best_score` is `None`) — also expected; stub the reply instead of catching the error.
@@ -702,6 +737,14 @@ Traigent uses JSONL (JSON Lines) files for evaluation datasets. Each line must h
 - **`output`** -- The expected/ground-truth result used for scoring.
 
 You can include additional fields for metadata, but `input` and `output` are required.
+
+**Existing rows with other keys (for example `question` / `answer`)?** Do this, and tell the user you did:
+
+1. Do not edit the original file. Write a NEW converted JSONL next to it, one row per line:
+   `{"input": {"<function parameter name>": <value>}, "output": <expected>}`. For `def answer(question)` a row
+   is `{"input": {"question": "..."}, "output": "..."}`. A bare string `input` also works.
+2. The gold key may stay `answer`; `output`, `expected`, `expected_output`, `answer`, `target` and `label` are accepted. The missing piece is `input` (or `input_data`).
+3. Point `eval_dataset` at the converted file, and say which file you wrote and why.
 
 > **One canonical contract.** This flat form is the simplest case of the single Traigent dataset
 > contract: `input` (or `input_data`) → your function's args, the **gold key** → the expected value,

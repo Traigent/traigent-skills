@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.24"
+  version: "1.0.25"
 ---
 
 # Traigent Decorator Setup
@@ -217,6 +217,11 @@ Configure how Traigent evaluates each trial using `EvaluationOptions`.
 > def score(output: str, expected: str) -> float: ...
 > ```
 
+> **Dataset rows need `input` (or `input_data`).** Rows with `question` / `answer` keys fail with
+> "Missing 'input' (or 'input_data') field". Write a NEW converted file with rows like
+> `{"input": {"question": "..."}, "output": "..."}` (keys of `input` = your function's parameter names; the
+> gold key may be `answer`), leave the original untouched, point `eval_dataset` at the new file, and tell the user.
+
 ### Fields
 
 | Field | Type | Description |
@@ -374,6 +379,13 @@ def my_func(query: str) -> str:
 > **A literal in the call is not rewritten.** `model="gpt-4o-mini"` written directly as a keyword argument, a value from `os.environ.get(...)`, or a dict-built kwarg has no matching local name, so the SDK logs `Seamless provider found no injectable targets for <fn>; no local assignment or parameter matched configuration keys [...], so the function ran with original values` and every trial runs the original configuration — and the dry-run still passes (fail-closed behaviour is tracked in Traigent/Traigent#2298). Before any paid run, prove the value reaching the provider call changes across two configurations (mock mode, diff the request); if it does not, use context mode.
 
 > **Mock intercepts this example only because it calls `litellm.completion`.** Mock mode covers LiteLLM/LangChain calls only — a raw `openai` / `anthropic` client in the body gets no canned reply, but on SDK 0.31.0+ its HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed. Clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 such calls reach the provider and bill. For a genuinely free dry-run of a seamless-mode function, keep `litellm.completion` in the body or run fully offline (`offline=True`, no keys).
+
+**If the agent uses a raw provider client (`openai.OpenAI()`, `anthropic.Anthropic()`), do this:**
+
+1. Say so: mock mode cannot intercept this client, so a plain mock dry run would give no canned reply.
+2. Offer, and ask before doing it: switch the call to `litellm.completion(model=..., messages=...)`. Then mock mode works unchanged.
+3. Or, without touching the user's files, write a NEW `dry_run.py` that stubs the client (template in `traigent-setup-quickstart`, "Mock scope"). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run with zero provider calls. Give the user the command `python dry_run.py`.
+4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap (`max_trials`, `cost_limit`).
 
 ## Execution Options
 
