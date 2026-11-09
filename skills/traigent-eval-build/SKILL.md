@@ -270,6 +270,34 @@ def check_row_ids(path: str) -> None:
             raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
         seen[str(row_id)] = number
 
+
+def evaluate_answer(func, config, example) -> ExampleResult:
+    started = time.perf_counter()
+    try:
+        prediction = func(**example.input_data)
+        # SDK builtin accuracy is case-insensitive + whitespace-trimmed (since SDK #1473)
+        score = 1.0 if str(prediction).strip().lower() == str(example.expected_output).strip().lower() else 0.0
+        error_message = None
+        success = True
+    except Exception as exc:
+        prediction = None
+        score = 0.0
+        error_message = str(exc)
+        success = False
+
+    elapsed_s = time.perf_counter() - started
+    return ExampleResult(
+        example_id=_example_id(example),
+        input_data=example.input_data,
+        expected_output=example.expected_output,
+        actual_output=prediction,
+        metrics={"accuracy": score, "latency": elapsed_s * 1000.0},  # latency objective is milliseconds
+        execution_time=elapsed_s,  # ExampleResult field is seconds
+        success=success,
+        error_message=error_message,
+        metadata={"method": "deterministic_exact_match"},
+    )
+
 # Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
 DATASET = dataset_path("eval/qa.jsonl")
 check_row_ids(DATASET)

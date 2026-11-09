@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ed4c6bd1ad36374a",
+  "doc_hash": "9b85c882563960de",
   "reference_hashes": {
     "references/evaluator-templates.md": "4557a4363b935c04"
   },
@@ -303,7 +303,7 @@
       "run_id": null,
       "timestamp": "2026-11-09T00:00:00Z",
       "doc_before_hash": "a81eb2db84540d62",
-      "doc_after_hash": "ed4c6bd1ad36374a",
+      "doc_after_hash": "9b85c882563960de",
       "note": "Round 5: validation and EvaluationOptions share one dataset path resolved like the SDK (TRAIGENT_DATASET_ROOT, else cwd); top-level ids required on every supported SDK and a valid nested id is promoted by prep; id helpers read and write utf-8.",
       "source_type": "agent"
     }
