@@ -774,11 +774,11 @@ if results.metadata.get("persistence_status") == "failed":
 When this is `"failed"`, **do not assume the run synced** — the local `OptimizationResult` can look
 complete while the backend session is left `RUNNING` on the portal. Follow this order before reporting a portal-tracked result as final:
 
-1. Keep the local result; read `persistence_status` and `persistence_error`. Do not rerun.
+1. Keep the local result; read `persistence_status`, `persistence_error` and `source` (for example `local`), and quote them in your reply. Do not rerun.
 2. Check the portal for that session id.
 3. Portal has NO session for this run: upload the local record with `traigent sync <results.sync_session_id> --dry-run`, then without `--dry-run`. `sync_session_id` is the id in your local store (not the portal id); it may be `None` if the run was tracked end to end on the backend. Say that the upload may appear as a new session in the portal.
    Portal HAS a session but it is unfinalized or partial: do not describe sync as repairing it. Report that state and keep the local result. A sync would create a separate session unless an earlier sync attempt for this run exists (only then does it resume that attempt's cloud session), and `--dry-run` does not tell you which. Never pass `--all`, and never run `traigent local sync` without `--session-id`.
-4. A rerun is a separate paid action: explicit user approval and a cost cap, only if the local result cannot be uploaded or used. (Newer SDK builds
+4. In your reply, say in these words: a rerun is a separate paid action that needs your explicit approval and a cost cap, and it is only for the case where the local result cannot be uploaded or used. (Newer SDK builds
 — the fix merged as Traigent#1731 — also expose this as `results.persistence_failed`, a bool
 shorthand for the same check; check the metadata key directly if your installed SDK predates it.)
 

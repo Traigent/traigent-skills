@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "55a1daa94842c89f",
+  "doc_hash": "9ed3641b156e16f2",
   "reference_hashes": {
     "references/convergence-patterns.md": "793c3c1c2f20e5ad",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -550,6 +550,17 @@
       "doc_before_hash": "9f5e2e4c323c0c35",
       "doc_after_hash": "55a1daa94842c89f",
       "note": "Round 12: sync only uploads the local record (may be a new session); an existing unfinalized portal session is reported, not repaired.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "55a1daa94842c89f",
+      "doc_after_hash": "9ed3641b156e16f2",
+      "note": "Round 12b: reply must quote persistence_status/error/source and state the rerun rule.",
       "source_type": "agent"
     }
   ]

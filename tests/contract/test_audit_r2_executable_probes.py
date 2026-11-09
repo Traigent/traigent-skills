@@ -655,7 +655,7 @@ def test_lost_portal_sync_order_is_numbered_in_debugging_and_analyze_results() -
         assert "do not describe sync as repairing it" in text
         assert "separate session unless an earlier sync attempt" in text
         assert "repair that one session" not in text
-        assert "separate paid action" in text
+        assert "a rerun is a separate paid action that needs your explicit approval and a cost cap" in text
         portal = text.index("Check the portal for that session id")
         assert portal < text.index("traigent sync <results.sync_session_id> --dry-run")
 
