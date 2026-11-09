@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.41"
+  version: "1.0.42"
 ---
 
 # Traigent Quickstart
@@ -403,35 +403,41 @@ enable_mock_mode_for_quickstart()
 
 1. Say so: mock mode cannot intercept this client, so a plain mock dry run would give no canned reply.
 2. Offer, and ask before doing it: switch the call to `litellm.completion(model=..., messages=...)`. Then mock mode works unchanged.
-3. Or, without touching the user's files, write a NEW `dry_run.py` that stubs the client (template below). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run with zero provider calls. Give the user the command `python dry_run.py`.
+3. Or, without touching the user's files, write a NEW `dry_run.py` that stubs the client (template below). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run against a fake client instead of the provider. Give the user the command `python dry_run.py`.
 4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap: every real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()` / `optimize_sync()`, and no `__main__` block starts a paid run by default.
 
 ```python
-# dry_run.py: a NEW file; edit nothing else. Replace agent / client / canned reply with the user's own.
+# dry_run.py: a NEW file; edit nothing else. Replace `agent`, `answer` and the canned reply with the user's own.
 import os
 from types import SimpleNamespace
 
-os.environ.setdefault("OPENAI_API_KEY", "dry-run-placeholder")  # never used: the client is stubbed below
 os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
-os.environ["TRAIGENT_STRICT_COST_ACCOUNTING"] = "false"  # dry run only: the stub reports no tokens
-os.environ["TRAIGENT_REQUIRE_COST_TRACKING"] = "false"
+os.environ.setdefault("OPENAI_API_KEY", "dry-run-placeholder")  # never used: the client is faked below
 
+import openai
+import traigent
 from traigent.testing import enable_mock_mode_for_quickstart
 
-enable_mock_mode_for_quickstart()  # safety net: on SDK 0.31.0+ real provider HTTP is blocked
-
-import agent  # the user's module; its client is created at import
+enable_mock_mode_for_quickstart()  # safety net: on SDK 0.31.0+ real provider HTTP to known hosts is blocked
 
 
-def canned_create(**kwargs):
-    return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="canned reply"))])
+class FakeOpenAI:  # installed BEFORE the user's module is imported, so import-time code cannot reach a real client
+    def __init__(self, *args, **kwargs):
+        reply = SimpleNamespace(message=SimpleNamespace(content="canned reply"))
+        create = lambda **kw: SimpleNamespace(choices=[reply])  # noqa: E731
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
 
 
-agent.client.chat.completions.create = canned_create  # no provider call is possible from here on
+openai.OpenAI = FakeOpenAI
+import agent  # noqa: E402  (the user's module; now it can only get the fake client)
+
+for name in ("func", "_wrapped_func"):  # the callables Traigent invokes for each example
+    inner = getattr(agent.answer, name)
+    setattr(agent.answer, name, (lambda f: lambda *a, **kw: traigent.with_usage(f(*a, **kw), total_cost=0))(inner))
 print(agent.answer.optimize_sync(max_trials=2).best_config)
 ```
 
-Scores from this run mean nothing (the reply is canned); it only proves the wiring. Checked against traigent 0.33.0.
+The fake client is installed before your module is imported, so import-time code gets the fake too. The $0 cost is reported only inside this script, so cost limits and strict cost accounting stay on and are not changed. Scores from this run mean nothing (the reply is canned); it proves the wiring only. It covers the `OpenAI` client; for `AsyncOpenAI`, `anthropic` or another client, fake that class the same way, and calls made through a client you did not fake can still be real. Checked against traigent 0.33.0, including with `TRAIGENT_RUN_COST_LIMIT` set.
 
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.24.0"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.24.0"`.)
 - **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local. A `TRAIGENT_API_KEY` in the project `.env` counts as set on 0.28.0+ (see "Using a .env File"); use `TRAIGENT_OFFLINE_MODE=true` or `offline=True` for zero egress.

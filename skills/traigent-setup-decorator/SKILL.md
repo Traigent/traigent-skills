@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.26"
+  version: "1.0.27"
 ---
 
 # Traigent Decorator Setup
@@ -384,7 +384,7 @@ def my_func(query: str) -> str:
 
 1. Say so: mock mode cannot intercept this client, so a plain mock dry run would give no canned reply.
 2. Offer, and ask before doing it: switch the call to `litellm.completion(model=..., messages=...)`. Then mock mode works unchanged.
-3. Or, without touching the user's files, write a NEW `dry_run.py` that stubs the client (template in `traigent-setup-quickstart`, "Mock scope"). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run with zero provider calls. Give the user the command `python dry_run.py`.
+3. Or, without touching the user's files, write a NEW `dry_run.py` that stubs the client (template in `traigent-setup-quickstart`, "Mock scope"). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run against a fake client instead of the provider. Give the user the command `python dry_run.py`.
 4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap: every real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()` / `optimize_sync()`, and no `__main__` block starts a paid run by default.
 
 ## Execution Options

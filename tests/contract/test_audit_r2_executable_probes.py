@@ -577,6 +577,70 @@ def test_raw_client_dry_run_and_dataset_conversion_are_taught() -> None:
         assert "litellm.completion" in text and "dry_run.py" in text
         assert "Never make the first test a real paid run" in text
         assert "no `__main__` block starts a paid run by default" in text
-    assert "agent.client.chat.completions.create = canned_create" in quick
+    assert "openai.OpenAI = FakeOpenAI" in quick
+    assert "TRAIGENT_STRICT_COST_ACCOUNTING" not in quick.split("def __init__")[0].split("# dry_run.py")[-1]
     assert "Existing rows with other keys" in quick
     assert "Missing 'input' (or 'input_data') field" in decorator
+
+
+def _dry_run_template() -> str:
+    text = (SKILLS / "traigent-setup-quickstart" / "SKILL.md").read_text(encoding="utf-8")
+    (block,) = [b for b in FENCE_RE.findall(text) if "openai.OpenAI = FakeOpenAI" in b]
+    return block
+
+
+def _write_dry_run_project(root: Path, agent_source: str) -> None:
+    (root / "agent.py").write_text(agent_source, encoding="utf-8")
+    rows = [{"input": {"question": f"q{i}"}, "output": f"a{i}"} for i in range(4)]
+    (root / "qa_traigent.jsonl").write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    (root / "dry_run.py").write_text(_dry_run_template(), encoding="utf-8")
+
+
+_RAW_CLIENT_AGENT = """
+import os
+import traigent
+from openai import OpenAI
+
+client = OpenAI(api_key=os.environ["OPENAI_API_KEY"], base_url="http://127.0.0.1:9/v1")
+{import_time}
+
+@traigent.optimize(
+    eval_dataset="qa_traigent.jsonl",
+    objectives=["accuracy", "cost"],
+    configuration_space={{"model": ["gpt-4o-mini", "gpt-4o"]}},
+)
+def answer(question: str) -> str:
+    resp = client.chat.completions.create(
+        model=traigent.get_config()["model"], messages=[{{"role": "user", "content": question}}]
+    )
+    return resp.choices[0].message.content.strip()
+"""
+
+
+def _run_dry_run(root: Path, extra_env: dict[str, str]) -> Any:
+    import subprocess
+    import sys
+
+    pytest.importorskip("openai")
+    env = {k: v for k, v in os.environ.items() if not k.startswith("TRAIGENT_")}
+    env.update({"PYTHONPATH": str(root), "HOME": str(root), **extra_env})
+    return subprocess.run(
+        [sys.executable, "dry_run.py"], cwd=root, env=env, capture_output=True, text=True, timeout=300
+    )
+
+
+def test_stub_dry_run_completes_with_a_cost_limit_and_strict_accounting_on(tmp_path: Path) -> None:
+    _write_dry_run_project(tmp_path, _RAW_CLIENT_AGENT.format(import_time=""))
+    done = _run_dry_run(tmp_path, {"TRAIGENT_RUN_COST_LIMIT": "1"})
+    assert done.returncode == 0, done.stderr[-2000:]
+    assert "max_trials=2 reached" in (done.stdout + done.stderr)
+    assert "{'model':" in done.stdout
+
+
+def test_stub_dry_run_blocks_an_import_time_client_call(tmp_path: Path) -> None:
+    call = 'WARM = client.chat.completions.create(model="gpt-4o", messages=[])'
+    _write_dry_run_project(tmp_path, _RAW_CLIENT_AGENT.format(import_time=call))
+    done = _run_dry_run(tmp_path, {})
+    # a real client would raise APIConnectionError at 127.0.0.1:9; the fake answers instead
+    assert done.returncode == 0, done.stderr[-2000:]
+    assert "APIConnectionError" not in done.stderr

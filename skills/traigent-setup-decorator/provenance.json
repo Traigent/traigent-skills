@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "f152b67b561dd40c",
+  "doc_hash": "8ce938c46f165c04",
   "reference_hashes": {
     "references/agent-identity.md": "16206658c40f65e2",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -342,6 +342,17 @@
       "doc_before_hash": "823540bf658ccc87",
       "doc_after_hash": "f152b67b561dd40c",
       "note": "Round 8b: real-run commands carry max_trials and are never started from __main__.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "f152b67b561dd40c",
+      "doc_after_hash": "8ce938c46f165c04",
+      "note": "Round 9: stub dry run installs the fake client before the user's module imports, reports a measured zero cost only inside the script, leaves cost limits and strict accounting alone.",
       "source_type": "agent"
     }
   ]
