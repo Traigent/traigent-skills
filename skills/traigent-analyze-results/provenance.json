@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "c3289d02c929cd0d",
+  "doc_hash": "60113122c2668e22",
   "reference_hashes": {
     "references/convergence-patterns.md": "793c3c1c2f20e5ad",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -484,6 +484,17 @@
       "doc_before_hash": "5ef7e03e3ad6a83b",
       "doc_after_hash": "c3289d02c929cd0d",
       "note": "Round 7: paired_delta rejects non-finite scores and differences; interval labelled approximate percentile-bootstrap and demoted below the exact sign test.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "c3289d02c929cd0d",
+      "doc_after_hash": "60113122c2668e22",
+      "note": "Gaps round: reply-checklist and copyable template placed where the agent acts.",
       "source_type": "agent"
     }
   ]

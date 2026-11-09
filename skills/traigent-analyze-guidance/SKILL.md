@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.14"
+  version: "1.2.15"
 ---
 
 # Traigent Analyze Guidance
@@ -75,6 +75,10 @@ Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval
 paid run**, an explicit spend cap, and the recorded stop rule. Economics governs *how much* to
 invest — and here that number comes from the service; it never affects *whether* approval is
 required — it always is.
+
+> **Picking between configs from a results file?** Put a 95% interval next to every accuracy you
+> quote (`wilson` in `traigent-analyze-results`, section "Before You Name a Winner"), and say which
+> configs' intervals overlap. "Within noise" with no interval beside it is not an answer.
 
 ## Mode Arbitration
 

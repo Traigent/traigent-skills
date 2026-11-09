@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.33"
+  version: "1.0.34"
 ---
 
 # Running Traigent Optimization
@@ -24,6 +24,33 @@ Use this skill after you have decorated a function with `@traigent.optimize()` a
 - Handle cost limit exceptions
 - Interpret stop reasons and results
 - Continue an interrupted or budget-limited local search without repaying finished trials (`references/resume-local-run.md`)
+
+## Real Run on a Local Model With No Traigent Backend Traffic
+
+When the user wants a real run (no mock) and no traffic to the Traigent backend, for example against
+a local Ollama endpoint, follow these steps:
+
+1. Keep `offline=True` on the decorator and leave mock mode off (no `enable_mock_mode_for_quickstart()`).
+2. Use `algorithm="grid"` or `"random"` and bound the run with `max_trials`.
+3. Write the run script so it states the scope itself, as in the template below.
+4. Your reply to the user must include this sentence in your own words: "Offline stops only Traigent
+   backend traffic; the model calls to your local endpoint still run for real, and offline and mock
+   are independent switches."
+
+```python
+import os
+
+os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"  # before anything imports litellm
+from agent import answer  # decorated with offline=True; no traigent.testing import
+
+NOTE = ("offline=True stops only Traigent backend traffic. Inference against the local endpoint is "
+        "real; offline and mock are independent.")
+
+if __name__ == "__main__":
+    print(NOTE)
+    results = answer.optimize_sync(max_trials=4, algorithm="grid")
+    print(results.best_config, "mock_llm_run =", results.metadata.get("mock_llm_run"))
+```
 
 ## Optimization Economics — Read This Before Sizing a Run
 

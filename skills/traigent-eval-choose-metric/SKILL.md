@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.11"
+  version: "1.1.12"
 ---
 
 # Traigent Choose Metric
@@ -59,6 +59,10 @@ and do not force an exact-match metric. Route onto the judge track:
    response (an intercepted litellm call); older SDKs and
    uncaptured client paths leave it outside the SDK cost limit, which is never a hard billing ceiling —
    see `traigent-eval-build`.
+5. Tell the user three things: built-in `accuracy` needs expected outputs and would be meaningless
+   without them, which is why you dropped it; the rubric dimensions and what the score cannot tell
+   (a heuristic is not human-judged quality); and that they should read a small sample of outputs
+   themselves before trusting the score.
 
 ## Measure-type grounding
 

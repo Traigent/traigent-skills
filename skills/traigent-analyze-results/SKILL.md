@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.34"
+  version: "1.1.35"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -76,6 +76,34 @@ explanation is a product requirement, not decoration.
 Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval before any
 paid run**, an explicit spend cap, and the recorded stop rule. The service sets
 *how much* to invest; it never affects *whether* approval is required — it always is.
+
+## Before You Name a Winner or Say "Within Noise"
+
+Do these steps in order whenever the user asks which config to ship or whether a gap is real:
+
+1. Find each config's example count `n` (for example `n_examples`) and its score.
+2. For every accuracy you quote, write the 95% interval next to it, as `0.70 (0.48-0.85)`. Compute it
+   with `wilson` below; with no way to run code, use the formula in the docstring by hand.
+3. If two intervals overlap, say so with the numbers: "these configs are not separated; the ranking among
+   them is unresolved". Never write "within noise" without the interval beside it.
+4. With per-example scores, also report `paired_delta` (see "Is the Delta Real?" below).
+
+```python runnable
+import math
+
+
+def wilson(correct: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """95% Wilson interval for correct/n. By hand: centre (p + z*z/(2n)) / (1 + z*z/n), half-width
+    z * sqrt(p*(1-p)/n + z*z/(4*n*n)) / (1 + z*z/n), with p = correct/n."""
+    p = correct / n
+    d = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / d
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return round(centre - half, 2), round(centre + half, 2)
+
+
+print(wilson(14, 20))  # 0.70 accuracy on 20 examples -> (0.48, 0.85)
+```
 
 ## Terminal-First Analysis (MCP)
 

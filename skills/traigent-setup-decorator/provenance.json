@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "97446845d1009f59",
+  "doc_hash": "b29977d245b3a62e",
   "reference_hashes": {
     "references/agent-identity.md": "16206658c40f65e2",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/evaluation-options.md": "f766d4df828a1ade",
-    "references/execution-modes.md": "7ae7c26eb9f1629b",
+    "references/execution-modes.md": "099fb0a54b6c3534",
     "references/injection-modes.md": "597e4e1b09b63279",
     "references/task-type.md": "e6201449c6f90853",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
@@ -309,6 +309,17 @@
       "doc_before_hash": "c582eeae8beda7c2",
       "doc_after_hash": "97446845d1009f59",
       "note": "Round 2: uniform probe scores are an investigation cue, matching optimize-run and quickstart.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "97446845d1009f59",
+      "doc_after_hash": "b29977d245b3a62e",
+      "note": "Gaps round: reply-checklist and copyable template placed where the agent acts.",
       "source_type": "agent"
     }
   ]

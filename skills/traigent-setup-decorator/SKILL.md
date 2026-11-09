@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.23"
+  version: "1.0.24"
 ---
 
 # Traigent Decorator Setup
@@ -414,7 +414,7 @@ def my_func(query: str) -> str:
 | `algorithm="auto"` (default) | Traigent cloud smart optimizer proposes trials; your agent/LLM calls run in your environment. Results sync to the portal. |
 | `algorithm="grid"` / `"random"` | Local search in the SDK. Results still sync to the portal unless `offline=True`. |
 | `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/`"cmaes"`/`"nsga2"` | Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): supported names (`bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random`) bind to the typed backend Optuna strategy on authenticated connected runs; unsupported names (`nsga2`/`cmaes`) fail fast with a capability message (Traigent/Traigent#1752, #1758). Never local: `ConfigurationError` with `offline=True`, `OptimizationError` from the local registry. Use `"auto"` for the default connected smart path; use `"grid"`/`"random"` only for explicit local/offline search. |
-| `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
+| `offline=True` | Fully local, **zero Traigent backend egress**. Results are not synced to the portal. It stops only Traigent traffic: model calls still run for real (local endpoint or provider), and it is independent of mock mode. Tell the user this when you keep it. |
 
 The synced path sends the search space, configuration values and numeric metrics for portal result
 history. Configuration values can contain tuned prompt text, so keep confidential prompt variants

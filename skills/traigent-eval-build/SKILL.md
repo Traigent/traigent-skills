@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.22"
+  version: "1.0.23"
 ---
 
 # Traigent Build Evaluator
@@ -46,6 +46,14 @@ rubric, strict parse, and cost guardrails"** template in `references/evaluator-t
 (call `build_reference_free_judge_prompt` in place of `build_judge_prompt`: same call shape, so nothing else changes once you set its `TASK_RUBRIC`; it grades against your rubric and the source instead of an `expected` answer) —
 and treat `traigent-eval-audit` as mandatory, because the judge owns the whole quality
 signal (see `traigent-eval-choose-metric` → "The no-gold track").
+
+**No gold: your reply to the user must contain these three statements** (a comment in the code does not replace them):
+
+1. "Built-in `accuracy` needs expected outputs, so it would be meaningless here; I dropped it and use `<your score name>` instead."
+2. The rubric dimensions the score uses, one line each, and what it cannot tell: it is a heuristic, not human-judged quality.
+3. "Before trusting the score, read a small sample of summaries yourself and check that the score ranks them the way you would."
+
+Keep customer text local: a hosted judge would send the source text out, so say that when you choose a local scorer.
 
 ### Tier 2: scoring function
 
