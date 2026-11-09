@@ -372,7 +372,7 @@ keep them when rows are reordered or edited.
 The check validates the **effective** id, the one the SDK hands the evaluator: a row's own
 `metadata` object is merged over its top-level keys, so a `metadata.id` overrides `id`. It rejects a
 missing, null or empty id, conflicting top-level and nested ids, and any repeat. Each custom template
-calls `check_row_ids("eval/....jsonl")` once at import, so the whole dataset is validated before the
+calls `check_row_ids(<its eval_dataset path>)` once at import, so the whole dataset is validated before the
 first model call; if prep was skipped the run stops there, not after paid calls.
 
 ```python

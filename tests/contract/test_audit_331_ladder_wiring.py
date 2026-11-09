@@ -31,8 +31,8 @@ TIER_SECTIONS = dict(
 LADDER_ROWS = dict(re.findall(r"^\| (\d) \| (.*)$", TEXT, re.MULTILINE))
 
 DECORATE_BODY = """
-write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
-write_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
+write_prepared_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+write_prepared_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
 import traigent
 ns = load_block(sys.argv[1])
 decorated = [name for name, value in ns.items() if callable(getattr(value, "optimize_sync", None))]
@@ -80,7 +80,7 @@ def test_sdk_still_rejects_a_base_evaluator(tmp_path: Path) -> None:
         async def evaluate(self, func, config, dataset, **kwargs):
             raise NotImplementedError
 
-    write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+    write_prepared_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
     path = str(Path("eval/qa.jsonl").resolve())
     outcome = {}
 

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7eb31b5eb7ad560d",
+  "doc_hash": "a81eb2db84540d62",
   "reference_hashes": {
     "references/evaluator-templates.md": "d51e083d87ad94a0"
   },
@@ -292,7 +292,7 @@
       "run_id": null,
       "timestamp": "2026-11-09T00:00:00Z",
       "doc_before_hash": "227081333421af5b",
-      "doc_after_hash": "7eb31b5eb7ad560d",
+      "doc_after_hash": "a81eb2db84540d62",
       "note": "Round 4: custom templates validate the whole dataset's EFFECTIVE ids (metadata.id overrides id) once at import, before any model call; built-in id-less flows stay valid; local outcome-matrix collision explained separately from the canonicalized wire id.",
       "source_type": "agent"
     }
