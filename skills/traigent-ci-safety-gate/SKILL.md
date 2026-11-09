@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.14"
+  version: "1.0.15"
 ---
 
 # CI Safety Gate
@@ -141,12 +141,25 @@ approves.
 
 ```python
 # In the separate candidate process that ran the search (optimize_sync() already applied the
-# winner to that process's instance; apply=False is currently rejected), export the candidate:
-my_function.export_config("candidate_config.json")
+# winner to that process's instance; apply=False is currently rejected), export the candidate
+# only if the search result clears the bar and the winner is not tied with the runner-up:
+results = my_function.optimize_sync()
+
+# best_config_margin exists from SDK 0.26.0; getattr keeps this runnable on the 0.24.0 floor (verdict None there)
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
+if results.best_score is None or results.best_score < 0.85:
+    print(f"Score {results.best_score} below threshold; candidate not exported")
+elif verdict == "statistical_tie":
+    print(f"Score {results.best_score:.2%} but the winner is tied with the runner-up; candidate not exported")
+else:
+    my_function.export_config("candidate_config.json")
+    print(f"Exported candidate with search score {results.best_score:.2%}")
 
 # Serving process, only after the holdout/promotion gate passes and the user approves:
 # my_function.set_config(<flat candidate config read from candidate_config.json>)
 ```
+
+Both checks run on the search slice and only decide whether to export a candidate. In your reply, say that promotion still needs a candidate-vs-incumbent comparison on a holdout the search never scored (PromotionGate below), and that until then the serving process keeps the incumbent.
 
 ## The Two CI Checks
 

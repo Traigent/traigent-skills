@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3e0955278da4c6b7",
+  "doc_hash": "eab38a0df6a741de",
   "reference_hashes": {
     "references/gate-workflow.md": "3c7a8e4099db45ba",
     "references/in-run-safety.md": "5a47cd85dda26146"
@@ -251,6 +251,17 @@
       "doc_before_hash": "69d2b168c4e91635",
       "doc_after_hash": "3e0955278da4c6b7",
       "note": "Round 6: the gate fails closed - only an explicit promote passes (reject, no_decision, errors and a missing holdout exit non-zero); holdout-vs-tuning reason stated at the code.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-margin-gate",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "3e0955278da4c6b7",
+      "doc_after_hash": "eab38a0df6a741de",
+      "note": "Candidate snippet gates on score threshold and runner-up tie; reply names the holdout promotion step.",
       "source_type": "agent"
     }
   ]
