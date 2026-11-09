@@ -104,7 +104,7 @@ A key the backend **rejects** never falls back — the run stops with a category
 
 1. Keep the local result (it is complete) and read `persistence_status` and the error (`persistence_error`) from the result or the run log. Do not rerun.
 2. Check the portal for that session id. A run that raised after paid trials carries `exc.sync_session_id` (SDK 0.27.0+; below that, take the id from the run log).
-3. Only if the session is missing or unfinalized there, repair that one session: `traigent sync <session_id> --dry-run` first, then `traigent sync <session_id>`. Never run an unscoped `traigent local sync` or `traigent sync --all`: an offline sync can create a NEW backend session and duplicate the run.
+3. Only if the session is missing or unfinalized there, repair that one session: `traigent sync <session_id> --dry-run` first, then `traigent sync <session_id>`. Always name the session id: never pass `--all`, and never run `traigent local sync` without `--session-id`, because an offline sync can create a NEW backend session and duplicate the run.
 4. A rerun is a separate paid action. It needs the user's explicit approval and a cost cap, and only if the sync cannot recover the run.
 
 For a run that returned but did not persist, `traigent-analyze-results` → "Verify the Run Actually

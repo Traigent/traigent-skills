@@ -650,7 +650,7 @@ def test_lost_portal_sync_order_is_numbered_in_debugging_and_analyze_results() -
     for name in ("traigent-debugging", "traigent-analyze-results"):
         text = (SKILLS / name / "SKILL.md").read_text(encoding="utf-8")
         assert "traigent sync <session_id> --dry-run" in text
-        assert "Never" in text and "traigent sync --all" in text
+        assert "never pass `--all`" in text and "without `--session-id`" in text
         assert "separate paid action" in text
         portal = text.index("Check the portal for that session id")
         assert portal < text.index("traigent sync <session_id> --dry-run")

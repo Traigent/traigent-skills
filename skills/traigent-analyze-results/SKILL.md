@@ -776,7 +776,7 @@ complete while the backend session is left `RUNNING` on the portal. Follow this 
 
 1. Keep the local result; read `persistence_status` and `persistence_error`. Do not rerun.
 2. Check the portal for that session id.
-3. Only if it is missing or unfinalized, repair that one session: `traigent sync <session_id> --dry-run` first, then `traigent sync <session_id>`. Never an unscoped `traigent local sync` or `traigent sync --all`.
+3. Only if it is missing or unfinalized, repair that one session: `traigent sync <session_id> --dry-run` first, then `traigent sync <session_id>`. Always name the session id: never pass `--all`, and never run `traigent local sync` without `--session-id`.
 4. A rerun is a separate paid action: explicit user approval and a cost cap, only if sync cannot recover it. (Newer SDK builds
 — the fix merged as Traigent#1731 — also expose this as `results.persistence_failed`, a bool
 shorthand for the same check; check the metadata key directly if your installed SDK predates it.)
