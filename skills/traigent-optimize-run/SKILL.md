@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.36"
+  version: "1.0.37"
 ---
 
 # Running Traigent Optimization
@@ -588,7 +588,33 @@ print(len(results.failed_trials))      # 1
 
 ### Applying the Best Config
 
-After optimization, `func.apply_best_config(results)` locks in the winning configuration: subsequent calls to `func` use it automatically, `traigent.get_config()` inside the function returns it, and `func.current_config` exposes it from outside. Verify `results.best_score` against a threshold before applying — see `traigent-analyze-results` → Applying Best Config for the lifecycle table and the safety check. Applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (see `traigent-ci-safety-gate`).
+After optimization, for a function that is not serving live traffic, `func.apply_best_config(results)` locks in the winning configuration: subsequent calls to `func` use it automatically, `traigent.get_config()` inside the function returns it, and `func.current_config` exposes it from outside. Verify `results.best_score` against a threshold before applying — see `traigent-analyze-results` → Applying Best Config for the lifecycle table and the safety check. Applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (see `traigent-ci-safety-gate`). For a live function, use the next subsection instead.
+
+### When the live function must not change until approval
+
+`optimize()` / `optimize_sync()` applies the winner to the instance it ran on (`apply=False` is currently rejected), so run the search in a separate script or process that the server never imports, with its own decorated copy of the function:
+
+```python
+# In the separate candidate process that ran the search (optimize_sync() already applied the
+# winner to that process's instance; apply=False is currently rejected), export the candidate
+# only if the search result clears the bar and the result does not report a statistical tie:
+results = my_function.optimize_sync()
+
+# best_config_margin exists from SDK 0.26.0; getattr keeps this runnable on the 0.24.0 floor (verdict None there)
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
+if results.best_score is None or results.best_score < 0.85:
+    print(f"Score {results.best_score} below threshold; candidate not exported")
+elif verdict == "statistical_tie":
+    print(f"Score {results.best_score:.2%} but the winner is tied with the runner-up; candidate not exported")
+else:
+    my_function.export_config("candidate_config.json")
+    print(f"Exported candidate with search score {results.best_score:.2%}")
+
+# Serving process, only after the holdout/promotion gate passes and the user approves:
+# my_function.set_config(<flat candidate config read from candidate_config.json>)
+```
+
+In your reply, say that promotion still needs a candidate-vs-incumbent comparison on a holdout the search never scored (`PromotionGate`, see `traigent-ci-safety-gate`), and that until then the serving process keeps the incumbent.
 
 ### Confirm a Portal-Tracked Run Actually Synced
 
