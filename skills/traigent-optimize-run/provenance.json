@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "d78c2f857c522671",
+  "doc_hash": "ee2af1c827735e2d",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "cb123f7353702556",
@@ -555,6 +555,17 @@
       "doc_before_hash": "4affe6766e873219",
       "doc_after_hash": "d78c2f857c522671",
       "note": "Rephrase LiteLLM pricing-map fetch in terms of whether the local map is enabled (explicit False is preserved).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-10-cost-map-no-env-name",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "d78c2f857c522671",
+      "doc_after_hash": "ee2af1c827735e2d",
+      "note": "Drop the TRAIGENT_LITELLM_LIVE_PRICES name (not in SDK before 0.29.0); state the 0.29.0 floor for the default and tell the reader to set the map variable themselves.",
       "source_type": "agent"
     }
   ]
