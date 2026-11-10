@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.18"
+  version: "1.0.19"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -134,7 +134,7 @@ def result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
 class GoldSQLError(ValueError):
     """The gold query itself failed: a dataset error, not a bad candidate."""
 
-def exec_match(db_id, pred_sql, gold_sql, row_id=None) -> float:
+def exec_match(db_id, pred_sql, gold_sql, row_id) -> float:  # row_id is required: GoldSQLError names it
     g_ok, g = run(db_id, gold_sql)
     if not g_ok:
         raise GoldSQLError(f"gold SQL failed to run for row {row_id!r} (db {db_id}): fix or exclude it")

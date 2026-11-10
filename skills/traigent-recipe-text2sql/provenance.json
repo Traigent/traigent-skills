@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "db49ffbb1eb277fe",
+  "doc_hash": "3584f88133a297a4",
   "reference_hashes": {
     "references/quickstart_text2sql.md": "f87501fa221e930d"
   },
@@ -272,6 +272,17 @@
       "doc_before_hash": "acaf4bae2eec83af",
       "doc_after_hash": "db49ffbb1eb277fe",
       "note": "Example exec_match raises GoldSQLError naming the row when the gold fails to run instead of scoring the candidate 0.0.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-10-row-id-required",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "db49ffbb1eb277fe",
+      "doc_after_hash": "3584f88133a297a4",
+      "note": "Make row_id a required exec_match parameter so GoldSQLError always names the row.",
       "source_type": "agent"
     }
   ]
