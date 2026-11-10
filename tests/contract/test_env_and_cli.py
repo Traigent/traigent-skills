@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import functools
 import importlib
 import re
 import shutil
@@ -9,6 +10,17 @@ from pathlib import Path
 
 from .facts import ContractFact
 from .verifier import format_dead_teaching
+
+
+@functools.cache
+def _cli_help(executable: str, *args: str) -> tuple[bool, str]:
+    """`traigent <args> --help` once per process: every taught command shares the same help text.
+
+    Each call is a cold SDK import (seconds), and the released-SDK buckets run under a time budget.
+    Returns (returned_zero, stdout + stderr); the output is identical for identical arguments.
+    """
+    done = subprocess.run([executable, *args, "--help"], text=True, capture_output=True, check=False)
+    return done.returncode == 0, done.stdout + done.stderr
 
 
 def test_taught_traigent_env_vars_exist_in_sdk_source(
@@ -56,7 +68,9 @@ def test_taught_traigent_cli_commands_exist(
     if not executable.exists():
         located = shutil.which("traigent")
         executable = Path(located) if located else executable
-    help_text = subprocess.check_output([str(executable), "--help"], text=True)
+    ok, help_text = _cli_help(str(executable))
+    if not ok:
+        raise subprocess.CalledProcessError(1, [str(executable), "--help"], output=help_text)
     subcmd = command.split()[1]
     if _command_in_help(subcmd, help_text):
         _assert_taught_flags_exist(
@@ -65,13 +79,8 @@ def test_taught_traigent_cli_commands_exist(
         return
 
     for group in _groups_to_probe(command):
-        group_help = subprocess.run(
-            [str(executable), group, "--help"],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if _command_in_help(subcmd, group_help.stdout + group_help.stderr):
+        _, group_help = _cli_help(str(executable), group)
+        if _command_in_help(subcmd, group_help):
             _assert_taught_flags_exist(
                 cli_fact, executable, command, repo_root, sdk_version_label
             )
@@ -107,13 +116,7 @@ def _assert_taught_flags_exist(
     if not flags:
         return
     parts = command.split()
-    sub_help = subprocess.run(
-        [str(executable), *parts[1:2], "--help"],
-        text=True,
-        capture_output=True,
-        check=False,
-    )
-    help_text = sub_help.stdout + sub_help.stderr
+    _, help_text = _cli_help(str(executable), *parts[1:2])
     for flag in flags:
         assert flag in help_text, format_dead_teaching(
             cli_fact,
