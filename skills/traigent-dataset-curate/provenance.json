@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "0012b63cc058c74b",
+  "doc_hash": "28fc0c8d57295092",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "9d8241482ef42e2c",
@@ -66,7 +66,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "34eec3149f68cccd",
       "doc_after_hash": "363c38db65a63d3a",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -351,6 +351,17 @@
       "doc_before_hash": "6614643db7a30f9e",
       "doc_after_hash": "0012b63cc058c74b",
       "note": "Round 4: published example rows carry ids; small-n interval labelled approximate and routed to paired evidence (no noise rule).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-10-good-enough-reply",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "0012b63cc058c74b",
+      "doc_after_hash": "28fc0c8d57295092",
+      "note": "Add a reply checklist for 'is my eval set good enough': measured facts, no edits, no upload, holdout never tuned and dedupe-first reason, plain verdict.",
       "source_type": "agent"
     }
   ]

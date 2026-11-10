@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.17"
+  version: "1.0.18"
 ---
 
 # CI Safety Gate
@@ -81,6 +81,11 @@ leaves under `traigent-runs/`) — that is held-back and non-blind, and on ten r
 only separate a very large lift — a modest one reads `no_decision`; build a sealed slice sized for the effect you require. The gate judges
 **one** committed candidate: re-running it over several candidates until one promotes turns the
 holdout into a selection set and forfeits the guarantee. Traigent does not manage this split for you.
+
+In your reply, say why the gate reads the holdout file and not the tuning file: the candidate was
+selected on the tuning rows, so its tuning score is optimistic and comparing on them would only
+re-measure the selection. Name both files (for example `eval/holdout.jsonl` versus
+`eval/tuning.jsonl`) and say which one the optimization saw.
 
 ```python
 from traigent.tvl.models import PromotionPolicy
