@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.41"
+  version: "1.0.42"
 ---
 
 # Running Traigent Optimization
@@ -40,13 +40,11 @@ a local Ollama endpoint, follow these steps:
    `False` and `mock_llm_mixed` absent. Positive latencies and cost are further cues. Identical outputs
    across trials can be a real deterministic run, so they only mean look at that provenance. Offline
    itself guarantees only that the Traigent backend sees nothing.
-6. Name what other outbound traffic could remain, or say there is none. Traigent sets
-   `LITELLM_LOCAL_MODEL_COST_MAP=True` by default when it is imported, so LiteLLM's pricing-map
-   fetch is avoided if `traigent` is imported before `litellm`, or if you set the variable
-   explicitly first (the template below does). The fetch happens only if `litellm` is imported
-   before `traigent` with the variable unset, or if `TRAIGENT_LITELLM_LIVE_PRICES` is truthy
-   (1/true/yes/on) and `LITELLM_LOCAL_MODEL_COST_MAP` is not set (that flag only skips Traigent's
-   default; it never clears a map variable you already set). Also confirm the script adds no non-local endpoint and no API key.
+6. Name what other outbound traffic could remain, or say there is none. LiteLLM fetches its pricing
+   map at import unless `LITELLM_LOCAL_MODEL_COST_MAP` is truthy at that moment. Importing `traigent`
+   first sets it to `True`, unless it is already set (to any value, so `False` stays) or
+   `TRAIGENT_LITELLM_LIVE_PRICES` is truthy; so make sure it is `True`, as the template below does.
+   Also confirm the script adds no non-local endpoint and no API key.
 
 ```python
 import os

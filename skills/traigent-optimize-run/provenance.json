@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4affe6766e873219",
+  "doc_hash": "d78c2f857c522671",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "cb123f7353702556",
@@ -544,6 +544,17 @@
       "doc_before_hash": "c0b8b644d85a1438",
       "doc_after_hash": "4affe6766e873219",
       "note": "Correct the TRAIGENT_LITELLM_LIVE_PRICES claim: it only skips the default pinning, never clears an explicit LITELLM_LOCAL_MODEL_COST_MAP.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-10-cost-map-truthy",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "4affe6766e873219",
+      "doc_after_hash": "d78c2f857c522671",
+      "note": "Rephrase LiteLLM pricing-map fetch in terms of whether the local map is enabled (explicit False is preserved).",
       "source_type": "agent"
     }
   ]
