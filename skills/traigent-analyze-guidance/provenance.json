@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "fc117cb1f8181a2e",
+  "doc_hash": "576a8a27b69bdb23",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
     "references/optimization-principles.md": "016bf557d2893cad",
-    "references/preflight.md": "5c9b51e3e6f5ca18",
+    "references/preflight.md": "ea2df0cb3da7d2c3",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -499,6 +499,17 @@
       "doc_before_hash": "0f73fac7f68c0751",
       "doc_after_hash": "fc117cb1f8181a2e",
       "note": "Add a mode-arbitration row for a finished run missing from the portal: no rerun, quote persistence evidence, check session id, no sync --all, rerun is separate approved paid action; preflight reference says rerun only if local result cannot be used.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-10-lost-sync-evidence-sources",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "fc117cb1f8181a2e",
+      "doc_after_hash": "576a8a27b69bdb23",
+      "note": "Lost-sync row: evidence comes from results.metadata/sync_session_id, exc.sync_session_id or a saved export; fields may be missing; portal session id distinct from sync_session_id. Reference hash refreshed.",
       "source_type": "agent"
     }
   ]

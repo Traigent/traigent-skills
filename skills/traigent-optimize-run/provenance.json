@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "bf66ace01b8012d7",
+  "doc_hash": "c0b8b644d85a1438",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "cb123f7353702556",
@@ -522,6 +522,17 @@
       "doc_before_hash": "a681ffb185de8e7d",
       "doc_after_hash": "bf66ace01b8012d7",
       "note": "Add reply duty to name remaining outbound traffic (LiteLLM pricing map) for offline local-model runs.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-10-offline-pricing-map-default",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "bf66ace01b8012d7",
+      "doc_after_hash": "c0b8b644d85a1438",
+      "note": "Correct step 6: Traigent defaults the LiteLLM local cost map on import; fetch only if litellm imports first or live prices are requested.",
       "source_type": "agent"
     }
   ]

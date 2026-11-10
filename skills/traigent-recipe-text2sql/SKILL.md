@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.17"
+  version: "1.0.18"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -131,9 +131,15 @@ def result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
             return True
     return False
 
-def exec_match(db_id, pred_sql, gold_sql) -> float:
-    p_ok, p = run(db_id, pred_sql); g_ok, g = run(db_id, gold_sql)
-    return 1.0 if (p_ok and g_ok and result_eq(p, g, "order by" in gold_sql.lower())) else 0.0
+class GoldSQLError(ValueError):
+    """The gold query itself failed: a dataset error, not a bad candidate."""
+
+def exec_match(db_id, pred_sql, gold_sql, row_id=None) -> float:
+    g_ok, g = run(db_id, gold_sql)
+    if not g_ok:
+        raise GoldSQLError(f"gold SQL failed to run for row {row_id!r} (db {db_id}): fix or exclude it")
+    p_ok, p = run(db_id, pred_sql)   # a candidate that fails to execute scores 0.0
+    return 1.0 if (p_ok and result_eq(p, g, "order by" in gold_sql.lower())) else 0.0
 ```
 SPIDER projections are 1–4 columns, so brute-force permutation is fine; for wide
 results constrain the permutation space per-column as test-suite eval's

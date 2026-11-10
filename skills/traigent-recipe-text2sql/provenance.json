@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "acaf4bae2eec83af",
+  "doc_hash": "db49ffbb1eb277fe",
   "reference_hashes": {
     "references/quickstart_text2sql.md": "f87501fa221e930d"
   },
@@ -261,6 +261,17 @@
       "doc_before_hash": "305d5abada3fb770",
       "doc_after_hash": "acaf4bae2eec83af",
       "note": "Empty-gold scoring: gold errors are dataset errors, prediction errors scored 0.0 and recorded separately, state the limitation and recommend fixture rows or a second probe DB.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-10-gold-error-example",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "acaf4bae2eec83af",
+      "doc_after_hash": "db49ffbb1eb277fe",
+      "note": "Example exec_match raises GoldSQLError naming the row when the gold fails to run instead of scoring the candidate 0.0.",
       "source_type": "agent"
     }
   ]

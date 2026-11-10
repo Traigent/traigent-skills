@@ -59,7 +59,10 @@ then sync that one session: `traigent sync <session_id>` (or `traigent local syn
 <session_id>`; add `--dry-run` first to preview). Never use the whole-store `--all` (or an
 unscoped `traigent local sync`, which syncs every pending session). Re-running the optimization is
 a separate paid action that needs the user's approval; it is only for the case where the local
-result cannot be uploaded or used. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
+result cannot be uploaded or used. Read the evidence from the returned result's `results.metadata`
+(`persistence_status`, `persistence_error`, `source`) and `results.sync_session_id` (on an exception,
+`exc.sync_session_id`), or from an export the user saved; a field may be missing, and then say so.
+Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
 run.
 
 ## Run naming

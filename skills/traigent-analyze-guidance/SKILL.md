@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.17"
+  version: "1.2.18"
 ---
 
 # Traigent Analyze Guidance
@@ -88,7 +88,7 @@ required — it always is.
 |---|---|
 | About to design or launch a run (any run, always) | **A** — fetch and confirm the service run-plan |
 | A portal-tracked run just completed | **B** — fetch the backend decision brief (`analytics_get_run_decision_brief`) first |
-| The run finished (and was paid for) but is not in the portal | **None of A/B/C yet.** Do not rerun. Read `results_local.json` / the run log for `persistence_status`, `persistence_error`, `source` and the session id; quote them in your reply; tell the user to check the portal for that session id; never `traigent sync --all`. Say in your reply: a rerun is a separate paid action that needs the user's explicit approval and a cost cap, and is only for when the local result cannot be uploaded or used. Details: "Execution selector and portal tracking" below, and `traigent-analyze-results` → "Verify the Run Actually Persisted" |
+| The run finished (and was paid for) but is not in the portal | **None of A/B/C yet.** Do not rerun. Get the evidence from the returned result's `results.metadata` (`persistence_status`, `persistence_error`, `source`) and `results.sync_session_id` (on an exception, `exc.sync_session_id`), or from an export the user explicitly saved (the SDK writes a results file only when `save_to` was passed; the fallback log line does not carry `persistence_status`). A field may be missing: if so, say so in your reply instead of guessing. Quote what you found, keeping the portal session id (what the user looks up in the portal) distinct from `sync_session_id` (the local-store id used by `traigent sync`). Tell the user to check the portal for that session; never `traigent sync --all`. Say in your reply: a rerun is a separate paid action that needs the user's explicit approval and a cost cap, and is only for when the local result cannot be uploaded or used. Details: "Execution selector and portal tracking" below, and `traigent-analyze-results` → "Verify the Run Actually Persisted" |
 | `offline=True`, no backend access, the service payload is unavailable, or the service flagged local evidence for diagnosis | **C** — local diagnosis, one hypothesis |
 
 Portal-tracked runs go through Mode B first. Pre-run is always Mode A. Mode C
