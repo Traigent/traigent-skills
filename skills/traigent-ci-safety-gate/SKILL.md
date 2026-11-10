@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.17"
 ---
 
 # CI Safety Gate
@@ -98,12 +98,22 @@ objectives = [
 ]
 
 gate = PromotionGate(policy=policy, objectives=objectives)
+# Score both configs on HOLDOUT rows only: the tuning rows picked the winner, so its score there is optimistic.
 decision = gate.evaluate(
     incumbent_metrics={"accuracy": [0.81, 0.82, 0.80], "latency_ms": [880, 900, 870]},
     candidate_metrics={"accuracy": [0.84, 0.85, 0.83], "latency_ms": [910, 905, 920]},
 )
 print(decision.decision, decision.reason)
+# Fail closed: only an explicit "promote" passes; "reject", "no_decision" and anything else stop here.
+if decision.decision != "promote":
+    raise SystemExit(f"gate failed closed: {decision.decision}: {decision.reason}")
 ```
+
+**The gate script exits non-zero unless the decision is exactly `promote`.** `reject` and
+`no_decision` (not enough evidence either way) both fail the job, and so do an exception from
+`evaluate`, a missing or empty holdout file, and a missing or NaN metric. Never write
+`if decision.decision == "reject": fail` and let everything else exit 0: that makes an inconclusive
+comparison look like a pass.
 
 A statistical gate can tell you whether the candidate has enough evidence to promote, reject, or remain undecided on the measured evaluation dataset. It cannot prove universal safety, discover unmeasured regressions, or rescue a biased evaluator.
 
@@ -130,13 +140,26 @@ holdout/promotion gate, then apply only after the gate passes and the user
 approves.
 
 ```python
-# Export the winning config as a CANDIDATE artifact for review/gating
-my_function.export_config("candidate_config.json")
+# In the separate candidate process that ran the search (optimize_sync() already applied the
+# winner to that process's instance; apply=False is rejected from SDK 0.31.0), export the candidate
+# only if the search result clears the bar and the result does not report a statistical tie:
+results = my_function.optimize_sync()
 
-# After the holdout/promotion gate passes and the user approves:
-my_function.apply_best_config(results)
-answer = my_function("What is Python?")
+# best_config_margin exists from SDK 0.26.0; getattr keeps this runnable on the 0.24.0 floor (verdict None there)
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
+if results.best_score is None or results.best_score < 0.85:
+    print(f"Score {results.best_score} below threshold; candidate not exported")
+elif verdict == "statistical_tie":
+    print(f"Score {results.best_score:.2%} but the winner is tied with the runner-up; candidate not exported")
+else:
+    my_function.export_config("candidate_config.json")
+    print(f"Exported candidate with search score {results.best_score:.2%}")
+
+# Serving process, only after the holdout/promotion gate passes and the user approves:
+# my_function.set_config(<flat candidate config read from candidate_config.json>)
 ```
+
+Both checks run on the search slice and only decide whether to export a candidate. In your reply, say that promotion still needs a candidate-vs-incumbent comparison on a holdout the search never scored (PromotionGate above), and that until then the serving process keeps the incumbent.
 
 ## The Two CI Checks
 

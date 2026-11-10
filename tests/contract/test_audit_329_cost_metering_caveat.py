@@ -72,7 +72,7 @@ def test_sdk_still_meters_only_the_first_call_per_row(
 ) -> None:
     body = """
     install_replies(lambda model, messages: "paris")
-    write_rows("qa.jsonl", [{"input": {"question": f"Q{i}?"}, "output": "paris"} for i in range(3)])
+    write_prepared_rows("qa.jsonl", [{"input": {"question": f"Q{i}?"}, "output": "paris"} for i in range(3)])
     costs = {}
     for reps in (1, 5):
         ns = load_block(sys.argv[1])

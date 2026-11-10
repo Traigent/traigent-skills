@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "49bf0abe9aab167e",
+  "doc_hash": "6995d2a15f8bd57b",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/environment-variables.md": "c50fe19585bb0888",
-    "references/first-value-fallback.md": "44ea4e6b23f8632d",
+    "references/first-value-fallback.md": "3c78730d2f89aec2",
     "references/installation-extras.md": "21a597989700969a",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
@@ -133,7 +133,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "d1fcc507af83c0ee",
       "doc_after_hash": "1bceeccc65431713",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -462,6 +462,94 @@
       "doc_before_hash": "f219a4a11b985f77",
       "doc_after_hash": "49bf0abe9aab167e",
       "note": "Mock runs are priced and gated on SDK 0.31.0+ (#463); reply-parsing scorers fail every trial under mock (#464); raw-client mock scope version-qualified for SDK 0.31.0 (#465).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "49bf0abe9aab167e",
+      "doc_after_hash": "0712db97c34d3562",
+      "note": "Literal first run refuses to overwrite existing files; fallback clears both offline controls; tiny-probe wording; lifecycle-skill reference fixed; description boundary.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "0712db97c34d3562",
+      "doc_after_hash": "684612c68940f382",
+      "note": "Round 2: CLI loads the project .env itself (verified 0.33.0); removed the mandatory shell-sourcing of .env.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "684612c68940f382",
+      "doc_after_hash": "7ae4f47040753be9",
+      "note": "Round 3: overwrite ban scoped to the literal demo files; existing projects get a dry run in a new file with the exact command.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "7ae4f47040753be9",
+      "doc_after_hash": "d7460d04670420b2",
+      "note": "Round 8: raw-client dry-run steps (litellm or stubbed dry_run.py), never a first paid run; question/answer rows converted to input rows.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "d7460d04670420b2",
+      "doc_after_hash": "6586bfb41d65ef24",
+      "note": "Round 8b: real-run commands carry max_trials and are never started from __main__.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "6586bfb41d65ef24",
+      "doc_after_hash": "51abdd24f4fcf06d",
+      "note": "Round 9: stub dry run installs the fake client before the user's module imports, reports a measured zero cost only inside the script, leaves cost limits and strict accounting alone.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "51abdd24f4fcf06d",
+      "doc_after_hash": "47f142c85d233e93",
+      "note": "Round 10-11: recovery order uses the per-session sync only; dry-run template restricted to sync agents, private-attribute wrapper labelled version-bound.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-argon-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "47f142c85d233e93",
+      "doc_after_hash": "6995d2a15f8bd57b",
+      "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
       "source_type": "agent"
     }
   ]

@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9c111e44caeb49d4",
+  "doc_hash": "0f73fac7f68c0751",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
-    "references/optimization-principles.md": "545f6e354e23dbe0",
-    "references/preflight.md": "3c101bb6ebfaf77c",
+    "references/optimization-principles.md": "016bf557d2893cad",
+    "references/preflight.md": "5adbc12c9738ef36",
     "references/run-plan.template.md": "435ae0f8515546ad",
     "references/run-plan.txt2sql-example.md": "cbf1ca4309203dd5"
   },
@@ -422,6 +422,72 @@
       "doc_before_hash": "d20d006906f6f15a",
       "doc_after_hash": "9c111e44caeb49d4",
       "note": "Mock dry run described as no-spend but still priced on SDK 0.31.0+ (#463).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "9c111e44caeb49d4",
+      "doc_after_hash": "301468792cf69dc9",
+      "note": "Customer-owned key no longer implies local inference; plan CLI flags shown; numeric noise floors and local planning ladders removed; portal-missing guidance preserves the local result; lifecycle-skill reference fixed; description boundary.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "301468792cf69dc9",
+      "doc_after_hash": "5b6bc47155e28034",
+      "note": "Round 2: CLI loads the project .env itself (no 'CLI does not read .env' claim); P4 and preflight scrubbed of the numeric trial floor, knob-replacement procedure and tuning-slice anecdote; missing-portal-record diagnosis no longer assumes persistence-only failure.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "5b6bc47155e28034",
+      "doc_after_hash": "5b6bc47155e28034",
+      "note": "Round 3: preflight inlines per-session recovery (traigent sync <session_id> / traigent local sync --session-id), never --all (SKILL.md unchanged, no version bump).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r4",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "5b6bc47155e28034",
+      "doc_after_hash": "92ae441aee978763",
+      "note": "Round 4: removed the fixed first-run search size and the about-20 generalisation; SDK analyzer floors kept.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "92ae441aee978763",
+      "doc_after_hash": "9928ca7693ed98dc",
+      "note": "Gaps round: reply-checklist and copyable template placed where the agent acts.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "9928ca7693ed98dc",
+      "doc_after_hash": "0f73fac7f68c0751",
+      "note": "Review r7: paired comparison decides; Wilson only for binary aggregates on scored rows; output variation is a cue, mock provenance decides.",
       "source_type": "agent"
     }
   ]

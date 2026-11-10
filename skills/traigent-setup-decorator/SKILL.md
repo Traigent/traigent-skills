@@ -1,6 +1,6 @@
 ---
 name: traigent-setup-decorator
-description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming the agent with agent_name (the identity key, SDK 0.27.0+; experiment_name is its deprecated alias) and labelling one run with run_title/run_description, with no tags/metadata argument, using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s)."
+description: "Configure the @traigent.optimize() decorator with evaluation, injection, and execution options. Use when setting up eval_dataset, choosing injection_mode, choosing the optimization algorithm or offline execution, defining objectives, naming the agent with agent_name (the identity key, SDK 0.27.0+; experiment_name is its deprecated alias) and labelling one run with run_title/run_description, with no tags/metadata argument, using EvaluationOptions/InjectionOptions/ExecutionOptions, or integrating custom evaluators. Provide the agent function + its path, an eval dataset, and the objective(s). For installation and a first run use traigent-setup-quickstart."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.21"
+  version: "1.0.30"
 ---
 
 # Traigent Decorator Setup
@@ -217,6 +217,11 @@ Configure how Traigent evaluates each trial using `EvaluationOptions`.
 > def score(output: str, expected: str) -> float: ...
 > ```
 
+> **Dataset rows need `input` (or `input_data`).** Rows with `question` / `answer` keys fail with
+> "Missing 'input' (or 'input_data') field". Write a NEW converted file with rows like
+> `{"input": {"question": "..."}, "output": "..."}` (keys of `input` = your function's parameter names; the
+> gold key may be `answer`), leave the original untouched, point `eval_dataset` at the new file, and tell the user.
+
 ### Fields
 
 | Field | Type | Description |
@@ -363,16 +368,24 @@ No `get_config()` call. Traigent rewrites the function's AST per trial — but o
 def my_func(query: str) -> str:
     model = "gpt-4o-mini"      # seamless rewrites THIS local assignment per trial
     temperature = 0.5          # a matching local name (or parameter) is required
-    return litellm.completion(
+    response = litellm.completion(
         model=model,
         temperature=temperature,
         messages=[{"role": "user", "content": query}],
     )
+    return response.choices[0].message.content
 ```
 
 > **A literal in the call is not rewritten.** `model="gpt-4o-mini"` written directly as a keyword argument, a value from `os.environ.get(...)`, or a dict-built kwarg has no matching local name, so the SDK logs `Seamless provider found no injectable targets for <fn>; no local assignment or parameter matched configuration keys [...], so the function ran with original values` and every trial runs the original configuration — and the dry-run still passes (fail-closed behaviour is tracked in Traigent/Traigent#2298). Before any paid run, prove the value reaching the provider call changes across two configurations (mock mode, diff the request); if it does not, use context mode.
 
 > **Mock intercepts this example only because it calls `litellm.completion`.** Mock mode covers LiteLLM/LangChain calls only — a raw `openai` / `anthropic` client in the body gets no canned reply, but on SDK 0.31.0+ its HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed. Clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 such calls reach the provider and bill. For a genuinely free dry-run of a seamless-mode function, keep `litellm.completion` in the body or run fully offline (`offline=True`, no keys).
+
+**If the agent uses a raw provider client (`openai.OpenAI()`, `anthropic.Anthropic()`), do this:**
+
+1. Say so: mock mode cannot intercept this client, so a plain mock dry run would give no canned reply.
+2. Offer, and ask before doing it: switch the call to `litellm.completion(model=..., messages=...)`. Then mock mode works unchanged.
+3. Or, if the agent is synchronous and uses `openai.OpenAI()` (only then; for `anthropic`, `AsyncOpenAI` or `async def` agents use the `litellm.completion` path of option 2), without touching the user's files, write a NEW `dry_run.py` that stubs the client (template in `traigent-setup-quickstart`, "Mock scope"). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run against a fake client instead of the provider. Give the user the command `python dry_run.py`.
+4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap: every real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()` / `optimize_sync()`, and no `__main__` block starts a paid run by default.
 
 ## Execution Options
 
@@ -381,7 +394,7 @@ See `references/execution-modes.md` for the full reference.
 
 ### Tiny Real Cost and KPI Probe
 
-After mock/dry-run validation passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired — the provider may still bill), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, wire it before scaling up — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, `TRAIGENT_STRICT_COST_ACCOUNTING`).
+After mock/dry-run validation passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired — the provider may still bill), and each trial's `metrics` must contain the declared objectives with real, finite, populated values. Uniform scores (all `0.0` or all `1.0`) on a 1-2 example probe are an investigation cue, not proof of broken wiring: check the scorer on a known-good and a known-bad answer, and do not alter a correct scorer to manufacture variation. If a cost or missing-objective surface fails, wire it before scaling up — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, `TRAIGENT_STRICT_COST_ACCOUNTING`).
 
 > **Real LLM runs require the user's approval — the SDK's cost handshake is conditional.** It
 > prompts only when the pre-run estimate exceeds `TRAIGENT_RUN_COST_LIMIT` (default $2.00) or
@@ -413,12 +426,20 @@ def my_func(query: str) -> str:
 | `algorithm="auto"` (default) | Traigent cloud smart optimizer proposes trials; your agent/LLM calls run in your environment. Results sync to the portal. |
 | `algorithm="grid"` / `"random"` | Local search in the SDK. Results still sync to the portal unless `offline=True`. |
 | `algorithm="bayesian"`/`"tpe"`/`"optuna*"`/`"cmaes"`/`"nsga2"` | Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): supported names (`bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random`) bind to the typed backend Optuna strategy on authenticated connected runs; unsupported names (`nsga2`/`cmaes`) fail fast with a capability message (Traigent/Traigent#1752, #1758). Never local: `ConfigurationError` with `offline=True`, `OptimizationError` from the local registry. Use `"auto"` for the default connected smart path; use `"grid"`/`"random"` only for explicit local/offline search. |
-| `offline=True` | Fully local, **zero backend egress**. Results are not synced to the portal. |
+| `offline=True` | Fully local, **zero Traigent backend egress**. Results are not synced to the portal. It stops only Traigent traffic: model calls still run for real (local endpoint or provider), and it is independent of mock mode. Tell the user this when you keep it. |
 
-The synced path sends configuration IDs and numeric metrics for portal result history, not
-example inputs/outputs/prompts. Use `offline=True` only when zero backend traffic is required; a
+The synced path sends the search space, configuration values and numeric metrics for portal result
+history. Configuration values can contain tuned prompt text, so keep confidential prompt variants
+behind content-free IDs resolved locally (or use `offline=True`). Use `offline=True` only when zero backend traffic is required; a
 fully no-network run also needs `LITELLM_LOCAL_MODEL_COST_MAP=True` set before `litellm` is imported
 (see `references/execution-modes.md`).
+
+**Confidential prompt text or other private tuned values.** When the user says prompt text (or any value you would tune) must stay private and also wants the run in the portal:
+1. Tune an opaque id, e.g. `configuration_space={"prompt_id": ["a", "b", "c"]}`, and load the text locally inside the function from `traigent.get_config()["prompt_id"]`. Never put the text itself in `configuration_space` or `default_config`, and never copy it into new files or your reply.
+2. In your reply, include this sentence (adapt the key name): "On a portal-tracked run, Traigent receives the search space and every trial's configuration values, so if the prompt text itself were a config value it would leave your network; that is why the run tunes `prompt_id` and your code loads the text locally." Do not shorten this to "only IDs are sent": that hides the reason.
+3. Say what does not leave as text: dataset rows and model outputs. Per-example ids are sent, and when a project API key is set, keyed digests (HMAC) of each example and output are sent too.
+4. State the trade-off: `offline=True` sends nothing to Traigent, but then the run does not appear in the portal.
+
 To optimize an external HTTP/MCP service, put the service call in your decorated function or
 custom evaluator; keep optimization strategy on the same `algorithm`/`offline` knobs.
 
@@ -475,7 +496,8 @@ def answer_question(question: str) -> str:
 # Run optimization
 results = answer_question.optimize_sync(max_trials=10, algorithm="random")
 
-# Apply best configuration for production
+# optimize_sync() already applied a nonempty winner to this instance; this reapplies it.
+# To keep an incumbent serving, search in a separate candidate process (see traigent-analyze-results).
 answer_question.apply_best_config(results)
 
 # Use in production

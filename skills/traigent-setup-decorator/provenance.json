@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "4ffc1e0dce2cb9c7",
+  "doc_hash": "b8f16a7cbf1de7e3",
   "reference_hashes": {
     "references/agent-identity.md": "16206658c40f65e2",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/evaluation-options.md": "f766d4df828a1ade",
-    "references/execution-modes.md": "9d797be6dae9c6e1",
+    "references/execution-modes.md": "099fb0a54b6c3534",
     "references/injection-modes.md": "597e4e1b09b63279",
     "references/task-type.md": "e6201449c6f90853",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
@@ -92,7 +92,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "7af2edc441c2c350",
       "doc_after_hash": "d0f6a46c79384fd9",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -287,6 +287,105 @@
       "doc_before_hash": "7bedc6439953584d",
       "doc_after_hash": "4ffc1e0dce2cb9c7",
       "note": "agent_name is the identity key and experiment_name its deprecated alias; run_title/run_description label one run (SDK 0.27.0+), new references/agent-identity.md (#468); raw-client mock scope version-qualified (#465).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "4ffc1e0dce2cb9c7",
+      "doc_after_hash": "c582eeae8beda7c2",
+      "note": "Seamless example returns message content; config values (prompt text) cross to the backend on synced runs; reapply comment; description boundary.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "c582eeae8beda7c2",
+      "doc_after_hash": "97446845d1009f59",
+      "note": "Round 2: uniform probe scores are an investigation cue, matching optimize-run and quickstart.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "97446845d1009f59",
+      "doc_after_hash": "b29977d245b3a62e",
+      "note": "Gaps round: reply-checklist and copyable template placed where the agent acts.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "b29977d245b3a62e",
+      "doc_after_hash": "823540bf658ccc87",
+      "note": "Round 8: raw-client dry-run steps (litellm or stubbed dry_run.py), never a first paid run; question/answer rows converted to input rows.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "823540bf658ccc87",
+      "doc_after_hash": "f152b67b561dd40c",
+      "note": "Round 8b: real-run commands carry max_trials and are never started from __main__.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "f152b67b561dd40c",
+      "doc_after_hash": "8ce938c46f165c04",
+      "note": "Round 9: stub dry run installs the fake client before the user's module imports, reports a measured zero cost only inside the script, leaves cost limits and strict accounting alone.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-private-prompt",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "8ce938c46f165c04",
+      "doc_after_hash": "3f60e5af6791ad84",
+      "note": "Tell the user what a connected run sends when prompt text must stay private.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-private-prompt-quote",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "3f60e5af6791ad84",
+      "doc_after_hash": "bfe8e8cc10b82aeb",
+      "note": "Point 2 gives the exact boundary sentence, keeping the counterfactual.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-argon-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "bfe8e8cc10b82aeb",
+      "doc_after_hash": "b8f16a7cbf1de7e3",
+      "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
       "source_type": "agent"
     }
   ]

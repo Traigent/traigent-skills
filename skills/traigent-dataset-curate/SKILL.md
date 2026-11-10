@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.16"
+  version: "1.1.19"
 ---
 
 # Traigent Curate Dataset
@@ -66,7 +66,7 @@ Inventory real examples before synthesizing:
 - Logs and traces: sample real inputs, then redact secrets and PII before labeling.
 - Failure reports: keep the original failure input, expected behavior, and the bug class in metadata.
 
-Minimum starting counts:
+Starting counts (planning heuristics, not requirements; judge the actual evidence for your task):
 
 | Use | Count | Notes |
 |---|---:|---|
@@ -77,15 +77,24 @@ Minimum starting counts:
 | Rarer class (the positive, failing, or minority case), per slice | 20+ tuning, 30+ holdout | A row count says nothing about how many rows carry the case the metric rewards. |
 
 **Enough events to separate two configurations.** For a metric measured over the rarer class (its
-recall, say), a rate that rests on `k` such rows moves `100/k` points per row: 20 rows is a 5-point
-step, 30 rows a 3-point step. These counts are a floor, not a guarantee: sampling noise on `k` rows
-is about `50/sqrt(k)` points per rate at a 50% rate (roughly 11 points at k=20, 9 at k=30), so a lift
-of a few steps can still be noise. Below the floor no run can separate the configurations, and the
-decision brief reports "not separated from noise" after the money is spent. Count the rarer class in
-**each** slice before a paid run (`--label-field` in `traigent-setup-audit` counts it inside a
-structured gold value). Below the minimum, grow the rarer class first or run only as a smoke
-check; a slice with 0 rows of a class cannot score it at all. The same arithmetic runs after the
-run in `traigent-analyze-results` ("Is the Delta Real?").
+recall, say), a rate that rests on `k` such rows moves in steps of `100/k` points per row, and
+sampling noise on so few rows can be as large as a small lift. These counts are planning
+heuristics, not guarantees: a small paired set may still show clear differences, and a large one
+may not. Count the rarer class in **each** slice before a paid run (`--label-field` in
+`traigent-setup-audit` counts it inside a structured gold value); with few rows of a class, grow
+it first or treat the run as a smoke check; a slice with 0 rows of a class cannot score it at
+all. Assess the paired evidence after the run in `traigent-analyze-results` ("Is the Delta Real?").
+
+**Illustrative arithmetic, not a threshold.** On a set of `n = 12` rows, one row moves accuracy by
+`100/12`, about 8 points, and an approximate 95% binomial interval around one observed accuracy of
+0.5 is roughly plus or minus 28 points (`1.96 * sqrt(0.5 * 0.5 / 12)`). That interval describes how
+well a single accuracy is pinned down. It says nothing about the difference between two
+configurations scored on the same rows: judge that with the paired evidence in
+`traigent-analyze-results` ("Is the Delta Real?"), not from this interval. Say how coarse the set is
+when you report.
+
+**Dedupe before splitting**, so a duplicate row cannot land on both sides of the tuning/holdout
+split and quietly leak the holdout into the search.
 
 Prefer fewer well-labeled examples over many vague examples. Every row should have a reason to exist: common path, edge case, high-value customer path, known failure, or safety-critical path.
 
@@ -129,18 +138,18 @@ keep extending its working copy rather than the original.
 
 ## JSONL format and holdout discipline
 
-Use one JSON object per line. Put model inputs under `input` or `input_data`, the expected answer under `expected_output` or an accepted alias, and non-label context in `metadata`.
+Use one JSON object per line. Give every row a stable, unique top-level `"id"` (assigned once, kept when rows are reordered or edited): the custom-evaluator templates in `traigent-eval-build` require it and validate the whole file before any model call; for an existing id-less file run its `assign_row_ids`. Built-in id-less flows still work. Put model inputs under `input` or `input_data`, the expected answer under `expected_output` or an accepted alias, and non-label context in `metadata`.
 
 `eval/tuning.jsonl` — the file `eval_dataset` names:
 
 ```json
-{"input": {"question": "What is the refund window for annual plans?"}, "expected_output": "Annual plans are refundable within 30 days.", "metadata": {"split": "tune", "source": "reviewed-policy", "task": "qa"}}
+{"id": "qa-001", "input": {"question": "What is the refund window for annual plans?"}, "expected_output": "Annual plans are refundable within 30 days.", "metadata": {"split": "tune", "source": "reviewed-policy", "task": "qa"}}
 ```
 
 `eval/holdout.jsonl` — a separate file the search is never given (see the holdout rules below):
 
 ```json
-{"input": {"question": "Can I pause a monthly subscription?"}, "expected_output": "Monthly subscriptions can be paused from billing settings.", "metadata": {"split": "holdout", "source": "curated-support", "task": "qa"}}
+{"id": "qa-002", "input": {"question": "Can I pause a monthly subscription?"}, "expected_output": "Monthly subscriptions can be paused from billing settings.", "metadata": {"split": "holdout", "source": "curated-support", "task": "qa"}}
 ```
 
 Declare where each row came from twice: `source` (or `provenance`) for the **question** — a word
@@ -167,7 +176,7 @@ flat `{"input": "...", "output": "..."}` is just this contract with scalar value
 So a nested, execution-scored row is fully supported:
 
 ```json
-{"input": {"question": "...", "schema": "CREATE TABLE ...", "db_id": "sales"}, "output": {"sql": "SELECT COUNT(*) FROM customers;"}, "db_path": "data/sales.db"}
+{"id": "qa-003", "input": {"question": "...", "schema": "CREATE TABLE ...", "db_id": "sales"}, "output": {"sql": "SELECT COUNT(*) FROM customers;"}, "db_path": "data/sales.db"}
 ```
 
 Here `input` → `example.input_data` (the nested dict), `output` → `example.expected_output`
@@ -197,11 +206,14 @@ Holdout rules:
 
 ### Next holdout (replacing a spent one)
 
-A holdout that was used for selection, or whose rows were inspected, is spent. Several rounds
+A holdout that was used for selection is spent, and so is one whose scores or rows were fed back
+into changes to the system. Reading rows for label quality is not by itself selection: record who
+saw what and whether it influenced any change, and say so beside the holdout number. A holdout
+reviewed only for label correctness, with no adaptation to it, can stay a holdout. Several rounds
 will spend it; replace it by this procedure instead of reusing it or inventing a rule:
 
 - Record what was spent: the row ids, their time range, and their group keys.
-- Build the new holdout only from rows never scored or inspected (normally a later time window),
+- Build the new holdout only from rows never scored or used to adapt the system (normally a later time window),
   disjoint from the spent rows by id **and** group key.
 - Spent rows may move into tuning.
 - Name the round beside every number the new holdout produces ("holdout round 2"). Numbers from
@@ -459,7 +471,7 @@ async def compute_example_scores(run_id: str) -> dict:
     # at module scope, which yields un-subscriptable coroutine objects).
     async with ExampleInsightsClient(
         backend_url="https://portal.traigent.ai/api/v1",
-        api_key="uk_...",
+        # api_key is read from the TRAIGENT_API_KEY environment variable; never inline a key.
     ) as client:
         job = await client.compute_scores(experiment_run_id=run_id)
         status = await client.get_job_status(job_id=job["job_id"])
@@ -530,9 +542,8 @@ Flag-to-curation-action guide for step 3:
 - `traigent-eval-choose-metric` - choosing objectives before labeling examples
 - `traigent-eval-build` - implementing scoring functions and custom evaluators
 - `traigent-boost-agent` - end-to-end optimization workflow for an existing agent
-- `traigent-analyze-guidance` - fetch server recommendations
-- `traigent-analyze-guidance` - fetch and confirm the next service plan
-- `traigent-analyze-guidance` - local result inspection when the user requests it
+- `traigent-analyze-guidance` - fetch and confirm the service run-plan before a run and the next-step brief after one
+- `traigent-analyze-results` - local result inspection when the user requests it
 
 <!-- Reserved: managed longitudinal-guidance region. Step-level edits must not write here. -->
 <!-- SLOW_UPDATE -->

@@ -64,6 +64,14 @@ DRIVER_PRELUDE = textwrap.dedent(
         path.parent.mkdir(exist_ok=True)
         path.write_text("".join(json.dumps(row) + "\\n" for row in rows), encoding="utf-8")
 
+    def write_prepared_rows(name, rows):
+        # The documented prep step (eval-build "Dataset prep"): write the rows exactly as
+        # published, then run assign_row_ids from the skill text. write_rows alone adds nothing.
+        write_rows(name, rows)
+        namespace = {}
+        exec(PREP_SOURCE, namespace)
+        namespace["assign_row_ids"](str(Path("eval") / name))
+
     def emit(result):
         print("RESULT " + json.dumps(result, default=str))
     """
@@ -82,8 +90,10 @@ def _python_block(path: Path, marker: str) -> str:
 
 def _run_driver(tmp_path: Path, block: str, body: str) -> dict:
     (tmp_path / "block.py").write_text(block, encoding="utf-8")
+    prep = _python_block(EVAL_BUILD, "def assign_row_ids")
     (tmp_path / "driver.py").write_text(
-        DRIVER_PRELUDE + textwrap.dedent(body), encoding="utf-8"
+        f"PREP_SOURCE = {prep!r}\n" + DRIVER_PRELUDE + textwrap.dedent(body),
+        encoding="utf-8",
     )
     home = tmp_path / "home"
     home.mkdir(exist_ok=True)
@@ -163,7 +173,7 @@ RUN_TIER = """
 # Reply and golds differ in case on both sides, so a comparator that lower-cases
 # only one side of the == still scores some rows 0.0.
 install_replies(lambda model, messages: " PARIS ")
-write_rows("qa.jsonl", [{"input": {"question": f"Capital of France? ({i})"}, "output": ["paris", "Paris"][i % 2]} for i in range(4)])
+write_prepared_rows("qa.jsonl", [{"input": {"question": f"Capital of France? ({i})"}, "output": ["paris", "Paris"][i % 2]} for i in range(4)])
 ns = load_block(sys.argv[1])
 result = ns["answer"].optimize_sync(algorithm="grid", max_trials=2)
 emit({"accuracy": [t.metrics.get("accuracy") for t in result.trials], "status": [str(t.status) for t in result.trials]})

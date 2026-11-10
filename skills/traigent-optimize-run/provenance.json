@@ -1,12 +1,13 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "608e75616080a264",
+  "doc_hash": "a681ffb185de8e7d",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "cb123f7353702556",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/execution-budget.md": "23d17308f849017b",
     "references/parallel-config.md": "2938f82d7a778d5f",
+    "references/resume-local-run.md": "f5cc90c580a80dfc",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
@@ -47,7 +48,7 @@
       "timestamp": "2026-07-05T00:00:00Z",
       "doc_before_hash": "70e6157794404a2f",
       "doc_after_hash": "aecaeb37a7a929f5",
-      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) — 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
+      "note": "add a PROTECTED never-mock-the-real-run doctrine block (verify results.total_cost > 0 and per-trial output variance before treating a run as real) \u2014 7/20 sim-testbed cells drifted into mock/offline for what was meant to be the real paid run",
       "source_type": "human"
     },
     {
@@ -135,7 +136,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "738713d34a109be3",
       "doc_after_hash": "6fdd53351932dcb7",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -422,6 +423,94 @@
       "doc_before_hash": "a3ad34a0f92f7e2c",
       "doc_after_hash": "608e75616080a264",
       "note": "Mock mode no longer described as skipping the pre-run estimate on SDK 0.31.0+; small-slice and exemption routes added (#463).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "608e75616080a264",
+      "doc_after_hash": "fccf55df7625f843",
+      "note": "Offline is not mock; mock provenance via results.metadata; tiny-probe wording; new references/resume-local-run.md for resume_from.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "fccf55df7625f843",
+      "doc_after_hash": "fccf55df7625f843",
+      "note": "Round 2: resume recipe repeats the first run's explicit local algorithm (SKILL.md unchanged, no version bump).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r6",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "fccf55df7625f843",
+      "doc_after_hash": "df045308e45c490c",
+      "note": "Round 6: explicit instruction to tell the user what offline does and does not stop.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "df045308e45c490c",
+      "doc_after_hash": "4601cfef6f6ac110",
+      "note": "Gaps round: reply-checklist and copyable template placed where the agent acts.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "4601cfef6f6ac110",
+      "doc_after_hash": "e101f1b97077d896",
+      "note": "Gaps round 2: reply must carry the verify step and the human spot-sample wording.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "e101f1b97077d896",
+      "doc_after_hash": "58db4cfd2b46d8c4",
+      "note": "Review r7: paired comparison decides; Wilson only for binary aggregates on scored rows; output variation is a cue, mock provenance decides.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-optimize-run-candidate",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "58db4cfd2b46d8c4",
+      "doc_after_hash": "a72d6d08c9af227b",
+      "note": "Guarded candidate run for live functions; apply_best_config is not the default for serving code.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-released-ci",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "a72d6d08c9af227b",
+      "doc_after_hash": "a681ffb185de8e7d",
+      "note": "Version-correct apply=False and resume_from statements for released SDKs.",
       "source_type": "agent"
     }
   ]

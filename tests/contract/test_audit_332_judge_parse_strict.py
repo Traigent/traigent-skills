@@ -48,7 +48,7 @@ def test_eval_audit_parser_fails_closed_on_malformed_scores(tmp_path: Path) -> N
 
 def test_eval_build_judge_parsers_reject_boolean_scores(tmp_path: Path) -> None:
     judge_body = """
-    write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+    write_prepared_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
     ns = load_block(sys.argv[1])
     parse = ns["parse_judge_response"]
     emit({raw: list(parse(raw)) for raw in [
@@ -73,7 +73,7 @@ def test_eval_build_judge_parsers_reject_boolean_scores(tmp_path: Path) -> None:
 
     hybrid_body = """
     install_replies(lambda model, messages: '{"score": true, "reason": "x"}')
-    write_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
+    write_prepared_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
     ns = load_block(sys.argv[1])
     emit(list(ns["judge_json_quality"]({"label": "a"}, {"label": "a"}, {"text": "t"})))
     """

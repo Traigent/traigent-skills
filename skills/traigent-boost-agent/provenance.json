@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "474f7317e7e144f2",
+  "doc_hash": "e27971f3fb79c7b6",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -68,7 +68,7 @@
       "timestamp": "2026-07-08T00:00:00Z",
       "doc_before_hash": "d383427cef704ca1",
       "doc_after_hash": "3f0f4cc4a8be4e45",
-      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class — keep core import or deep-import traigent.analytics.example_insights when plugin installed",
+      "note": "note ExampleInsightsClient DeprecationWarning (since 0.13.x): plugin does not export the class \u2014 keep core import or deep-import traigent.analytics.example_insights when plugin installed",
       "source_type": "human"
     },
     {
@@ -112,7 +112,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "4665b7cf92bd385a",
       "doc_after_hash": "be83fe17856839da",
-      "note": "repair the economics wiring after internal review findings: point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. Review repair of the economics model.",
+      "note": "repair the economics wiring after internal review findings: point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. Review repair of the economics model.",
       "source_type": "human"
     },
     {
@@ -355,6 +355,61 @@
       "doc_before_hash": "09119ea4587231be",
       "doc_after_hash": "474f7317e7e144f2",
       "note": "Mock dry run is still priced and gated on SDK 0.31.0+ (small slice or the documented mock exemption, never TRAIGENT_COST_APPROVED) (#463); a reply-parsing scorer fails every trial under mock instead of scoring 0.0, split from number-returning scorers (#464); raw openai/anthropic clients are blocked, not billed, for known provider hosts on SDK 0.31.0+ (#465).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "474f7317e7e144f2",
+      "doc_after_hash": "fff90a31fe4c551d",
+      "note": "Candidate-process promotion (apply=False is withdrawn in the SDK); mock provenance check via results.metadata; tiny-probe uniform scores are a cue not a failure; ValidationError/TypeError row; narrower description.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "fff90a31fe4c551d",
+      "doc_after_hash": "60b79e9bf1efe91b",
+      "note": "Round 8: raw-client dry-run steps (litellm or stubbed dry_run.py), never a first paid run; question/answer rows converted to input rows.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "60b79e9bf1efe91b",
+      "doc_after_hash": "e1d3cc6d63527ce2",
+      "note": "Round 8b: real-run commands carry max_trials and are never started from __main__.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-argon-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "e1d3cc6d63527ce2",
+      "doc_after_hash": "76147c542b44f4e2",
+      "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-released-ci",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "76147c542b44f4e2",
+      "doc_after_hash": "e27971f3fb79c7b6",
+      "note": "Version-correct apply=False and resume_from statements for released SDKs.",
       "source_type": "agent"
     }
   ]

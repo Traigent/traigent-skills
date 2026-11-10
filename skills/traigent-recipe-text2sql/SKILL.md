@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.13"
+  version: "1.0.16"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -28,39 +28,25 @@ the tuning slice, not a held-out result — see "The winner on this slice" below
 predate the `result_eq` comparator taught below and were not re-scored with it, so they are
 not directly comparable to a score you get from this recipe as written.
 
-## The two-run lesson arc (the demo that lands)
-> **Scope: this minimal-first teaching arc is for the text2SQL EXAMPLE only.** It starts
-> small on purpose so the *lesson* lands. For a customer's **real agent** (usually a given),
-> do the opposite — push for model variety (hi/med/low + ≥2 vendors) and SIGNIFICANT,
-> low-latency knobs from run 1, sized with `traigent-analyze-guidance` (Mode A).
+## What we observed on this benchmark (history, not a plan)
+> **Scope: this is an observation about the text2SQL EXAMPLE, not a procedure to copy.** The
+> models, knobs, space sizes and number of runs for any agent (this one included) come from the
+> service plan: ask `traigent-analyze-guidance` (Mode A) and execute the choices it returns.
 
 **Always state the permutation count** — when you present the plan, when you launch,
 and when you report results. Repeat it every time; it's how the user sees the space
-the optimizer is searching.
+the optimizer is searching. Call a search whose trial budget is much smaller than the space a
+**probe**, not coverage.
 
-**Run 1 — the raw model/cost picture (~100 perms, 3 model tiers, MINOR knobs only).**
-- **Models: span 3 tiers** — high/premium (e.g. `gpt-5.6-sol`), mid (e.g. `gpt-5.6-terra`),
-  low/cheap (e.g. `gpt-6-luna` or `claude-haiku-5-5`).
-- **Vary only MINOR knobs:** temperature{0,0.2,0.4} · fewshot_k{0,2,4} · repair{off,on} ·
-  output_mode{sql_only, allow_prose}. **Hold the high-impact STRUCTURAL levers at basic
-  defaults** — `generation_path=direct`, `schema_context=ddl_fk`, `fewshot_selector=fixed`.
-- `3 · 3 · 3 · 2 · 2 = 108` perms; `algorithm="random"` ~18 trials, plateau on. ~18 random
-  trials over 108 perms is a **probe**, not coverage — it samples roughly a sixth of the space.
-- **What it typically shows:** with nothing structural optimized, the picture is usually *"you
-  get what you pay for"* — the model tier tends to dominate and the cheap model hasn't shone
-  yet. Treat an 18-trial random read as suggestive; to actually *claim* tier dominance, add
-  trials/seeds or run a `grid` pass over the reduced space.
+In the original field run we first searched a space that varied only minor settings, and the
+picture was the usual *"you get what you pay for"*: model price tracked accuracy and the cheap
+model had not shone. When the structural levers were added to the space (how the schema is
+presented, how few-shot examples are chosen, whether the agent plans before writing SQL), the
+**low-cost model rose to match or beat the premium one at a fraction of the cost.** *That
+jump — structural optimization on a cheap model — is the Traigent value.* Treat it as a
+direction, not a promise: on a new agent report it only after enough trials (or a grid pass on a
+reduced space) to support it.
 
-**Run 2 — make the low-cost model SHINE (add the structural levers).**
-- Keep the cheap model (+ maybe one mid), and **add the high-impact knobs that were held
-  back:** `schema_context = {ddl_fk_rows, m_schema, compact}`, `fewshot_selector = similar`,
-  `generation_path = {direct, plan_then_sql}`, keep `output_mode` unpinned.
-- Keep the space at **~several hundred perms** and state the count; weight accuracy-first.
-- **What it teaches:** in the original field run, the **low-cost model leapt up to match or
-  beat the premium at a fraction of the cost.** *That jump — structural optimization on a
-  cheap model — is the Traigent value.* Expect the direction, not the exact numbers: with
-  random search, budget enough trials (or a grid pass on the pruned space) before reporting
-  the jump on a new agent.
 - Caveat: don't pair `plan_then_sql`/`cot` with `output_mode=sql_only` (they conflict —
   sql-only forbids the reasoning the plan path wants); keep output_mode unpinned so the
   optimizer pairs them correctly.
@@ -101,10 +87,12 @@ multi-DB — each example carries a `db_id`; resolve schema + connection per `db
   (`SELECT CountryCode, max(Percentage)` when only codes were asked). The
   convention forgives column *order*, never missing/extra columns.
 
-Before the first paid run, execute every gold once and exclude, by id, any that errors or
-returns zero rows: an empty gold scores 1.0 for every wrong query that also returns nothing,
-and a gold that fails to run scores 0.0 for every candidate, so neither separates
-configurations. Report accuracy on the scoreable subset with that count. Run candidate SQL
+Before the first paid run, execute every gold once and exclude, by id, any that errors: a gold
+that fails to run scores 0.0 for every candidate, so it separates nothing. Keep a gold that runs
+and returns zero rows when that is the correct answer (for example "which invoices are overdue"
+when none are): it still separates a correct query from one that wrongly returns rows. Such a
+row also credits a wrong query that returns nothing, so count the empty-answer rows and report
+them separately. Report accuracy with the excluded count. Run candidate SQL
 only on a read-only handle with a watchdog and a size cap — never on the writable DB the agent
 could mutate (the runnable reference below does both). Bound the watchdog by wall-clock time,
 not by a VM-step count: a step cap also aborts correct SQL on a real-size table and scores it 0
@@ -123,7 +111,7 @@ def result_eq(pred_rows, gold_rows, gold_has_order_by) -> bool:
     if len(pred_rows) != len(gold_rows):
         return False
     if not gold_rows:
-        return False  # an empty gold was excluded upstream; never a free point
+        return True  # both empty: a legitimate empty answer (an execution error never reaches here)
     n = len(gold_rows[0])
     if len(pred_rows[0]) != n:
         return False
@@ -153,9 +141,10 @@ of 0.28.0. Read everything in a **custom_evaluator** `(func, config, example) ->
 ExampleResult` (it can call the agent with both `question` and `db_id`). See
 `traigent-eval-build`.
 
-`ExampleResult.example_id` must be unique per example (a row id or a content
-hash) — a constant like the `db_id` collides every row, and the backend rejects
-the submission (HTTP 400), causing a local-only fallback.
+`ExampleResult.example_id` must be unique per example: use the row's stable `id`
+(see "Dataset prep: stable unique row ids" in `traigent-eval-build`). A constant
+like the `db_id`, or a hash of identical rows, gives several rows one id and they
+overwrite each other's cell in the local outcome matrix.
 
 ## 3. Configuration space — model + STRUCTURAL knobs
 
@@ -195,11 +184,11 @@ CONFIG_SPACE = {
 ## 4. Weighted objectives (ACL)
 ```python
 from traigent.core.objectives import ObjectiveSchema, ObjectiveDefinition
-OBJECTIVES = ObjectiveSchema(objectives=[
+OBJECTIVES = ObjectiveSchema.from_objectives([
     ObjectiveDefinition(name="accuracy", weight=0.80, orientation="maximize"),
     ObjectiveDefinition(name="cost",     weight=0.15, orientation="minimize"),
     ObjectiveDefinition(name="latency",  weight=0.05, orientation="minimize"),
-], weights_sum=1.0, weights_normalized={"accuracy":0.80,"cost":0.15,"latency":0.05})
+])
 ```
 Accuracy-dominant (0.80) lets a much cheaper, nearly-as-accurate config win. When
 using a custom_evaluator, emit `metrics={"accuracy":.., "cost":.., "latency":..}`
@@ -221,7 +210,7 @@ result = decorated.optimize_sync(max_trials=25, algorithm="auto")  # or: await d
 ```
 - **Selector:** `ExecutionOptions(offline=...)` + the `algorithm` arg. With `offline=False`, omit `algorithm` or use `algorithm="auto"` for the default connected path to real cloud Optuna TPE. Use `"grid"`/`"random"` only for explicit local/offline search; `offline=True` keeps everything local (zero egress), `offline=False` syncs trials to the portal. Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): supported names (`bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random`) bind to the typed backend Optuna strategy on authenticated connected runs; unsupported names (`nsga2`/`cmaes`) fail fast (Traigent/Traigent#1752, #1758). They never run locally: `offline=True` raises `ConfigurationError` and the local registry raises `OptimizationError`.
 - **Mock first (no provider spend):** set `TRAIGENT_OFFLINE_MODE=true`, call `from traigent.testing import enable_mock_mode_for_quickstart; enable_mock_mode_for_quickstart()`, then run `offline=True`, `algorithm="grid"` (named smart algorithms never run offline — connected only). **Expect all-zero accuracy in mock**: this recipe scores by execution match, and every mock call returns the same canned text, so uniform 0.0 is the expected mock signature, not a broken pipeline (wiring, sampling, and scoring paths are what the mock validates). An offline mock touches no quota; a connected mock run (`offline=False` with a key) does. On SDK 0.31.0+ a mock run is still priced against the cost cap, so mock a few rows, not the full set (or use the SDK's documented mock exemption: `TRAIGENT_COST_PREFLIGHT_MOCK_EXEMPT=1` with an explicit non-production `ENVIRONMENT`, set on the mock process alone and never exported); never set `TRAIGENT_COST_APPROVED=true` for a mock run.
-- **Real:** `TRAIGENT_RUN_COST_LIMIT` cap + `TRAIGENT_COST_APPROVED=true`, `offline=False`, omit `algorithm` or use `algorithm="auto"`; named smart selectors (`bayesian`/`tpe`/`optuna`) are selectable on authenticated connected runs on SDK 0.20.1+ (see the Selector bullet above).
+- **Real:** set `TRAIGENT_RUN_COST_LIMIT` to the user-approved cap (do not set `TRAIGENT_COST_APPROVED` up front; see `traigent-boost-agent` for the approval handshake), `offline=False`, omit `algorithm` or use `algorithm="auto"`; named smart selectors (`bayesian`/`tpe`/`optuna`) are selectable on authenticated connected runs on SDK 0.20.1+ (see the Selector bullet above).
 - **`cloud_url` gate (don't skip this):** after a `--real`/`offline=False` run, check `result.cloud_url`. A missing `cloud_url` on a run you meant to be portal-tracked is easy to miss — trials still run and a `best_config` still comes back, so it reads as success (the SDK does log a fallback warning banner, but it's easy to scroll past). Verify the link before reporting the run as cloud-tracked. When it's missing, read `result.metadata["source"]` (`"local_fallback"` vs backend-tracked) for the provenance and `result.metadata.get("persistence_rejection_reason")` / `result.metadata.get("fallback_reason")` for the cause: a `persistence_rejection_reason` (e.g. a duplicate `example_id`) means the backend REJECTED the submission — fix the request, not the credentials; a `fallback_reason` with no rejection means check `TRAIGENT_API_KEY` and connectivity instead.
 - **Dataset path:** `eval_dataset` must live under the CWD or `TRAIGENT_DATASET_ROOT` — set that env var if your data is elsewhere.
 
@@ -249,8 +238,7 @@ quoting a lift.
 
 ## See also
 - `traigent-analyze-guidance/references/optimization-principles.md` — the key recommendations to apply on every run.
-- `traigent-analyze-guidance` — build the run-plan WITH the user before every run.
-- `traigent-analyze-guidance` — after each run: the portal link, which knobs to keep/drop, and the next-run recommendation.
+- `traigent-analyze-guidance` — build the run-plan WITH the user before every run, and after each run: the portal link, which knobs to keep/drop, and the next-run recommendation.
 - `traigent-analyze-guidance/references/preflight.md` — robust setup so runs go smoothly and track to the portal.
 
 ## Two scoring lessons from a real run

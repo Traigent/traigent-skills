@@ -4,7 +4,7 @@ Run this when the Traigent service recommends the operation `check_scorer_equiva
 It asks one question: **for examples the scorer marked wrong, are the failing answers actually
 equivalent to the reference?** If many are, the scorer may be too strict on those examples.
 
-The check runs **entirely on the customer's machine**, with the customer's own model key. The
+The check runs on the customer's side with the customer's own model; nothing goes to Traigent. A customer-owned key does not make inference local: a hosted judge receives the question, reference and answers, so use a verified local endpoint when that content must stay on the machine. The
 service sends only a protocol name and a selection digest (the ids are fetched separately), and receives only a closed list of enums back. No
 question, reference or answer text ever leaves the machine toward Traigent.
 

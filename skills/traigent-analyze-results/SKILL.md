@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.31"
+  version: "1.1.38"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -76,6 +76,42 @@ explanation is a product requirement, not decoration.
 Safety is unchanged and unweakened: mock/dry-run first, **explicit user approval before any
 paid run**, an explicit spend cap, and the recorded stop rule. The service sets
 *how much* to invest; it never affects *whether* approval is required — it always is.
+
+## Before You Name a Winner or Say "Within Noise"
+
+Do these steps in order whenever the user asks which config to ship or whether a gap is real:
+
+1. Find out what the scores are. Per-example scores for both configs? Then go to step 4: the paired
+   comparison decides whether a gap is real, and overlapping per-config intervals do not.
+2. Aggregates only, and the score is a binary pass rate (built-in accuracy)? Write the 95% interval next
+   to each accuracy, as `0.70 (0.48-0.85)`, using `wilson` below with the number of examples that were
+   actually scored (rows without a gold answer are not scored, so do not use the total row count).
+   With no way to run code, use the formula in the docstring by hand.
+3. Aggregates only: say that the intervals describe how precise each number is, and that whether the
+   configs differ cannot be established from aggregates; ask for the per-example scores. Never write
+   "within noise" without the interval and this limit beside it.
+4. With per-example scores, report `paired_delta` (see "Is the Delta Real?" below) instead.
+5. Float or custom scores (not pass/fail)? `wilson` does not apply. Use an interval on the mean score from
+   the per-example values, or say that the information is insufficient.
+
+```python runnable
+import math
+
+
+def wilson(correct: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """95% Wilson interval for correct/n. By hand: centre (p + z*z/(2n)) / (1 + z*z/n), half-width
+    z * sqrt(p*(1-p)/n + z*z/(4*n*n)) / (1 + z*z/n), with p = correct/n."""
+    if n <= 0 or not 0 <= correct <= n:
+        raise ValueError("need n > 0 and 0 <= correct <= n")
+    p = correct / n
+    d = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / d
+    half = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return round(centre - half, 2), round(centre + half, 2)
+
+
+print(wilson(14, 20))  # 0.70 accuracy on 20 examples -> (0.48, 0.85)
+```
 
 ## Terminal-First Analysis (MCP)
 
@@ -440,21 +476,55 @@ if len(sorted_trials) >= 2:
 
 ### Is the Delta Real? Rerun Noise, Paired Comparisons, and Non-Portable Winners
 
-Before reporting any config-A-vs-config-B difference, know the noise floor — field-measured on
-real benchmark runs (2026-07): **the same config on the same data, nothing changed,
-moved ±5–10 pp across days at n=40 examples per cell** (one cell measured 82.5 → 87.5 → 95.0
-across three passes). Three rules follow:
+Before reporting any config-A-vs-config-B difference, measure your own noise: the same config
+on the same data can move between passes, so rerun a baseline config and treat any gap inside the
+spread you measured as unreported. Three rules follow:
 
-1. **Resolution rule:** rerun noise follows a √k law — the same-config SD is ≈ `50/√k` pp at
-   p≈0.5 (≈8 pp at k=40, consistent with the ±5–10 pp above), so a k-example evaluation resolves
-   only gaps several times that. Marginal means pooled over ≥4 cells (n ≥ 160) roughly halve the
-   noise (4× the samples → √4 = 2× tighter); single-cell deltas under ~10 pp are unreportable.
-2. **Pair, don't cross-compare:** never compare numbers measured in different sessions/days.
-   Case study: an apparent 12-pp effort-knob gap dissolved to +1.2 pp (2 answers in 160 — noise)
-   once both sides were rerun same-day on the same fold. Cross-day deltas were the artifact.
-3. **Ship deltas with a bootstrap CI** over held-out examples (≥1,000 resamples); a win is
-   claimable only if the CI excludes zero. The same skepticism applies to public leaderboard
-   gaps of a few points.
+1. **Resolution rule:** sampling noise shrinks as the number of examples grows, so a small
+   evaluation resolves only large gaps. Pooling across cells tightens the estimate. Judge a delta
+   against your measured spread and the actual evidence, not a fixed cutoff.
+2. **Pair, don't cross-compare:** compare configurations on the same examples in the same
+   session. Numbers measured on different days (or model versions) are not directly comparable;
+   rerun both sides together before calling a gap an effect.
+3. **Ship deltas with an interval** (for example a bootstrap over held-out examples); a win is
+   claimable only if the interval excludes zero. The same skepticism applies to public leaderboard
+   gaps.
+
+**Quantify the delta; never write "within noise" on its own.** From the per-example scores of two
+configs on the same examples, report the wins, the losses and an exact interval or sign-test p-value:
+
+```python runnable
+import math
+import random
+
+
+def paired_delta(a: list[float], b: list[float], n_boot: int = 2000, seed: int = 0) -> dict:
+    """Compare config B to config A on the same examples (equal-length per-example scores)."""
+    if len(a) != len(b) or not a:
+        raise ValueError("need equal-length, non-empty per-example scores")
+    diffs = [y - x for x, y in zip(a, b)]
+    if not all(math.isfinite(v) for v in (*a, *b, *diffs)):
+        raise ValueError("scores and differences must be finite (no NaN or inf)")
+    wins, losses = sum(d > 0 for d in diffs), sum(d < 0 for d in diffs)
+    n = wins + losses  # ties carry no sign information
+    k = min(wins, losses)
+    p = min(1.0, 2 * sum(math.comb(n, i) for i in range(k + 1)) / 2**n) if n else 1.0
+    rng = random.Random(seed)
+    means = sorted(sum(rng.choice(diffs) for _ in diffs) / len(diffs) for _ in range(n_boot))
+    return {
+        "mean_delta": sum(diffs) / len(diffs), "wins": wins, "losses": losses,
+        "ties": len(diffs) - n, "sign_test_p": p,
+        "ci95": (means[int(0.025 * n_boot)], means[int(0.975 * n_boot) - 1]),  # approximate percentile-bootstrap
+    }
+
+
+print(paired_delta([1, 0, 1, 1, 0, 1, 0, 1], [1, 1, 1, 1, 1, 1, 0, 1]))
+```
+
+Report that dictionary (wins, losses, interval, p-value) in place of the words "within noise". `ci95`
+is an approximate percentile-bootstrap 95% interval. On small or degenerate samples (for example 5
+rows that are all wins) it can exclude zero even when the exact sign test does not, so lead with
+`sign_test_p` and treat the interval as descriptive.
 
 **Read the SDK's own winner verdict before any local delta test (SDK >= 0.26.0).**
 `results.best_config_margin` qualifies `best_config` without changing it: a paired test of the
@@ -605,8 +675,9 @@ print(df.columns.tolist())  # confirm the exact metric column names for your run
 #                units. A gap smaller than your own noise is not a gap.
 import math
 
-MIN_SAMPLES = None
-TIE_BAND = None
+MIN_SAMPLES = None  # REQUIRED: replace with your predeclared repetition count (int >= 1)
+TIE_BAND = None     # REQUIRED: replace with your measured rerun spread (float >= 0)
+# Both are left as None on purpose; the script exits below until you set them.
 # Validate values, not just types: a negative tie band inverts the domination test and a NaN
 # one makes every comparison False, either of which corrupts the frontier silently.
 # `isinstance(True, int)` is True in Python, so booleans are excluded explicitly.
@@ -703,8 +774,13 @@ if results.metadata.get("persistence_status") == "failed":
 ```
 
 When this is `"failed"`, **do not assume the run synced** — the local `OptimizationResult` can look
-complete while the backend session is left `RUNNING` on the portal. Re-check the run on the portal
-(or run `traigent local sync`) before reporting a portal-tracked result as final. (Newer SDK builds
+complete while the backend session is left `RUNNING` on the portal. Follow this order before reporting a portal-tracked result as final:
+
+1. Keep the local result; read `results.metadata.get("persistence_status")`, `results.metadata.get("persistence_error")` and `results.metadata.get("source")` (for example `local`), and quote them in your reply. Do not rerun.
+2. Check the portal for that session id.
+3. Portal has NO session for this run: upload the local record with `traigent sync <results.sync_session_id> --dry-run`, then without `--dry-run`. If the run raised instead of returning, use `exc.sync_session_id` in place of `results.sync_session_id`. `sync_session_id` is the id in your local store (not the portal id); it may be `None` if the run was tracked end to end on the backend. Say that the upload may appear as a new session in the portal.
+   Portal HAS a session but it is unfinalized or partial: do not describe sync as repairing it. Report that state and keep the local result. A sync would create a separate session unless an earlier sync attempt for this run exists (only then does it resume that attempt's cloud session), and `--dry-run` does not tell you which. Never pass `--all`, and never run `traigent local sync` without `--session-id`.
+4. In your reply, say in these words: a rerun is a separate paid action that needs your explicit approval and a cost cap, and it is only for the case where the local result cannot be uploaded or used. (Newer SDK builds
 — the fix merged as Traigent#1731 — also expose this as `results.persistence_failed`, a bool
 shorthand for the same check; check the metadata key directly if your installed SDK predates it.)
 
@@ -715,7 +791,7 @@ The status is not binary — read it precisely (field-verified on SDK 0.21.0 rea
 | `"succeeded"` (or `"skipped"`/absent when backend tracking is off) | fully synced | none |
 | `"degraded"` (benign) | **partial, not broken** — trial results *and* finalize synced (the portal link works; trial views and per-example diagnostics are live), only the session aggregation rollup was dropped, so summary aggregates may lag | keep the run; do **not** re-run (and re-pay) |
 | `"degraded"` (backend-rejected) | the backend actively **refused** the persistence — `persistence_rejected` is True and `persistence_rejection_reason` explains why (quota/auth/tenant) | inspect `persistence_rejection_reason`; treat as a real problem, do **not** assume it's safe |
-| `"failed"` | finalize lost after retries | recover via `traigent local sync`; re-run only if sync can't recover |
+| `"failed"` | finalize lost after retries | the four steps above (portal check first; sync only uploads the local record and may create a new session); re-run only with approval and a cost cap |
 
 The two `"degraded"` cases are distinguished by metadata: benign rollup-lag sets
 `persistence_degraded_reason` (trial results and session finalize both persisted — keep the run);

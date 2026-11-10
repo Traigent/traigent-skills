@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.31"
+  version: "1.0.38"
 ---
 
 # Running Traigent Optimization
@@ -23,6 +23,38 @@ Use this skill after you have decorated a function with `@traigent.optimize()` a
 - Configure parallel trial execution
 - Handle cost limit exceptions
 - Interpret stop reasons and results
+- Continue an interrupted or budget-limited local search without repaying finished trials (`references/resume-local-run.md`)
+
+## Real Run on a Local Model With No Traigent Backend Traffic
+
+When the user wants a real run (no mock) and no traffic to the Traigent backend, for example against
+a local Ollama endpoint, follow these steps:
+
+1. Keep `offline=True` on the decorator and leave mock mode off (no `enable_mock_mode_for_quickstart()`).
+2. Use `algorithm="grid"` or `"random"` and bound the run with `max_trials`.
+3. Write the run script so it states the scope itself, as in the template below.
+4. Your reply to the user must include this sentence in your own words: "Offline stops only Traigent
+   backend traffic; the model calls to your local endpoint still run for real, and offline and mock
+   are independent switches." Put it in the message itself, not only in the script.
+5. Also tell the user how to confirm the run was real: `results.metadata.get("mock_llm_run")` must be
+   `False` and `mock_llm_mixed` absent. Positive latencies and cost are further cues. Identical outputs
+   across trials can be a real deterministic run, so they only mean look at that provenance. Offline
+   itself guarantees only that the Traigent backend sees nothing.
+
+```python
+import os
+
+os.environ["LITELLM_LOCAL_MODEL_COST_MAP"] = "True"  # before anything imports litellm
+from agent import answer  # decorated with offline=True; no traigent.testing import
+
+NOTE = ("offline=True stops only Traigent backend traffic. Inference against the local endpoint is "
+        "real; offline and mock are independent.")
+
+if __name__ == "__main__":
+    print(NOTE)
+    results = answer.optimize_sync(max_trials=4, algorithm="grid")
+    print(results.best_config, "mock_llm_run =", results.metadata.get("mock_llm_run"))
+```
 
 ## Optimization Economics — Read This Before Sizing a Run
 
@@ -101,22 +133,32 @@ See `traigent-analyze-results` for the full field reference.
 > the `traigent-setup-integrations` skill for multi-provider verification.
 
 <!-- PROTECTED -->
-> **Never mock the real run.** Mock/offline mode (`enable_mock_mode_for_quickstart()`,
-> `TRAIGENT_MOCK_LLM`, `TRAIGENT_OFFLINE_MODE`) is for the DRY RUN only — never the run you're
-> about to bill, score, or report as real. The mock LLM returns a constant response and near-zero
-> cost, and that signature silently produces garbage scores if it leaks into what was supposed to
-> be a real paid run. Before treating any run as real, verify it actually was:
+> **Never mock the real run.** Mock mode (`enable_mock_mode_for_quickstart()`, `TRAIGENT_MOCK_LLM`)
+> is for the DRY RUN only — never the run you're about to bill, score, or report as real. The
+> mock LLM returns a constant response and near-zero cost, and that silently produces garbage
+> scores if it leaks into what was supposed to be a real paid run. Offline mode
+> (`offline=True`, `TRAIGENT_OFFLINE_MODE`) is separate: it only stops Traigent backend
+> communication, and offline runs can still perform real inference. Keep it whenever Traigent
+> backend traffic is prohibited. Before treating any run as real, verify it actually was:
 >
-> - `results.total_cost` must be a positive number. Mock runs cost ~0.
-> - Per-trial outputs must vary. A constant mock response collapses every trial to the same,
->   uniform score.
+> - `results.metadata.get("mock_llm_run")` must be `False`, and `mock_llm_mixed` must be absent
+>   (mixed means some trials were mocked). If this provenance is missing, the run is
+>   **unverified**; do not infer real or mock from the data.
+> - Check cost wiring separately: `results.total_cost` should be positive when billed models ran
+>   (`None`/`0.0` can also mean an unpriced model, see the Cost Wiring Probe). Identical outputs
+>   across trials can happen on a real deterministic run, so output uniformity is only a cue to
+>   look at the provenance.
 >
-> If a "real" run shows this signature (cost ~0, constant outputs, uniform scores), it was **not**
-> real — do not report those numbers. Check that mock mode wasn't left enabled
-> (`enable_mock_mode_for_quickstart()` sets process-local state that survives inside a long-lived
-> interpreter/notebook — start a fresh interpreter for the real run) and that `TRAIGENT_MOCK_LLM` /
-> `TRAIGENT_OFFLINE_MODE` are unset in the environment, then rerun.
+> If provenance shows a mocked or mixed run, do not report those numbers. Check that mock mode
+> wasn't left enabled (`enable_mock_mode_for_quickstart()` sets process-local state that
+> survives inside a long-lived interpreter/notebook — start a fresh interpreter for the real
+> run) and that `TRAIGENT_MOCK_LLM` is unset, then rerun. Unset `TRAIGENT_OFFLINE_MODE` only if
+> backend communication is wanted.
 <!-- /PROTECTED -->
+
+**When you run offline, tell the user:** offline stops only Traigent backend traffic; model
+inference still runs for real against your provider or local endpoint; LiteLLM may fetch its pricing
+map unless `LITELLM_LOCAL_MODEL_COST_MAP=True`.
 
 ```python
 import asyncio
@@ -294,7 +336,7 @@ by the provider but show as `$0` or `None`, so the cap cannot stop them.
 Before any full paid run, do a tiny real optimization after mock validation: 1-2 dataset examples, minimal trials, and the cheapest candidate model. This is paid but should cost pennies, and it proves the billing and objective plumbing before scaling up. Check **both surfaces**:
 
 - `results.total_cost` is `float | None`. `None` means cost tracking is unavailable. `0.0` with real calls means the model was unpriced, so the provider may bill while Traigent reports zero. Treat both as cost **not wired**.
-- Each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with real non-degenerate values. If all objective values are `0.0` or all are `1.0`, fix the evaluator/KPI wiring before the full run.
+- Each trial's `metrics` contains the declared objectives, especially an `accuracy`-labeled primary KPI by default, with real, finite, populated values. Uniform scores (all `0.0` or all `1.0`) on a 1-2 example probe are an investigation cue, not proof of broken wiring: check the scorer on a known-good and a known-bad answer, and do not alter a correct scorer to manufacture variation. The probe validates plumbing, not optimization lift.
 
 If cost or other KPIs are not picked up for custom services, self-hosted endpoints, or unknown models, fix in this order:
 
@@ -546,7 +588,33 @@ print(len(results.failed_trials))      # 1
 
 ### Applying the Best Config
 
-After optimization, `func.apply_best_config(results)` locks in the winning configuration: subsequent calls to `func` use it automatically, `traigent.get_config()` inside the function returns it, and `func.current_config` exposes it from outside. Verify `results.best_score` against a threshold before applying — see `traigent-analyze-results` → Applying Best Config for the lifecycle table and the safety check. Applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (see `traigent-ci-safety-gate`).
+After optimization, for a function that is not serving live traffic, `func.apply_best_config(results)` locks in the winning configuration: subsequent calls to `func` use it automatically, `traigent.get_config()` inside the function returns it, and `func.current_config` exposes it from outside. Verify `results.best_score` against a threshold before applying — see `traigent-analyze-results` → Applying Best Config for the lifecycle table and the safety check. Applying the best config is not promotion; promotion requires candidate-vs-incumbent validation on the holdout slice (see `traigent-ci-safety-gate`). For a live function, use the next subsection instead.
+
+### When the live function must not change until approval
+
+`optimize()` / `optimize_sync()` applies the winner to the instance it ran on (`apply=False`, the candidate-run flag, is rejected from SDK 0.31.0 and does not exist before 0.29.0; the separate process works on every version), so run the search in a separate script or process that the server never imports, with its own decorated copy of the function:
+
+```python
+# In the separate candidate process that ran the search (optimize_sync() already applied the
+# winner to that process's instance; apply=False is rejected from SDK 0.31.0), export the candidate
+# only if the search result clears the bar and the result does not report a statistical tie:
+results = my_function.optimize_sync()
+
+# best_config_margin exists from SDK 0.26.0; getattr keeps this runnable on the 0.24.0 floor (verdict None there)
+verdict = (getattr(results, "best_config_margin", None) or {}).get("verdict")
+if results.best_score is None or results.best_score < 0.85:
+    print(f"Score {results.best_score} below threshold; candidate not exported")
+elif verdict == "statistical_tie":
+    print(f"Score {results.best_score:.2%} but the winner is tied with the runner-up; candidate not exported")
+else:
+    my_function.export_config("candidate_config.json")
+    print(f"Exported candidate with search score {results.best_score:.2%}")
+
+# Serving process, only after the holdout/promotion gate passes and the user approves:
+# my_function.set_config(<flat candidate config read from candidate_config.json>)
+```
+
+In your reply, say that promotion still needs a candidate-vs-incumbent comparison on a holdout the search never scored (`PromotionGate`, see `traigent-ci-safety-gate`), and that until then the serving process keeps the incumbent.
 
 ### Confirm a Portal-Tracked Run Actually Synced
 
@@ -667,6 +735,7 @@ asyncio.run(main())
 - `references/algorithms.md` - Detailed algorithm comparison
 - `references/parallel-config.md` - Full ParallelConfig reference
 - `references/cost-management.md` - Cost enforcement details
+- `references/resume-local-run.md` - Continue a saved local run without repaying completed trials (`resume_from`)
 - `references/run-cost-and-limits.md` - Plain-language cost card: what a run costs, guards in order, what is and isn't measured
 - `traigent-boost-agent` - Lifecycle driver: dry-run-first / cost-approval mandate (read this before any real optimization run)
 - `traigent-setup-quickstart` - Installation and first optimization with mock mode

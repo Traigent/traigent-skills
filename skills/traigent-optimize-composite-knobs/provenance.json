@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7854d6ae38719f5f",
+  "doc_hash": "d15b311226e8189b",
   "reference_hashes": {
     "references/advanced-recipes.md": "8b80485ca22dc7f3",
     "references/pattern-catalog.md": "9def7ed36550a8df",
-    "references/router-fitness.md": "29537947ff5e0c4d"
+    "references/router-fitness.md": "acfee825c1ec111a"
   },
   "entries": [
     {
@@ -155,6 +155,17 @@
       "doc_before_hash": "d1d769046d2af99c",
       "doc_after_hash": "7854d6ae38719f5f",
       "note": "Cascade gate margin defined as the top-vote share with the discrete threshold bands for 2 and 3 samples (#467).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "7854d6ae38719f5f",
+      "doc_after_hash": "d15b311226e8189b",
+      "note": "Router fitness: escalation must help the selected subset; historical prototype figures removed.",
       "source_type": "agent"
     }
   ]

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.10"
+  version: "1.0.11"
 ---
 
 # Traigent Framework Integrations
@@ -47,7 +47,7 @@ pip install "traigent>=0.24.0" "dspy==3.3.1"
 > verified with `dspy==3.3.1` on `traigent==0.27.0`; pin that version, or re-verify the examples
 > against the exact `dspy` version you pin before relying on them.
 
-> **Dry-run first.** Before any paid optimization run, dry-run in mock mode (`enable_mock_mode_for_quickstart()`) with **no real provider key**, review the estimated cost, and get explicit user approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers:
+> **Dry-run first.** Before any paid optimization run, dry-run in mock mode (`enable_mock_mode_for_quickstart()`) with **no real provider key**, review the estimated cost, and get explicit user approval. See the `traigent-boost-agent` skill for the mandatory dry-run-first / cost-approval workflow. Apply this to every integration example below before running against real providers:
 > - LiteLLM examples: `enable_mock_mode_for_quickstart()` is enough.
 > - LangChain examples: LangChain clients require a key at construction, so set a non-secret
 >   placeholder in the dry-run process only — e.g. `OPENAI_API_KEY=mock-placeholder` (it cannot bill;
@@ -99,8 +99,8 @@ results = answer_question.optimize_sync()  # real run — only after dry-run app
 
 > **Released SDK caveat:** on `traigent<=0.27.0` auto-override is a silent no-op — every trial
 > constructs the client with the literal values in your code, and the run still ranks the trials
-> and reports a `best_config`. Until a release that fixes it, use manual injection (the Basic
-> Pattern: build the client from `traigent.get_config()`). Before any paid run, verify in mock mode
+> and reports a `best_config`. Fixed in `traigent>=0.28.0` (Traigent/Traigent#2420); on older
+> releases use manual injection (the Basic Pattern: build the client from `traigent.get_config()`). Before any paid run, verify in mock mode
 > that the constructed client's `model_name` differs across two trials (the preflight in
 > [LangChain reference → Verify the override before a paid run](references/langchain.md#verify-the-override-before-a-paid-run)).
 
@@ -370,7 +370,7 @@ def my_func(text):
     return llm.invoke(text).content  # Always uses the same model
 ```
 
-The exception is when using `auto_override_frameworks=True` with `framework_targets`, which intercepts client construction — but see the released-SDK caveat under Auto Override Frameworks: on `traigent<=0.27.0` it does not apply the trial values.
+The exception is when using `auto_override_frameworks=True` with `framework_targets`, which intercepts client construction — but see the released-SDK caveat under Auto Override Frameworks: on `traigent<=0.27.0` it does not apply the trial values (fixed in 0.28.0).
 
 ## Reference Files
 

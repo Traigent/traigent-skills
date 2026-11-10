@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.18"
+  version: "1.0.22"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -100,10 +100,16 @@ A key the backend **rejects** never falls back — the run stops with a category
 - `expired API key` / `rate limited` / `edge blocked` — the text is the diagnosis; retrying blindly
   changes nothing.
 
-A run that raised **after** paid trials carries `exc.sync_session_id` (SDK 0.27.0+; below that, take the session id from the run log): `traigent sync <session_id>`
-uploads what was logged locally. For a run that returned but did not persist, read
-`results.metadata["persistence_status"]` — `traigent-analyze-results` → "Verify the Run Actually
-Persisted" owns that table (degraded is kept, failed is synced, neither is re-paid).
+**A finished paid run that is missing from the portal: do these steps in this order, and say so in your reply.**
+
+1. Keep the local result (it is complete) and read `results.metadata.get("persistence_status")`, the error (`results.metadata.get("persistence_error")`) and where the result lives (`results.metadata.get("source")`, for example `local`) from the result or the run log, and quote them in your reply. Do not rerun.
+2. Check the portal for that session id. A run that raised after paid trials carries `exc.sync_session_id` (SDK 0.27.0+; below that, take the id from the run log).
+3. Portal has NO session for this run: upload the local record with `traigent sync <results.sync_session_id> --dry-run`, then without `--dry-run`. If the run raised instead of returning, use `exc.sync_session_id` in place of `results.sync_session_id`. `sync_session_id` is the id in your local store (not the portal id); it may be `None` if the run was tracked end to end on the backend. Say that the upload may appear as a new session in the portal.
+   Portal HAS a session but it is unfinalized or partial: do not describe sync as repairing it. Report that state and keep the local result. A sync would create a separate session unless an earlier sync attempt for this run exists (only then does it resume that attempt's cloud session), and `--dry-run` does not tell you which. Never pass `--all`, and never run `traigent local sync` without `--session-id`.
+4. In your reply, say in these words: a rerun is a separate paid action that needs your explicit approval and a cost cap, and it is only for the case where the local result cannot be uploaded or used.
+
+For a run that returned but did not persist, `traigent-analyze-results` → "Verify the Run Actually
+Persisted" owns the `persistence_status` table (degraded is kept, failed keeps the local result, neither is re-paid).
 
 ### ConfigurationError
 
@@ -608,13 +614,12 @@ print("traigent log level:", logging.getLevelName(logging.getLogger("traigent").
 
 ## Graceful Fallback Pattern
 
-When optimization might fail, keep the serving incumbent explicit. `optimize()` / `optimize_sync()` apply a nonempty winner to the instance before returning (on 0.30.0; pass `apply=False` to get a candidate without applying it), so a score check *after* the run cannot undo it and a printed "using default" message changes nothing. Run with `apply=False` and promote only a candidate that passes your own gate:
+When optimization might fail, keep the serving incumbent explicit. `optimize()` / `optimize_sync()` apply a nonempty winner to the instance before returning, and `apply=False` (candidate runs) is rejected with `ConfigurationError` from SDK 0.31.0 (it does not exist before 0.29.0). A score check *after* the run therefore cannot undo the application, and a printed "using default" message changes nothing. Run the search in a separate candidate process with its own decorated function instance, export the result, and promote it in the serving process only after your own gate:
 
 ```python
+# candidate_optimize.py -- a separate OS process, never the serving process
 import traigent
 from traigent.utils.exceptions import TraigentError, CostLimitExceeded
-
-INCUMBENT_CONFIG = {"model": "gpt-4o-mini", "temperature": 0.0}
 
 @traigent.optimize(
     eval_dataset="eval_data.jsonl",
@@ -630,32 +635,34 @@ def classify(text):
     # ... LLM call ...
     return result
 
-# The function serves the incumbent until a candidate is explicitly promoted.
-classify.set_config(INCUMBENT_CONFIG)
-
 try:
-    results = classify.optimize_sync(apply=False)
+    results = classify.optimize_sync()
 
     if results.best_config and results.best_score is not None and results.best_score >= 0.7:
         # A search score is not an independent gate: confirm the candidate on held-out
-        # evidence (and any approval your process requires) before this line.
-        classify.apply_best_config(results)
-        print(f"Promoted candidate: {results.best_config}")
+        # evidence (and any approval your process requires) before promoting it.
+        classify.export_config("candidate_config.json")
+        print(f"Exported candidate: {results.best_config}")
     else:
-        print(f"Score {results.best_score} too low; incumbent {INCUMBENT_CONFIG} stays active")
+        print(f"Score {results.best_score} too low; no candidate exported")
 
 except CostLimitExceeded as e:
     # Pre-run decline only: nothing ran. A mid-run budget hit does not land here — it returns
     # normally with results.stop_reason == "cost_limit" and the paid trials kept.
-    print(f"Refused before spending (estimate ${e.estimated or 0:.2f} > ${e.limit:.2f}); incumbent stays active")
+    print(f"Refused before spending (estimate ${e.estimated or 0:.2f} > ${e.limit:.2f}); no candidate")
 
 except TraigentError as e:
-    print(f"Optimization failed: {e.message}; incumbent stays active")
-
-# The active configuration now matches what was printed: the incumbent unless a gated candidate was promoted.
+    print(f"Optimization failed: {e.message}; no candidate")
 ```
 
-For a stronger guarantee, run the search in a separate candidate process and export the result (see the analyze-results skill, "Exporting a Candidate and Promoting It Safely"); the serving process never shares memory with the search.
+The serving process never runs this search. It keeps the incumbent explicit and changes only after a candidate has passed the gate (see the analyze-results skill, "Exporting a Candidate and Promoting It Safely", and `traigent-ci-safety-gate`):
+
+```python
+# serving process
+INCUMBENT_CONFIG = {"model": "gpt-4o-mini", "temperature": 0.0}
+classify.set_config(INCUMBENT_CONFIG)  # stays active until a gated candidate is promoted
+print(f"Serving incumbent: {INCUMBENT_CONFIG}")
+```
 
 ## Reference Files
 

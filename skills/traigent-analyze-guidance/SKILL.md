@@ -1,6 +1,6 @@
 ---
 name: traigent-analyze-guidance
-description: "What should this Traigent optimization run be, and what next? Three modes: (A) pre-run — fetch the service run-plan, present objectives/models/knobs/search/budget/offline options, apply preflight; (B) post-run, portal-tracked — fetch the backend decision brief via the `analytics_get_run_decision_brief` MCP tool, present its headline, confidence, recommended action, evidence, and warnings verbatim, then hand off to the matching skill; (C) offline/local fallback — diagnose flat/noisy/negative local results, which knob mattered, example evidence, form the next iteration hypothesis when offline=True or no service payload. Portal-tracked decisions come from Traigent, never local markdown."
+description: "What should this Traigent optimization run be, and what next? Three modes: (A) pre-run — fetch the service run-plan, present objectives/models/knobs/search/budget/offline options, apply preflight; (B) post-run, portal-tracked — fetch the backend decision brief via the `analytics_get_run_decision_brief` MCP tool, present its headline, confidence, recommended action, evidence, and warnings verbatim, then hand off to the matching skill; (C) offline/local fallback — diagnose flat/noisy/negative local results, which knob mattered, example evidence, form the next iteration hypothesis when offline=True or no service payload. Portal-tracked decisions come from Traigent, never local markdown. Use when the user asks what to run or what to do next; to read result fields, trial tables, charts or export a config, use traigent-analyze-results."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.11"
+  version: "1.2.16"
 ---
 
 # Traigent Analyze Guidance
@@ -76,6 +76,12 @@ paid run**, an explicit spend cap, and the recorded stop rule. Economics governs
 invest — and here that number comes from the service; it never affects *whether* approval is
 required — it always is.
 
+> **Picking between configs from a results file?** With per-example scores, the paired comparison decides
+> (`paired_delta` in `traigent-analyze-results`). With aggregates only and a binary pass rate, put a 95%
+> interval (`wilson`, using the number of rows actually scored) next to each accuracy, and say that
+> separation cannot be established without per-example scores. For float or custom scores `wilson` does
+> not apply. "Within noise" with no interval beside it is not an answer.
+
 ## Mode Arbitration
 
 | Situation | Mode |
@@ -129,7 +135,12 @@ Do not embed local planning intelligence in this skill:
    - objectives the user cares about,
    - budget or maximum spend for the run.
 2. Fetch the plan from the Traigent service:
-   - Prefer `traigent plan` when the CLI is available.
+   - Prefer `traigent plan` when the CLI is available. All of these flags are required except `--has-holdout/--no-holdout`; run it from inside the project so the CLI finds the project `.env` (it loads it itself at startup; `TRAIGENT_SKIP_DOTENV=1` turns that off):
+
+     ```bash
+     traigent plan --task-description "<short task summary>" --dataset-size 50 --has-holdout \
+       --objective accuracy --max-trials 12 --cost-limit 2.0 --json
+     ```
    - Use `get_optimization_plan` when working through the Traigent MCP surface.
    - Pass only the short summary and any existing run id or portal context the user approved.
 3. Validate the response shape before presenting it. The allowlisted top-level
@@ -430,7 +441,7 @@ print(analyzer.get_top_parameters(importance, top_k=5))
 
 If importance is empty, do not infer that no knob matters. Common reasons are too few successful trials, flat objective variance, missing objective metrics, or a configuration space that did not vary enough.
 
-Below about 20 completed trials — a first-run search is 12 — read `importance_score`,
+With few completed trials (below the analyzer floors named next), read `importance_score`,
 `optimization_priority`, and the insights `recommendations` as directional, the label the
 `traigent-analyze-variable-importance` script gives the same data. The analyzer's sample floors
 are explicit: `analyze_variance_based` and the correlation method return `{}` under 10 successful
@@ -487,11 +498,10 @@ Backend-only report surfaces, each requiring a Traigent account/backend:
 | Weak examples identified | The same examples fail across good configs | Feed those examples into guided optimization and add a heldout check |
 
 > **Before treating a flat or noisy result as signal, rule out rerun noise.** See
-> `traigent-analyze-results` → *"Is the Delta Real?"*: the same config on the same data moves
-> ±5–10 pp across days at n=40 (same-config SD ≈ `50/√k` pp at p≈0.5), so a single-cell delta
-> under ~10 pp is unreportable, pooling ≥4 cells only halves the noise, and numbers measured in
-> different sessions/days must never be cross-compared. Claim a win only when a bootstrap CI on
-> the difference excludes zero — a "flat" or "high-variance" result is often just this floor.
+> `traigent-analyze-results` → *"Is the Delta Real?"*: the same config on the same data can move
+> between passes, so measure your own rerun spread and treat a gap inside it as noise. Compare
+> numbers from the same session only, and claim a win only when an interval on the paired
+> difference excludes zero — a "flat" or "high-variance" result is often just this noise.
 
 Use weak examples as evidence, not as a replacement for a holdout.
 
@@ -502,7 +512,7 @@ weak_examples = [
 ]
 
 def my_rewrite_llm(prompt: str) -> str:
-    """Your own model call, on your own provider key. Example content stays on your machine."""
+    """Your own model call. Examples are sent to whichever model endpoint this calls."""
     ...
 
 results = answer.optimize_with_guidance(
@@ -515,9 +525,9 @@ results = answer.optimize_with_guidance(
 )
 ```
 
-`optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). `rewrite_llm` is required (a callable `fn(prompt) -> str` or a constructed client); `provider` supplies the guidance plan. `weak_examples` are `(input, expected, actual)` tuples, and only a `plan_kind="prompt_rewrite"` plan reads them: it rewrites the prompt variants of the knob named by `prompt_param` (a tuned knob whose values are prompt strings). Under the default `benchmark_guide` plan they are ignored. Keep the provider and rewrite model project-specific, and confirm the new candidate still improves on a heldout slice.
+`optimize_with_guidance` is a synchronous method on the decorated optimized function — do not `await` it (it returns the `OptimizationResult` directly). A customer-owned key does not make inference local: if `rewrite_llm` calls a hosted model, the weak examples leave the machine to that provider. For content that must stay customer-side, use a verified local inference endpoint or skip prompt rewriting; confirm with the user before sending examples to a hosted model. `rewrite_llm` is required (a callable `fn(prompt) -> str` or a constructed client); `provider` supplies the guidance plan. `weak_examples` are `(input, expected, actual)` tuples, and only a `plan_kind="prompt_rewrite"` plan reads them: it rewrites the prompt variants of the knob named by `prompt_param` (a tuned knob whose values are prompt strings). Under the default `benchmark_guide` plan they are ignored. Keep the provider and rewrite model project-specific, and confirm the new candidate still improves on a heldout slice.
 
-This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent` lifecycle skill).
+This is a **paid real run** — the same gate as any other applies: dry-run/mock first, present the cost estimate, and get explicit user approval before executing (see the `traigent-boost-agent` skill).
 
 Before iterating, note that flat/negative scores can also mean: (a) the base model
 isn't capable enough — structural knobs fix *form*, not reasoning the model lacks;

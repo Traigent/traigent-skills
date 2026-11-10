@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.17"
+  version: "1.0.26"
 ---
 
 # Traigent Build Evaluator
@@ -42,9 +42,18 @@ A `custom_evaluator` does not produce `latency`. If `latency` is an objective, p
 
 **No `expected_output` at all?** Tiers 1-3 assume a gold label to compare against. For
 subjective/generative tasks with no labels, skip straight to Tier 4 with the **"LLM judge with
-rubric, strict parse, and cost guardrails"** template in `references/evaluator-templates.md` —
+rubric, strict parse, and cost guardrails"** template in `references/evaluator-templates.md`
+(call `build_reference_free_judge_prompt` in place of `build_judge_prompt`: same call shape, so nothing else changes once you set its `TASK_RUBRIC`; it grades against your rubric and the source instead of an `expected` answer) —
 and treat `traigent-eval-audit` as mandatory, because the judge owns the whole quality
 signal (see `traigent-eval-choose-metric` → "The no-gold track").
+
+**No gold: your reply to the user must contain these three statements** (a comment in the code does not replace them):
+
+1. "Built-in `accuracy` needs expected outputs (gold summaries), so it would be meaningless here; I dropped it and use `<your score name>` instead."
+2. The rubric dimensions the score uses, one line each, and what it cannot tell: it is a heuristic, not human-judged quality.
+3. "Before trusting the score, have a human check a small spot sample of outputs (read a few yourself) and confirm the score ranks them the way you would."
+
+Keep customer text local: a hosted judge would send the source text out, so say that when you choose a local scorer.
 
 ### Tier 2: scoring function
 
@@ -74,6 +83,8 @@ def answer(question: str) -> str:
 
 ### Tier 3: metric functions
 
+Model output can be None or a non-string (a failed or empty call); treat that as a wrong answer (0.0), not an exception.
+
 ```python
 import json
 
@@ -84,7 +95,7 @@ from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
 def valid_json_metric(output, expected, input_data) -> float:
     try:
         json.loads(output)
-    except json.JSONDecodeError:
+    except (TypeError, json.JSONDecodeError):
         return 0.0
     return 1.0
 
@@ -95,7 +106,7 @@ def expected_field_metric(output, expected, input_data) -> float:
     # EvaluationError instead of a fake 0.0 the search would rank as "wrong answer".
     try:
         data = json.loads(output)
-    except json.JSONDecodeError:
+    except (TypeError, json.JSONDecodeError):
         return 0.0
     if not isinstance(data, dict):
         return 0.0
@@ -223,11 +234,52 @@ Wire it as `metric_functions={"recall_at_budget": recall_at_budget}` and declare
 ### Tier 4: custom evaluator
 
 ```python
+import json
+import os
+from pathlib import Path
 import time
 
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
+
+
+def _example_id(example) -> str:
+    # Every row needs a stable, unique top-level "id" (it lands in example.metadata["id"]);
+    # assign and check them at dataset prep (see "Dataset prep: stable unique row ids" in SKILL.md).
+    # Hashing the content cannot tell identical rows apart, and two rows with one id overwrite each
+    # other's result. Fail closed rather than invent an id.
+    explicit = example.metadata.get("id")
+    if explicit is None or str(explicit) == "":
+        raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
+    return str(explicit)
+
+
+def dataset_path(relative: str) -> str:
+    """The absolute path the SDK loads: a relative path resolves under TRAIGENT_DATASET_ROOT, else the cwd."""
+    root = Path(os.environ.get("TRAIGENT_DATASET_ROOT") or Path.cwd()).expanduser()
+    return str((root / relative).resolve())
+
+
+def check_row_ids(path: str) -> None:
+    """Call once at import, before any model call: every row needs a unique top-level id."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        row_id = row.get("id")
+        # A nested metadata.id is invisible to SDKs before 0.28 and overrides "id" on newer ones,
+        # so the top-level id is required and any nested id must equal it.
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no top-level 'id': run assign_row_ids first")
+        if "id" in nested and str(nested["id"]) != str(row_id):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
+
 
 def evaluate_answer(func, config, example) -> ExampleResult:
     started = time.perf_counter()
@@ -245,7 +297,7 @@ def evaluate_answer(func, config, example) -> ExampleResult:
 
     elapsed_s = time.perf_counter() - started
     return ExampleResult(
-        example_id=str(example.metadata.get("id", "unknown")),
+        example_id=_example_id(example),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=prediction,
@@ -256,9 +308,13 @@ def evaluate_answer(func, config, example) -> ExampleResult:
         metadata={"method": "deterministic_exact_match"},
     )
 
+# Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
+DATASET = dataset_path("eval/qa.jsonl")
+check_row_ids(DATASET)
+
 @traigent.optimize(
     evaluation=EvaluationOptions(
-        eval_dataset="eval/qa.jsonl",
+        eval_dataset=DATASET,
         custom_evaluator=evaluate_answer,
     ),
     objectives=["accuracy"],
@@ -315,6 +371,92 @@ The decorator validates `custom_evaluator` signature at decoration time. The req
 ValidationError custom_evaluator must accept (func, config, example), got 2 required parameters: ['func', 'config']
 ```
 
+## Dataset prep: stable unique row ids
+
+**Only the custom-evaluator templates need this.** The built-in flows (`eval_dataset` with the
+default accuracy, a `scoring_function`, `metric_functions`) work on id-less rows exactly as before;
+the SDK numbers those rows itself. The Tier 4 evaluator and the templates in
+`references/evaluator-templates.md` return an `ExampleResult`, and its `example_id` has to be a
+stable, unique id for each row. Give every row a top-level `"id"` when you build or curate the file
+(`traigent-dataset-curate` writes them), or run `assign_row_ids` once on an existing id-less file.
+
+Why: the outcome matrix keys cells by `example_id`, so two rows that share one id overwrite each
+other's cell locally (SDK `traigent/utils/outcome_matrix.py:293-303`). The id sent to the backend is
+a different thing: `traigent/core/metadata_helpers.py:637-645` canonicalizes customer ids by row
+position, so a duplicate does not become a duplicate on the wire, but your local analysis is still
+corrupted. Do not derive ids by hashing row content: identical or near-identical rows (repeated
+prompts, same input with different labels) hash alike and cannot be told apart. Assign ids once and
+keep them when rows are reordered or edited.
+
+The check requires a **top-level** `"id"` on every row. A nested `metadata.id` is not enough: SDKs
+before 0.28 keep a row's own `metadata` object nested (`example.metadata["metadata"]["id"]`), so the
+evaluator would not see it, while on newer SDKs it is merged over the top-level key and overrides
+`id`. So the check rejects a missing, null or empty top-level id, a nested id that differs from the
+top-level one, and any repeat; `assign_row_ids` promotes a valid nested id to the top level (it never
+renumbers it) and mints ids only for rows that have none.
+
+Validation and loading must read the **same file**. `dataset_path()` resolves a relative path the way
+the SDK does (under `TRAIGENT_DATASET_ROOT`, else the current directory), and each custom template
+passes that one absolute path to both `check_row_ids` and `eval_dataset`, once at import, so the whole
+dataset is validated before the first model call; if prep was skipped the run stops there, not after
+paid calls. Run `assign_row_ids(dataset_path(<the same relative path>))` once to prepare an existing file.
+
+```python
+import json
+import os
+from pathlib import Path
+
+
+def assign_row_ids(path: str, prefix: str = "row") -> None:
+    """One-time: give every row a top-level id (promote a valid nested metadata.id, else mint one)."""
+    rows = [json.loads(line) for line in Path(path).read_text(encoding="utf-8").splitlines() if line.strip()]
+
+    def nested_id(row):
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        return nested.get("id") if nested.get("id") not in (None, "") else None
+
+    for row in rows:
+        if row.get("id") in (None, "") and nested_id(row) is not None:
+            row["id"] = nested_id(row)  # promote, never renumber
+    used = {str(r["id"]) for r in rows if r.get("id") not in (None, "")}
+    counter = 0
+    for row in rows:
+        if row.get("id") in (None, ""):
+            counter += 1
+            while f"{prefix}-{counter:05d}" in used:
+                counter += 1
+            row["id"] = f"{prefix}-{counter:05d}"
+            used.add(row["id"])
+    Path(path).write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
+    check_row_ids(path)  # surface duplicate or conflicting ids now, not at import time
+
+
+def dataset_path(relative: str) -> str:
+    """The absolute path the SDK loads: a relative path resolves under TRAIGENT_DATASET_ROOT, else the cwd."""
+    root = Path(os.environ.get("TRAIGENT_DATASET_ROOT") or Path.cwd()).expanduser()
+    return str((root / relative).resolve())
+
+
+def check_row_ids(path: str) -> None:
+    """Call once at import, before any model call: every row needs a unique top-level id."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        row_id = row.get("id")
+        # A nested metadata.id is invisible to SDKs before 0.28 and overrides "id" on newer ones,
+        # so the top-level id is required and any nested id must equal it.
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no top-level 'id': run assign_row_ids first")
+        if "id" in nested and str(nested["id"]) != str(row_id):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
+```
+
 ## The interview when nothing exists
 
 If no evaluator exists, ask:
@@ -337,6 +479,11 @@ Use compact patterns inline and the full versions in `references/evaluator-templ
 | `llm_based` | Custom evaluator calls a judge with a rubric, parses strict JSON, counts judge cost, and returns `0.0` on parse failure. |
 | `statistical` | Custom evaluator repeats the same example, scores agreement or pass rate across reps, and reports variance metadata. |
 | `hybrid` | Deterministic gate first; call the judge only if the output passes the gate. |
+
+> **Every trial fails or scores 0.0?** First check whether the scorer returns a tuple such as
+> `(score, reason)` instead of a float. On SDK 0.33.0 a tuple from a `scoring_function` /
+> `metric_functions` scorer fails the trial with `float() argument must be a string or a real
+> number, not 'tuple'` ("All trials failed"); return the float and put the reason elsewhere.
 
 ## Known pitfall: tuple returns and custom scorers
 

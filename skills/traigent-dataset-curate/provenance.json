@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "5bb2ed6d7278e7cd",
+  "doc_hash": "0012b63cc058c74b",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
-    "references/dataset-recipes.md": "36ab29cc47cd7eb2",
+    "references/dataset-recipes.md": "9d8241482ef42e2c",
     "references/economics-characterization.v0.md": "e6df1645696c6290"
   },
   "entries": [
@@ -318,6 +318,39 @@
       "doc_before_hash": "c4ac020c4824f4dd",
       "doc_after_hash": "5bb2ed6d7278e7cd",
       "note": "Standalone litellm is intercepted under mock mode from SDK 0.31.0; the stub smoke test stays the recommendation (#465).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "5bb2ed6d7278e7cd",
+      "doc_after_hash": "16e801c50af733c5",
+      "note": "Planning counts labelled as heuristics; label review is not holdout selection; no inline api_key; See-also fixed.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "16e801c50af733c5",
+      "doc_after_hash": "6614643db7a30f9e",
+      "note": "Round 3: one illustrative small-n arithmetic example (not a threshold) and dedupe-before-splitting.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r4",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "6614643db7a30f9e",
+      "doc_after_hash": "0012b63cc058c74b",
+      "note": "Round 4: published example rows carry ids; small-n interval labelled approximate and routed to paired evidence (no noise rule).",
       "source_type": "agent"
     }
   ]

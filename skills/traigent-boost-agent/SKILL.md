@@ -1,6 +1,6 @@
 ---
 name: traigent-boost-agent
-description: "End-to-end lifecycle playbook — from a single decorated function to a full 12-step codebase onboarding — for adding Traigent to an existing client agent codebase and measurably boosting accuracy, cost, latency, or reliability. Use when asked to add Traigent to an existing agent codebase, onboard this agent to Traigent end-to-end, run a full agent-build lifecycle, wire an evaluator and optimize for an agent with code to instrument, boost accuracy/cost of an existing agent, select TVARs with generate_config() on agent code, choose composite knobs by agent shape, instrument @traigent.optimize into agent code, validate in mock mode, run real optimization with budgets, inspect results, iterate to refine an existing agent, or gate a promoted config. For brand-new users without an existing agent codebase, see traigent-setup-quickstart. ALWAYS start with dry-run (mock mode) to validate the full pipeline, then switch to real execution only when the user explicitly requests it."
+description: "End-to-end lifecycle playbook — from a single decorated function to a full 12-step codebase onboarding — for adding Traigent to an existing client agent codebase and measurably boosting accuracy, cost, latency, or reliability. Use when asked to add Traigent to an existing agent codebase, onboard this agent to Traigent end-to-end, run a full agent-build lifecycle, boost accuracy/cost of an existing agent, select TVARs with generate_config() on agent code, instrument @traigent.optimize into agent code, validate in mock mode, run real optimization with budgets, or iterate to refine an existing agent. For a standalone dataset, evaluator, result-analysis or CI-gate request, use the specialist skill instead. For brand-new users without an existing agent codebase, see traigent-setup-quickstart. ALWAYS start with dry-run (mock mode) to validate the full pipeline, then switch to real execution only when the user explicitly requests it."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.21"
+  version: "2.1.26"
 ---
 
 # Traigent Boost Agent
@@ -119,7 +119,7 @@ def my_function(query: str) -> str:                    # 4. The function
 
 | Mistake | SDK catches? | Fix |
 |---|---|---|
-| Config values as bare strings (`model="gpt-4"`) | Yes — `TypeError` | Must be list or Range/Choices (`model=Choices(["gpt-4"])`) |
+| Config values as bare strings | Yes — `ValidationError` for `configuration_space={"model": "gpt-4"}`; `TypeError` for inline `model="gpt-4"` | Must be list or Range/Choices (`model=Choices(["gpt-4"])`) |
 | `get_config()` called outside the function | Yes — `OptimizationStateError` | Must be inside the decorated function body |
 | Dataset file doesn't exist | Yes — `ValidationError` | Create it or fix the path |
 | **Empty objectives list** | **No — silently defaults** | Verify `objectives` has at least one entry before running |
@@ -237,7 +237,7 @@ For a `custom_evaluator`, call it directly on the known-good and the known-bad e
 
 ### Step 3.6: Tiny Real Cost and KPI Probe (paid — runs only after the user's go at the end of Step 4)
 
-The **first paid call** of this skill is a tiny real optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model (pennies, not dollars). It is paid, so price it on the Step 4 card beside the full run (one ceiling covers both) and launch it only after the user's go at the end of Step 4 — never before. Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, stop and wire it before the full run — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, strict accounting).
+The **first paid call** of this skill is a tiny real optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model (pennies, not dollars). It is paid, so price it on the Step 4 card beside the full run (one ceiling covers both) and launch it only after the user's go at the end of Step 4 — never before. Check both surfaces: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with finite, populated values. Uniform scores (all `0.0`/all `1.0`) on a 1-2 example probe are an investigation cue, not proof of broken wiring: check the scorer on a known-good and a known-bad answer. The probe validates plumbing, not lift. If either surface fails, stop and wire it before the full run — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, strict accounting).
 
 ### Step 4: Report and Estimate Costs
 
@@ -340,20 +340,22 @@ if verdict == "statistical_tie":
           "prefer the cheaper config or add examples")
 ```
 
-> **Never mock the real run.** Before reporting these numbers, confirm this wasn't a mock/offline
-> run in disguise — `total_cost` should be positive and per-trial outputs should vary, not the
-> mock's constant response / uniform scores. See `traigent-optimize-run` → "Never mock the real
-> run" for the full check and recovery steps.
+> **Never mock the real run.** Before reporting these numbers, confirm this wasn't a mock run in
+> disguise: `results.metadata.get("mock_llm_run")` must be `False` with no `mock_llm_mixed`
+> (missing provenance = unverified). Offline mode alone is not mock. See `traigent-optimize-run`
+> → "Never mock the real run" for the full check and recovery steps.
 
 For algorithm choices, parallel execution, and further cost-limit controls, cross-reference `traigent-optimize-run`; for interpreting `OptimizationResult` beyond this snippet, cross-reference `traigent-analyze-results`. Do not promote the winner straight into production: export it as a candidate, check it on a held-out slice (see `traigent-ci-safety-gate` for the promotion gate and CI checks), and apply only after the gate and the user's explicit approval:
 
 ```python
-# Export the winning config as a CANDIDATE artifact for review/gating
+# `optimize_sync()` has already applied a nonempty winner to this instance, and
+# `apply=False` is rejected with ConfigurationError from SDK 0.31.0 (it does not exist before 0.29.0). If an incumbent must keep
+# serving until approval, run the search above in a SEPARATE candidate process with its own
+# decorated function instance (never the serving one), then export from that process:
 my_function.export_config("candidate_config.json")
 
-# After the holdout/promotion gate passes and the user approves:
-my_function.apply_best_config(results)
-answer = my_function("What is Python?")
+# Serving process, only after the holdout/promotion gate passes and the user approves:
+# my_function.set_config(<flat candidate config read from candidate_config.json>)
 ```
 
 ### Quick Reference
@@ -383,7 +385,9 @@ answer = my_function("What is Python?")
    - Reserve the holdout slice BEFORE the first optimization run and record the partition (tuning slice / optional exemplar bank / holdout slice); if none exists yet, create one before any result counts as promotion-ready.
    - Keep tuning and holdout slices separate, stratify by known input classes, and report sample count, source, label quality, and exclusions.
    - Use JSONL with scoreable `input` and `output` fields when a built-in evaluator can score the task.
+   - Existing rows with other keys (`question` / `answer`): write a NEW converted file with `{"input": {"<param name>": ...}, "output": ...}` rows, leave the original, and tell the user (see `traigent-setup-quickstart`, dataset section).
    - Mock/offline-check a tiny slice before any backend generation or paid provider work.
+     If the agent calls a raw `openai`/`anthropic` client, mock mode cannot intercept it: offer `litellm.completion`, or, only for a synchronous agent using `openai.OpenAI()` (for `anthropic`, `AsyncOpenAI` or `async def` agents use `litellm.completion`), write a new `dry_run.py` that stubs the client (`traigent-setup-quickstart`, "Mock scope"). Never make the first test a real paid run: any real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()`, needs the user's explicit go, and is not started from a `__main__` block.
    - DELEGATE (required): `traigent-dataset-curate` owns dataset recipes, growth, example scoring, and quality loops.
 
 3. CHOOSE the metric.

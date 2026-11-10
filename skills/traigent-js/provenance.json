@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "a125c90ea80f6358",
+  "doc_hash": "de5fa392ee3efa31",
   "entries": [
     {
       "edit_id": "genesis",
@@ -117,6 +117,17 @@
       "doc_before_hash": "7a3b1393c25b62d0",
       "doc_after_hash": "a125c90ea80f6358",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "a125c90ea80f6358",
+      "doc_after_hash": "de5fa392ee3efa31",
+      "note": "Removed the obsolete claim that the Python backend path executes only grid/random.",
       "source_type": "agent"
     }
   ]

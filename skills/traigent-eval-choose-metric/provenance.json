@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7a10112834bbc16c",
+  "doc_hash": "a3634ccb3e8dfa22",
   "entries": [
     {
       "edit_id": "genesis",
@@ -183,6 +183,39 @@
       "doc_before_hash": "098aa4103d6b9ab9",
       "doc_after_hash": "7a10112834bbc16c",
       "note": "Point list-output agents at recall/precision at a budget in eval-build (#474).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "7a10112834bbc16c",
+      "doc_after_hash": "749e6ea93e446299",
+      "note": "eval_dataset added to the snippet; no-gold track points at the reference-free judge prompt.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "749e6ea93e446299",
+      "doc_after_hash": "35bfcf163aa7cdf9",
+      "note": "Gaps round: reply-checklist and copyable template placed where the agent acts.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "35bfcf163aa7cdf9",
+      "doc_after_hash": "a3634ccb3e8dfa22",
+      "note": "Gaps round 2: reply must carry the verify step and the human spot-sample wording.",
       "source_type": "agent"
     }
   ]

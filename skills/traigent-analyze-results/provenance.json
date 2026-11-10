@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "797f3bf9704c2eb6",
+  "doc_hash": "c4f2a9582772903b",
   "reference_hashes": {
     "references/convergence-patterns.md": "793c3c1c2f20e5ad",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -56,7 +56,7 @@
       "timestamp": "2026-07-07T00:00:00Z",
       "doc_before_hash": "838feefd1437899f",
       "doc_after_hash": "77ffaa88b34926ab",
-      "note": "note that the apply threshold check runs on the search slice, not a promotion decision — promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
+      "note": "note that the apply threshold check runs on the search slice, not a promotion decision \u2014 promotion needs the holdout gate (Traigent/traigent-smartopt#88, #89)",
       "source_type": "human"
     },
     {
@@ -122,7 +122,7 @@
       "timestamp": "2026-07-17T00:00:00Z",
       "doc_before_hash": "3e30b2333041940f",
       "doc_after_hash": "f2dda030a1ffec27",
-      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` — the copy generated into this skill by tools/contract/sync_economics_reference.py — instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
+      "note": "repair the WI-A economics wiring after review (Terra BLOCK findings): point the skill at `references/economics-characterization.v0.md` \u2014 the copy generated into this skill by tools/contract/sync_economics_reference.py \u2014 instead of the repo-root docs/shared/economics-characterization.v0.md path, which does not exist in a single-skill or manual install; docs/shared remains the one authored source of truth and the shipped copy is pinned byte-identical by tests/contract/test_economics_reference.py. Also cite the canonical doc's new three-option paging rule (all five closed values stay reachable, at most 3 options and exactly one Recommended per page, same recommendation carried across pages). Posture, safety rules, and the explanation duty are unchanged. WI-A review repair of the economics model; ChangeSession cs_8e10a485f94fda03; Spine-Trail st_6443b96904d7",
       "source_type": "human"
     },
     {
@@ -451,6 +451,127 @@
       "doc_before_hash": "85dd9013dbee19c0",
       "doc_after_hash": "797f3bf9704c2eb6",
       "note": "Run identity now taught as agent_name with experiment_name as the deprecated alias; run_title/run_description pointer (#468).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "797f3bf9704c2eb6",
+      "doc_after_hash": "b8c50f4f837edc9b",
+      "note": "Noise-floor numbers and case study removed from 'Is the Delta Real?'; Pareto placeholders flagged as required.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r6",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "b8c50f4f837edc9b",
+      "doc_after_hash": "5ef7e03e3ad6a83b",
+      "note": "Round 6: paired-delta snippet (wins, losses, exact sign test, bootstrap interval) to report instead of 'within noise'.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r7",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "5ef7e03e3ad6a83b",
+      "doc_after_hash": "c3289d02c929cd0d",
+      "note": "Round 7: paired_delta rejects non-finite scores and differences; interval labelled approximate percentile-bootstrap and demoted below the exact sign test.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "c3289d02c929cd0d",
+      "doc_after_hash": "60113122c2668e22",
+      "note": "Gaps round: reply-checklist and copyable template placed where the agent acts.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "60113122c2668e22",
+      "doc_after_hash": "e09409327f0d7d83",
+      "note": "Review r7: paired comparison decides; Wilson only for binary aggregates on scored rows; output variation is a cue, mock provenance decides.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "e09409327f0d7d83",
+      "doc_after_hash": "d29e8a5077fe1e2d",
+      "note": "Round 10: numbered recovery order for a paid run missing from the portal (portal check before a per-session sync; rerun is separate and approved).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "d29e8a5077fe1e2d",
+      "doc_after_hash": "3cf1da7a26eb565f",
+      "note": "Round 10-11: recovery order uses the per-session sync only; dry-run template restricted to sync agents, private-attribute wrapper labelled version-bound.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "3cf1da7a26eb565f",
+      "doc_after_hash": "9f5e2e4c323c0c35",
+      "note": "Round 11: name the session id; never pass --all.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "9f5e2e4c323c0c35",
+      "doc_after_hash": "55a1daa94842c89f",
+      "note": "Round 12: sync only uploads the local record (may be a new session); an existing unfinalized portal session is reported, not repaired.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "55a1daa94842c89f",
+      "doc_after_hash": "9ed3641b156e16f2",
+      "note": "Round 12b: reply must quote persistence_status/error/source and state the rerun rule.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-argon-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "9ed3641b156e16f2",
+      "doc_after_hash": "c4f2a9582772903b",
+      "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
       "source_type": "agent"
     }
   ]
