@@ -8,7 +8,7 @@ metadata:
   traigent-stage: recipe
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.16"
+  version: "1.0.17"
 ---
 
 # Traigent text2SQL optimization — the working recipe
@@ -87,12 +87,22 @@ multi-DB — each example carries a `db_id`; resolve schema + connection per `db
   (`SELECT CountryCode, max(Percentage)` when only codes were asked). The
   convention forgives column *order*, never missing/extra columns.
 
-Before the first paid run, execute every gold once and exclude, by id, any that errors: a gold
-that fails to run scores 0.0 for every candidate, so it separates nothing. Keep a gold that runs
-and returns zero rows when that is the correct answer (for example "which invoices are overdue"
-when none are): it still separates a correct query from one that wrongly returns rows. Such a
-row also credits a wrong query that returns nothing, so count the empty-answer rows and report
-them separately. Report accuracy with the excluded count. Run candidate SQL
+Before the first paid run, execute every gold once. A gold that fails to run is a dataset
+error, not a bad candidate: it would score 0.0 for every candidate and separate nothing, so make
+the scorer raise a distinct error naming the row (never score the candidate 0.0 for it, and do
+not let it escape as a bare database exception) and exclude that id. Keep a gold that runs and
+returns zero rows when that is the correct answer (for example "which invoices are overdue"
+when none are): it still separates a correct query from one that wrongly returns rows. Return
+`1.0` only when the prediction also executes and returns zero rows, `0.0` when it returns rows,
+and `0.0` (never `None`, which fails the objective closed) when it fails to execute; record
+the execution error separately from a legitimate empty result so the two are not conflated.
+
+An empty gold has a limit: it also credits any wrong query that returns nothing. Do not fix
+that by dropping the row. Keep it, count the empty-answer rows and report them separately, and
+complement it: add fixture rows to the probe DB so the correct query returns data (for
+example insert one overdue invoice and keep the original empty case on a second probe DB),
+or score the question on both. In your reply, state this limitation and name the complement
+you chose or recommend. Report accuracy with the excluded count. Run candidate SQL
 only on a read-only handle with a watchdog and a size cap — never on the writable DB the agent
 could mutate (the runnable reference below does both). Bound the watchdog by wall-clock time,
 not by a VM-step count: a step cap also aborts correct SQL on a real-size table and scores it 0

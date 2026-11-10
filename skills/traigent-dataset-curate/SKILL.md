@@ -8,7 +8,7 @@ metadata:
   traigent-stage: dataset
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.19"
+  version: "1.1.20"
 ---
 
 # Traigent Curate Dataset
@@ -94,7 +94,19 @@ configurations scored on the same rows: judge that with the paired evidence in
 when you report.
 
 **Dedupe before splitting**, so a duplicate row cannot land on both sides of the tuning/holdout
-split and quietly leak the holdout into the search.
+split and quietly leak the holdout into the search. When you recommend a holdout, say both parts:
+it is never used for tuning or selection, and you dedupe first for that reason.
+
+**Asked "is my eval set good enough?"** Inspect the file itself, with a local script if you can
+run code, or by reading the rows if you cannot (then say the counts come from reading, and give
+the short script the user can run). Do not edit or overwrite the file; write any deduped or
+rebalanced copy to a new file or only suggest it. Do not upload the rows anywhere. In your
+reply, give measured facts, not generic advice: the row count; the count per label and the score
+a constant majority-label answer would get; exact duplicate pairs and near duplicates (case or
+punctuation only) by row number, and the number of distinct inputs left; how many rows each rare
+class has; any labels that look wrong, flagged as a judgement to check. Then say what one row
+is worth in accuracy points (`100/n`), whether differences of that size can be trusted, and end
+with a plain verdict (good enough, not yet, or good enough only for a smoke check).
 
 Prefer fewer well-labeled examples over many vague examples. Every row should have a reason to exist: common path, edge case, high-value customer path, known failure, or safety-critical path.
 

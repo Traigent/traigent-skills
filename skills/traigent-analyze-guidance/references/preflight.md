@@ -58,7 +58,8 @@ a backend rejection or a local fallback, not only a failed sync), and follow `tr
 then sync that one session: `traigent sync <session_id>` (or `traigent local sync --session-id
 <session_id>`; add `--dry-run` first to preview). Never use the whole-store `--all` (or an
 unscoped `traigent local sync`, which syncs every pending session). Re-running the optimization is
-a separate paid action that needs the user's approval. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
+a separate paid action that needs the user's approval; it is only for the case where the local
+result cannot be uploaded or used. Keep a hard cost cap (`TRAIGENT_RUN_COST_LIMIT`) on every real
 run.
 
 ## Run naming

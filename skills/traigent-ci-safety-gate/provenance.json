@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e9701f5c650f4f21",
+  "doc_hash": "2801c3584e625de0",
   "reference_hashes": {
     "references/gate-workflow.md": "3c7a8e4099db45ba",
     "references/in-run-safety.md": "5a47cd85dda26146"
@@ -284,6 +284,17 @@
       "doc_before_hash": "0739ee887fff014d",
       "doc_after_hash": "e9701f5c650f4f21",
       "note": "Version-correct apply=False and resume_from statements for released SDKs.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-10-gate-holdout-reply",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "e9701f5c650f4f21",
+      "doc_after_hash": "2801c3584e625de0",
+      "note": "Add an explicit reply duty explaining why the gate uses the holdout, not the tuning rows.",
       "source_type": "agent"
     }
   ]

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Traigent
-  version: "1.2.16"
+  version: "1.2.17"
 ---
 
 # Traigent Analyze Guidance
@@ -88,6 +88,7 @@ required — it always is.
 |---|---|
 | About to design or launch a run (any run, always) | **A** — fetch and confirm the service run-plan |
 | A portal-tracked run just completed | **B** — fetch the backend decision brief (`analytics_get_run_decision_brief`) first |
+| The run finished (and was paid for) but is not in the portal | **None of A/B/C yet.** Do not rerun. Read `results_local.json` / the run log for `persistence_status`, `persistence_error`, `source` and the session id; quote them in your reply; tell the user to check the portal for that session id; never `traigent sync --all`. Say in your reply: a rerun is a separate paid action that needs the user's explicit approval and a cost cap, and is only for when the local result cannot be uploaded or used. Details: "Execution selector and portal tracking" below, and `traigent-analyze-results` → "Verify the Run Actually Persisted" |
 | `offline=True`, no backend access, the service payload is unavailable, or the service flagged local evidence for diagnosis | **C** — local diagnosis, one hypothesis |
 
 Portal-tracked runs go through Mode B first. Pre-run is always Mode A. Mode C
