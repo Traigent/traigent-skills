@@ -1329,20 +1329,54 @@ def run_example_scoring(transport: Transport, run_id: str, out: list[str]) -> di
     return record
 
 
-def _collect_run_rows(transport: Transport, out: list[str], experiments: list) -> list[dict]:
+def _discovery_list(data: dict | None, keys: tuple[str, ...]) -> tuple[list[dict], bool]:
+    """Keep usable results, but distinguish an empty list from unreadable rows."""
+    if isinstance(data, dict):
+        for key in keys:
+            values = data.get(key)
+            if isinstance(values, list):
+                return ([item for item in values if isinstance(item, dict)],
+                        all(isinstance(item, dict) for item in values))
+    return [], False
+
+
+def _collect_run_rows(
+    transport: Transport, out: list[str], experiments: list, discovery: dict,
+) -> list[dict]:
     rows: list[dict] = []
     for experiment in experiments:
         experiment_id = experiment.get("experiment_id") or experiment.get("id")
         if not experiment_id:
+            discovery["complete"] = False
+            discovery["unidentified_experiments"] += 1
             continue
         payload, entry = transport.request(
             "GET", f"/api/v1/experiment-runs/{segment(experiment_id)}/runs"
         )
-        report_result("list-runs", entry, payload, transport.api_key, out)
-        for run in as_list(envelope_data(payload), ("runs", "items", "results")):
+        result = report_result("list-runs", entry, payload, transport.api_key, out)
+        # A failed or refused payload is not a source of usable rows, even if
+        # it happens to carry a success-shaped body.
+        runs, readable = _discovery_list(result.get("data"), ("runs", "items", "results"))
+        if not readable or any(not run.get("run_id") for run in runs):
+            discovery["complete"] = False
+            discovery["failed_experiments"].append(experiment_id)
+        for run in runs:
             if run.get("run_id"):
                 rows.append({"experiment": experiment, "run": run})
     return rows
+
+
+def _discovery_summary(discovery: dict, out: list[str]) -> None:
+    if not discovery["complete"]:
+        out.append(
+            "  discovery is incomplete: a page bound, failed lookup, or unreadable "
+            "record limited these results. You may retry this check or supply a "
+            "known --run-id."
+        )
+    out.append(
+        "  results cover only the returned pages; account-wide coverage has not "
+        "been verified."
+    )
 
 
 def run_list_runs(transport: Transport, out: list[str]) -> dict:
@@ -1356,11 +1390,25 @@ def run_list_runs(transport: Transport, out: list[str]) -> dict:
         "GET", f"/api/v1/experiments?limit={EXPERIMENTS_PAGE_LIMIT}"
     )
     record = report_result("list-runs", entry, payload, transport.api_key, out)
-    experiments = as_list(envelope_data(payload), ("experiments", "items", "results"))
+    experiments, readable = _discovery_list(
+        record.get("data"), ("experiments", "items", "results")
+    )
+    discovery = {
+        "scope": "returned_pages",
+        "complete": readable,
+        "account_coverage": "not_verified",
+        "experiment_page_full": len(experiments) >= EXPERIMENTS_PAGE_LIMIT,
+        "failed_experiments": [],
+        "unidentified_experiments": 0,
+    }
+    record.update(discovery=discovery, completed_runs=[], experiments_listed=0)
+    if discovery["experiment_page_full"]:
+        discovery["complete"] = False
     if not experiments:
         out.append(
             "  no experiment was listed, so no run id can be offered from here."
         )
+        _discovery_summary(discovery, out)
         return record
 
     # One approval buys a BOUNDED number of requests. A server answering a
@@ -1377,7 +1425,7 @@ def run_list_runs(transport: Transport, out: list[str]) -> dict:
         )
         experiments = experiments[:EXPERIMENTS_PAGE_LIMIT]
 
-    rows = _collect_run_rows(transport, out, experiments)
+    rows = _collect_run_rows(transport, out, experiments, discovery)
 
     completed = [row for row in rows
                  if str(row["run"].get("status") or "").lower()
@@ -1387,7 +1435,7 @@ def run_list_runs(transport: Transport, out: list[str]) -> dict:
 
     out.append("  completed portal runs, newest first:")
     if not completed:
-        out.append("  - none. No completed run exists on this account yet.")
+        out.append("  - no completed runs found in the inspected experiments.")
     for row in completed:
         experiment, run = row["experiment"], row["run"]
         out.append(f"  - portal run id : {run.get('run_id')}")
@@ -1418,6 +1466,7 @@ def run_list_runs(transport: Transport, out: list[str]) -> dict:
     )
     record["completed_runs"] = [row["run"].get("run_id") for row in completed]
     record["experiments_listed"] = len(experiments)
+    _discovery_summary(discovery, out)
     return record
 
 
@@ -1433,23 +1482,6 @@ def _first(primary: dict, secondary: dict, *keys: str) -> object:
                 return source[key]
     return "not returned by this endpoint"
 
-
-def as_list(data: dict | None, keys: tuple[str, ...]) -> list[dict]:
-    """Pull a list of objects out of a payload whose exact shape is not pinned.
-
-    The live probe recorded the KEYS these endpoints return, not the envelope
-    around them, so both ``data`` as a list and ``data[<key>]`` as a list are
-    accepted rather than guessed at.
-    """
-    if isinstance(data, list):
-        return [item for item in data if isinstance(item, dict)]
-    if not isinstance(data, dict):
-        return []
-    for key in keys:
-        value = data.get(key)
-        if isinstance(value, list):
-            return [item for item in value if isinstance(item, dict)]
-    return []
 
 
 # --------------------------------------------------------------------------
