@@ -221,7 +221,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"   # SDK 0.32.0+ needs Python 3.12+; on 3.11 pip stops at 0.31.1
       - run: pip install "traigent[dev]>=0.24.0"
       - run: pytest tests/
 ```

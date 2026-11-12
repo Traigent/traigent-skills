@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.44"
+  version: "1.0.46"
 ---
 
 # Traigent Quickstart
@@ -321,7 +321,7 @@ See `references/installation-extras.md` for the full table of extras and their c
 
 ### Requirements
 
-- Python >= 3.11
+- Python >= 3.12 (SDK 0.32.0+; SDK 0.31.x and earlier accept 3.11, so on Python 3.11 pip silently resolves to 0.31.1)
 
 ## Get Your Traigent API Key
 
@@ -783,7 +783,7 @@ You can include additional fields for metadata, but `input` and `output` are req
 traigent info
 ```
 
-This prints the installed version, Python version, available integrations, and optimization defaults.
+This prints the installed version, Python version and platform, a feature table (enabled or disabled; SDK 0.33.0+ also marks cloud-only features as `Cloud only (requires login)`), and the available integrations. It has no defaults section; read `traigent.get_version_info()["global_config"]` for configured defaults.
 
 ### Verify from Python
 
@@ -814,7 +814,7 @@ traigent onboard         # guided first-run setup wizard
 | `traigent models`          | List/validate model IDs before a run, e.g. `traigent models --provider anthropic --check claude-haiku-5-5` (ID-shape preflight against a shipped snapshot; confirm liveness via the provider's catalog). The snapshot lags upstream additions — on 0.30.0 this example reports `valid: false` although Anthropic lists the model as active, so read a `false` as "not in this SDK's snapshot", not as "retired" |
 | `traigent generate-config` | Scaffold a full `@traigent.optimize()` config for your function     |
 | `traigent detect-tvars`    | Detect tuned-variable candidates in existing Python files           |
-| `traigent info`            | Show SDK version, environment, and integrations                     |
+| `traigent info`            | Show SDK version, platform, features, and integrations                  |
 | `traigent algorithms`      | List available optimization algorithms                              |
 | `traigent validate`        | Validate dataset files and configuration                            |
 

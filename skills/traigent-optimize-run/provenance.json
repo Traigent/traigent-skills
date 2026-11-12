@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ee2af1c827735e2d",
+  "doc_hash": "e5fc8e1caa574d51",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
-    "references/cost-management.md": "cb123f7353702556",
+    "references/cost-management.md": "ce8a7bf464b9a9d5",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/execution-budget.md": "23d17308f849017b",
     "references/parallel-config.md": "2938f82d7a778d5f",
@@ -566,6 +566,48 @@
       "doc_before_hash": "d78c2f857c522671",
       "doc_after_hash": "ee2af1c827735e2d",
       "note": "Drop the TRAIGENT_LITELLM_LIVE_PRICES name (not in SDK before 0.29.0); state the 0.29.0 floor for the default and tell the reader to set the map variable themselves.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "issue-488-2026-11-08",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-08T00:00:00Z",
+      "source_type": "agent",
+      "note": "cost-management reference guards results.total_cost and per-trial total_cost against None (SDK 0.32.0 unmeasured cost) instead of formatting or defaulting to 0.0 (#488); SKILL.md unchanged."
+    },
+    {
+      "edit_id": "review-round-1-2026-11-08-optimize-run",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-08T00:00:00Z",
+      "doc_before_hash": "608e75616080a264",
+      "doc_after_hash": "bd004bac908ce457",
+      "note": "Review round 1: Stop Conditions table adds safety_constraint_insufficient_evidence and no_usage_captured (SDK 0.31.0+) and qualifies the safety_constraint row by version (#486).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "version-bump-2026-11-08-optimize-run",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-08T00:00:00Z",
+      "doc_before_hash": "bd004bac908ce457",
+      "doc_after_hash": "f60e201173b6584a",
+      "note": "Bump metadata.version 1.0.31 -> 1.0.32 for the issue batch SKILL.md content changes (eval-artifacts/README.md Version Discipline).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "merge-main-into-skills-issues-20261108-2026-11-12",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-12T00:00:00Z",
+      "doc_before_hash": "f60e201173b6584a",
+      "doc_after_hash": "e5fc8e1caa574d51",
+      "note": "Three-way merge of main (#506, #508; main tip doc_after_hash ee2af1c827735e2d) into the 2026-11-08 issue-batch branch, whose own entries (issue-488-2026-11-08, review-round-1-2026-11-08-optimize-run, version-bump-2026-11-08-optimize-run) chain from the shared parent rather than main's tip; doc_hash recomputed over the merged SKILL.md; entries from both sides retained. metadata.version 1.0.43 (main) / 1.0.32 (branch) -> 1.0.44 (eval-artifacts/README.md Version Discipline). See GAP_EXCEPTIONS in tests/contract/test_provenance.py for the parallel-branch gap.",
       "source_type": "agent"
     }
   ]

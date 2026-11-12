@@ -30,6 +30,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 from .test_audit_349_fenced_blocks import skip_unless_current_released_sdk
 
@@ -57,10 +58,9 @@ sys.exit(0)
 '''
 
 
-def test_mock_mode_still_misses_a_standalone_litellm_call(
-    tmp_path: Path, sync_map: dict, sdk_version_label: str
+def test_standalone_litellm_mock_interception_flips_at_0_31_0(
+    tmp_path: Path, sdk_version_label: str
 ) -> None:
-    skip_unless_current_released_sdk(sync_map, sdk_version_label, "the #449 caveats")
     pytest.importorskip("litellm")
     pytest.importorskip("traigent.testing")
 
@@ -90,11 +90,22 @@ def test_mock_mode_still_misses_a_standalone_litellm_call(
         timeout=300,
     )
     assert proc.returncode == 0, proc.stderr[-2000:]
-    assert "ESCAPED_MOCK" in proc.stdout, (
-        "mock mode now intercepts a standalone litellm.completion call -- the "
-        "skills' spend/egress caveat says it does not; restate it with the "
-        f"release that fixed it. probe output: {proc.stdout!r}"
-    )
+    # Before 0.31.0 the standalone call escapes mock mode (the #449 spend/egress
+    # caveat). From 0.31.0 the interceptors are installed at enable time, so the
+    # same probe is served from the mock (skills: "From traigent 0.31.0 the
+    # interceptors are installed when mock mode is enabled").
+    if sdk_version_label == "develop" or Version(sdk_version_label) >= Version("0.31.0"):
+        assert "INTERCEPTED" in proc.stdout, (
+            "mock mode no longer intercepts a standalone litellm.completion call "
+            "from 0.31.0 -- restate the skills' 0.31.0 mock-scope claim. "
+            f"probe output: {proc.stdout!r}"
+        )
+    else:
+        assert "ESCAPED_MOCK" in proc.stdout, (
+            "mock mode now intercepts a standalone litellm.completion call before "
+            "0.31.0 -- the skills' spend/egress caveat says it does not; restate it "
+            f"with the release that fixed it. probe output: {proc.stdout!r}"
+        )
 
 
 def test_base_evaluator_is_still_not_wireable(

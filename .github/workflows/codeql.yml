@@ -41,6 +41,9 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
+    # Observed runs take 1-3 minutes (one outlier at 11); 20 bounds a hang well
+    # below the 360-minute default without clipping a slow scheduled scan.
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:

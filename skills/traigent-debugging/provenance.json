@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ae511c1d368c628f",
+  "doc_hash": "6e987bda73af5003",
   "reference_hashes": {
-    "references/error-reference.md": "02ac48de17fe6c9e",
+    "references/error-reference.md": "495b5f8cda99fbf8",
     "references/logging-config.md": "158e07e3237bfb61",
-    "references/mock-mode.md": "bdc93834f7a361f1"
+    "references/mock-mode.md": "58ac141f672e9ac3"
   },
   "entries": [
     {
@@ -331,6 +331,50 @@
       "doc_before_hash": "6311c318286041d3",
       "doc_after_hash": "ae511c1d368c628f",
       "note": "Version-correct apply=False and resume_from statements for released SDKs.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "caveat-provider-validation-0.31.0-2026-11-12",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-12T00:00:00Z",
+      "doc_before_hash": "ae511c1d368c628f",
+      "doc_after_hash": "c7e7748e13b7d5b0",
+      "note": "Restate ProviderValidationError: SDK 0.31.0+ raises it in the pre-run key check of a paid run (preflight_run_providers, providers/validation.py; _preflight_provider_keys, core/orchestrator.py); TRAIGENT_SKIP_PROVIDER_VALIDATION and mock mode skip it (utils/env_config.py skip_provider_validation). Version 1.0.23.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "caveat-skip-provider-validation-0.32-2026-11-12",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-12T00:00:00Z",
+      "doc_before_hash": "c7e7748e13b7d5b0",
+      "doc_after_hash": "3052e9eb9dc886c7",
+      "note": "Reword TRAIGENT_SKIP_PROVIDER_VALIDATION as a per-process, verified-keys-only skip of the SDK's own pre-run provider-key check (utils/env_config.py skip_provider_validation, core/orchestrator.py, providers/validation.py preflight_run_providers, SDK v0.32.0); replace the standing export in the example with a one-process prefix; never to silence an unexplained failure. Version 1.0.24.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-fix-provider-check-error-shape-2026-11-12-debugging",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-12T00:00:00Z",
+      "doc_before_hash": "3052e9eb9dc886c7",
+      "doc_after_hash": "ce0fcb1e81d5f225",
+      "note": "Review finding: ProviderValidationError message shape replaced with the SDK's preflight raise text (Provider key check failed before the paid run started: <provider> (<error type>)); the old bullet form was not an SDK message. Skip-flag limits from 807bca8 kept. Version 1.0.24 -> 1.0.25.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-fix-provider-check-error-types-2026-11-12-debugging",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-12T00:00:00Z",
+      "doc_before_hash": "ce0fcb1e81d5f225",
+      "doc_after_hash": "6e987bda73af5003",
+      "note": "Review finding: the listed error types now match what the preflight raise can name (UnsupportedProvider is filtered out; a 401 or 403 is AuthenticationError so the HTTP example is HTTP400; Unknown is possible). Version 1.0.25 -> 1.0.26.",
       "source_type": "agent"
     }
   ]

@@ -1,7 +1,7 @@
 # WI-A review repair — Terra BLOCK findings
 
 - **Repo / branch / base:** `Traigent/traigent-skills` | `feature/econ-model-wi-a` | base candidate `645264f` (parent `origin/main`)
-- **Worktree:** `/home/nimrod/TraigentProjects/worktrees/econ-model-2026-07-17/traigent-skills`
+- **Worktree:** `<worktree>/traigent-skills`
 - **Governance:** ChangeSession `cs_8e10a485f94fda03`; Spine-Trail `st_6443b96904d7`
 - **Model identity:** Claude Opus 4.8 (`claude-opus-4-8`), Claude Code implementation worker
 - **Scope:** repair of the three Terra BLOCK findings on WI-A only. No WI-B/WI-C/WI-D work, no

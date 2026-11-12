@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.22"
+  version: "1.0.26"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -265,20 +265,22 @@ my_func("hello")  # Works - get_config() returns the applied config
 
 ### ProviderValidationError
 
-**When raised**: never by the SDK on its own. `@traigent.optimize` runs no automatic provider
-validation and has no `validate_providers=` parameter. Provider key validation is opt-in: call
-`validate_providers(...)` yourself before the run (`from traigent.providers import
-validate_providers` — a plain `import traigent` does not expose the submodule) and raise this
-exception
-from your own code if you want a hard failure. Extends `ConfigurationError`.
+**When raised**: never by the SDK on its own, except from SDK 0.31.0, in the optimizer's pre-run key
+check of a paid run (a cost limit is set or cost is approved, and mock mode is off). That check
+runs before cost approval and before any trial, and raises this when a key the run's models use is
+missing, invalid or out of funds. Through 0.30.0 the SDK never raises it. Everywhere else it is
+opt-in: `@traigent.optimize` has no `validate_providers=` parameter, so call `validate_providers(...)`
+yourself before the run (`from traigent.providers import validate_providers` — a plain
+`import traigent` does not expose the submodule) and raise this exception from your own code if you
+want a hard failure. Extends `ConfigurationError`.
 
-The shape of the error you raise yourself:
+The shape of the error the SDK raises before a paid run (grep a log for `Provider key check failed`):
 
 ```
-traigent.utils.exceptions.ProviderValidationError: Provider validation failed:
-  - openai: InvalidAPIKey
-  - anthropic: MissingAPIKey
+traigent.utils.exceptions.ProviderValidationError: Provider key check failed before the paid run started: openai (AuthenticationError), anthropic (MissingKey). Fix the key (or set TRAIGENT_SKIP_PROVIDER_VALIDATION=true to skip this check).
 ```
+
+Each parenthesised value is the SDK's error type for that provider: an exception class name such as `AuthenticationError`, an HTTP status such as `HTTP400`, or `MissingKey`, `InsufficientFunds` or `Unknown`. `validate_providers()` returns a status per provider and does not raise. A wrapper you write may print its own text instead, such as the `Provider validation failed: [('openai', 'AuthenticationError')]` pattern in the `ProviderValidationError` docstring; that wording is not the SDK's message.
 
 **Fixes**:
 
@@ -289,14 +291,16 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 ```
 
 ```bash
-# Signal that your own pre-run check should be skipped (keys are valid, the check is failing)
-export TRAIGENT_SKIP_PROVIDER_VALIDATION=true
+# Skip the SDK's provider-key check for this one process only (keys verified valid in this session)
+TRAIGENT_SKIP_PROVIDER_VALIDATION=true python your_run.py
 ```
 
-`TRAIGENT_SKIP_PROVIDER_VALIDATION` does **not** switch anything off by itself. It is not a
-decorator argument (there is no `validate_providers` keyword on `@traigent.optimize`), the
-decorator never validates provider keys, and `validate_providers()` does not read it either.
-It is a signal your own wrapper reads — branch on it before you call:
+`TRAIGENT_SKIP_PROVIDER_VALIDATION=true` skips the SDK's own provider-key check before a paid run (SDK 0.31.0+;
+mock mode skips it too). Use it only when you have checked the keys are valid in this session, set it for that
+one process only (never a standing export or a committed `.env`), and never to silence a failure whose cause you
+have not found. It is not a decorator argument (there is no `validate_providers` keyword on
+`@traigent.optimize`), and `validate_providers()` does not read it. Your own wrapper reads it, so
+branch on it before you call:
 
 ```python
 from traigent.providers import validate_providers

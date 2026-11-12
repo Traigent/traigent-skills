@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.26"
+  version: "2.1.28"
 ---
 
 # Traigent Boost Agent
@@ -263,7 +263,7 @@ Example:
 When the user explicitly says to proceed:
 <!-- /PROTECTED -->
 
-Verify API keys first — models in the config space need corresponding provider keys. Traigent does **not** validate them for you: `@traigent.optimize` runs no automatic provider check, and the SDK never raises `ProviderValidationError` on its own. Call `validate_providers(...)` yourself before the run — `from traigent.providers import validate_providers`, since a plain `import traigent` does not expose the submodule — and raise `ProviderValidationError` from your own code if you want a hard failure. Or just confirm the keys are present:
+Verify API keys first — models in the config space need corresponding provider keys. From SDK 0.31.0 a paid run (a cost limit set or cost approved, mock mode off) checks them before cost approval and raises `ProviderValidationError` on a missing, invalid or out-of-funds key. `TRAIGENT_SKIP_PROVIDER_VALIDATION=true` skips that check for one process only (`TRAIGENT_SKIP_PROVIDER_VALIDATION=true python your_run.py`); use it only when the keys were checked valid in this session, never as a standing export or in a committed `.env`, and never to silence a failure whose cause you have not found. Any other run, and every run on SDK 0.30.0 and earlier, gets no automatic check: call `validate_providers(...)` yourself before the run — `from traigent.providers import validate_providers`, since a plain `import traigent` does not expose the submodule — and raise `ProviderValidationError` from your own code if you want a hard failure. Or just confirm the keys are present:
 
 ```bash
 export OPENAI_API_KEY="sk-..."         # For gpt-* models

@@ -147,15 +147,31 @@ skill, and the skill text must state that requirement. `backend_prefixes` makes
 URL endpoint checks blocking only for backend path families a skill explicitly
 owns; otherwise URL facts are advisory skips.
 
-Run the released SDK buckets emitted by `sync_map.yml`:
+Run the released SDK buckets emitted by `sync_map.yml`. Each bucket needs its
+own venv with that exact `traigent==<version>` installed (one interpreter holds
+one SDK version, and `test_public_installability.py` fails a bucket whose
+installed SDK does not match), so build one per bucket as `contracts.yml` does,
+and stop at the first failing bucket so its exit code is not hidden by a later
+one:
 
 ```bash
-python tools/contract/list_buckets.py
-# then run each bucket it emits, e.g. (current set):
-python -m pytest tests/contract --sdk-version=0.21.3 -q
-python -m pytest tests/contract --sdk-version=0.24.0 -q
-python -m pytest tests/contract --sdk-version=0.27.0 -q
+uv export --frozen --no-emit-project --no-hashes -o harness-requirements.txt
+(
+  buckets=$(python tools/contract/list_buckets.py) || exit 1
+  [ -n "$buckets" ] || { echo "list_buckets.py produced no SDK buckets" >&2; exit 1; }
+  for v in $buckets; do
+    {
+      uv venv --python 3.12 ".bucket-$v" &&
+        uv pip install --python ".bucket-$v/bin/python" \
+          -r harness-requirements.txt "traigent==$v" &&
+        ".bucket-$v/bin/python" -m pytest tests/contract --sdk-version="$v" -q
+    } || { echo "bucket $v FAILED" >&2; exit 1; }
+  done
+)
 ```
+
+The loop runs in a subshell, so a failing bucket stops it, names the bucket and
+returns non-zero (`echo $?`) without closing your terminal.
 
 `current_released_sdk_version` is intentionally pinned in `sync_map.yml` so PR
 CI is hermetic. Update that field in the same PR that should start testing a
@@ -165,7 +181,8 @@ Refresh the vendored backend route snapshot from the local TraigentBackend git
 ref:
 
 ```bash
-/tmp/venv-skills/bin/python tools/contract/refresh_backend_routes.py
+python tools/contract/refresh_backend_routes.py --repo <TraigentBackend checkout>
+# or: TRAIGENT_BACKEND_REPO=<TraigentBackend checkout> python tools/contract/refresh_backend_routes.py
 ```
 
 The snapshot is trusted the same way as other vendored contract fixtures: it is

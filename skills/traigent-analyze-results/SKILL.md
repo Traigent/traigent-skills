@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.38"
+  version: "1.1.39"
 ---
 
 # Analyzing Traigent Optimization Results
@@ -619,10 +619,17 @@ if results.total_tokens is not None:
 # Aggregated experiment statistics
 stats = results.experiment_stats
 print(f"Total duration: {stats.total_duration:.1f}s")
-print(f"Total cost: ${stats.total_cost:.4f}")
+if stats.total_cost is not None:
+    print(f"Total cost: ${stats.total_cost:.4f}")
+else:  # SDK 0.31.0+: any unmeasured trial cost makes the total unknown, not a partial sum
+    floor = stats.cost_lower_bound  # None when the known spend is 0: never show it as $0
+    print(f"Total cost: unknown ({int(stats.cost_unmeasured_trials or 0)} trial(s) unmeasured; "
+          + ((f"known spend at least ${floor:.4f})" if floor >= 0.0001 else "known spend under $0.0001)")
+             if floor else "known spend not measured)"))
 print(f"Unique configurations tested: {stats.unique_configurations}")
 print(f"Average trial duration: {stats.average_trial_duration:.1f}s")
-print(f"Cost per configuration: ${stats.cost_per_configuration:.4f}")
+if stats.cost_per_configuration is not None:
+    print(f"Cost per configuration: ${stats.cost_per_configuration:.4f}")
 print(f"Trial counts: {stats.trial_counts}")
 # Trial counts: {"total": 10, "completed": 8, "failed": 2, ...}
 
@@ -817,7 +824,9 @@ The `stop_reason` field tells you why optimization ended. This is critical for d
 | `"cost_limit"` | Hit the per-run cost budget — or, if the stop message says `per-trial cost unknown: fallback trial limit`, a trial-count stop because cost was not measured (warning `COST_UNMEASURED_TRIAL_LIMIT_REACHED`; see `traigent-debugging`) | Report the best completed configuration as a result, never as a failure — the paid trials are kept; a larger run needs a new approval, and the decision is `traigent-analyze-guidance`'s |
 | `"execution_budget"` | Shared cumulative `ExecutionBudget` exhausted — cost, examples, or deadline (SDK >= 0.26.0); reported instead of `"cost_limit"` | Report the best completed configuration as the result; `results.metadata["execution_budget"]` says which limit hit |
 | `"metric_limit"` | A soft cumulative metric limit was hit | Results are valid; report them |
-| `"safety_constraint"` | Since 0.28.0 (see version-matrix: safety-constraints-impl): an in-run `safety_constraints` halt, which also fires when there is too little evidence | It is not a trial filter or a safety verdict; `best_config` may be unsafe. Promote only through the `traigent-ci-safety-gate` skill |
+| `"safety_constraint"` | Since 0.28.0 (see version-matrix: safety-constraints-impl): an in-run `safety_constraints` halt. On 0.31.0+ it means a violation (observed compliance below the required rate); on 0.28.0–0.30.0 it also fired when there was too little evidence (0.31.0+ reports that as `"safety_constraint_insufficient_evidence"`) | It is not a trial filter or a safety verdict; `best_config` may be unsafe. Promote only through the `traigent-ci-safety-gate` skill |
+| `"safety_constraint_insufficient_evidence"` | Since 0.31.0: an in-run `safety_constraints` halt where the constraint was **not proven** safe yet and is **not a violation** (observed compliance meets the required rate, but the confidence lower bound does not prove it). The run halts fail-closed | The constraint was not shown to be violated and was not shown to hold. Do not report a violation and do not treat the config as safe; promote only through the `traigent-ci-safety-gate` skill, which needs more evidence |
+| `"no_usage_captured"` | Since 0.31.0: a strict cost objective ran and the first successful trial captured no token usage, so cost could not be measured; scheduling of new trials stops (trials already in flight may finish and bill) | Not a quality result. On the strict default `optimize_sync()` raises `UnknownModelError` and the finished trials are on `err.result`; wire usage capture (see `traigent-optimize-run`, Cost Wiring Probe) and rerun. `TRAIGENT_STRICT_COST_ACCOUNTING=false` accepts an unmeasured cost column with a warning |
 | `"optimizer"` | Optimizer decided to stop (search space exhausted) | Config space fully explored; results are final |
 | `"plateau"` | No improvement detected | Results have converged; more trials unlikely to help |
 | `"convergence"` | Built-in convergence condition triggered | Converged for this space; results are final |

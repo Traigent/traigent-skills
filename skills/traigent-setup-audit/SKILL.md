@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: experimental
   author: Nimrod
-  version: "0.2.8"
+  version: "0.2.9"
 ---
 
 # Traigent Setup Audit
@@ -183,10 +183,11 @@ Every near-miss is counted on the card and listed in the JSON, so a real scorer
 ruled out this way is visible rather than silently dropped; point `--scorer` at
 it if the filter got it wrong.
 
-The key check reports names only. The audit does read the text of the declared `.env`
-files in memory to extract variable names, but no key value is printed, written or
-placed in the card or the JSON; only the names and the file that declares them leave
-the check.
+The key check reports names only. The audit checks in memory whether each known key
+variable is blank (an empty or whitespace-only value counts as not set), and does read the
+text of the declared `.env` files in memory to extract variable names, but no key value
+is printed, written or placed in the card or the JSON; only the names and the file that
+declares them leave the check.
 
 ## Report the findings as evidence
 
@@ -600,7 +601,8 @@ that its zero-network property stays provable rather than inherited.
   and others raise, the next step names the probe's own conditions before the
   scorer, without claiming which caused it.
 - A key value is never shown or stored — only whether a known key **name**
-  is set, and in which file it is declared (the audit reads the `.env` text in memory
+  is set to a non-blank value (the value is checked for blankness in memory),
+  and in which file it is declared (the audit reads the `.env` text in memory
   to find names, and reports nothing but the names).
 - The scorer probe runs with only an allowlisted environment: `PATH`, `HOME`,
   locale (`LANG`, `LANGUAGE`, `LC_*`), `TZ` and temp-dir variables. Every other
