@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "fbc2bd19f9e774bf",
+  "doc_hash": "5e922dba7db6be9b",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -432,6 +432,17 @@
       "doc_before_hash": "5a788757f95afc93",
       "doc_after_hash": "fbc2bd19f9e774bf",
       "note": "Scope TRAIGENT_SKIP_PROVIDER_VALIDATION to one process, verified keys only, never a standing export or committed .env, never to silence an unfound failure (same limits as traigent-debugging 1.0.24). Version 2.1.28.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-fix-baseevaluator-through-0.33.0-2026-11-12-boost-agent",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-12T00:00:00Z",
+      "doc_before_hash": "fbc2bd19f9e774bf",
+      "doc_after_hash": "5e922dba7db6be9b",
+      "note": "BaseEvaluator is not wireable through any release through 0.33.0 (same fact and bound as traigent-eval-build 1.0.29); name the refusal per release (ValueError at run through 0.33.0, pydantic 'Input should be callable' on the development branch). Version 2.1.29.",
       "source_type": "agent"
     }
   ]

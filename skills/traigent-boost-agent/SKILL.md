@@ -8,7 +8,7 @@ metadata:
   traigent-stage: front-door
   traigent-maturity: stable
   author: Nimrod
-  version: "2.1.28"
+  version: "2.1.29"
 ---
 
 # Traigent Boost Agent
@@ -229,7 +229,7 @@ assert my_metric(known_bad, expected_output) <= 0.1, (
 )
 ```
 
-For a `custom_evaluator`, call it directly on the known-good and the known-bad example (`my_evaluator(my_function, config, example)` returns an `ExampleResult`) and assert the returned `metrics` separate. (`BaseEvaluator` is not wireable through `@traigent.optimize` (every traigent release through 0.30.0): an instance passed as `custom_evaluator` fails with `ValueError: custom_evaluator must be callable`; see `traigent-eval-build`.) Use **one known-good + one known-bad example only** — this is a smoke gate, not a full audit.
+For a `custom_evaluator`, call it directly on the known-good and the known-bad example (`my_evaluator(my_function, config, example)` returns an `ExampleResult`) and assert the returned `metrics` separate. (`BaseEvaluator` is not wireable through `@traigent.optimize` (every traigent release through 0.33.0): an instance passed as `custom_evaluator` is refused (releases through 0.33.0 raise `ValueError: custom_evaluator must be callable` at run; the development branch raises a pydantic `Input should be callable` when the decorator is applied); see `traigent-eval-build`.) Use **one known-good + one known-bad example only** — this is a smoke gate, not a full audit.
 
 > **If both assertions pass:** the metric wires correctly — proceed to Step 4.
 >
@@ -398,7 +398,7 @@ my_function.export_config("candidate_config.json")
    - DELEGATE (required): `traigent-eval-choose-metric` owns the metric interview and objective vocabulary.
 
 4. WIRE OR BUILD the evaluator.
-   - Use the wire-first ladder: `eval_dataset` -> `scoring_function` -> `metric_functions` -> `custom_evaluator` (`BaseEvaluator` is not wireable through `@traigent.optimize` (every traigent release through 0.30.0); see `traigent-eval-build`).
+   - Use the wire-first ladder: `eval_dataset` -> `scoring_function` -> `metric_functions` -> `custom_evaluator` (`BaseEvaluator` is not wireable through `@traigent.optimize` (every traigent release through 0.33.0); see `traigent-eval-build`).
    - Start deterministic when the task has ground truth or checkable domain logic; use LLM judges only when deterministic scoring cannot express the quality target.
    - Audit any LLM judge before trusting it to drive optimization.
    - DELEGATE (required): `traigent-eval-build` owns evaluator code. DELEGATE (deep-dive, optional — only when an LLM judge is used): `traigent-eval-audit` owns judge reliability checks.

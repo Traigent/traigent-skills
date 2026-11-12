@@ -102,10 +102,17 @@ This variable controls traceback display for `ConfigurationError` specifically.
 
 ### Default Behavior (TRAIGENT_DEBUG not set)
 
-ConfigurationError shows a clean, single-line message:
+ConfigurationError shows a clean, single-line message. The wording depends on the SDK version.
+SDK 0.33.0 and earlier print:
 
 ```
 traigent.utils.exceptions.ConfigurationError: algorithm='bayesian' requires managed optimization and cannot be used with offline=True or TRAIGENT_OFFLINE=1.
+```
+
+Development builds (they report a `.dev` version such as `0.33.0.dev0`) print:
+
+```
+traigent.utils.exceptions.ConfigurationError: algorithm='bayesian' requires managed optimization and cannot be used with offline=True, TRAIGENT_OFFLINE=1 or TRAIGENT_OFFLINE_MODE=1. Use algorithm='grid' or 'random' for local-only runs, or unset the offline setting to use managed optimization.
 ```
 
 (Raised at decoration by `@traigent.optimize(..., offline=True, algorithm="bayesian")`.)
@@ -127,6 +134,7 @@ Traceback (most recent call last):
 traigent.utils.exceptions.ConfigurationError: algorithm='bayesian' requires managed optimization and cannot be used with offline=True or TRAIGENT_OFFLINE=1.
 ```
 
+The traceback above shows the 0.33.0 wording; its final line follows your SDK version as above.
 Line numbers vary by SDK version. A non-list or empty `configuration_space` is not a
 `ConfigurationError` (see [Error Reference](error-reference.md)).
 
