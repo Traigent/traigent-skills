@@ -16,6 +16,7 @@ import textwrap
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILL_DIR = ROOT / "skills" / "traigent-boost-agent"
@@ -58,7 +59,16 @@ def test_wire_first_ladder_ends_at_custom_evaluator() -> None:
     assert rungs[-1] == "custom_evaluator", rungs
 
 
-def test_base_evaluator_instance_cannot_be_wired_on_the_installed_sdk(tmp_path: Path) -> None:
+def _is_released_through_0_33_0(sdk_version_label: str) -> bool:
+    if sdk_version_label == "develop":
+        return False
+    version = Version(sdk_version_label)
+    return not version.is_devrelease and version <= Version("0.33.0")
+
+
+def test_base_evaluator_instance_cannot_be_wired_on_the_installed_sdk(
+    tmp_path: Path, sdk_version_label: str
+) -> None:
     pytest.importorskip("traigent")
     (tmp_path / "home").mkdir()
     (tmp_path / "qa.jsonl").write_text('{"input": {"q": "a"}, "output": "A"}\n', encoding="utf-8")
@@ -81,8 +91,9 @@ def test_base_evaluator_instance_cannot_be_wired_on_the_installed_sdk(tmp_path: 
                     return q.upper()
 
                 answer.optimize_sync(max_trials=1, algorithm="grid")
-            except ValueError as exc:
-                print("RESULT=" + str(exc))
+            except Exception as exc:
+                # One line for the harness: pydantic's ValidationError is multi-line.
+                print("RESULT=" + str(exc).replace("\\n", " | "))
             else:
                 print("RESULT=wired")
             """
@@ -102,5 +113,10 @@ def test_base_evaluator_instance_cannot_be_wired_on_the_installed_sdk(tmp_path: 
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
     result = next(ln for ln in completed.stdout.splitlines() if ln.startswith("RESULT="))
-    # If a future SDK wires it, this pin goes red: update the skill then.
-    assert result == "RESULT=custom_evaluator must be callable", result
+    # If a future SDK wires it, this pin goes red: update the skill then. The refusal is an
+    # exception either way: released SDKs raise ValueError "custom_evaluator must be
+    # callable"; newer builds raise pydantic's "Input should be callable" from
+    # EvaluationOptions. Released SDKs are pinned to their exact message; a development or
+    # later build must still refuse with a message that names the callable requirement.
+    needle = "custom_evaluator must be callable" if _is_released_through_0_33_0(sdk_version_label) else "callable"
+    assert needle in result, (sdk_version_label, result)

@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "82e16463e141dc38",
+  "doc_hash": "0a96523935139209",
   "reference_hashes": {
     "references/evaluator-templates.md": "4557a4363b935c04"
   },
@@ -349,6 +349,39 @@
       "doc_before_hash": "fb984a2bcea5cda7",
       "doc_after_hash": "82e16463e141dc38",
       "note": "Example scorers treat None or non-string model output as a wrong answer.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-sdk-develop-drift-2026-11-12-tier5-callable",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-12T00:00:00Z",
+      "doc_before_hash": "82e16463e141dc38",
+      "doc_after_hash": "5a7fe3fc5bb9ff3e",
+      "note": "Tier 5 names the custom_evaluator refusal by release: releases through 0.32.0 say 'custom_evaluator must be callable'; newer SDK builds reject at decoration with 'Input should be callable'. Version bumped 1.0.26 -> 1.0.27.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-sdk-develop-drift-2026-11-12-tier5-callable-review",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-12T00:00:00Z",
+      "doc_before_hash": "5a7fe3fc5bb9ff3e",
+      "doc_after_hash": "214da1b0f69661e1",
+      "note": "Tier 5 names the custom_evaluator refusal per release: releases through 0.33.0 raise ValueError 'custom_evaluator must be callable' at run; the development branch raises pydantic 'Input should be callable' when the decorator's custom_evaluator= argument is applied. Version bumped 1.0.27 -> 1.0.28.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-fix-baseevaluator-through-0.33.0-2026-11-12-eval-build",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-12T00:00:00Z",
+      "doc_before_hash": "214da1b0f69661e1",
+      "doc_after_hash": "0a96523935139209",
+      "note": "No public option accepts a BaseEvaluator through SDK 0.33.0 (checked on 0.21.3, 0.24.0, 0.27.0, 0.32.0 and 0.33.0). Version 1.0.28 -> 1.0.29.",
       "source_type": "agent"
     }
   ]

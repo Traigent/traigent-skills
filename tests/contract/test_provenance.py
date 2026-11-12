@@ -300,6 +300,43 @@ GAP_EXCEPTIONS: dict[GapKey, str] = {
         "merge-pr364-into-main-2026-09-27 during the 2026-09-26/27 PR-stack "
         "rebase"
     ),
+    # ---- 2026-11-12: merge of main (#506, #508) into the 2026-11-08 batch --
+    # The skills-issues-20261108 branch carries its own sequential edits to
+    # these five SKILL.md files (issue batch #486-#507 plus its review rounds)
+    # branching from the same parent as main's #506/#508 edits: the branch was
+    # not yet on main when #506 and #508 landed. entries[] keeps main's entries
+    # first, then the branch's, then
+    # merge-main-into-skills-issues-20261108-2026-11-12, which chains from the
+    # branch's tip and recomputes doc_hash over the fully merged SKILL.md (same
+    # pattern as merge-main-taxonomy-into-econ-wi-a-2026-07-18 above). This gap
+    # is main's own chain tip (after its last #506/#508 entry) left with no
+    # continuation, because the branch's first entry chains from the shared
+    # parent.
+    ("traigent-analyze-results", "c4f2a9582772903b", "797f3bf9704c2eb6"): (
+        "parallel-branch entry (main's #506/#508 analyze-results chain vs the "
+        "2026-11-08 issue-batch branch); reconciled by "
+        "merge-main-into-skills-issues-20261108-2026-11-12"
+    ),
+    ("traigent-ci-safety-gate", "2801c3584e625de0", "8dda20750ececb1e"): (
+        "parallel-branch entry (main's #506/#508 ci-safety-gate chain vs the "
+        "2026-11-08 issue-batch branch); reconciled by "
+        "merge-main-into-skills-issues-20261108-2026-11-12"
+    ),
+    ("traigent-js", "de5fa392ee3efa31", "a125c90ea80f6358"): (
+        "parallel-branch entry (main's #506/#508 js chain vs the 2026-11-08 "
+        "issue-batch branch); reconciled by "
+        "merge-main-into-skills-issues-20261108-2026-11-12"
+    ),
+    ("traigent-optimize-run", "ee2af1c827735e2d", "608e75616080a264"): (
+        "parallel-branch entry (main's #506/#508 optimize-run chain vs the "
+        "2026-11-08 issue-batch branch); reconciled by "
+        "merge-main-into-skills-issues-20261108-2026-11-12"
+    ),
+    ("traigent-setup-quickstart", "6995d2a15f8bd57b", "49bf0abe9aab167e"): (
+        "parallel-branch entry (main's #506/#508 setup-quickstart chain vs the "
+        "2026-11-08 issue-batch branch); reconciled by "
+        "merge-main-into-skills-issues-20261108-2026-11-12"
+    ),
     # ---- gaps recorded by an unhashed entry, hashes not reconstructed --
     # A human did record that something changed here (a "sync"-style entry
     # with no doc_before_hash/doc_after_hash), but never computed the hashes

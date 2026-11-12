@@ -10,11 +10,14 @@ import re
 from pathlib import Path
 
 SKILLS = Path(__file__).resolve().parents[2] / "skills"
-SITES = [
-    SKILLS / "traigent-dataset-curate" / "SKILL.md",
-    SKILLS / "traigent-eval-build" / "SKILL.md",
-    SKILLS / "traigent-boost-agent" / "SKILL.md",
-]
+# Each caveat names the last release it was checked on. The eval-build ladder was re-checked
+# through 0.33.0; the other two sites still state the 0.30.0 check they were written against.
+CHECKED_THROUGH = {
+    "traigent-dataset-curate": "0.30.0",
+    "traigent-eval-build": "0.33.0",
+    "traigent-boost-agent": "0.33.0",
+}
+SITES = [SKILLS / name / "SKILL.md" for name in CHECKED_THROUGH]
 CAVEAT = re.compile(r"Mock mode does not cover|wireable|accepts one", re.IGNORECASE)
 
 
@@ -30,4 +33,5 @@ def test_unfixed_caveats_have_no_old_upper_bound() -> None:
 def test_caveats_name_the_checked_range() -> None:
     for path in SITES:
         text = path.read_text(encoding="utf-8")
-        assert "through 0.30.0" in text, f"{path.parent.name}: caveat lost its checked range"
+        expected = f"through {CHECKED_THROUGH[path.parent.name]}"
+        assert expected in text, f"{path.parent.name}: caveat lost its checked range ({expected})"

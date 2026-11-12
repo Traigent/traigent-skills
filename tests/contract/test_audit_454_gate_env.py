@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 from .test_audit_349_fenced_blocks import skip_unless_current_released_sdk
 
@@ -90,21 +91,29 @@ def test_the_tvl_note_is_version_stamped() -> None:
     assert len(note) == 2, "the TVL discovery note moved"
     note_text = note[1][:900]
     assert "0.30.0 and earlier" in note_text, "the note must name the versions it holds for"
-    assert "--allow-empty" in note_text, "the note must name the flag the next release adds"
+    assert "--allow-empty" in note_text, "the note must name the flag SDK 0.31.0+ adds"
     assert "at least one spec exists" in note_text, (
-        "keep the assertion step: it is correct on both sides of the change"
+        "keep the assertion step: it is correct on every SDK version"
     )
 
 
-def test_the_released_sdk_has_no_allow_empty_flag(
-    sync_map: dict, sdk_version_label: str
+def test_allow_empty_flag_is_absent_before_0_31_0_and_present_from_0_31_0(
+    sdk_version_label: str,
 ) -> None:
-    skip_unless_current_released_sdk(sync_map, sdk_version_label, "the TVL note")
     traigent = pytest.importorskip("traigent")
     tvl_main = Path(traigent.__file__).resolve().parent / "tvl" / "__main__.py"
     if not tvl_main.is_file():  # pragma: no cover - older layout
         pytest.skip("installed SDK has no traigent.tvl.__main__")
-    assert "allow-empty" not in tvl_main.read_text(encoding="utf-8"), (
-        "the released SDK now has --allow-empty; the skill's "
-        "'0.30.0 and earlier' stamp needs rewriting to name this release"
-    )
+    source = tvl_main.read_text(encoding="utf-8")
+    # The skill's TVL note is stamped "0.30.0 and earlier": the flag is absent
+    # there and added in 0.31.0 (SDK tvl/__main__.py, the --allow-empty argument).
+    if sdk_version_label == "develop" or Version(sdk_version_label) >= Version("0.31.0"):
+        assert "--allow-empty" in source, (
+            "the SDK from 0.31.0 must expose --allow-empty; the skill's "
+            "'0.30.0 and earlier' stamp is then wrong for this release"
+        )
+    else:
+        assert "allow-empty" not in source, (
+            "the SDK before 0.31.0 now has --allow-empty; the skill's "
+            "'0.30.0 and earlier' stamp needs rewriting to name this release"
+        )

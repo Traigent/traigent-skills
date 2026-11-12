@@ -69,7 +69,13 @@ except OptimizationError as e:           # pre-run estimate above limit, cloud/a
     print(f"Optimization could not run: {e}")
 else:
     if getattr(results, "stop_reason", None) == "cost_limit":
-        print(f"Stopped at cost limit. Total cost: ${results.total_cost:.2f}")
+        if results.total_cost is not None:
+            print(f"Stopped at cost limit. Total cost: ${results.total_cost:.2f}")
+        else:  # SDK 0.32.0+: unmeasured trial cost makes the total None, not a partial sum
+            floor = results.metrics.get("cost_floor_usd")  # 0.0 = nothing measured
+            known = (f"at least ${floor:.4f} spent" if floor >= 0.0001
+                     else "known spend under $0.0001") if floor else None
+            print("Stopped at cost limit. Total cost unknown" + (f"; {known}" if known else ""))
 ```
 
 ## Cost Tracking via LiteLLM
@@ -246,12 +252,21 @@ python optimize_production.py
 
 ## Cost in Results
 
-After optimization, cost information is available on the result object:
+After optimization, cost information is available on the result object. Since SDK 0.32.0 the total is unknown, not a partial sum, whenever any trial's cost is unmeasured (see version-matrix: `cost-totals`); the measured floor is in `metrics["cost_floor_usd"]`.
 
 ```python
 results = func.optimize_sync(max_trials=10, algorithm="grid")
 
-print(f"Total cost: ${results.total_cost:.4f}")
+if results.total_cost is not None:
+    print(f"Total cost: ${results.total_cost:.4f}")
+else:  # SDK 0.32.0+: None when any trial cost is unmeasured; never show it as $0
+    unmeasured = int(results.metrics.get("cost_unmeasured_trials") or 0)
+    floor = results.metrics.get("cost_floor_usd")  # can be 0.0 when every trial is unmeasured
+    print(
+        f"Total cost: unknown ({unmeasured} trial(s) unmeasured, "
+        + ((f"known floor ${floor:.4f})" if floor >= 0.0001 else "known spend under $0.0001)")
+           if floor else "known spend not measured)")
+    )
 print(f"Total tokens: {results.total_tokens}")
 
 # Per-trial objective values and costs live in trial.metrics under their own names.
@@ -259,5 +274,7 @@ print(f"Total tokens: {results.total_tokens}")
 # (see version-matrix: score-relocation, SDKs after 0.21.3).
 for trial in results.trials:
     m = trial.metrics
-    print(f"Trial {trial.trial_id}: accuracy={m.get('accuracy')}, cost=${m.get('total_cost', 0.0):.4f}")
+    cost = m.get("total_cost")  # absent when this trial's cost was unmeasured
+    cost_text = f"${cost:.4f}" if cost is not None else "unknown"
+    print(f"Trial {trial.trial_id}: accuracy={m.get('accuracy')}, cost={cost_text}")
 ```

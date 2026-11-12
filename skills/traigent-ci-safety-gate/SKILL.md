@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.18"
+  version: "1.0.20"
 ---
 
 # CI Safety Gate
@@ -130,11 +130,10 @@ python -m traigent.tvl path/to/promotion-gate.tvl.yml --strict
 
 Name specs `*.tvl.yml` (or `*.tvl.yaml`): the validator discovers only those in a directory. On
 SDK **0.30.0 and earlier** it exits 0 when it finds no spec at all, even after printing
-`ERROR: File not found` for a missing path. The SDK's development branch changes this — a missing
-path becomes a failure and an empty selection exits 1 unless `--allow-empty` is passed — but no
-release contains it yet, so re-check the behaviour (and this note) against the first release after
-0.30.0. Either way a CI step must assert that at least one spec exists, as the workflows below do:
-that assertion is correct on both sides of the change.
+`ERROR: File not found` for a missing path. SDK **0.31.0+** exits 1 on a missing path. It also exits 1 on an
+empty selection, unless `--allow-empty` is passed; that flag only affects the empty selection, and a
+missing path is still an error. Keep the CI step that asserts
+at least one spec exists, as the workflows below do: it is correct on every SDK version.
 
 ## Applying the Winning Config
 

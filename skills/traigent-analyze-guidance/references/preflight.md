@@ -36,7 +36,8 @@ names (`"nsga2"`/`"cmaes"`) fail fast with a capability message
 `ConfigurationError` and the local registry raises `OptimizationError`. Use
 `algorithm="auto"` for default connected real runs; use `algorithm="grid"` or
 `algorithm="random"` only for explicit local/offline search. A clean Python
-3.11/3.12 environment is still recommended either way.
+3.12+ environment is still recommended either way (SDK 0.32.0+ requires 3.12+; 0.31.x and
+earlier also accept 3.11).
 
 ## Execution selector and portal tracking
 
@@ -103,7 +104,7 @@ run.
 
 ## Checklist
 
-1. Python 3.11/3.12 venv; `pip install "traigent>=0.21.3" "litellm>=1.106.0" scikit-learn scipy`
+1. Python 3.12+ venv (SDK 0.32.0+; 0.31.x and earlier also accept 3.11); `pip install "traigent>=0.21.3" "litellm>=1.106.0" scikit-learn scipy`
    (`litellm>=1.106.0` is the bundled pricing map that prices the OpenAI and Anthropic IDs these
    skills use; confirm any other provider's ID is priced before relying on a cost objective).
 2. String-encode discrete knobs; `int()` at the call site.

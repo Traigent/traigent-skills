@@ -15,6 +15,7 @@ from pathlib import Path
 
 import pytest
 import yaml
+from packaging.version import Version
 
 from .extract import _iter_fenced_blocks
 
@@ -65,13 +66,45 @@ def test_space_shape_mistakes_raise_the_documented_non_configuration_errors(tmp_
     assert not isinstance(empty.value, ConfigurationError)
 
 
-def test_logging_config_quotes_a_configuration_error_the_sdk_emits(tmp_path, monkeypatch) -> None:
+# The SDK rewrote this message after its 0.33.0 release (the development branch now names
+# TRAIGENT_OFFLINE_MODE and says what to use instead). logging-config.md documents both
+# wordings, each under its SDK version, and this test pins which one the installed SDK must emit.
+OFFLINE_WORDING_0_32 = (
+    "algorithm='bayesian' requires managed optimization and cannot be used with "
+    "offline=True or TRAIGENT_OFFLINE=1."
+)
+OFFLINE_WORDING_NEWER = (
+    "algorithm='bayesian' requires managed optimization and cannot be used with "
+    "offline=True, TRAIGENT_OFFLINE=1 or TRAIGENT_OFFLINE_MODE=1. Use algorithm='grid' "
+    "or 'random' for local-only runs, or unset the offline setting to use managed "
+    "optimization."
+)
+
+
+def _offline_wording_for(sdk_version_label: str) -> str:
+    # Released SDKs through 0.33.0 keep the older wording (v0.33.0 config/types.py); the develop
+    # bucket, a development build (it reports a .devN version such as 0.33.0.dev0) and any build
+    # after 0.33.0 use the newer one.
+    if sdk_version_label == "develop":
+        return OFFLINE_WORDING_NEWER
+    version = Version(sdk_version_label)
+    if version.is_devrelease or version > Version("0.33.0"):
+        return OFFLINE_WORDING_NEWER
+    return OFFLINE_WORDING_0_32
+
+
+def test_logging_config_quotes_a_configuration_error_the_sdk_emits(
+    tmp_path, monkeypatch, sdk_version_label: str
+) -> None:
     traigent = pytest.importorskip("traigent")
     from traigent.utils.exceptions import ConfigurationError
 
     text = (REFS / "logging-config.md").read_text(encoding="utf-8")
     quoted = set(re.findall(r"traigent\.utils\.exceptions\.ConfigurationError: (.+)", text))
-    assert quoted, "logging-config.md quotes no ConfigurationError message"
+    assert quoted == {OFFLINE_WORDING_0_32, OFFLINE_WORDING_NEWER}, (
+        "logging-config.md must quote each ConfigurationError wording under its SDK version",
+        quoted,
+    )
 
     monkeypatch.chdir(tmp_path)
     (tmp_path / "eval_data.jsonl").write_text('{"input": "q1", "output": "a"}\n', encoding="utf-8")
@@ -82,4 +115,6 @@ def test_logging_config_quotes_a_configuration_error_the_sdk_emits(tmp_path, mon
             offline=True,
             algorithm="bayesian",
         )(lambda x: x)
-    assert quoted == {str(exc.value)}, (quoted, str(exc.value))
+    expected = _offline_wording_for(sdk_version_label)
+    assert expected in quoted, (expected, quoted)
+    assert str(exc.value) == expected, (sdk_version_label, str(exc.value))

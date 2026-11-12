@@ -18,6 +18,7 @@ import re
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 from .test_audit_326_comparator_case import FENCE_RE, _run_driver
 
@@ -64,12 +65,12 @@ def test_tier_example_wires_or_is_marked_not_wireable(
 def test_tier5_wording_is_version_scoped() -> None:
     tier5 = LADDER_ROWS["5"] + TIER_SECTIONS["5"]
     assert "released SDK" not in tier5, "scope the claim to a version, not 'released'"
-    assert "through 0.30.0" in LADDER_ROWS["5"]
-    assert "through 0.30.0" in TIER_SECTIONS["5"]
+    assert "through 0.33.0" in LADDER_ROWS["5"]
+    assert "through 0.33.0" in TIER_SECTIONS["5"]
     assert "custom_evaluator must be callable" in TIER_SECTIONS["5"]
 
 
-def test_sdk_still_rejects_a_base_evaluator(tmp_path: Path) -> None:
+def test_sdk_still_rejects_a_base_evaluator(tmp_path: Path, sdk_version_label: str) -> None:
     """Every public path must end in an error: at decoration, or when the run starts."""
     body = """
     import traigent
@@ -129,5 +130,11 @@ def test_sdk_still_rejects_a_base_evaluator(tmp_path: Path) -> None:
         "a public path now accepts a BaseEvaluator: revisit the Tier 5 "
         f"'not wireable' note in traigent-eval-build/SKILL.md. outcome={outcome}"
     )
+    # Released SDKs (through 0.33.0) say "custom_evaluator must be callable" (ValueError); the
+    # development branch raises pydantic's "Input should be callable" from EvaluationOptions
+    # instead. Released builds are pinned to their exact message; newer builds must still name
+    # the callable requirement.
+    released = sdk_version_label != "develop" and not Version(sdk_version_label).is_devrelease and Version(sdk_version_label) <= Version("0.33.0")
+    needle = "custom_evaluator must be callable" if released else "callable"
     for label in ("top_level_kwarg", "optimize_sync_kwarg"):
-        assert "custom_evaluator must be callable" in outcome[label], outcome
+        assert needle in outcome[label], (sdk_version_label, outcome)
