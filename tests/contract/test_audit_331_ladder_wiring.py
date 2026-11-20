@@ -129,5 +129,13 @@ def test_sdk_still_rejects_a_base_evaluator(tmp_path: Path) -> None:
         "a public path now accepts a BaseEvaluator: revisit the Tier 5 "
         f"'not wireable' note in traigent-eval-build/SKILL.md. outcome={outcome}"
     )
+    # Released SDKs accept the instance at decoration and fail when the run starts
+    # (``ValueError: custom_evaluator must be callable``); SDK develop validates the flat
+    # kwarg at decoration (a pydantic ``ValidationError`` for ``EvaluationOptions``, a
+    # ``ValueError`` subclass, ``Input should be callable``). Either way it is rejected.
     for label in ("top_level_kwarg", "optimize_sync_kwarg"):
-        assert "custom_evaluator must be callable" in outcome[label], outcome
+        released = outcome[label].startswith("ValueError: custom_evaluator must be callable")
+        develop = outcome[label].startswith("ValidationError: ") and (
+            "custom_evaluator" in outcome[label] and "Input should be callable" in outcome[label]
+        )
+        assert released or develop, outcome
