@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6995d2a15f8bd57b",
+  "doc_hash": "1d5de3ced3457385",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/environment-variables.md": "c50fe19585bb0888",
@@ -550,6 +550,17 @@
       "doc_before_hash": "47f142c85d233e93",
       "doc_after_hash": "6995d2a15f8bd57b",
       "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "capability-gates-and-mock-egress-2026-11-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-20T00:00:00Z",
+      "doc_before_hash": "6995d2a15f8bd57b",
+      "doc_after_hash": "1d5de3ced3457385",
+      "note": "Mock dry-run no longer claims zero egress: no provider spend, but with an API key set and offline=False the run still reaches the Traigent backend.",
       "source_type": "agent"
     }
   ]

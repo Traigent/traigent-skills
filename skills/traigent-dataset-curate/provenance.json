@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "28fc0c8d57295092",
+  "doc_hash": "2ccfdb3545fdf8a3",
   "reference_hashes": {
     "references/cold-start.md": "1ef8f133212b9415",
     "references/dataset-recipes.md": "9d8241482ef42e2c",
@@ -362,6 +362,17 @@
       "doc_before_hash": "0012b63cc058c74b",
       "doc_after_hash": "28fc0c8d57295092",
       "note": "Add a reply checklist for 'is my eval set good enough': measured facts, no edits, no upload, holdout never tuned and dedupe-first reason, plain verdict.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "capability-gates-and-mock-egress-2026-11-20",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-20T00:00:00Z",
+      "doc_before_hash": "28fc0c8d57295092",
+      "doc_after_hash": "2ccfdb3545fdf8a3",
+      "note": "State that the generate routes need the deployment's hosted content generation capability (off by default on SaaS) and store generation inputs on Traigent's servers.",
       "source_type": "agent"
     }
   ]

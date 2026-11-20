@@ -81,8 +81,10 @@ The linear path:
    **nothing** ready, use the bundled fallback below — no dataset needed to see value.
 3. **Mock dry-run first.** Always run keyless mock mode before anything paid (the "Your
    First Optimization" example below is exactly this). Show the ranked table so they see
-   the loop work with no provider spend and zero egress (on SDK 0.31.0+ the mock run is still
-   priced against the cost cap, so keep the dry-run dataset small).
+   the loop work with no provider spend. Mock is not offline: with an API key set and `offline=False`
+   the run still reaches the Traigent backend and appears on the portal (see "Mock ≠ offline" below;
+   pass `offline=True` for a local run). On SDK 0.31.0+ the mock run is still priced against the
+   cost cap, so keep the dry-run dataset small.
 4. **Confirm the real run explicitly.** A real (paid) run happens only after the user
    sees the mock result and says go — and after the cost-gate approval. Never jump from
    mock straight to spend. Show the card in `references/run-cost-and-limits.md` first:

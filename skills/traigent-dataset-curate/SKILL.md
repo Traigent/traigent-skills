@@ -453,6 +453,8 @@ Relevant backend endpoints:
 | `GET /api/v1/datasets/{id}/examples` | Read examples for review or export. |
 | `POST /api/v1/datasets/{id}/examples` | Add reviewed examples. |
 
+The two `generate` routes require the deployment's hosted content generation capability. It is off by default on the SaaS deployment and is enabled per deployment (for example self-hosted), so these routes are refused when it is off. Generation stores the generation inputs (instructions, seeds and the examples produced) on Traigent's servers and uses Traigent-held model accounts. The `examples` routes do not use this capability.
+
 Prefer client-side synthesis when data-handling review is incomplete, no account is configured, or the user has not approved paid work.
 
 ## Score examples after a run
