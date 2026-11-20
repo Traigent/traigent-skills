@@ -1024,7 +1024,6 @@ def heldout_card_metrics(
     opt_acc = number("optimized", objective)
     if acc_delta is None and base_acc is not None and opt_acc is not None:
         acc_delta = opt_acc - base_acc
-    accuracy_pp = acc_delta * 100.0 if acc_delta is not None else None
 
     costs = [
         (
@@ -1034,7 +1033,7 @@ def heldout_card_metrics(
         )
         for key in ("cost", "mock_cost")
     ]
-    return (accuracy_pp, _heldout_cost_delta_pct(costs))
+    return (acc_delta, _heldout_cost_delta_pct(costs))
 
 
 def _heldout_cost_delta_pct(
@@ -1138,7 +1137,10 @@ def write_svg(
     n_trials: int,
     objective: str,
     alpha: float = DEFAULT_ALPHA,
+    *,
+    objective_unit: str = "native",
 ) -> None:
+    scale, effect_unit = objective_display_units(objective_unit)
     width = 1280
     height = 720
     top_rows = rows[:top_k]
@@ -1146,9 +1148,9 @@ def write_svg(
         [row.ci_high for row in top_rows] + [row.spread for row in top_rows] + [0.01]
     )
     chart_x = 330
-    chart_y = 170
+    chart_y = 210
     chart_w = 760
-    row_h = 92
+    row_h = 82
     bar_h = 28
     axis_w = chart_w
     # An empty ranking has no confidence to describe, whatever the run size.
@@ -1177,8 +1179,8 @@ def write_svg(
         f'<text x="80" y="130" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="18">Objective: {svg_text(objective)}. Bars show mean spread; whiskers show bootstrap CI.</text>',
         f'<text x="80" y="655" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="17">{svg_text(caption)}</text>',
         f'<line x1="{chart_x}" y1="{chart_y - 28}" x2="{chart_x + axis_w}" y2="{chart_y - 28}" stroke="#334155" stroke-width="1"/>',
-        f'<text x="{chart_x}" y="{chart_y - 42}" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="15">0 pp</text>',
-        f'<text x="{chart_x + axis_w - 90}" y="{chart_y - 42}" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="15">{max_extent * 100:.1f} pp</text>',
+        f'<text x="{chart_x}" y="{chart_y - 42}" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="15">0 {effect_unit}</text>',
+        f'<text x="{chart_x + axis_w - 90}" y="{chart_y - 42}" fill="#91a4bd" font-family="Inter, Arial, sans-serif" font-size="15">{objective_number(max_extent, objective_unit, 1)} {effect_unit}</text>',
     ]
 
     for index, row in enumerate(top_rows):
@@ -1188,7 +1190,8 @@ def write_svg(
         ci_high_x = chart_x + (row.ci_high / max_extent) * axis_w
         bar_y = y + 18
         label_color = "#86efac" if row.label == "significant" else "#facc15"
-        value_note = f"best: {display_value(row.best_value)} ({row.best_value_mean_acc * 100:.1f}%)"
+        mean = f"{row.best_value_mean_acc * scale:.1f}%" if objective_unit == "fraction" else f"{row.best_value_mean_acc:g} units"
+        value_note = f"best: {display_value(row.best_value)} ({mean})"
         parts.extend(
             [
                 f'<text x="80" y="{y + 28}" fill="#f8fafc" font-family="Inter, Arial, sans-serif" font-size="23" font-weight="700">{svg_text(row.knob)}</text>',
@@ -1197,7 +1200,7 @@ def write_svg(
                 f'<line x1="{ci_low_x:.2f}" y1="{bar_y + bar_h + 14}" x2="{ci_high_x:.2f}" y2="{bar_y + bar_h + 14}" stroke="#dbeafe" stroke-width="3" stroke-linecap="round"/>',
                 f'<line x1="{ci_low_x:.2f}" y1="{bar_y + bar_h + 7}" x2="{ci_low_x:.2f}" y2="{bar_y + bar_h + 21}" stroke="#dbeafe" stroke-width="3"/>',
                 f'<line x1="{ci_high_x:.2f}" y1="{bar_y + bar_h + 7}" x2="{ci_high_x:.2f}" y2="{bar_y + bar_h + 21}" stroke="#dbeafe" stroke-width="3"/>',
-                f'<text x="{chart_x + axis_w + 24}" y="{y + 34}" fill="#e5f0ff" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">{row.spread * 100:.1f} pp</text>',
+                f'<text x="{chart_x + axis_w + 24}" y="{y + 34}" fill="#e5f0ff" font-family="Inter, Arial, sans-serif" font-size="22" font-weight="700">{objective_number(row.spread, objective_unit, 1)} {effect_unit}</text>',
                 f'<text x="{chart_x + axis_w + 24}" y="{y + 61}" fill="{label_color}" font-family="Inter, Arial, sans-serif" font-size="15" font-weight="700">{svg_text(row.label.upper())}</text>',
             ]
         )
@@ -1211,11 +1214,27 @@ def write_svg(
     path.write_text("\n".join(parts) + "\n", encoding="utf-8")
 
 
-def format_pp(value: float | None) -> str:
+def objective_display_units(objective_unit: str) -> tuple[float, str]:
+    """Only an explicit fraction declaration authorizes percentage conversion."""
+    if objective_unit == "fraction":
+        return 100.0, "pp"
+    if objective_unit == "native":
+        return 1.0, "units"
+    raise ValueError("objective_unit must be native or fraction")
+
+
+def format_objective_delta(value: float | None, objective_unit: str) -> str:
+    _, unit = objective_display_units(objective_unit)
     if value is None:
         return "n/a"
     sign = "+" if value >= 0 else ""
-    return f"{sign}{value:.2f} pp"
+    return f"{sign}{objective_number(value, objective_unit)} {unit}"
+
+
+def objective_number(value: float, objective_unit: str, decimals: int = 2) -> str:
+    """Native scales can be arbitrarily small; decimal places would erase them."""
+    scale, _ = objective_display_units(objective_unit)
+    return f"{value * scale:.{decimals}f}" if objective_unit == "fraction" else f"{value:.6g}"
 
 
 def format_pct(value: float | None) -> str:
@@ -1238,8 +1257,9 @@ def build_video_card_payload(
     alpha: float = DEFAULT_ALPHA,
     *,
     skipped_missing_objective: int = 0,
+    objective_unit: str = "native",
 ) -> dict[str, Any]:
-    heldout_accuracy_pp, heldout_cost_delta_pct = heldout_card_metrics(
+    heldout_objective_delta, heldout_cost_delta_pct = heldout_card_metrics(
         heldout, objective
     )
     # Per-knob fields carry the knob's OWN measured effect, never the run-level
@@ -1251,7 +1271,7 @@ def build_video_card_payload(
             {
                 "knob": row.knob,
                 "best_value": json_knob_value(row.best_value),
-                "accuracy_pp": round_float(row.spread * 100.0),
+                "objective_spread": row.spread,
                 "cost_delta_pct": round_float_or_none(row.cost_effect_pct),
                 "label": row.label,
                 "p_value": row.p_value,
@@ -1262,10 +1282,15 @@ def build_video_card_payload(
             }
         )
 
-    has_heldout = heldout_accuracy_pp is not None or heldout_cost_delta_pct is not None
+    objective_display_units(objective_unit)
+    if objective == "accuracy" and objective_unit == "fraction":
+        for entry, row in zip(top_variables, rows[:top_k]):
+            entry["accuracy_pp"] = round_float(row.spread * 100.0)
+
+    has_heldout = heldout_objective_delta is not None or heldout_cost_delta_pct is not None
     if has_heldout:
         delta_clause = (
-            f"heldout optimized-vs-baseline {format_pp(heldout_accuracy_pp)}, "
+            f"heldout optimized-vs-baseline {format_objective_delta(heldout_objective_delta, objective_unit)}, "
             f"{format_pct(heldout_cost_delta_pct)} cost"
         )
     else:
@@ -1301,10 +1326,13 @@ def build_video_card_payload(
         "skipped_missing_objective": skipped_missing_objective,
         "alpha": alpha,
         "objective": objective,
-        "heldout_accuracy_pp": round_float_or_none(heldout_accuracy_pp),
+        "objective_unit": objective_unit,
+        "heldout_objective_delta": heldout_objective_delta,
         "heldout_cost_delta_pct": round_float_or_none(heldout_cost_delta_pct),
         "caption": caption,
     }
+    if objective == "accuracy" and objective_unit == "fraction":
+        payload["heldout_accuracy_pp"] = round_float_or_none(heldout_objective_delta * 100.0 if heldout_objective_delta is not None else None)
     return payload
 
 
@@ -1320,6 +1348,7 @@ def write_video_card_json(
     alpha: float = DEFAULT_ALPHA,
     *,
     skipped_missing_objective: int = 0,
+    objective_unit: str = "native",
 ) -> dict[str, Any]:
     payload = build_video_card_payload(
         rows,
@@ -1331,6 +1360,7 @@ def write_video_card_json(
         skipped_non_completed,
         alpha,
         skipped_missing_objective=skipped_missing_objective,
+        objective_unit=objective_unit,
     )
     # Strict JSON: a non-finite value raises before the file is opened.
     path.write_text(strict_json_text(payload, path.name) + "\n", encoding="utf-8")
@@ -1355,8 +1385,9 @@ def write_insights_md(
     nonfinite_knobs: Sequence[str] = (),
     nonfinite_collisions: Sequence[str] = (),
     nonfinite_has_nan: bool = False,
+    objective_unit: str = "native",
 ) -> None:
-    heldout_accuracy_pp, heldout_cost_delta_pct = heldout_card_metrics(
+    heldout_objective_delta, heldout_cost_delta_pct = heldout_card_metrics(
         heldout, objective
     )
     lines = [
@@ -1377,16 +1408,16 @@ def write_insights_md(
         f"Honesty rule: `significant` requires randomized assignment with each knob assigned independently of the others, at least 20 observations for that knob and 5 per observed value, adequate permutation resolution, and a Holm-adjusted p-value below alpha={alpha:g}. Adaptive or unknown sampling stays `directional` because label exchangeability is not established, and so does a knob whose values were assigned together with another knob's (`knobs_not_independent`). The bootstrap CI is a scale annotation, not the significance test.",
         "",
     ]
-    if heldout_accuracy_pp is not None or heldout_cost_delta_pct is not None:
+    if heldout_objective_delta is not None or heldout_cost_delta_pct is not None:
         lines.extend(
             [
-                f"Heldout optimized-vs-baseline context: {format_pp(heldout_accuracy_pp)} {objective}, {format_pct(heldout_cost_delta_pct)} cost.",
+                f"Heldout optimized-vs-baseline context: {format_objective_delta(heldout_objective_delta, objective_unit)} {objective}, {format_pct(heldout_cost_delta_pct)} cost.",
                 "",
             ]
         )
     lines += _resolution_lines(rows, alpha)
     lines.extend(["## Ranking", ""])
-    lines += _ranking_lines(rows, confidence, objective)
+    lines += _ranking_lines(rows, confidence, objective, objective_unit)
     lines.extend(
         [
             "",
@@ -1463,26 +1494,28 @@ def _resolution_lines(rows: list[KnobImportance], alpha: float) -> list[str]:
 
 
 def _ranking_lines(
-    rows: list[KnobImportance], confidence: float, objective: str
+    rows: list[KnobImportance], confidence: float, objective: str, objective_unit: str = "native"
 ) -> list[str]:
     """One numbered line per ranked knob, or the no-ranking line."""
+    _, effect_unit = objective_display_units(objective_unit)
     if not rows:
         return ["No multi-value tuned variables were available to rank."]
     lines: list[str] = []
     for index, row in enumerate(rows, 1):
+        mean = f"{row.best_value_mean_acc:.3f}" if objective_unit == "fraction" else f"{row.best_value_mean_acc:.6g}"
         cost_clause = (
             "cost unavailable"
             if row.cost_effect is None
             else f"cost effect vs worst value {row.cost_effect:+.6f}"
         )
         lines.append(
-            f"{index}. `{row.knob}`: {row.spread * 100:.2f} pp spread, "
+            f"{index}. `{row.knob}`: {objective_number(row.spread, objective_unit)} {effect_unit} spread, "
             f"variance share {row.variance_share:.3f}, "
-            f"{int(confidence * 100)}% CI [{row.ci_low * 100:.2f}, {row.ci_high * 100:.2f}] pp, "
+            f"{int(confidence * 100)}% CI [{objective_number(row.ci_low, objective_unit)}, {objective_number(row.ci_high, objective_unit)}] {effect_unit}, "
             f"raw p={row.p_value:.6g}, Holm-adjusted p={row.p_adjusted:.6g} "
             f"across {row.family_size} eligible knobs, `{row.label}` "
             f"(`{row.inference_status}`). Best observed value: `{display_value(row.best_value)}` "
-            f"({row.best_value_mean_acc:.3f} mean {objective}); {cost_clause}."
+            f"({mean} mean {objective}); {cost_clause}."
         )
     return lines
 
@@ -1522,8 +1555,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--objective", default="accuracy", help="Objective field to maximize"
     )
+    parser.add_argument("--objective-unit", choices=("native", "fraction"), default="native",
+                        help="Metric units: native by default; fraction explicitly enables percentages")
     parser.add_argument(
-        "--top-k", type=int, default=4, help="Number of variables on the SVG/card"
+        "--top-k", type=int, default=4, help="Number of variables on the 1280x720 SVG/card (1–5)"
     )
     parser.add_argument(
         "--confidence",
@@ -1574,8 +1609,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("--confidence must be between 0 and 1")
     if not 0.0 < args.alpha <= MAX_ALPHA:
         raise ValueError(f"--alpha must satisfy 0 < alpha <= {MAX_ALPHA}")
-    if args.top_k < 1:
-        raise ValueError("--top-k must be at least 1")
+    if not 1 <= args.top_k <= 5:
+        raise ValueError("--top-k must be between 1 and 5 for the 1280x720 card; the full ranking remains in importance.json and insights.md")
     if args.bootstrap_draws < 1:
         raise ValueError("--bootstrap-draws must be at least 1")
 
@@ -1616,6 +1651,7 @@ def main() -> int:
         skipped_non_completed,
         args.alpha,
         skipped_missing_objective=skipped_missing_objective,
+        objective_unit=args.objective_unit,
     )
     try:
         strict_json_text(build_importance_payload(rows), "importance.json")
@@ -1641,6 +1677,7 @@ def main() -> int:
         n_trials=len(trials),
         objective=args.objective,
         alpha=args.alpha,
+        objective_unit=args.objective_unit,
     )
     write_insights_md(
         args.output_dir / "insights.md",
@@ -1655,6 +1692,7 @@ def main() -> int:
         alpha=args.alpha,
         sdk_payload=sdk_payload,
         skipped_missing_objective=skipped_missing_objective,
+        objective_unit=args.objective_unit,
         nonfinite_trials=nonfinite_trials,
         nonfinite_knobs=nonfinite_knobs,
         nonfinite_collisions=nonfinite_collisions,
@@ -1671,6 +1709,7 @@ def main() -> int:
         skipped_non_completed=skipped_non_completed,
         alpha=args.alpha,
         skipped_missing_objective=skipped_missing_objective,
+        objective_unit=args.objective_unit,
     )
 
     if skipped_non_completed:

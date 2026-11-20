@@ -8,7 +8,7 @@ metadata:
   traigent-stage: analyze
   traigent-maturity: stable
   author: Nimrod
-  version: "1.2.3"
+  version: "1.3.0"
 ---
 
 # Show Significant Tuned Variables
@@ -42,14 +42,16 @@ corrupt the ranking.
 The script accepts:
 
 - `--trials`: required JSONL, one trial per line. Each row must contain `config`; its numeric objective (such as `accuracy`) is what gets ranked, and rows without one are skipped and counted (see below).
+- `--top-k`: number of variables on the fixed 1280x720 card, from 1 to 5 (default 4). Larger requests fail before replacing artifacts; `importance.json` and `insights.md` retain the full ranking.
 - `--config-space`: optional JSON object `{knob: [values...]}`. If absent, the script infers knobs and values observed in trials.
-- `--heldout`: optional heldout report JSON with `baseline`, `optimized`, and `delta`. When present, the video card uses the heldout optimized-vs-baseline accuracy and cost deltas for context.
+- `--heldout`: optional heldout report JSON with `baseline`, `optimized`, and `delta`. When present, the video card uses the heldout optimized-vs-baseline objective and cost deltas for context.
 - `--objective`: objective field to maximize. This must exactly match the metric key present in each
   trial row of `--trials` (typically `accuracy`, but a text2SQL run may score under `exec_accuracy` or
   another custom `metric_functions` key) — it is not a fixed literal. An empty or all-`directional`
   `importance.json` means insufficient variation in the trials for this objective, not "no knob
   matters" — check that `--config-space` values were actually sampled and that there are enough
   trials per value before concluding a knob is unimportant.
+- `--objective-unit`: `native` (default) keeps objective values and differences in their original units. Use `fraction` explicitly for fraction-valued metrics to display means as percentages and differences as percentage points. Neither a metric name nor values within [0, 1] establish fraction semantics. Cost changes remain percentage ratios in both modes.
 - `--sampling-design`: `randomized`, `adaptive`, or `unknown` (default). Choose `randomized` only
   when knob assignments were independent of outcomes and time/order effects, so trial labels are
   exchangeable under the no-effect null, **and** each knob was assigned independently of every
@@ -124,8 +126,10 @@ The script writes these files into `--output-dir`:
 - `insights.md`: short human-readable summary using honest claim language.
 - `video_card.json`: compact payload: `top_variables` (each with the knob's own effect,
   raw/adjusted p-values, family size, and inference status), `n_trials`, `skipped_non_completed`,
-  `skipped_missing_objective`, `alpha`, `objective`, run-level
-  `heldout_accuracy_pp`/`heldout_cost_delta_pct`, and `caption`. When no knob had two observed
+  `skipped_missing_objective`, `alpha`, `objective`, `objective_unit`, native-unit per-knob
+  `objective_spread`, run-level native-unit `heldout_objective_delta`,
+  `heldout_cost_delta_pct`, and `caption`. Compatibility fields `accuracy_pp` and
+  `heldout_accuracy_pp` are present only for `--objective accuracy --objective-unit fraction`. When no knob had two observed
   values, `top_variables` is empty and the caption (and the SVG footer) says no tuned variable
   could be ranked, rather than giving a confidence label.
 - `sdk_cross_check.json`: the SDK variance-based cross-check (`computed`, `note`, `results`);
@@ -160,7 +164,7 @@ Never overclaim significance:
 - The minimum attainable permutation p-value is `1 / (draws + 1)`. The script requires ten times
   the family-size/alpha threshold for a statistically significant label; otherwise it reports
   `insufficient_permutation_resolution` instead of a quiet negative.
-- The video card's per-knob `accuracy_pp`/`cost_delta_pct` are that knob's own measured effect; the whole-run heldout optimized-vs-baseline delta is reported once as a card-level field, never copied onto each knob.
+- The video card's per-knob `objective_spread`/`cost_delta_pct` are that knob's own measured effect; the whole-run heldout optimized-vs-baseline delta is reported once as a card-level field, never copied onto each knob.
 - The ranking is observational: "on this fixed Spider slice, in this run." It is not proof of causal attribution.
 <!-- /PROTECTED -->
 
@@ -188,7 +192,7 @@ containing this `SKILL.md`; plugin and flat-install locations differ.
 python3 <skill-dir>/scripts/significant_tuned_variables.py \
   --trials /path/to/02_trials.jsonl \
   --heldout /path/to/07_heldout_report.json \
-  --objective accuracy \
+  --objective accuracy --objective-unit fraction \
   --top-k 4 \
   --confidence 0.9 \
   --output-dir /tmp/significant-tuned-variables
