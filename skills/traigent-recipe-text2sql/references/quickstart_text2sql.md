@@ -12,7 +12,7 @@ drop that argument (or use its deprecated alias `experiment_name=`).
 
 Creates its own tiny SQLite database in a temp dir, defines a handful of
 NL->SQL questions with gold SQL, instruments a minimal agent with Traigent
-(SDK v0.17-compatible API), scores by EXECUTION MATCH, and runs a mock dry-run then a real
+(the API of SDK >=0.24.0), scores by EXECUTION MATCH, and runs a mock dry-run then a real
 cloud-tracked optimization. This is the ice-breaker example for the QuickStart:
 it runs end-to-end with only a Traigent key + an LLM key, in minutes.
 

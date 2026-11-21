@@ -542,7 +542,7 @@ results = my_func.optimize_sync(max_trials=10, algorithm="random")
 
 ## Displaying Results
 
-In SDK >=0.19, awaited `func.optimize()` and `func.optimize_sync()` already auto-print
+On every supported SDK (>=0.24.0), awaited `func.optimize()` and `func.optimize_sync()` already auto-print
 the ranked trial table. Call `print_results_table()` only when you need to re-print
 later, or when you need custom `objectives` / `config_space` display arguments.
 
@@ -716,7 +716,7 @@ async def main():
               "Inspect the failed trials before spending more.")
         return
 
-    # SDK >=0.19 auto-prints the ranked results table for awaited optimize().
+    # SDK >=0.24.0 auto-prints the ranked results table for awaited optimize().
     print(f"Best config: {results.best_config}")
     print(f"Best score:  {results.best_score}")
     print(f"Stop reason: {results.stop_reason}")

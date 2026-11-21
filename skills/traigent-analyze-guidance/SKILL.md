@@ -15,7 +15,7 @@ metadata:
 
 ## When to Use
 
-Requires `traigent>=0.21.3`. The SDK's former `guidance` command group (the
+Requires `traigent>=0.24.0`. The SDK's former `guidance` command group (the
 Planner V2 `next` / `execute` / `receipt` / `reopen` verbs) and the older
 `next-steps` command were retired from the SDK on 2026-08-03 and are absent
 from 0.26.0. Post-run guidance for portal-tracked runs now comes from the
@@ -226,7 +226,7 @@ installed `traigent-analytics-mcp`, else fetches it with `uvx`, and forwards `TR
 registration or restart is needed. Codex and other clients that do not read it, or a machine with
 neither the SDK nor `uv`, use the manual setup below, or the no-MCP fallback after it.
 
-The server needs a one-time setup outside the plugin: `pip install "traigent[mcp]>=0.21.3"` (already included
+The server needs a one-time setup outside the plugin: `pip install "traigent[mcp]>=0.24.0"` (already included
 in `traigent[recommended]`), then register the stdio command `traigent-analytics-mcp`
 with your coding assistant under the name `traigent-analytics`. The full steps are in
 `traigent-analyze-results` → "Prerequisites (one time)", including what to do when the
