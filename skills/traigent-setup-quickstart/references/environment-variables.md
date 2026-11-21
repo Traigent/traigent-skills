@@ -20,10 +20,10 @@ Common environment variables for Traigent quickstart workflows.
 | `TRAIGENT_DATASET_ROOT`           | (cwd)           | Directory every `eval_dataset` path must sit under (offline runs included); a path elsewhere is rejected when the run loads the dataset. |
 | `TRAIGENT_VALIDATION_TIMEOUT`     | `5.0`           | Timeout in seconds for provider API key validation checks — i.e. for your own `validate_providers(...)` call; the SDK runs none of its own. |
 | `TRAIGENT_STRICT_COST_ACCOUNTING` | `false`, but see note | When `true`, fail fast (raise `CostTrackingRequiredError`) when a call's cost cannot be determined, instead of recording $0. It is **not** a budget guard — a budget overrun is governed by `TRAIGENT_RUN_COST_LIMIT`. **Unset is not the same as `false`:** a run whose `objectives` include `cost` turns strict accounting on for itself, so an unpriced model raises there even with the variable unset. An explicit value always wins. |
-| `TRAIGENT_LOG_LEVEL`              | `INFO`          | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) for `traigent.configure(...)`, `traigent.initialize()` and the `traigent` CLI; when set it overrides the level they are given. It does **not** enable Traigent logs in a script that only uses `@traigent.optimize`. |
+| `TRAIGENT_LOG_LEVEL`              | (unset)         | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`) for `traigent.configure(...)`, `traigent.initialize()` and the `traigent` CLI, which log at `INFO` when it is unset; when set it overrides the level they are given. On SDK 0.31.0+ a set value is also applied at import, to the `traigent` logger only, so it enables Traigent logs in a `@traigent.optimize`-only script too; on 0.30.x and earlier it does not. Unset, a decorator-only script keeps Python's default (WARNING). |
 | `TRAIGENT_DEBUG`                  | (unset)         | When set to `1`, shows full tracebacks for `ConfigurationError` instead of user-friendly messages.  |
 | `TRAIGENT_STRICT_VALIDATION`      | `true`          | When `true`, DTO schema validation raises exceptions. When `false`, logs warnings only.             |
-| `ENVIRONMENT`                      | `development`   | Execution environment. Set to `production` for production deployments. Policy checks such as the mock-cost exemption treat an unset value as production, so set it explicitly (for example `development`) when such a check must see a non-production environment. |
+| `ENVIRONMENT`                      | (unset)         | Execution environment. Set to `production` for production deployments. There is no single default: policy checks such as the mock-cost exemption treat an **unset** value as production, while the SDK's legacy strict-production check and the import-time mock transport guard read unset as `development`. Set it explicitly (for example `development`) when a policy check must see a non-production environment. |
 | `JWT_SECRET_KEY`                   | (none)          | Secret key for JWT token validation. Required for production security features.                     |
 | `TRAIGENT_API_KEY`                | (none)          | Authenticates the default cloud smart optimizer and portal result sync for non-offline runs. |
 
@@ -56,12 +56,12 @@ enable_mock_mode_for_quickstart()
 
 ```bash
 export LITELLM_LOCAL_MODEL_COST_MAP=True   # no pricing-map download when your script imports litellm
-export TRAIGENT_LOG_LEVEL=DEBUG            # applied only once configure()/initialize()/the CLI runs
+export TRAIGENT_LOG_LEVEL=DEBUG            # configure()/initialize()/the CLI apply it; SDK 0.31.0+ also applies it at import
 python my_optimization.py
 ```
 
-The script above uses `@traigent.optimize` only, so `TRAIGENT_LOG_LEVEL` alone changes LiteLLM's
-verbosity, not Traigent's — see [Debug Mode](#debug-mode) for the call that turns Traigent's own
+The script above uses `@traigent.optimize` only, so on SDK 0.30.x and earlier `TRAIGENT_LOG_LEVEL` alone changes LiteLLM's
+verbosity, not Traigent's (0.31.0+ applies it to the `traigent` logger at import too) — see [Debug Mode](#debug-mode) for the call that turns Traigent's own
 logs on.
 
 ### CI/CD Pipeline
@@ -93,10 +93,11 @@ python optimize_production.py
 
 ### Debug Mode
 
-Neither variable turns on Traigent debug logs in a script that only uses
+On SDK 0.30.x and earlier, neither variable turns on Traigent debug logs in a script that only uses
 `@traigent.optimize`: `TRAIGENT_LOG_LEVEL` is applied by `traigent.configure(...)`,
 `traigent.initialize()` and the `traigent` CLI, and `TRAIGENT_DEBUG=1` only shows raw
-`ConfigurationError` tracebacks. Call `configure()` in the script to get the logs.
+`ConfigurationError` tracebacks. Call `configure()` in the script to get the logs. From 0.31.0,
+`TRAIGENT_LOG_LEVEL` is also applied at import to the `traigent` logger.
 
 ```python
 import traigent
@@ -126,4 +127,4 @@ TRAIGENT_LOG_LEVEL=DEBUG
 
 `TRAIGENT_LOG_LEVEL` here is read by `traigent.configure(...)`, `traigent.initialize()` and the
 `traigent` CLI — and when it is set it **overrides** the level passed to `configure()`. On its own,
-in a script that only uses `@traigent.optimize`, it does not enable Traigent debug logs.
+in a script that only uses `@traigent.optimize`, it does not enable Traigent debug logs on SDK 0.30.x and earlier (0.31.0+ applies it at import).

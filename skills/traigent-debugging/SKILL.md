@@ -40,7 +40,7 @@ traigent.configure(logging_level="DEBUG")  # SDK debug output for traigent.* log
 export TRAIGENT_DEBUG=1
 ```
 
-`TRAIGENT_LOG_LEVEL` on its own is applied only by `traigent.configure(logging_level=...)`, `traigent.initialize()` and the `traigent` CLI (when set, it overrides the level they are given). In a script that only uses `@traigent.optimize`, exporting it changes LiteLLM's verbosity, not Traigent's. `configure()` reconfigures the root logger; if your application manages its own logging, attach a handler to the `traigent` logger instead (see [Logging Configuration](references/logging-config.md), "Programmatic Logging Configuration"). `TRAIGENT_DEBUG=1` is separate: it only shows raw ConfigurationError tracebacks.
+`TRAIGENT_LOG_LEVEL` is applied by `traigent.configure(logging_level=...)`, `traigent.initialize()` and the `traigent` CLI (when set, it overrides the level they are given), and from SDK 0.31.0 also at import. On 0.30.x and earlier, in a script that only uses `@traigent.optimize`, exporting it changes LiteLLM's verbosity, not Traigent's. `configure()` reconfigures the root logger; if your application manages its own logging, attach a handler to the `traigent` logger instead (see [Logging Configuration](references/logging-config.md), "Programmatic Logging Configuration"). `TRAIGENT_DEBUG=1` is separate: it only shows raw ConfigurationError tracebacks.
 
 Then run your optimization. Debug output includes:
 - Configuration sampling decisions

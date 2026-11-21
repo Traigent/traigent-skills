@@ -202,7 +202,7 @@ Score interpretation depends on the scorer, because every mock call returns the 
 > scorer (delete it for the real run) — see `traigent-setup-quickstart` (`mock_demo_accuracy`)
 > for the recipe.
 
-If mock fails, call `traigent.configure(logging_level="DEBUG")` in the script for Traigent debug logs (`TRAIGENT_DEBUG=1` is separate — it only shows raw `ConfigurationError` tracebacks, and `TRAIGENT_LOG_LEVEL` on its own does nothing in a decorator-only script), fix decorator args for `ConfigurationError` (see mistakes table above), and see `traigent-debugging` (`references/mock-mode.md`) for the full mock failure diagnosis (evaluation errors, `get_config()` outside optimization context, missing integrations extra, all-trials-failed).
+If mock fails, call `traigent.configure(logging_level="DEBUG")` in the script for Traigent debug logs (`TRAIGENT_DEBUG=1` is separate — it only shows raw `ConfigurationError` tracebacks, and on SDK 0.30.x and earlier `TRAIGENT_LOG_LEVEL` on its own does nothing in a decorator-only script; 0.31.0+ applies it at import), fix decorator args for `ConfigurationError` (see mistakes table above), and see `traigent-debugging` (`references/mock-mode.md`) for the full mock failure diagnosis (evaluation errors, `get_config()` outside optimization context, missing integrations extra, all-trials-failed).
 
 <!-- PROTECTED -->
 **Do not proceed to real mode until mock passes cleanly.**
