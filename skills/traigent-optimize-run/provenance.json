@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ee2af1c827735e2d",
+  "doc_hash": "72a0fb65dee2a13c",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
-    "references/cost-management.md": "cb123f7353702556",
+    "references/cost-management.md": "098760af9134fcbb",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/execution-budget.md": "23d17308f849017b",
     "references/parallel-config.md": "2938f82d7a778d5f",
@@ -566,6 +566,17 @@
       "doc_before_hash": "d78c2f857c522671",
       "doc_after_hash": "ee2af1c827735e2d",
       "note": "Drop the TRAIGENT_LITELLM_LIVE_PRICES name (not in SDK before 0.29.0); state the 0.29.0 floor for the default and tell the reader to set the map variable themselves.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-contradictions-2026-11-21",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-21T00:00:00Z",
+      "doc_before_hash": "ee2af1c827735e2d",
+      "doc_after_hash": "72a0fb65dee2a13c",
+      "note": "SDK floor >=0.24.0 for the auto-printed table; TRAIGENT_COST_APPROVED shown per run, never persistent.",
       "source_type": "agent"
     }
   ]

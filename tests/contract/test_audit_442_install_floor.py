@@ -63,7 +63,7 @@ def _applicable_floor(path: Path, sync_map: dict) -> tuple[Version, str]:
     """The floor that governs this page: the skill's own, else the repo default.
 
     A skill that declares a *lower* ``min_sdk_version`` than the repo default
-    (``traigent-analyze-guidance`` at 0.21.3) is correct to state its own floor
+    (a skill with its own declared floor) is correct to state it
     -- #442 is about an install command sinking below the floor that applies,
     not about the per-skill declarations.
     """

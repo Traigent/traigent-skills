@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ae511c1d368c628f",
+  "doc_hash": "b35e51ed1a70d3db",
   "reference_hashes": {
     "references/error-reference.md": "02ac48de17fe6c9e",
-    "references/logging-config.md": "158e07e3237bfb61",
-    "references/mock-mode.md": "bdc93834f7a361f1"
+    "references/logging-config.md": "c5bf0ffd2cf70932",
+    "references/mock-mode.md": "98312a309ecb432e"
   },
   "entries": [
     {
@@ -331,6 +331,17 @@
       "doc_before_hash": "6311c318286041d3",
       "doc_after_hash": "ae511c1d368c628f",
       "note": "Version-correct apply=False and resume_from statements for released SDKs.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-contradictions-2026-11-21",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-21T00:00:00Z",
+      "doc_before_hash": "ae511c1d368c628f",
+      "doc_after_hash": "b35e51ed1a70d3db",
+      "note": "TRAIGENT_LOG_LEVEL applied at import from SDK 0.31.0.",
       "source_type": "agent"
     }
   ]

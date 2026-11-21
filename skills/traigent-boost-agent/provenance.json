@@ -1,11 +1,11 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "e27971f3fb79c7b6",
+  "doc_hash": "13dda4fb422457a6",
   "reference_hashes": {
     "references/codebase-analysis.md": "82a4fd22bde88335",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/insights-and-iteration.md": "e864e5ed0254be8c",
-    "references/instrument-recipe.md": "af70c3d35f984433",
+    "references/instrument-recipe.md": "730a808b154df17f",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
   "entries": [
@@ -410,6 +410,17 @@
       "doc_before_hash": "76147c542b44f4e2",
       "doc_after_hash": "e27971f3fb79c7b6",
       "note": "Version-correct apply=False and resume_from statements for released SDKs.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-contradictions-2026-11-21",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-21T00:00:00Z",
+      "doc_before_hash": "e27971f3fb79c7b6",
+      "doc_after_hash": "13dda4fb422457a6",
+      "note": "Mock scope: boto3/gRPC blocked only from SDK 0.33.0; TRAIGENT_LOG_LEVEL applied at import from 0.31.0.",
       "source_type": "agent"
     }
   ]
