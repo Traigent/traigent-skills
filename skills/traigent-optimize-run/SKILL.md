@@ -426,10 +426,10 @@ Notes:
 
 The `traigent-boost-agent` lifecycle skill mandates: **dry-run in mock mode first, present the cost estimate, then get explicit user approval before the real run.** Only pre-approve costs in automated pipelines where a human has already reviewed and approved the dry-run estimate. Never bypass this gate on a user's first run or when the config space has changed.
 
-To skip the interactive cost approval handshake in an already-approved pipeline:
+To skip the interactive cost approval handshake for one run a human has already approved, set it on that run's command only, never persistently:
 
 ```bash
-export TRAIGENT_COST_APPROVED=true
+TRAIGENT_COST_APPROVED=true python run_optimization.py   # this run only, after the stated ceiling was approved
 ```
 
 CI note: local/offline `optimize()` runs also require `TRAIGENT_RUN_APPROVED=1`; see
