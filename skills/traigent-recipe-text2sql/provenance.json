@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3584f88133a297a4",
+  "doc_hash": "47bb2fe8ab6e2f74",
   "reference_hashes": {
-    "references/quickstart_text2sql.md": "f87501fa221e930d"
+    "references/quickstart_text2sql.md": "4c04f68672bacfc4"
   },
   "entries": [
     {
@@ -283,6 +283,17 @@
       "doc_before_hash": "db49ffbb1eb277fe",
       "doc_after_hash": "3584f88133a297a4",
       "note": "Make row_id a required exec_match parameter so GoldSQLError always names the row.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-contradictions-2026-11-21",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-21T00:00:00Z",
+      "doc_before_hash": "3584f88133a297a4",
+      "doc_after_hash": "47bb2fe8ab6e2f74",
+      "note": "API heading states SDK >=0.24.0, not v0.17.",
       "source_type": "agent"
     }
   ]

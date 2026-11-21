@@ -71,7 +71,7 @@ def test_analyze_guidance_sdk_floor_names_a_releasable_final_version(
     floor = sync_map["skills"]["traigent-analyze-guidance"]["min_sdk_version"]
     parsed = Version(str(floor))
 
-    assert parsed == Version("0.21.3")
+    assert parsed == Version("0.24.0")
     assert not parsed.is_devrelease, (
         "a dev floor cannot distinguish an older develop build that lacks "
         "the taught guidance surface"

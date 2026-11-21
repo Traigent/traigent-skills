@@ -212,7 +212,7 @@ with REAL values so the weighted objective uses real cost/latency — `latency` 
 **milliseconds** (the SDK's canonical unit for the bare metric) and `cost` as the
 per-eval spend in USD.
 
-## 5. Run it (SDK v0.17-compatible API)
+## 5. Run it (API of SDK >=0.24.0)
 ```python
 import traigent
 from traigent.api.decorators import EvaluationOptions, ExecutionOptions

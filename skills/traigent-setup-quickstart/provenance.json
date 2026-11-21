@@ -1,10 +1,10 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "6995d2a15f8bd57b",
+  "doc_hash": "e5a412fd5ed1b6c4",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
-    "references/environment-variables.md": "c50fe19585bb0888",
-    "references/first-value-fallback.md": "3c78730d2f89aec2",
+    "references/environment-variables.md": "39dbe763a8544734",
+    "references/first-value-fallback.md": "5ba14e4c0dd38db1",
     "references/installation-extras.md": "21a597989700969a",
     "references/run-cost-and-limits.md": "6a902dfd36daecb7"
   },
@@ -550,6 +550,17 @@
       "doc_before_hash": "47f142c85d233e93",
       "doc_after_hash": "6995d2a15f8bd57b",
       "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-contradictions-2026-11-21",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-21T00:00:00Z",
+      "doc_before_hash": "6995d2a15f8bd57b",
+      "doc_after_hash": "e5a412fd5ed1b6c4",
+      "note": "Mock dry-run: no provider spend, no Traigent backend egress only with offline=True; boto3/gRPC blocked only from 0.33.0.",
       "source_type": "agent"
     }
   ]

@@ -254,4 +254,4 @@ if results.best_score is not None and results.best_score >= 0.8:
 - Set `LITELLM_LOG=DEBUG` for detailed provider-level logging
 - Use `litellm.set_verbose = True` during development to see API calls
 - Some providers require additional setup (Azure needs deployment names, Bedrock needs AWS credentials)
-- LiteLLM's cost tracking works automatically for most providers
+- LiteLLM's cost tracking covers only models in its pricing map. An unpriced model is recorded as $0 and wins a cost objective for free unless `TRAIGENT_STRICT_COST_ACCOUNTING=true` makes the run raise instead; price-check each model ID (see Installation above)

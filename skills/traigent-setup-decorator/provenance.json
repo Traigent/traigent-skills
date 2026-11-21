@@ -1,12 +1,12 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b8f16a7cbf1de7e3",
+  "doc_hash": "ee8dcbd7bd61ad5e",
   "reference_hashes": {
     "references/agent-identity.md": "16206658c40f65e2",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/evaluation-options.md": "f766d4df828a1ade",
     "references/execution-modes.md": "099fb0a54b6c3534",
-    "references/injection-modes.md": "597e4e1b09b63279",
+    "references/injection-modes.md": "952d20f3d4d2e4f2",
     "references/task-type.md": "e6201449c6f90853",
     "references/winner-stability-reps.md": "a4a054adf9e626ab"
   },
@@ -386,6 +386,17 @@
       "doc_before_hash": "bfe8e8cc10b82aeb",
       "doc_after_hash": "b8f16a7cbf1de7e3",
       "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-contradictions-2026-11-21",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-21T00:00:00Z",
+      "doc_before_hash": "b8f16a7cbf1de7e3",
+      "doc_after_hash": "ee8dcbd7bd61ad5e",
+      "note": "Mock scope: boto3/gRPC blocked only from SDK 0.33.0.",
       "source_type": "agent"
     }
   ]

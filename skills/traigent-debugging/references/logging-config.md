@@ -6,7 +6,7 @@ Traigent uses Python's standard `logging` module. Verbosity is set in code with 
 
 | Variable | Purpose | Values |
 |---|---|---|
-| `TRAIGENT_LOG_LEVEL` | Level for Traigent loggers, applied only when `traigent.configure(logging_level=...)`, `traigent.initialize()` or the `traigent` CLI sets up logging (it overrides the level they are given) | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
+| `TRAIGENT_LOG_LEVEL` | Level for Traigent loggers, applied when `traigent.configure(logging_level=...)`, `traigent.initialize()` or the `traigent` CLI sets up logging (it overrides the level they are given), and from SDK 0.31.0 also at import | `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` |
 | `TRAIGENT_DEBUG` | Enable full tracebacks for ConfigurationError | `1` (enabled), unset (disabled) |
 
 ## TRAIGENT_LOG_LEVEL
@@ -22,9 +22,10 @@ traigent.configure(logging_level="DEBUG")  # before defining/running the optimiz
 ```
 
 `@traigent.optimize` and `optimize_sync()` do not set up logging themselves. The level
-(from `TRAIGENT_LOG_LEVEL` when set, otherwise the one passed in) is applied only by
-`traigent.configure(logging_level=...)`, `traigent.initialize()` and the `traigent` CLI.
-In a script that only uses the decorator, `export TRAIGENT_LOG_LEVEL=DEBUG` changes
+(from `TRAIGENT_LOG_LEVEL` when set, otherwise the one passed in) is applied by
+`traigent.configure(logging_level=...)`, `traigent.initialize()` and the `traigent` CLI; from SDK 0.31.0 a set value
+is also applied at import, to the `traigent` logger only.
+On 0.30.x and earlier, in a script that only uses the decorator, `export TRAIGENT_LOG_LEVEL=DEBUG` changes
 LiteLLM's verbosity but leaves the `traigent` loggers at Python's default (WARNING).
 
 ```bash

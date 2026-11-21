@@ -81,8 +81,9 @@ The linear path:
    **nothing** ready, use the bundled fallback below — no dataset needed to see value.
 3. **Mock dry-run first.** Always run keyless mock mode before anything paid (the "Your
    First Optimization" example below is exactly this). Show the ranked table so they see
-   the loop work with no provider spend and zero egress (on SDK 0.31.0+ the mock run is still
-   priced against the cost cap, so keep the dry-run dataset small).
+   the loop work with no provider spend (the example sets `offline=True`, so nothing goes to the
+   Traigent backend either; on SDK 0.31.0+ the mock run is still priced against the cost cap,
+   so keep the dry-run dataset small).
 4. **Confirm the real run explicitly.** A real (paid) run happens only after the user
    sees the mock result and says go — and after the cost-gate approval. Never jump from
    mock straight to spend. Show the card in `references/run-cost-and-limits.md` first:
@@ -397,7 +398,7 @@ enable_mock_mode_for_quickstart()
 <!-- PROTECTED -->
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
-- **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted (no canned reply). On SDK 0.31.0+ their HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed; clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 a raw-client call in mock mode reaches the provider and bills. Use LiteLLM in examples that must run keyless.
+- **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted (no canned reply). On SDK 0.31.0+ their HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed; `boto3`/`botocore` and gRPC calls to a known provider host are blocked only from SDK 0.33.0 (not blocked on 0.31.x and 0.32.x), while direct urllib3 or `http.client` use and hosts outside the SDK's provider list are not blocked on any version, and before 0.31.0 a raw-client call in mock mode reaches the provider and bills. Use LiteLLM in examples that must run keyless.
 
 **If the agent uses a raw provider client (`openai.OpenAI()`, `anthropic.Anthropic()`), do this:**
 

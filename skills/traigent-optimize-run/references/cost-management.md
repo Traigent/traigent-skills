@@ -133,13 +133,13 @@ Before a real run:
 
 ## Pre-Approving Costs
 
-By default, Traigent may prompt for cost approval before running optimization (especially for expensive configurations). To skip this:
+By default, Traigent may prompt for cost approval before running optimization (especially for expensive configurations). To skip this for one run whose estimate the user has already seen and approved, set it on that run's command only (never `export` it in a shell profile, a shared CI environment, or a job-wide `env:` block):
 
 ```bash
-export TRAIGENT_COST_APPROVED=true
+TRAIGENT_COST_APPROVED=true python run_optimization.py
 ```
 
-This is useful in CI/CD pipelines, automated scripts, or when you have already verified the budget is acceptable.
+Approval belongs to one approved run, because it also covers any later real run in the same environment. Do not use it as a standing default in CI/CD pipelines or automated scripts.
 
 ## Strict Cost Accounting
 
@@ -216,10 +216,11 @@ code, e.g. from a pytest fixture/conftest, for new setups.
 ### CI/CD Pipeline
 
 ```bash
-export TRAIGENT_RUN_COST_LIMIT=10.00
-export TRAIGENT_COST_APPROVED=true
+export TRAIGENT_RUN_COST_LIMIT=10.00     # the ceiling a human approved for this job
 export TRAIGENT_STRICT_COST_ACCOUNTING=true
 
+# TRAIGENT_COST_APPROVED is deliberately not exported here: set it only on the
+# step of a run whose estimate a human has already seen and approved.
 python run_optimization.py
 ```
 

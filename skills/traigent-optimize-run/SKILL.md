@@ -426,10 +426,10 @@ Notes:
 
 The `traigent-boost-agent` lifecycle skill mandates: **dry-run in mock mode first, present the cost estimate, then get explicit user approval before the real run.** Only pre-approve costs in automated pipelines where a human has already reviewed and approved the dry-run estimate. Never bypass this gate on a user's first run or when the config space has changed.
 
-To skip the interactive cost approval handshake in an already-approved pipeline:
+To skip the interactive cost approval handshake for one run a human has already approved, set it on that run's command only, never persistently:
 
 ```bash
-export TRAIGENT_COST_APPROVED=true
+TRAIGENT_COST_APPROVED=true python run_optimization.py   # this run only, after the stated ceiling was approved
 ```
 
 CI note: local/offline `optimize()` runs also require `TRAIGENT_RUN_APPROVED=1`; see
@@ -542,7 +542,7 @@ results = my_func.optimize_sync(max_trials=10, algorithm="random")
 
 ## Displaying Results
 
-In SDK >=0.19, awaited `func.optimize()` and `func.optimize_sync()` already auto-print
+On every supported SDK (>=0.24.0), awaited `func.optimize()` and `func.optimize_sync()` already auto-print
 the ranked trial table. Call `print_results_table()` only when you need to re-print
 later, or when you need custom `objectives` / `config_space` display arguments.
 
@@ -716,7 +716,7 @@ async def main():
               "Inspect the failed trials before spending more.")
         return
 
-    # SDK >=0.19 auto-prints the ranked results table for awaited optimize().
+    # SDK >=0.24.0 auto-prints the ranked results table for awaited optimize().
     print(f"Best config: {results.best_config}")
     print(f"Best score:  {results.best_score}")
     print(f"Stop reason: {results.stop_reason}")

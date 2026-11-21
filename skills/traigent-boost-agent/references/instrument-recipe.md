@@ -195,7 +195,7 @@ from traigent.testing import enable_mock_mode_for_quickstart
 enable_mock_mode_for_quickstart()
 ```
 
-> Mock mode covers LiteLLM/LangChain calls only: raw `openai` / `anthropic` clients get no canned reply, but on SDK 0.31.0+ their HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed. Clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 raw-client calls reach the provider and bill. The After block calls `litellm.completion` for that reason; if you keep your own client, stub it for the dry-run. On SDK 0.31.0+ the mock run is also still priced against the cost cap, so dry-run a small slice of a large dataset (see `run-cost-and-limits.md`).
+> Mock mode covers LiteLLM/LangChain calls only: raw `openai` / `anthropic` clients get no canned reply, but on SDK 0.31.0+ their HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed. `boto3`/`botocore` and gRPC calls to a known provider host are blocked only from SDK 0.33.0 (not blocked on 0.31.x and 0.32.x), while direct urllib3 or `http.client` use and hosts outside the SDK's provider list are not blocked on any version, and before 0.31.0 raw-client calls reach the provider and bill. The After block calls `litellm.completion` for that reason; if you keep your own client, stub it for the dry-run. On SDK 0.31.0+ the mock run is also still priced against the cost cap, so dry-run a small slice of a large dataset (see `run-cost-and-limits.md`).
 
 Real optimization:
 
