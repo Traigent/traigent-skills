@@ -26,7 +26,7 @@ reasons, how many candidates it samples, and how it recovers from errors:
 
 ```python
 configuration_space = {
-    "schema_context": ["none", "full", "linked"],
+    "schema_context": ["none", "full_ddl_fk", "linked_top6"],
     "generation_path": ["direct", "plan-CoT", "decompose"],
     "fewshot_k": [0, 3, 5],
     "fewshot_selector": ["random", "masked-similarity", "DAIL"],
