@@ -107,7 +107,7 @@ run). Instead:
 
 ### What Is NOT Mocked
 
-> **Important:** Raw `openai` and `anthropic` clients are **not** intercepted by mock mode: they get no canned reply. If your function calls `openai.OpenAI().chat.completions.create(...)` or `anthropic.Anthropic().messages.create(...)` directly, then on SDK 0.31.0+ the HTTP request to a known LLM provider host (the major hosted APIs, Azure OpenAI and Bedrock runtime endpoints) is blocked with `MockModeTransportBlockedError`, not billed. The block covers requests sent through httpx, aiohttp and requests; a `boto3` call and hosts outside the SDK's list are not blocked. On SDKs before 0.31.0 those calls reach the real API. Use `litellm.completion()` or LangChain wrappers for a fully keyless mock-mode experience.
+> **Important:** Raw `openai` and `anthropic` clients are **not** intercepted by mock mode: they get no canned reply. If your function calls `openai.OpenAI().chat.completions.create(...)` or `anthropic.Anthropic().messages.create(...)` directly, then on SDK 0.31.0+ the HTTP request to a known LLM provider host (the major hosted APIs, Azure OpenAI and Bedrock runtime endpoints) is blocked with `MockModeTransportBlockedError`, not billed. The block covers requests sent through httpx, aiohttp and requests on 0.31.0+, and `boto3`/`botocore` and gRPC calls to a known provider host from 0.33.0 (those are not blocked on 0.31.x and 0.32.x); direct urllib3 or `http.client` use and hosts outside the SDK's list are not blocked on any version. On SDKs before 0.31.0 those calls reach the real API. Use `litellm.completion()` or LangChain wrappers for a fully keyless mock-mode experience.
 
 - Raw `openai.OpenAI` / `openai.AsyncOpenAI` clients
 - Raw `anthropic.Anthropic` / `anthropic.AsyncAnthropic` clients
@@ -168,7 +168,7 @@ This gives you a self-contained environment:
 - No provider calls for LiteLLM/LangChain calls, which mock mode intercepts; a raw `openai` /
   `anthropic` client in the function gets no canned reply and, on SDK 0.31.0+, its requests to
   known provider hosts are blocked rather than billed (before 0.31.0 it still calls the provider;
-  `boto3` and unlisted hosts are not blocked on any version)
+  `boto3`/gRPC calls to known provider hosts are blocked only from 0.33.0; unlisted hosts and direct urllib3 use are not blocked on any version)
 - If your code imports `litellm` itself, set `LITELLM_LOCAL_MODEL_COST_MAP=True` before that
   import, or LiteLLM fetches its public pricing map over the network
 - Fast execution (no real LLM latency)
