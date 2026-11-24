@@ -1,6 +1,6 @@
 """A key variable exported empty (or whitespace only) is not a set key.
 
-`export OPENAI_API_KEY=` in a template, or a CI secret that did not resolve,
+An empty OPENAI_API_KEY template value or an unresolved CI secret
 leaves the name in the environment with no usable value. Reporting it as "set"
 hides the missing-key signal in the Setup area and in the Tier 2 offer.
 """
