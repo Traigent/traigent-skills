@@ -19,7 +19,7 @@ The `OptimizationResult` dataclass is returned by `func.optimize()` and contains
 | `algorithm` | `str` | Name of the optimization algorithm used. |
 | `timestamp` | `datetime` | When the optimization completed. |
 | `metadata` | `dict[str, Any]` | Additional metadata from the optimization run. Default: `{}`. |
-| `total_cost` | `float \| None` | Total API cost incurred in USD. `None` if cost tracking is not available. |
+| `total_cost` | `float \| None` | Total API cost incurred in USD. `None` if cost tracking is not available, and (SDK 0.32.0+) when any trial's cost is unmeasured: the known spend is then a lower bound in `metrics["cost_floor_usd"]`, with the count in `metrics["cost_unmeasured_trials"]`. |
 | `total_tokens` | `int \| None` | Total tokens consumed across all trials. `None` if token tracking is not available. |
 | `metrics` | `dict[str, Any]` | Aggregated metrics across all trials. Default: `{}`. |
 | `stop_reason` | `StopReason \| None` | Why the optimization stopped. See StopReason values below. |
@@ -29,7 +29,7 @@ The `OptimizationResult` dataclass is returned by `func.optimize()` and contains
 
 | Property | Return Type | Description |
 |---|---|---|
-| `experiment_stats` | `ExperimentStats` | Lazy-loaded, memoized aggregate statistics for the full experiment. Includes `total_duration`, `total_cost`, `unique_configurations`, `trial_counts`, `average_trial_duration`, `cost_per_configuration`, `success_rate`. |
+| `experiment_stats` | `ExperimentStats` | Lazy-loaded, memoized aggregate statistics for the full experiment. Includes `total_duration`, `total_cost`, `unique_configurations`, `trial_counts`, `average_trial_duration`, `cost_per_configuration`, `success_rate`, `cost_unmeasured_trials`, `cost_lower_bound`. |
 | `successful_trials` | `list[TrialResult]` | Filtered list of trials with `status == COMPLETED`. |
 | `failed_trials` | `list[TrialResult]` | Filtered list of trials with `status == FAILED`. |
 | `success_rate` | `float` | Ratio of successful trials to total trials. Returns `0.0` if no trials exist. |
@@ -139,6 +139,9 @@ for trial in results.trials:
 | `"plateau"` | A plateau was detected (no improvement over recent trials). |
 | `"convergence"` | A built-in convergence condition triggered. |
 | `"semantic_saturation"` | Per-example quality and continuous objectives saturated; detail in `metadata["semantic_saturation"]`. |
+| `"safety_constraint"` | An in-run `safety_constraints` halt (SDK >= 0.28.0). On SDK 0.31.0+ it means a violation: observed compliance is below the required rate. On 0.28.0-0.30.0 it also fired when the evidence was too thin to prove the constraint. Not a trial filter or a safety verdict. |
+| `"safety_constraint_insufficient_evidence"` | An in-run `safety_constraints` halt where the constraint is not proven and not violated: observed compliance meets the required rate, but the confidence lower bound does not prove it (SDK >= 0.31.0). The run halts fail-closed. |
+| `"no_usage_captured"` | A strict cost-objective run stopped after its first successful trial that captured no LLM usage (SDK >= 0.31.0); new trials are not scheduled, trials in flight may finish. On the strict default the call then raises `UnknownModelError` with the finished trials on `err.result`. |
 | `"user_cancelled"` | The user cancelled the optimization or declined a cost approval prompt. |
 | `"condition"` | A generic stop condition was triggered. |
 | `"error"` | The optimization failed due to an unrecoverable exception. |
@@ -187,13 +190,15 @@ The `ExperimentStats` dataclass is accessible via `results.experiment_stats` and
 | Field | Type | Description |
 |---|---|---|
 | `total_duration` | `float` | Total wall-clock time in seconds. |
-| `total_cost` | `float` | Total API cost in USD. |
+| `total_cost` | `float \| None` | Total API cost in USD. `None` (SDK 0.31.0+) when any trial's cost is unmeasured: the known spend is then only a lower bound in `cost_lower_bound`, with the count in `cost_unmeasured_trials`. |
 | `unique_configurations` | `int` | Number of distinct configurations tested. |
 | `trial_counts` | `dict[str, int]` | Breakdown by status: `total`, `completed`, `failed`, `cancelled`, `running`, `pending`, `not_started`, `exceptions`. |
 | `average_trial_duration` | `float \| None` | Mean trial duration in seconds. `None` if no valid durations. |
-| `cost_per_configuration` | `float \| None` | Average cost per unique configuration. `None` if no configurations. |
+| `cost_per_configuration` | `float \| None` | Average cost per unique configuration. `None` if no configurations, or when `total_cost` is `None`. |
 | `success_rate` | `float \| None` | Ratio of successful trials to total. `None` if no trials. |
 | `error_message` | `str \| None` | Error message if stats computation failed. |
+| `cost_unmeasured_trials` | `int` | Number of trials whose cost was not measured (SDK 0.31.0+). Default `0`. |
+| `cost_lower_bound` | `float \| None` | Known spend when `total_cost` is withheld for unmeasured trials (SDK 0.31.0+). `None` when every trial's cost is measured, or when the known spend floor is `0`. |
 
 ### to_dict()
 

@@ -137,7 +137,7 @@ jobs:
             echo
             echo "Refresh with:"
             echo '```bash'
-            echo "python tools/contract/refresh_backend_routes.py  # against a fresh TraigentBackend develop checkout"
+            echo "python tools/contract/refresh_backend_routes.py --repo <fresh TraigentBackend checkout> --ref origin/develop"
             echo '```'
             echo
             echo "Workflow: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"

@@ -73,7 +73,7 @@ declares them.
 
 ## Notes
 
-- Requires Python >= 3.11.
+- Requires Python >= 3.12 (SDK 0.32.0+; 0.31.x and earlier accept 3.11).
 - `faiss-cpu` (in `integrations`) is not available on Windows.
 - Algorithm selection is controlled by `algorithm`, not by extras: omit it or use `auto` for the default connected cloud smart optimizer, or use `grid`/`random` for explicit local search. Named smart selectors such as `bayesian`/`optuna` execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`); they run in the Traigent cloud, so the `bayesian`/`ml` extras are **not** what enables them — the extras only install local dependencies (Traigent/Traigent#1752, #1758).
 - `all` includes user-facing runtime extras only — it does **not** include `dev`, `docs`, `ml`, or `cloud`. Use `enterprise` for ml+cloud, or `recommended` as the primary install.

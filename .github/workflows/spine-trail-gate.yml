@@ -29,6 +29,7 @@ jobs:
   spine-trail:
     name: spine-trail present
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       # Dependabot PRs carry no spine mark and cannot be given one: the bot
       # composes the body, and a maintainer editing it does not re-trigger this

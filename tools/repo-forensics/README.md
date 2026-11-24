@@ -7,7 +7,7 @@ This directory is a **pinned, vendored copy** of the `repo-forensics` scanner
 It is **not a skill** — it lives outside `skills/`, so `npx skills add` never
 installs it and the gate never scans it.
 
-The gate runs it as: `run_forensics.sh <repo>/skills --skill-scan` — the
+The gate runs it as: `run_forensics.sh <repo>/skills --skill-scan --reject-symlinks` — the
 skill-vetting mode (9 scanners incl. skill-threat detection), with a
 **zero-tolerance** policy: any finding of any severity fails the gate. The
 baseline is 0 findings.
@@ -31,3 +31,13 @@ This vendored snapshot is 0 findings on `--skill-scan`.
 
 To update, re-copy `scripts/` from the agents-skills snapshot after reviewing
 the diff, then confirm `run_forensics.sh <repo>/skills --ci-own` stays clean.
+
+Local changes to keep when re-copying: `run_forensics.sh` exits 3 when its
+target is missing, not a directory, or has no files (traigent-skills#504), and
+resolves a target whose name starts with `-` (`realpath --`, `./` anchor), pinned
+by `tests/repo_forensics/test_run_forensics_target.py`.
+It also has an opt-in `--reject-symlinks` flag (exit 3 when the target holds any
+symlink, because every scanner skips symlinks and a symlinked skill would pass
+unread). It is opt-in, not the default, since the upstream runner also vets
+untrusted third-party trees (`--ci`) where symlinks are normal; the CI gate and the
+documented gate command (top of this file) pass it; the `--ci-own` update check does not.

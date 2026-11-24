@@ -16,7 +16,8 @@
 #   0 = clean (all scanners ran, no findings)
 #   1 = high/medium findings
 #   2 = critical findings
-#   3 = infrastructure failure (no scanners completed)
+#   3 = infrastructure failure (no scanners completed, or the target is
+#       missing / not a directory / has no files to scan)
 #
 # CI/CD integration (GitHub Actions):
 #   Use a SHA-pinned tarball download — never git clone. This avoids:
@@ -46,7 +47,7 @@
 set -euo pipefail
 
 if [ -z "${1:-}" ]; then
-    echo "Usage: $0 <repo_path> [--skill-scan] [--format text|json|summary] [--update-iocs] [--watch]"
+    echo "Usage: $0 <repo_path> [--skill-scan] [--format text|json|summary] [--update-iocs] [--watch] [--reject-symlinks]"
     echo ""
     echo "Modes:"
     echo "  (default)      Full audit - all 17 scanners"
@@ -61,10 +62,18 @@ if [ -z "${1:-}" ]; then
     echo "  --format summary  Counts only (for CI/CD)"
     echo "  --update-iocs     Pull latest IOC database before scanning"
     echo "  --watch           Enable file integrity baseline tracking"
+    echo "  --reject-symlinks Exit 3 if the target contains symlinks (scanners skip them)"
     exit 1
 fi
 
-REPO_PATH=$(realpath "$1")
+RAW_REPO_PATH="$1"
+if ! REPO_PATH=$(realpath -- "$RAW_REPO_PATH" 2>/dev/null); then
+    REPO_PATH="$RAW_REPO_PATH"
+fi
+# A relative name that starts with "-" would be read as an option by find and
+# by every scanner; anchor it (local to this vendored copy, see
+# tests/repo_forensics/test_run_forensics_target.py).
+case "$REPO_PATH" in -*) REPO_PATH="./$REPO_PATH" ;; esac
 shift
 
 # Parse remaining args
@@ -75,6 +84,7 @@ FORMAT="text"
 UPDATE_IOCS=false
 WATCH_MODE=false
 VERIFY_INSTALL=false
+REJECT_SYMLINKS=false
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --skill-scan) SKILL_SCAN=true; shift ;;
@@ -84,6 +94,7 @@ while [[ $# -gt 0 ]]; do
         --update-iocs) UPDATE_IOCS=true; shift ;;
         --watch) WATCH_MODE=true; shift ;;
         --verify-install) VERIFY_INSTALL=true; shift ;;
+        --reject-symlinks) REJECT_SYMLINKS=true; shift ;;
         *) echo "Unknown arg: $1"; exit 1 ;;
     esac
 done
@@ -94,6 +105,48 @@ SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
 if $VERIFY_INSTALL; then
     python3 "$SKILL_DIR/verify_install.py" --verify
     exit $?
+fi
+
+# Refuse a target with nothing to scan. Every scanner reports "0 findings" on a
+# missing or empty directory, so without this a mistyped or renamed path would
+# be reported clean (traigent-skills#504). Local to this vendored copy: keep it
+# when re-copying from upstream (tests/repo_forensics/test_run_forensics_target.py).
+if [ ! -d "$REPO_PATH" ]; then
+    echo "Error: scan target is not a directory: $REPO_PATH"
+    echo "  Pass the directory to scan (for this repo's gate: <repo>/skills)."
+    echo "  EXIT CODE: 3 (scan incomplete — nothing to scan)"
+    exit 3
+fi
+if [ -z "$(find "$REPO_PATH" -type f -print -quit 2>/dev/null)" ]; then
+    echo "Error: scan target contains no files: $REPO_PATH"
+    echo "  Check the path and that the checkout populated it."
+    echo "  EXIT CODE: 3 (scan incomplete — nothing to scan)"
+    exit 3
+fi
+
+# Opt-in (local to this vendored copy, see tests/repo_forensics/test_run_forensics_target.py):
+# every scanner skips symlinks, so a symlinked skill or file would be reported
+# clean without being read. The gate for our own skills/ passes this flag; it is
+# not the default because the runner also vets untrusted third-party trees
+# (--ci), where symlinks are normal.
+if $REJECT_SYMLINKS; then
+    FIND_ERR="$(mktemp)"
+    if ! LINKS="$(find "$REPO_PATH" -type l -print 2>"$FIND_ERR")"; then
+        echo "Error: could not check for symlinks under: $REPO_PATH"
+        echo "  find failed (unreadable directory?):"
+        sed 's/^/    /' "$FIND_ERR"
+        rm -f "$FIND_ERR"
+        echo "  EXIT CODE: 3 (scan incomplete — symlink check failed)"
+        exit 3
+    fi
+    rm -f "$FIND_ERR"
+    if [ -n "$LINKS" ]; then
+        echo "Error: scan target contains symlinks: symlinks are skipped by every scanner; scan would be vacuous for them."
+        echo "  Replace them with real files:"
+        echo "$LINKS" | sed 's/^/    /'
+        echo "  EXIT CODE: 3 (scan incomplete — symlinks not scanned)"
+        exit 3
+    fi
 fi
 
 # Handle --update-iocs before scanning

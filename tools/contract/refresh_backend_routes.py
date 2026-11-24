@@ -6,13 +6,15 @@ from __future__ import annotations
 import argparse
 import ast
 import json
+import os
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 
-DEFAULT_BACKEND_REPO = Path("/home/nimrodbu/Traigent_enterprise/TraigentBackend")
+BACKEND_REPO_ENV = "TRAIGENT_BACKEND_REPO"
 DEFAULT_REF = "origin/develop"
 DEFAULT_OUT = Path("tests/data/backend_routes_snapshot.json")
 REPO_SLUG = "Traigent/TraigentBackend"
@@ -64,12 +66,31 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Refresh the vendored TraigentBackend route snapshot from git refs.",
     )
-    parser.add_argument("--repo", type=Path, default=DEFAULT_BACKEND_REPO)
+    parser.add_argument(
+        "--repo",
+        type=Path,
+        default=os.environ.get(BACKEND_REPO_ENV) or None,
+        help=f"TraigentBackend git checkout (default: ${BACKEND_REPO_ENV})",
+    )
     parser.add_argument("--ref", default=DEFAULT_REF)
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = parser.parse_args()
+    if args.repo is None:
+        parser.error(
+            f"no TraigentBackend checkout given: pass --repo <path> or set ${BACKEND_REPO_ENV}"
+        )
 
-    snapshot = build_snapshot(repo=args.repo, ref=args.ref)
+    try:
+        snapshot = build_snapshot(repo=Path(args.repo), ref=args.ref)
+    except subprocess.CalledProcessError as exc:
+        print(
+            f"error: `{' '.join(exc.cmd)}` failed (exit {exc.returncode}). "
+            f"Check that {args.repo} is a TraigentBackend git checkout (--repo or "
+            f"${BACKEND_REPO_ENV}) and that ref {args.ref!r} exists there "
+            "(fetch it, or pass --ref).",
+            file=sys.stderr,
+        )
+        return 1
     out = args.out
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(

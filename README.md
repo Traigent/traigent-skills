@@ -164,7 +164,7 @@ skills/<skill-name>/
   references/    # deeper API docs, loaded on demand
 ```
 
-These skills are Markdown, with three skills that also ship a local script: `traigent-setup-audit` ships local scripts (standard library only; its free local tier reads `.env` text in memory only to detect which key names are set and never prints, stores or sends a value, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read), and `traigent-eval-audit` ships a pure, offline stdlib helper (`equivalence_result.py`: no model calls, no network, no credential read). The remaining skills are instructions and make no calls themselves. The Claude Code plugin also ships `bin/traigent-analytics-launcher`, a short POSIX shell script referenced from `.mcp.json`; it starts an installed `traigent-analytics-mcp`, else `uvx`, and reads `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` only from the environment.
+These skills are Markdown, with three skills that also ship a local script: `traigent-setup-audit` ships local scripts (standard library only; its free local tier reads `.env` text in memory only to detect which key names are set, checks in memory whether each key variable is blank, and never prints, stores or sends a value, while the approval-gated tier sends `TRAIGENT_API_KEY` only for the specific check named by `--approve`) `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read), and `traigent-eval-audit` ships a pure, offline stdlib helper (`equivalence_result.py`: no model calls, no network, no credential read). The remaining skills are instructions and make no calls themselves. The Claude Code plugin also ships `bin/traigent-analytics-launcher`, a short POSIX shell script referenced from `.mcp.json`; it starts an installed `traigent-analytics-mcp`, else `uvx`, and reads `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` only from the environment.
 
 ## Requirements
 
@@ -172,11 +172,11 @@ These skills are Markdown, with three skills that also ship a local script: `tra
 
 The skills *teach your agent to drive the Traigent SDKs*, so to actually run an optimization you'll need the relevant SDK in your own project:
 
-- Python 3.11–3.13
+- Python 3.12–3.13 (SDK 0.32.0+; 0.31.x and earlier also accept 3.11)
 - Traigent SDK — `pip install "traigent>=0.24.0"` (the default floor; a few skills declare their
   own in [`sync_map.yml`](sync_map.yml), in either direction — `traigent-setup-audit` needs 0.27.0,
   `traigent-analyze-guidance` only 0.21.3. The default also rules out the PyPI placeholder 0.0.1)
-- Node.js 18, 20, or 22
+- Node.js 22.18+ or 24.11+
 - Traigent JS SDK — not published on public npm yet; use the source/link flow in
   `skills/traigent-js` until the JS SDK is published to npm.
 

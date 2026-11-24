@@ -165,7 +165,10 @@ for trial in results.successful_trials:
 
 # Compare cost vs accuracy across providers
 stats = results.experiment_stats
-print(f"Cost per config: ${stats.cost_per_configuration:.4f}")
+if stats.cost_per_configuration is not None:
+    print(f"Cost per config: ${stats.cost_per_configuration:.4f}")
+else:  # None when no configuration ran or any trial cost is unmeasured
+    print("Cost per config: not measured")
 ```
 
 ### Cost-Accuracy Tradeoff Analysis
@@ -239,7 +242,12 @@ results = generate_response.optimize_sync()
 print(f"Best model: {results.best_config['model']}")
 print(f"Best max_tokens: {results.best_config['max_tokens']}")
 print(f"Best score: {results.best_score:.3f}")
-print(f"Total cost: ${results.total_cost:.4f}" if results.total_cost else "Cost not tracked")
+if not results.total_cost:
+    # None when a trial cost is unmeasured. A live run never reports 0.0 (the SDK maps it to None),
+    # but a result reloaded from disk can carry 0.0: treat it as unmeasured, never as free.
+    print("Total cost: not measured (a trial cost was unmeasured, or cost tracking is off)")
+else:
+    print(f"Total cost: ${results.total_cost:.4f}")
 print(f"Trials: {len(results.successful_trials)}/{len(results.trials)} successful")
 
 # Apply best config

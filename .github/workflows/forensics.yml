@@ -46,12 +46,26 @@ jobs:
         with:
           python-version: '3.11'
 
+      # A clean verdict over an empty or missing skills/ is not a clean repo:
+      # fail before the scan if there is nothing for it to look at.
+      - name: Assert the scan target holds skills
+        run: |
+          shopt -s nullglob
+          skills=("$GITHUB_WORKSPACE"/skills/*/SKILL.md)
+          if [ "${#skills[@]}" -eq 0 ]; then
+            echo "::error::No skills/*/SKILL.md under the checkout; the forensics gate would scan nothing. Check the checkout path and the skills/ layout."
+            exit 1
+          fi
+          echo "scan target: ${#skills[@]} skills"
+
       - name: Run repo-forensics (skill-scan, block on ANY finding)
         run: |
           set +e
           # Scan the skills/ payload (what users install). Not the repo root —
           # that would scan this workflow and the vendored scanner itself.
-          OUT="$(bash tools/repo-forensics/run_forensics.sh "$GITHUB_WORKSPACE/skills" --skill-scan --format summary 2>&1)"
+          # --reject-symlinks: the scanners skip symlinks, so one under skills/
+          # would pass this gate unread; the runner exits 3 on any.
+          OUT="$(bash tools/repo-forensics/run_forensics.sh "$GITHUB_WORKSPACE/skills" --skill-scan --reject-symlinks --format summary 2>&1)"
           rc=$?
           set -e
           echo "$OUT"

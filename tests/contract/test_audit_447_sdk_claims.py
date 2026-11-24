@@ -23,6 +23,7 @@ import sys
 from pathlib import Path
 
 import pytest
+from packaging.version import Version
 
 from .test_audit_349_fenced_blocks import skip_unless_current_released_sdk
 
@@ -63,10 +64,12 @@ def _sdk_sources() -> list[Path]:
 # --------------------------------------------------------------------------- A
 
 
-def test_a_sdk_never_raises_provider_validation_error(
-    sync_map: dict, sdk_version_label: str
+def test_a_sdk_raises_provider_validation_error_only_from_0_31_0(
+    sdk_version_label: str,
 ) -> None:
-    skip_unless_current_released_sdk(sync_map, sdk_version_label, "the #447 claims")
+    # Before 0.31.0 the SDK never raised it (the #447 claim). From 0.31.0 the
+    # paid-run key check in preflight_run_providers raises it, so the claim is
+    # version-scoped: the skills say "except from SDK 0.31.0" (debugging SKILL.md).
     # Parse rather than grep: the SDK's own docstrings describe the exception
     # ("caller may raise ProviderValidationError"), which is prose, not a raise.
     raisers: list[str] = []
@@ -84,10 +87,16 @@ def test_a_sdk_never_raises_provider_validation_error(
             name = exc.id if isinstance(exc, ast.Name) else getattr(exc, "attr", None)
             if name == "ProviderValidationError":
                 raisers.append(f"{path}:{node.lineno}")
-    assert not raisers, (
-        "the SDK now raises ProviderValidationError somewhere -- the skills say it "
-        f"never does; restate the claim: {raisers}"
-    )
+    if sdk_version_label == "develop" or Version(sdk_version_label) >= Version("0.31.0"):
+        assert raisers, (
+            "the SDK no longer raises ProviderValidationError (the skills say it is "
+            "raised from 0.31.0 in the paid-run key check) -- restate the claim"
+        )
+    else:
+        assert not raisers, (
+            "the SDK raises ProviderValidationError before 0.31.0 -- the skills say it "
+            f"never does before 0.31.0; restate the claim: {raisers}"
+        )
 
 
 def test_a_docs_state_the_exception_is_opt_in() -> None:

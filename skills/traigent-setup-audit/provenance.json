@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "7e2ff0b7c9ebe531",
+  "doc_hash": "2bdfd7826bc69d49",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290"
   },
@@ -330,6 +330,28 @@
       "doc_before_hash": "cb71f7a4ab75dcb2",
       "doc_after_hash": "7e2ff0b7c9ebe531",
       "note": "Add --label-field (rows per class inside structured gold, per slice, with 20/30-row minority minimums), a class-balance-not-checked note, and a cross-split near-duplicate check for tagged and sibling-file holdouts (#473, #475).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "review-round-1-2026-11-08-setup-audit",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-08T00:00:00Z",
+      "doc_before_hash": "7e2ff0b7c9ebe531",
+      "doc_after_hash": "af541ac10d155298",
+      "note": "Review round 1: key-check prose says the value is checked for blankness in memory (never printed or stored); tier2 refuses a whitespace-only TRAIGENT_API_KEY before any request (#501).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "version-bump-2026-11-08-setup-audit",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-08T00:00:00Z",
+      "doc_before_hash": "af541ac10d155298",
+      "doc_after_hash": "2bdfd7826bc69d49",
+      "note": "Bump metadata.version 0.2.8 -> 0.2.9 for the issue batch SKILL.md content changes (eval-artifacts/README.md Version Discipline).",
       "source_type": "agent"
     }
   ]

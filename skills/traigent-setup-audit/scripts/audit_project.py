@@ -3431,13 +3431,16 @@ def read_sdk_version(interpreter: str) -> dict:
 
 
 def key_presence(root: Path, files: list[Path]) -> dict:
-    """Report only whether a key name is set. No value is read, printed or stored."""
+    """Report only whether a key name is set to a non-blank value. No value is
+    printed or stored; an empty or whitespace-only variable counts as not set."""
     env_files = sorted(
         path
         for path in files
         if path.name == ".env" or path.name.startswith(".env.")
     )
-    in_environment = sorted(name for name in KEY_ENV_NAMES if name in os.environ)
+    in_environment = sorted(
+        name for name in KEY_ENV_NAMES if (os.getenv(name) or "").strip()
+    )
     in_files: dict[str, list[str]] = {}
     for path in env_files:
         names = _declared_key_names(path)
@@ -4164,7 +4167,8 @@ def _key_lines(keys: dict) -> list[str]:
         lines = [
             "set in this environment: "
             + ", ".join(keys["names_set_in_environment"])
-            + " (name only; the audit reads no value)"
+            + " (name only; the value is checked for blankness in memory and "
+            "never printed or stored)"
         ]
     else:
         lines = [
@@ -4967,8 +4971,9 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         args = parse_args(list(sys.argv[1:] if argv is None else argv))
-    except SystemExit:
-        return 2
+    except SystemExit as exc:
+        # `--help` ends in SystemExit(0); only a usage error is a failure.
+        return 0 if exc.code in (0, None) else 2
 
     root = Path(args.root).expanduser()
     if not root.is_dir():

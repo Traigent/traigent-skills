@@ -1692,8 +1692,9 @@ def render_offer(tier1: Tier1, args: argparse.Namespace, backend_url: str, guard
         f"Read from `{tier1.path}` ({TIER1_SCHEMA}, project `{tier1.root}`).",
         f"Backend that an approved check would call: {backend_url}",
         f"`{KEY_ENV_NAME}` is "
-        + ("set in this environment (name only — the value is never read here)."
-           if KEY_ENV_NAME in os.environ else
+        + ("set in this environment (name only — the value is checked for blankness in "
+           "memory and never printed or stored here)."
+           if (os.getenv(KEY_ENV_NAME) or "").strip() else
            "NOT set. A backend check cannot run without it."),
         "",
         ("Each card below is an offer, not a plan. Approve the ones you want, one "
@@ -1824,8 +1825,9 @@ def main(argv: list[str] | None = None) -> int:
     # on what was asked for. Parsing opens no socket and spawns no process.
     try:
         args = parse_args(raw)
-    except SystemExit:
-        return 2
+    except SystemExit as exc:
+        # `--help` ends in SystemExit(0); only a usage error is a failure.
+        return 0 if exc.code in (0, None) else 2
 
     guard = "not installed (run mode)"
     if not args.approve:
@@ -1933,7 +1935,7 @@ def _preflight(
         return refusal, "", None, None
     needs_backend = [check_id for check_id in approved if check_id != "model-ids"]
     api_key = os.getenv(KEY_ENV_NAME) or ""
-    if needs_backend and not api_key:
+    if needs_backend and not api_key.strip():  # a whitespace-only key is not a key
         return (
             f"{KEY_ENV_NAME} is not set in this environment, so "
             "no Traigent check can run. Set it and try again; its value is never "

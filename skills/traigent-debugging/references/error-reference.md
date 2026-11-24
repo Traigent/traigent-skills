@@ -98,11 +98,12 @@ or `ValueError` for those.
 
 ### ProviderValidationError
 
-**API key validation failure — opt-in, never raised by the SDK on its own.**
+**API key validation failure — raised by the SDK only in the pre-run key check of a paid run (SDK 0.31.0+); otherwise opt-in, never raised by the SDK on its own.**
 
-`@traigent.optimize` runs no automatic provider validation, so nothing in the SDK raises this.
-It exists for you to raise from your own pre-run check: call
-`validate_providers(...)` (`from traigent.providers import validate_providers` — a plain
+From SDK 0.31.0 the optimizer checks the keys of the run's models before cost approval on a paid run
+(a cost limit is set or cost is approved, mock mode off, `TRAIGENT_SKIP_PROVIDER_VALIDATION` unset),
+and raises this before any trial. Through 0.30.0 nothing in the SDK raises it. Outside that check,
+call `validate_providers(...)` (`from traigent.providers import validate_providers` — a plain
 `import traigent` does not expose the submodule), inspect the results, and raise
 `ProviderValidationError` yourself if you want a hard failure before any paid trial.
 
@@ -114,7 +115,7 @@ It exists for you to raise from your own pre-run check: call
 
 **Resolution**:
 1. Set correct API keys in environment variables
-2. Or let your own pre-run check honour `TRAIGENT_SKIP_PROVIDER_VALIDATION`. Setting it switches nothing off on its own: `validate_providers()` does not read it and the decorator never validates keys. Branch on `traigent.utils.env_config.skip_provider_validation()` before calling (there is no `validate_providers` decorator argument)
+2. Or set `TRAIGENT_SKIP_PROVIDER_VALIDATION=true` to skip the SDK's own provider-key check before a paid run (SDK 0.31.0+). Use it only when you have checked the keys are valid in this session, set it for that one process only (never a standing export or a committed `.env`), and never to silence a failure whose cause you have not found. `validate_providers()` does not read it, so your own pre-run check must branch on `traigent.utils.env_config.skip_provider_validation()` before calling (there is no `validate_providers` decorator argument)
 
 ### CostLimitExceeded
 

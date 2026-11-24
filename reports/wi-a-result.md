@@ -1,7 +1,7 @@
 # WI-A result — skills posture + template survey + explanation duty
 
 - **Repo / branch / base:** `Traigent/traigent-skills` | `feature/econ-model-wi-a` | `origin/main`
-- **Worktree:** `/home/nimrod/TraigentProjects/worktrees/econ-model-2026-07-17/traigent-skills`
+- **Worktree:** `<worktree>/traigent-skills`
 - **Governance:** Spine-Trail `st_6443b96904d7`; replacement ChangeSession `cs_8e10a485f94fda03`
 - **Scope note:** WI-D incentives excluded. No commit, push, PR, or merge performed.
 - **PR-ready:** **YES** (one owner-visible note in *Risks*, non-blocking)
@@ -75,7 +75,7 @@ report).
 ## Commands run and results
 
 ```
-pwd                     → /home/nimrod/TraigentProjects/worktrees/econ-model-2026-07-17/traigent-skills
+pwd                     → <worktree>/traigent-skills
 git remote -v           → origin https://github.com/Traigent/traigent-skills
 git branch --show-current → feature/econ-model-wi-a
 ```

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: javascript
   traigent-maturity: stable
   author: Traigent
-  version: "1.0.12"
+  version: "1.0.13"
 ---
 
 # Traigent JS/TS SDK
@@ -34,7 +34,7 @@ Then consume the local build from your project. Under **plain npm**, `npm link` 
 failure. Under pnpm specifically, prefer **`link:../traigent-js`** over `file:` — pnpm's `file:`
 protocol hard-links/copies the package at install time, so it goes stale after every rebuild until
 you reinstall, while `link:` is a live symlink that always picks up your latest `npm run build`.
-Supported Node: 18, 20, 22. (Use this flow until the JS SDK is published to npm.)
+Supported Node: 22.18+ or 24.11+. (Use this flow until the JS SDK is published to npm.)
 
 ## Core Pattern
 
@@ -67,7 +67,7 @@ const answerQuestion = optimize({
       accuracy: (output, expectedOutput) =>
         String(output).trim().toLowerCase() === String(expectedOutput).trim().toLowerCase() ? 1.0 : 0.0,
       cost: (_output, _expectedOutput, _runtimeMetrics, row) =>
-        row.input.includes('capital') ? 0.2 : 0.1,
+        String((row as { input?: unknown }).input ?? '').includes('capital') ? 0.2 : 0.1,
     },
   },
 })(async (question: string) => {
