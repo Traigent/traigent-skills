@@ -20,6 +20,7 @@ WORKFLOWS = sorted(
     [*(REPO_ROOT / ".github" / "workflows").glob("*.yml"),
      *(REPO_ROOT / ".github" / "workflows").glob("*.yaml")]
 )
+PR_ONLY_CANCELLATION = "${{ github.event_name == 'pull_request' }}"
 
 
 def _load(path: Path) -> dict[Any, Any]:
@@ -64,5 +65,10 @@ def test_pull_request_workflows_cancel_superseded_runs(path: Path) -> None:
         job.get("concurrency") for job in workflow["jobs"].values()
     ]
     assert any(
-        isinstance(c, dict) and c.get("cancel-in-progress") is True for c in levels
+        isinstance(c, dict)
+        and (
+            c.get("cancel-in-progress") is True
+            or c.get("cancel-in-progress") == PR_ONLY_CANCELLATION
+        )
+        for c in levels
     ), f"{path.name}: pull_request workflow without a cancel-in-progress concurrency group"
