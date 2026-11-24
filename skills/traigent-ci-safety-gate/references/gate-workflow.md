@@ -372,7 +372,10 @@ def main() -> int:
     parser.add_argument("--candidate", type=Path, required=True)
     parser.add_argument("--max-cost", type=float, required=True)
     parser.add_argument("--max-latency-ms", type=float, required=True)
-    parser.add_argument("--require-promote", action="store_true")
+    parser.add_argument(
+        "--require-promote", action="store_true",
+        help="accepted for older workflows; the gate always requires an explicit promote",
+    )
     args = parser.parse_args()
 
     for name, value in (("--max-cost", args.max_cost), ("--max-latency-ms", args.max_latency_ms)):
@@ -414,9 +417,9 @@ def main() -> int:
     print(f"promotion_decision={decision.decision}")
     print(f"reason={decision.reason}")
 
-    if decision.decision == "reject":
-        return 1
-    if args.require_promote and decision.decision != "promote":
+    # Fail closed: only an explicit "promote" passes. "reject", "no_decision", a missing
+    # holdout (load_payload exits above) and any exception all end non-zero.
+    if decision.decision != "promote":
         return 1
     return 0
 
@@ -425,7 +428,7 @@ if __name__ == "__main__":
 ```
 
 The PR job verifies wiring in offline/mock mode. The scheduled job evaluates the real holdout
-and fails on promotion rejection, required-promotion no-decision, regression, budget breach,
+and fails on anything other than an explicit `promote` (rejection or no-decision), regression, budget breach,
 missing or invalid measurements, or latency breach. `--max-cost` checks the completed candidate's
 spend; it does not stop provider calls. `TRAIGENT_RUN_COST_LIMIT` governs SDK-managed optimization,
 not arbitrary calls inside `run_my_agent`. Before enabling real mode, implement spending control

@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.6"
+  version: "1.1.7"
 ---
 
 # Traigent Composite Knobs

@@ -82,4 +82,14 @@ def test_logging_config_quotes_a_configuration_error_the_sdk_emits(tmp_path, mon
             offline=True,
             algorithm="bayesian",
         )(lambda x: x)
-    assert quoted == {str(exc.value)}, (quoted, str(exc.value))
+    (quote,) = quoted
+    message = str(exc.value)
+    # Every released SDK emits the quoted sentence verbatim. SDK develop rewords the tail
+    # (it adds TRAIGENT_OFFLINE_MODE and a remedy) before it ships in a release, so the doc
+    # keeps quoting the released text. Accept the verbatim release text, or the stable lead
+    # that both wordings share; a message that drops the algorithm, the managed-optimization
+    # reason or the offline switch fails.
+    lead = quote.split(" or TRAIGENT_OFFLINE=1")[0]
+    assert lead.startswith("algorithm='bayesian' requires managed optimization and cannot be used with offline=True"), quote
+    assert message == quote or message.startswith(lead), (quote, message)
+    assert "TRAIGENT_OFFLINE=1" in message, message

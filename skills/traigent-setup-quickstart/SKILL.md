@@ -1,6 +1,6 @@
 ---
 name: traigent-setup-quickstart
-description: "Install and wire the Traigent SDK in an existing project, and get first value from it. Use when the user wants to install traigent, set up their first optimization, create an evaluation dataset, or get started with @traigent.optimize; a brand-new user with an agent to optimize is better served by the guided first run (Traigent/traigent-first-run), which this skill points at. Covers pip install, API-key setup, mock mode, a linear first-value walkthrough, and running a first optimization."
+description: "Install and wire the Traigent SDK in an existing project, and get first value from it. Use when the user wants to install traigent, set up their first optimization, or get started with @traigent.optimize; for a standalone dataset, evaluator, result-analysis or CI-gate request use the matching specialist skill; a brand-new user with an agent to optimize is better served by the guided first run (Traigent/traigent-first-run), which this skill points at. Covers pip install, API-key setup, mock mode, a linear first-value walkthrough, and running a first optimization."
 license: Apache-2.0
 metadata:
   traigent-audience: sdk-user
@@ -8,7 +8,7 @@ metadata:
   traigent-stage: setup
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.36"
+  version: "1.0.44"
 ---
 
 # Traigent Quickstart
@@ -157,13 +157,29 @@ PY
 
 ### Literal First Run (execution-only agents)
 
-Run this entire block in the foreground and wait for it to finish. Do not split it,
+Run this standalone demo in a newly created empty directory and report its path to the user; never write these demo files over existing project files (the block stops if they exist). Run this entire block in the foreground and wait for it to finish. Do not split it,
 background it, or continue after a failed command. The final expected line is
 `TRAIGENT-DRY-RUN-OK`.
+
+The overwrite ban covers only this demo's own files (`ticket_eval.jsonl`, `ticket_classifier.py`).
+It is not a ban on giving the user a dry run. **In an existing project, still deliver one**: write
+the mock dry-run into a NEW file that does not exist yet (for example `dry_run.py`; pick another name
+if it is taken), built from the user's own decorated function and dataset with
+`enable_mock_mode_for_quickstart()` and `offline=True`, and give the exact command to run it, such as
+`python dry_run.py`. Never modify the user's existing files to do it.
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
+
+# Run in a new, empty directory: never overwrite existing project files.
+for f in ticket_eval.jsonl ticket_classifier.py; do
+  if [ -e "$f" ]; then
+    echo "STOP: $f already exists here; run this demo in a new empty directory" >&2
+    exit 1
+  fi
+done
+echo "Demo directory: $(pwd)"
 
 # Mock/offline env is set in bash, BEFORE python imports anything.
 export TRAIGENT_OFFLINE_MODE=true
@@ -382,6 +398,49 @@ enable_mock_mode_for_quickstart()
 - `enable_mock_mode_for_quickstart()` is the recommended activation path. It is **hard-blocked when `ENVIRONMENT=production`** and emits a once-per-process WARNING so a test that accidentally runs in a deployed system is loud and visible.
 <!-- /PROTECTED -->
 - **Mock scope:** only LiteLLM (`litellm.completion`) and LangChain (`ChatOpenAI`, `ChatAnthropic`, etc.) calls are intercepted. Raw `openai.OpenAI()` / `anthropic.Anthropic()` clients are **not** intercepted (no canned reply). On SDK 0.31.0+ their HTTP requests to a known LLM provider host are blocked (`MockModeTransportBlockedError`) rather than billed; clients outside httpx/aiohttp/requests (for example `boto3`) and hosts outside the SDK's provider list are not blocked, and before 0.31.0 a raw-client call in mock mode reaches the provider and bills. Use LiteLLM in examples that must run keyless.
+
+**If the agent uses a raw provider client (`openai.OpenAI()`, `anthropic.Anthropic()`), do this:**
+
+1. Say so: mock mode cannot intercept this client, so a plain mock dry run would give no canned reply.
+2. Offer, and ask before doing it: switch the call to `litellm.completion(model=..., messages=...)`. Then mock mode works unchanged.
+3. Or, if the agent is synchronous and uses `openai.OpenAI()` (only then; for `anthropic`, `AsyncOpenAI` or `async def` agents use the `litellm.completion` path of option 2), without touching the user's files, write a NEW `dry_run.py` that stubs the client (template below). The dataset, decorator, scorer and `optimize_sync(max_trials=2)` run against a fake client instead of the provider. Give the user the command `python dry_run.py`.
+4. Never make the first test a real paid run. A real run needs the user's explicit approval and a cost cap: every real-run command you write passes `max_trials=` (and `cost_limit=`) to `.optimize()` / `optimize_sync()`, and no `__main__` block starts a paid run by default.
+
+```python
+# dry_run.py: a NEW file; edit nothing else. For a SYNCHRONOUS agent that uses the sync `OpenAI` client.
+# Replace `agent`, `answer` and the canned reply with the user's own.
+import os
+from types import SimpleNamespace
+
+os.environ["TRAIGENT_OFFLINE_MODE"] = "true"
+os.environ.setdefault("OPENAI_API_KEY", "dry-run-placeholder")  # never used: the client is faked below
+
+import openai
+import traigent
+from traigent.testing import enable_mock_mode_for_quickstart
+
+enable_mock_mode_for_quickstart()  # safety net: on SDK 0.31.0+ real provider HTTP to known hosts is blocked
+
+
+class FakeOpenAI:  # installed BEFORE the user's module is imported, so import-time code cannot reach a real client
+    def __init__(self, *args, **kwargs):
+        reply = SimpleNamespace(message=SimpleNamespace(content="canned reply"))
+        create = lambda *a, **kw: SimpleNamespace(choices=[reply])  # noqa: E731
+        self.chat = SimpleNamespace(completions=SimpleNamespace(create=create))
+        self.responses = SimpleNamespace(create=lambda *a, **kw: SimpleNamespace(output_text="canned reply"))
+
+
+openai.OpenAI = FakeOpenAI
+import agent  # noqa: E402  (the user's module; now it can only get the fake client)
+
+for name in ("func", "_wrapped_func"):  # version-bound workaround (SDK 0.27-0.33): private attributes, no public hook
+    inner = getattr(agent.answer, name)
+    setattr(agent.answer, name, (lambda f: lambda *a, **kw: traigent.with_usage(f(*a, **kw), total_cost=0))(inner))
+print(agent.answer.optimize_sync(max_trials=2).best_config)
+```
+
+The fake client is installed before your module is imported, so import-time code gets the fake too. The $0 cost is reported only inside this script, so cost limits and strict cost accounting stay on and are not changed. Scores from this run mean nothing (the reply is canned); it proves the wiring only. It covers the synchronous `OpenAI` client and synchronous agent functions only. For an async agent (`AsyncOpenAI`, `async def`) or another client such as `anthropic`, do not adapt this template: use the `litellm.completion` path above. Calls made through a client you did not fake can still be real. The two `for name` lines mutate private attributes of the optimized function, so they are a workaround verified on SDK 0.27-0.33 only. The public alternative, if the user agrees to edit their function: return `traigent.with_usage(text, total_cost=0)` at its return boundary on the stub path, and delete those two lines. Checked against traigent 0.33.0, including with `TRAIGENT_RUN_COST_LIMIT` set.
+
 - **No separate install needed for mock:** `litellm` ships with the SDK *core* (`pip install "traigent>=0.24.0"` pulls it), so `litellm.completion(...)` is interceptable the moment Traigent is installed — you do **not** need to `pip install litellm` yourself. (LangChain adapters do require `pip install "traigent[integrations]>=0.24.0"`.)
 - **Mock ≠ offline.** Mock stops LLM *cost* (calls are intercepted) — it does **not** stop *backend egress*. With `TRAIGENT_API_KEY` set and the default `offline=False`, a "mock dry-run" is **still sent to the Traigent backend and appears on your portal** as a mock-data experiment (and counts against quota). For a fully local, private dry-run, also pass `offline=True` — `traigent auth login` leaves a stored key the SDK picks up even with `TRAIGENT_API_KEY` unset, so "no key" is not a state you can assert; `offline=True` is the only assertable no-egress state. `enable_mock_mode_for_quickstart()` alone does **not** make a run local. A `TRAIGENT_API_KEY` in the project `.env` counts as set on 0.28.0+ (see "Using a .env File"); use `TRAIGENT_OFFLINE_MODE=true` or `offline=True` for zero egress.
 - **Real metrics read 0.0 under mock.** Every intercepted call returns the same canned text, so exact/execution-match scorers score a uniform 0.0 across trials — expected in mock, not a broken pipeline (that is exactly why the example below wires a mock-only demo scorer). A scorer that **parses** the reply (`json.loads`, JSON-schema) cannot score the canned text: every trial fails (`All trials failed — no examples succeeded`, `best_score` is `None`) — also expected; stub the reply instead of catching the error.
@@ -435,7 +494,7 @@ OPENAI_API_KEY=sk-...
 TRAIGENT_DEBUG=1
 ```
 
-Shell commands do not read `.env` either. For a CLI command that needs a key (such as `traigent plan`), load the file into the current shell with `set -a; . ./.env; set +a` — no key is typed, so none lands in shell history. It runs `.env` as shell code: use it only for a `.env` written as plain `KEY=value` lines.
+The `traigent` CLI loads `.env` itself at startup (verified on 0.33.0): it reads the project `.env` found by walking up from the current directory to the nearest project marker, never a parent workspace's, and then a package-adjacent one. Set `TRAIGENT_SKIP_DOTENV=1` to turn that off. So run CLI commands such as `traigent plan` from inside the project; no shell sourcing is needed, and no key is typed, so none lands in shell history. If a command on an older release reports a missing key, check the version first (`traigent --version`) rather than sourcing the file, which would run `.env` as shell code.
 
 #### Recommended: have the user paste keys into `.env`, never into the chat
 
@@ -511,7 +570,7 @@ See `references/environment-variables.md` for all available environment variable
 
 ## Your First Optimization
 
-> **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow.
+> **Always dry-run first.** Before a real (paid) run, run in mock mode, review the cost estimate, and get explicit approval. See the `traigent-boost-agent` skill for the mandatory dry-run-first / cost-approval workflow.
 >
 > **Real LLM runs require the user's approval — the SDK's cost handshake is conditional, not a
 > gate you can lean on.** The SDK prompts only when its pre-run estimate exceeds
@@ -525,7 +584,7 @@ See `references/environment-variables.md` for all available environment variable
 
 ### Tiny Real Cost and KPI Probe
 
-After the mock dry-run passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check both surfaces before scaling up: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with non-degenerate values (not all `0.0`/all `1.0`). If either surface fails, wire it first — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, `TRAIGENT_STRICT_COST_ACCOUNTING`).
+After the mock dry-run passes and before any full run, run one tiny **real** optimization: 1-2 dataset examples, minimal trials, and the cheapest candidate model. Check both surfaces before scaling up: `results.total_cost` must be neither `None` nor `0.0` with real calls (both mean cost is not wired), and each trial's `metrics` must contain the declared objectives with finite, populated values. Uniform scores (all `0.0`/all `1.0`) on a 1-2 example probe are an investigation cue, not proof of broken wiring: check the scorer on a known-good and a known-bad answer. The probe validates plumbing, not lift. If either surface fails, wire it first — see `traigent-optimize-run` → Cost Wiring Probe for the fix ladder (custom model pricing env vars, per-trial cost metrics, `TRAIGENT_STRICT_COST_ACCOUNTING`).
 
 > **Objective naming rule:** Default: at least one objective labeled `accuracy` (built-in objective or your `metric_functions` key). If accuracy doesn't apply to this problem, name the primary quality KPI after the product concept, for example `valid_schema`, and note why accuracy was skipped.
 
@@ -687,6 +746,14 @@ Traigent uses JSONL (JSON Lines) files for evaluation datasets. Each line must h
 
 You can include additional fields for metadata, but `input` and `output` are required.
 
+**Existing rows with other keys (for example `question` / `answer`)?** Do this, and tell the user you did:
+
+1. Do not edit the original file. Write a NEW converted JSONL next to it, one row per line:
+   `{"input": {"<function parameter name>": <value>}, "output": <expected>}`. For `def answer(question)` a row
+   is `{"input": {"question": "..."}, "output": "..."}`. A bare string `input` also works.
+2. The gold key may stay `answer`; `output`, `expected`, `expected_output`, `answer`, `target` and `label` are accepted. The missing piece is `input` (or `input_data`).
+3. Point `eval_dataset` at the converted file, and say which file you wrote and why.
+
 > **One canonical contract.** This flat form is the simplest case of the single Traigent dataset
 > contract: `input` (or `input_data`) → your function's args, the **gold key** → the expected value,
 > and **every other top-level key** → `example.metadata[...]` (how a per-example side field like a
@@ -754,7 +821,7 @@ traigent onboard         # guided first-run setup wizard
 ## Next Steps
 
 - **Configure your decorator for a real optimization** -- The example above is the *minimal* decorator. To make it optimization-ready -- custom evaluators / `metric_functions`, injection mode, execution (`algorithm`/`offline`), and weighted objectives -- use the `traigent-setup-decorator` skill, then launch with `traigent-optimize-run`. This `decorator-setup` → `run-optimization` pair is the standard two-step cycle for going from "first run" to a real optimization.
-- **Dry-run before a real run** -- See the `traigent` lifecycle skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
+- **Dry-run before a real run** -- See the `traigent-boost-agent` skill for the mandatory dry-run-first / cost-approval workflow before any paid execution.
 - **Mind your plan quota** -- Cloud optimization is metered by `optimization_samples` (~`max_trials × dataset_size` per run) and `optimization_trials`, separate from dollar cost. Check usage and size large runs to fit; see the `traigent-optimize-run` skill ("Quota & Run Sizing").
 - **Define parameter search spaces** -- See the `traigent-optimize-config-space` skill for `Range`, `IntRange`, `Choices`, `LogRange`, factory presets, and constraints.
 - **Choose an optimization algorithm** -- For connected real runs, omit `algorithm` or use `"auto"`; use `"grid"`/`"random"` for explicit local/offline search. `traigent algorithms` lists auto + smart names since 0.20.1 (see version-matrix: `algorithms-cli`) — the full public selector surface with a local/connected availability column (on 0.20.0 the CLI omitted `auto` and the smart names: Traigent/Traigent#1751). Named smart selectors execute on connected runs since 0.20.1 (see version-matrix: `smart-selector-exec`): `bayesian`/`tpe`/`optuna`/`optuna_tpe`/`optuna_random` bind to the typed backend Optuna strategy, while unsupported smart names such as `nsga2`/`cmaes` fail fast with a capability message (Traigent/Traigent#1752, #1758; on 0.20.0 no smart name executed end-to-end). With `offline=True` every smart name still raises `ConfigurationError` at decoration time (verified on 0.21.0). The `traigent-optimize-run` skill owns the full selector contract.

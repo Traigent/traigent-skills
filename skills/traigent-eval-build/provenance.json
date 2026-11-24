@@ -1,8 +1,8 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "41566cb4849ab327",
+  "doc_hash": "82e16463e141dc38",
   "reference_hashes": {
-    "references/evaluator-templates.md": "b82fb09b9b98bbfe"
+    "references/evaluator-templates.md": "4557a4363b935c04"
   },
   "entries": [
     {
@@ -250,6 +250,105 @@
       "doc_before_hash": "ba23a7346d413a3b",
       "doc_after_hash": "41566cb4849ab327",
       "note": "Document the llm_metrics/metrics metric parameter and add a Ranked or selected outputs (recall at a budget) recipe with a runnable cost-aware scorer (#474).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "41566cb4849ab327",
+      "doc_after_hash": "4c8ccfc5c218933e",
+      "note": "Judge cap described as an estimated call allowance; reference-free judge prompt; unique example_id fallback.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r2",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "4c8ccfc5c218933e",
+      "doc_after_hash": "29d96129e23ed2aa",
+      "note": "Round 2: reference-free judge builder keeps the (output, expected, input_data) call shape and refuses a blank rubric; row ids are assigned and checked at dataset prep and _example_id fails closed instead of hashing content.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r3",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "29d96129e23ed2aa",
+      "doc_after_hash": "227081333421af5b",
+      "note": "Round 3: top-of-pitfalls cue for a scorer that returns a tuple (verified: trials fail, not score 0.0, on 0.33.0).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r4",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "227081333421af5b",
+      "doc_after_hash": "a81eb2db84540d62",
+      "note": "Round 4: custom templates validate the whole dataset's EFFECTIVE ids (metadata.id overrides id) once at import, before any model call; built-in id-less flows stay valid; local outcome-matrix collision explained separately from the canonicalized wire id.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "a81eb2db84540d62",
+      "doc_after_hash": "65ad04a5c1180b64",
+      "note": "Round 5: validation and EvaluationOptions share one dataset path resolved like the SDK (TRAIGENT_DATASET_ROOT, else cwd); top-level ids required on every supported SDK and a valid nested id is promoted by prep; id helpers read and write utf-8.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "65ad04a5c1180b64",
+      "doc_after_hash": "8887cecc687c426d",
+      "note": "Gaps round: reply-checklist and copyable template placed where the agent acts.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "8887cecc687c426d",
+      "doc_after_hash": "0498ce5784947bb9",
+      "note": "Gaps round 2: reply must carry the verify step and the human spot-sample wording.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-argon-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "0498ce5784947bb9",
+      "doc_after_hash": "fb984a2bcea5cda7",
+      "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-scorer-none-output",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "fb984a2bcea5cda7",
+      "doc_after_hash": "82e16463e141dc38",
+      "note": "Example scorers treat None or non-string model output as a wrong answer.",
       "source_type": "agent"
     }
   ]

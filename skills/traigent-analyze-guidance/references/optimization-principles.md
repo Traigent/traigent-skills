@@ -5,29 +5,25 @@ run-plan. The first six are the core must-dos; the rest keep results trustworthy
 and reproducible. They are field-tested from taking a text2SQL agent from 20/30
 to 27/30 on its 30-row tuning slice at lower cost — a tuning-slice count chosen
 by the search, so it is optimistic; the held-out number is the claim. These counts
-(here and in P4) predate the text2SQL recipe's `result_eq` comparator and were not
+(here) predate the text2SQL recipe's `result_eq` comparator and were not
 re-scored with it.
 
 ## Core recommendations
 
-### P1 -- Span model tiers, including all tiers of at least one vendor
+### P1 -- Span capability tiers
 
-Expose **high + mid + low** capability tiers so the optimizer can route easy work
-to cheap models and reserve a premium model for the hard cases. Include the
-**full tier ladder of at least one vendor** (e.g. OpenAI `gpt-5.6-sol` /
-`gpt-5.6-terra` / `gpt-6-luna`, or Anthropic `claude-sonnet-5-5` /
-`claude-haiku-5-5`) so you can
-isolate the *capability* effect while holding vendor quirks constant -- then add
-other vendors and open-source for breadth. Variety is the single biggest cost
-lever.
+Which models to try comes from the Traigent service plan (or an explicit user override), not from
+this file. When you present or record the plan, check that it exposes more than one capability
+tier so the optimizer can trade quality against cost, and ask the service for a refreshed plan if
+it does not. Do not widen the plan locally.
 
-### P2 -- Tune at least 3 significant AGENT knobs beyond model/temperature
+### P2 -- Include structural knobs, not only model and sampling knobs
 
-Don't stop at model + sampling knobs. Add **>= 3 structural knobs** that change
-*how the agent works* (for text2SQL: schema context, few-shot count + selector,
-generation path / CoT, candidate voting, repair; for RAG: retriever, k, query
-decomposition, context order, self-consistency). Structural knobs carry most of
-the gains. See `skills/traigent-optimize-config-space/references/structural-spine.md`.
+Knobs that change *how the agent works* (for text2SQL: schema context, few-shot selection,
+generation path, repair; for RAG: retriever, query decomposition, context order) often matter
+more than sampling knobs. Which ones to tune comes from the service plan; if the plan carries
+only model and sampling knobs, say so and ask for a refreshed plan. See
+`skills/traigent-optimize-config-space/references/structural-spine.md` for how to declare them.
 
 ### P3 -- Record EVERY model knob, including implicit/default ones
 
@@ -39,25 +35,20 @@ are reproducible and so a later run can promote it to a tuned knob.
 ### P4 -- Replace knobs that show no impact
 
 After a run with enough evidence, rank each knob's impact on the objective. **Drop a
-knob only if it was sampled enough and still shows ~zero impact**: the run had at
-least about 20 completed trials (Mode C in `SKILL.md` reads any ranking below that as
-directional, and the importance analyzer returns nothing below 10), each of the
-knob's values was observed several times, and it still does not move the objective
-(especially if it adds cost -- e.g. self-consistency that doesn't raise accuracy).
-Below that floor a flat or empty ranking means "not yet measured": keep the knob and
-treat the ranking as directional (see Mode C in `SKILL.md` and
-`traigent-analyze-variable-importance`). Then **swap in better structural knobs**.
-This run-over-run swap is where the ceiling moves (it took us 25/30 -> 27/30 on the
-tuning slice). See `traigent-analyze-guidance`.
+knob only if the evidence supports it**: Mode C in `SKILL.md` and
+`traigent-analyze-variable-importance` state when a ranking is trustworthy and when it is only
+directional or not yet measured. Below that, a flat or empty ranking means "not yet measured":
+keep the knob and treat the ranking as directional. A knob that is well measured and still does
+not move the objective (especially if it adds cost -- e.g. self-consistency that doesn't raise
+accuracy) is a candidate to drop. The service plan decides what to swap in; ask for a refreshed
+plan rather than choosing replacements locally. See `traigent-analyze-guidance`.
 
-### P5 -- Vary the objective weights across runs
+### P5 -- Revisit the objective weights across runs
 
-Run **multiple weight profiles**, don't fix one. Start **accuracy-first**
-(e.g. ACL 0.80/0.15/0.05) to find the quality ceiling, then **raise the cost (and
-latency) weight** as production usage/cost grows (e.g. 0.50/0.50/0.0) to find the
-cheapest config at acceptable quality. The winner genuinely shifts with weights
-(cheap model won under 80/15/05; the trade-offs change under 50/50). Add an
-**effort** objective to penalize configs that do lots of work.
+Weights encode a product decision, and the right ones can change as usage and cost grow. The
+service plan proposes them; record the weights each run used, and when the user's priorities shift,
+ask the service for a refreshed plan instead of re-weighting locally. The winner can shift with
+the weights, so never compare scores across runs that used different ones.
 
 ### P6 -- Record and name every run, including its permutation count
 
@@ -85,8 +76,7 @@ is copied from recorded measures rather than recalled.
 
 Use the **same** representative eval set across compared runs (a fixed, seeded
 sample), so differences reflect the config, not the data. Draw few-shot exemplars
-from **outside** the testbed. Flag datasets under ~30-50 examples as
-low-confidence. Reserve a holdout slice **before** optimization begins and record
+from **outside** the testbed. Flag small datasets as low-confidence. Reserve a holdout slice **before** optimization begins and record
 the partition (tuning/search slice, optional exemplar/few-shot bank, holdout
 slice); if none exists, create one before treating any result as promotion-ready,
 and preserve the same split across iteration rounds.
@@ -112,16 +102,15 @@ is still priced against the cost cap, so use a small slice of a large dataset), 
 
 ### P11 -- Label significance honestly
 
-With < ~20 trials, call results **directional**, not significant. Per-knob
+With few trials, call results **directional**, not significant. Per-knob
 marginals average over the other knobs/models -- note sparse coverage. Don't
 over-claim a winner from a small slice.
 
 ### P12 -- Confirm the run registered in the portal
 
 After a run, verify the experiment appears in the portal **with its trials**. If
-a run doesn't show up, it seems there may be a temporary connectivity issue -- we
-recommend retrying the run and confirming the `View` link populates. See
-`references/preflight.md`.
+a run doesn't show up, keep the local result and recover the sync (see
+`references/preflight.md`); repeating the paid search needs the user's approval.
 
 The portal may group related runs that share the same agent and canonical
 dataset, but that grouped view is only a browsing aid. Keep analytics and

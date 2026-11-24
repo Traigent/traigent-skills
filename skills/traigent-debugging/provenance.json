@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "9b8b2aa1d5c7367f",
+  "doc_hash": "ae511c1d368c628f",
   "reference_hashes": {
     "references/error-reference.md": "02ac48de17fe6c9e",
     "references/logging-config.md": "158e07e3237bfb61",
@@ -55,7 +55,7 @@
       "timestamp": "2026-09-16T00:00:00Z",
       "doc_before_hash": "038d939558305b84",
       "doc_after_hash": "30ade6360c4c7cd1",
-      "note": "CostLimitExceeded is the pre-run approval decline only (0.27.0: mid-run budget hit returns a partial result with stop_reason=cost_limit; attributes estimated/limit/accumulated) — entry, handler and Graceful Fallback reworded; new 'Connected run ended local-only' section (results.metadata source=local_fallback + fallback_reason(_code), TRAIGENT_REQUIRE_CLOUD=1, the 401/403 category text naming the backend URL that judged the key, shell-exported key shadowing .env, read-only portal key, traigent sync <session_id>) cross-linking traigent-analyze-results for persistence_status; quota claim corrected (offline mock touches no quota, a connected mock run does) and the 0.16.0 bullet retired; 'Uniform 0.0/1.0 on a REAL run' triage item; references/error-reference.md hierarchy moves CostLimitExceeded under OptimizationError and adds InsufficientFundsError (402) and VendorPauseError; references/mock-mode.md CI example sets TRAIGENT_RUN_APPROVED=1 (GITHUB_ACTIONS refuses every optimize(), mock included, without it). Lessons from traigent-first-run run-safety.md Recovery and the SDK source.",
+      "note": "CostLimitExceeded is the pre-run approval decline only (0.27.0: mid-run budget hit returns a partial result with stop_reason=cost_limit; attributes estimated/limit/accumulated) \u2014 entry, handler and Graceful Fallback reworded; new 'Connected run ended local-only' section (results.metadata source=local_fallback + fallback_reason(_code), TRAIGENT_REQUIRE_CLOUD=1, the 401/403 category text naming the backend URL that judged the key, shell-exported key shadowing .env, read-only portal key, traigent sync <session_id>) cross-linking traigent-analyze-results for persistence_status; quota claim corrected (offline mock touches no quota, a connected mock run does) and the 0.16.0 bullet retired; 'Uniform 0.0/1.0 on a REAL run' triage item; references/error-reference.md hierarchy moves CostLimitExceeded under OptimizationError and adds InsufficientFundsError (402) and VendorPauseError; references/mock-mode.md CI example sets TRAIGENT_RUN_APPROVED=1 (GITHUB_ACTIONS refuses every optimize(), mock included, without it). Lessons from traigent-first-run run-safety.md Recovery and the SDK source.",
       "source_type": "agent"
     },
     {
@@ -243,6 +243,94 @@
       "doc_before_hash": "a84e31dc649844e5",
       "doc_after_hash": "9b8b2aa1d5c7367f",
       "note": "CostLimitExceeded entry and Mock Mode note: a mock run is priced and gated on SDK 0.31.0+ (small slice or documented exemption, never TRAIGENT_COST_APPROVED); reply-parsing scorers fail every trial under mock (#463, #464).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "9b8b2aa1d5c7367f",
+      "doc_after_hash": "c3411dc8fdef87ee",
+      "note": "Graceful-fallback example uses a candidate process because apply=False is withdrawn; incumbent stays explicit.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "c3411dc8fdef87ee",
+      "doc_after_hash": "d220e0c0e2827d1f",
+      "note": "Round 10: numbered recovery order for a paid run missing from the portal (portal check before a per-session sync; rerun is separate and approved).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "d220e0c0e2827d1f",
+      "doc_after_hash": "2c64b609ebe7b36b",
+      "note": "Round 10-11: recovery order uses the per-session sync only; dry-run template restricted to sync agents, private-attribute wrapper labelled version-bound.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "2c64b609ebe7b36b",
+      "doc_after_hash": "32e967724b05de4b",
+      "note": "Round 11: name the session id; never pass --all.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "32e967724b05de4b",
+      "doc_after_hash": "af249cd3a5314cb1",
+      "note": "Round 12: sync only uploads the local record (may be a new session); an existing unfinalized portal session is reported, not repaired.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-gaps",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "af249cd3a5314cb1",
+      "doc_after_hash": "efb78bf6727665b9",
+      "note": "Round 12b: reply must quote persistence_status/error/source and state the rerun rule.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-argon-r5",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "efb78bf6727665b9",
+      "doc_after_hash": "6311c318286041d3",
+      "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09-released-ci",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-10T00:00:00Z",
+      "doc_before_hash": "6311c318286041d3",
+      "doc_after_hash": "ae511c1d368c628f",
+      "note": "Version-correct apply=False and resume_from statements for released SDKs.",
       "source_type": "agent"
     }
   ]

@@ -82,7 +82,7 @@ def test_base_evaluator_instance_cannot_be_wired_on_the_installed_sdk(tmp_path: 
 
                 answer.optimize_sync(max_trials=1, algorithm="grid")
             except ValueError as exc:
-                print("RESULT=" + str(exc))
+                print("RESULT=" + type(exc).__name__ + "|" + " ".join(str(exc).split()))
             else:
                 print("RESULT=wired")
             """
@@ -102,5 +102,11 @@ def test_base_evaluator_instance_cannot_be_wired_on_the_installed_sdk(tmp_path: 
     )
     assert completed.returncode == 0, completed.stdout + completed.stderr
     result = next(ln for ln in completed.stdout.splitlines() if ln.startswith("RESULT="))
-    # If a future SDK wires it, this pin goes red: update the skill then.
-    assert result == "RESULT=custom_evaluator must be callable", result
+    # If a future SDK wires it, this pin goes red: update the skill then. Released SDKs fail
+    # when the run starts; SDK develop validates the flat kwarg at decoration instead (a
+    # pydantic ValidationError, which is a ValueError). Both reject the instance.
+    released = "RESULT=ValueError|custom_evaluator must be callable"
+    develop = result.startswith("RESULT=ValidationError|") and (
+        "custom_evaluator Input should be callable" in result
+    )
+    assert result == released or develop, result

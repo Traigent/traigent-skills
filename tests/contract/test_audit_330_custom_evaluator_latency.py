@@ -26,7 +26,7 @@ def slow_reply(model, messages):
     time.sleep(0.05)
     return "paris"
 install_replies(slow_reply)
-write_rows("qa.jsonl", [{"input": {"question": f"Q{i}?"}, "output": "paris"} for i in range(3)])
+write_prepared_rows("qa.jsonl", [{"input": {"question": f"Q{i}?"}, "output": "paris"} for i in range(3)])
 ns = load_block(sys.argv[1])
 result = ns["answer"].optimize_sync(algorithm="grid", max_trials=2)
 emit([t.metrics.get("latency") for t in result.trials])

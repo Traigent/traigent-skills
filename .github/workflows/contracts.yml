@@ -17,8 +17,86 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Fail-fast PR metadata check (owner ruling 2026-11-19): a PR with a bad body
+  # fails here in seconds, before any expensive job starts. Every root job
+  # `needs: pr-metadata`. This workflow does NOT trigger on `edited`; after fixing
+  # the PR body, `gh run rerun <id> --failed` re-checks the current body (it is
+  # fetched from the API, not read from the original event payload).
+  # The PR body is untrusted: it reaches scripts only through env vars. The
+  # base-branch copy of the checker decides; the head copy runs only on the
+  # bootstrap PR that adds it. Push/schedule/merge_group runs pass through.
+  pr-metadata:
+    name: pr-metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Not a pull request
+        if: github.event_name != 'pull_request'
+        run: echo "no PR body to check on ${{ github.event_name }}; the PR's own run gated it"
+      - name: Fetch the current PR body and author
+        if: github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          gh api "repos/$REPO/pulls/$PR" --jq '.body // ""' > "$RUNNER_TEMP/pr_body"
+          gh api "repos/$REPO/pulls/$PR" --jq '.user.login' > "$RUNNER_TEMP/pr_author"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          path: head
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: github.event_name == 'pull_request'
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+          persist-credentials: false
+          sparse-checkout: .github/scripts
+      - name: Check ticket and security note
+        if: github.event_name == 'pull_request'
+        run: |
+          PR_BODY="$(cat "$RUNNER_TEMP/pr_body")"; export PR_BODY
+          PR_AUTHOR="$(cat "$RUNNER_TEMP/pr_author")"; export PR_AUTHOR
+          if [ -f base/.github/scripts/check_pr_ticket_security.py ]; then
+            python3 base/.github/scripts/check_pr_ticket_security.py
+          else
+            echo "::warning::checker not on the base branch yet (bootstrap PR); running the PR's copy"
+            python3 head/.github/scripts/check_pr_ticket_security.py
+          fi
+      - name: Check spine mark
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          if [ "$(cat "$RUNNER_TEMP/pr_author")" = "dependabot[bot]" ]; then
+            echo "Dependabot PR: exempt from the spine-mark requirement."
+            exit 0
+          fi
+          PR_BODY="$(cat "$RUNNER_TEMP/pr_body")"
+          trail='^[[:space:]]*Spine-Trail:[[:space:]]*st_[0-9a-f]{12}[[:space:]]*$'
+          session='^[[:space:]]*Spine:[[:space:]]*cs_[0-9a-z]{6,}[[:space:]]*$'
+          waiver='^[[:space:]]*Spine:[[:space:]]*none[[:space:]]*\(reason:.+\)[[:space:]]*$'
+          if printf '%s\n' "$PR_BODY" | grep -Eqi "$trail"; then
+            echo "Spine-Trail present."
+          elif printf '%s\n' "$PR_BODY" | grep -Eqi "$session"; then
+            echo "Promoted ChangeSession (Spine:) present."
+          elif printf '%s\n' "$PR_BODY" | grep -Eqi "$waiver"; then
+            echo "Explicit governance waiver (Spine: none) accepted."
+          else
+            echo "::error title=Spine trail missing::This product PR has no validation-spine mark."
+            echo "Add ONE line to the PR body: Spine-Trail: st_xxxxxxxxxxxx | Spine: cs_xxxxxxxx | Spine: none (reason: <why>)"
+            exit 1
+          fi
+
   python-quality:
     name: python-quality
+    needs: pr-metadata
     runs-on: ubuntu-latest
     timeout-minutes: 5
 
@@ -53,6 +131,7 @@ jobs:
   released-contracts-buckets:
     name: released-contracts-buckets
     if: github.event_name == 'pull_request' || (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    needs: pr-metadata
     runs-on: ubuntu-latest
     timeout-minutes: 5
     outputs:
@@ -179,7 +258,7 @@ jobs:
 
   released-contracts:
     name: released-contracts
-    needs: [released-contracts-buckets, released-contracts-bucket]
+    needs: [pr-metadata, released-contracts-buckets, released-contracts-bucket]
     # always() is required here: GitHub's default `if: success()` for a job
     # with `needs` means that when a matrix bucket fails, this aggregator
     # would be SKIPPED rather than run -- and a skipped required check counts
@@ -196,17 +275,20 @@ jobs:
     steps:
       - name: Confirm every released SDK bucket passed
         run: |
+          echo "pr-metadata: ${{ needs.pr-metadata.result }}"
           echo "released-contracts-buckets: ${{ needs.released-contracts-buckets.result }}"
           echo "released-contracts-bucket:  ${{ needs.released-contracts-bucket.result }}"
-          if [ "${{ needs.released-contracts-buckets.result }}" != "success" ] || \
+          if [ "${{ needs.pr-metadata.result }}" != "success" ] || \
+             [ "${{ needs.released-contracts-buckets.result }}" != "success" ] || \
              [ "${{ needs.released-contracts-bucket.result }}" != "success" ]; then
-            echo "One or more released SDK buckets failed (or the bucket list job did)." >&2
+            echo "pr-metadata failed, or one or more released SDK buckets failed (or the bucket list job did)." >&2
             exit 1
           fi
 
   develop-contracts:
     name: develop-contracts
     if: github.event_name == 'pull_request' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/develop')
+    needs: pr-metadata
     runs-on: ubuntu-latest
     timeout-minutes: 20
     continue-on-error: ${{ github.event_name == 'schedule' }}

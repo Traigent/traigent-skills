@@ -1,9 +1,9 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "3cc5079a5e2c93e4",
+  "doc_hash": "43e36beb01169123",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
-    "references/scorer-equivalence-check.md": "52ac774b94fc999f",
+    "references/scorer-equivalence-check.md": "342206c06a38a6e9",
     "references/task-type.md": "1846eca9dfd0d725"
   },
   "entries": [
@@ -219,6 +219,17 @@
       "doc_before_hash": "2d2dbd94eeb141ac",
       "doc_after_hash": "3cc5079a5e2c93e4",
       "note": "Add a request-driven clause to the shared interaction policy: when asked which Skills were used, state consulted, unavailable and deferred Skills from session evidence, with an example; re-synced into every skill (#416).",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "skills-improve-2026-11-09",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-09T00:00:00Z",
+      "doc_before_hash": "3cc5079a5e2c93e4",
+      "doc_after_hash": "43e36beb01169123",
+      "note": "Customer-owned key does not make the judge local; hosted judge receives example content.",
       "source_type": "agent"
     }
   ]

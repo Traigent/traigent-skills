@@ -42,8 +42,8 @@ HYBRID_MARKER = "def hybrid_evaluator"
 
 ORIENTATION_BODY = """
 import warnings
-write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
-write_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
+write_prepared_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+write_prepared_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
 with warnings.catch_warnings(record=True) as caught:
     warnings.simplefilter("always")
     ns = load_block(sys.argv[1])
@@ -102,7 +102,7 @@ def reply(model, messages):
         return '{{"score": 1.0, "reason": "ok"}}'
     return {agent_reply!r}
 install_replies(reply)
-write_rows({dataset!r}, [{{"input": {{k: v.format(i=i) for k, v in {row_input!r}.items()}}, "output": "Paris"}} for i in range(4)])
+write_prepared_rows({dataset!r}, [{{"input": {{k: v.format(i=i) for k, v in {row_input!r}.items()}}, "output": "Paris"}} for i in range(4)])
 ns = load_block(sys.argv[1])
 fn = ns[{fn_name!r}]
 evaluator = ns[{evaluator!r}]
@@ -239,7 +239,7 @@ def test_judge_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     body = """
     from types import SimpleNamespace
     install_replies(lambda model, messages: "Paris")
-    write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "Paris"}])
+    write_prepared_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "Paris"}])
     ns = load_block(sys.argv[1])
     example = SimpleNamespace(input_data={"question": "q"}, expected_output="Paris", metadata={"id": "row-1"})
     agent = lambda question: "Paris"
@@ -264,7 +264,7 @@ def test_hybrid_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
     body = """
     from types import SimpleNamespace
     install_replies(lambda model, messages: "not json at all")
-    write_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
+    write_prepared_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
     ns = load_block(sys.argv[1])
     example = SimpleNamespace(input_data={"text": "t"}, expected_output={"label": "a"}, metadata={"id": "row-1"})
     agent = lambda text: '{"label": "a"}'
@@ -286,8 +286,8 @@ def test_hybrid_refusals_and_parse_failures_fail_closed(tmp_path: Path) -> None:
 THREAD_SAFETY_BODY = """
 import threading
 # load_block runs the template's @traigent.optimize, which validates its dataset path.
-write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
-write_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
+write_prepared_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+write_prepared_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
 ns = load_block(sys.argv[1])
 Budget = ns["JudgeBudget"]
 

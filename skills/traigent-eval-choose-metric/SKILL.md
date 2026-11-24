@@ -8,7 +8,7 @@ metadata:
   traigent-stage: evaluation
   traigent-maturity: stable
   author: Nimrod
-  version: "1.1.10"
+  version: "1.1.13"
 ---
 
 # Traigent Choose Metric
@@ -47,6 +47,8 @@ and do not force an exact-match metric. Route onto the judge track:
 2. Build the metric from `traigent-eval-build`'s **"LLM judge with rubric, strict parse,
    and cost guardrails"** template — the judge score is the primary quality KPI (label it for
    what it is, e.g. `judge_quality`; the accuracy-labeled default does not apply here — say so).
+   Use the template's reference-free prompt (`build_reference_free_judge_prompt`) with your rubric
+   and the source material; the default prompt grades against an `expected` answer you do not have.
 3. `traigent-eval-audit` is **mandatory** on this track, not optional: the judge now owns
    the entire quality signal, so its agreement/stability audit is the only thing standing
    between you and optimizing noise.
@@ -57,6 +59,10 @@ and do not force an exact-match metric. Route onto the judge track:
    response (an intercepted litellm call); older SDKs and
    uncaptured client paths leave it outside the SDK cost limit, which is never a hard billing ceiling —
    see `traigent-eval-build`.
+5. Tell the user three things: built-in `accuracy` needs expected outputs and would be meaningless
+   without them, which is why you dropped it; the rubric dimensions and what the score cannot tell
+   (a heuristic is not human-judged quality); and that a human should check a small spot sample of outputs
+   before the score is trusted.
 
 ## Measure-type grounding
 
@@ -100,6 +106,7 @@ def prompt_model(prompt: str, *, model: str, temperature: float = 0.0) -> str:
     return response.choices[0].message.content or ""
 
 @traigent.optimize(
+    eval_dataset="eval/qa.jsonl",
     objectives=["accuracy", "cost"],
     configuration_space={
         "model": ["gpt-4o-mini", "gpt-4o"],

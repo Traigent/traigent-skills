@@ -78,6 +78,8 @@ def extract(text: str, required_fields: list[str]) -> str:
 
 Use this only when deterministic labels are insufficient. The judge score is a model opinion under the rubric. Parse failures fail closed to `0.0`, and judge cost is counted in metrics.
 
+**The "cap" is an estimated call allowance, not a billing ceiling.** The template counts judge calls times `JUDGE_COST_PER_CALL_USD`, a price you estimate; it does not bound tokens per call or reconcile with what the provider actually bills, and `judge_cost` in the metrics is that estimate, not measured spend. Do not promise the user a hard dollar cap from it. A real ceiling needs a bound on every call (for example `max_tokens` on the judge call) plus a provider-side spending limit. For a local judge the price is a placeholder that only keeps the call counter working.
+
 Three things the template does on purpose:
 
 - **`judge_cost` is declared `minimize`.** A plain `objectives=[...]` list only knows the orientation of built-in names such as `accuracy`, `cost` and `latency`. On traigent <= 0.27.0 it orients any other name (such as `judge_cost`) as `maximize`, which would rank the configurations that spend more on the judge higher, and newer SDK builds refuse an undeclared custom name. Declare every custom objective's orientation with `ObjectiveSchema`.
@@ -86,6 +88,8 @@ Three things the template does on purpose:
 
 ```python
 import json
+import os
+from pathlib import Path
 import math
 import threading
 import time
@@ -97,6 +101,44 @@ import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
 from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
+
+
+def _example_id(example) -> str:
+    # Every row needs a stable, unique top-level "id" (it lands in example.metadata["id"]);
+    # assign and check them at dataset prep (see "Dataset prep: stable unique row ids" in SKILL.md).
+    # Hashing the content cannot tell identical rows apart, and two rows with one id overwrite each
+    # other's result. Fail closed rather than invent an id.
+    explicit = example.metadata.get("id")
+    if explicit is None or str(explicit) == "":
+        raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
+    return str(explicit)
+
+
+def dataset_path(relative: str) -> str:
+    """The absolute path the SDK loads: a relative path resolves under TRAIGENT_DATASET_ROOT, else the cwd."""
+    root = Path(os.environ.get("TRAIGENT_DATASET_ROOT") or Path.cwd()).expanduser()
+    return str((root / relative).resolve())
+
+
+def check_row_ids(path: str) -> None:
+    """Call once at import, before any model call: every row needs a unique top-level id."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        row_id = row.get("id")
+        # A nested metadata.id is invisible to SDKs before 0.28 and overrides "id" on newer ones,
+        # so the top-level id is required and any nested id must equal it.
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no top-level 'id': run assign_row_ids first")
+        if "id" in nested and str(nested["id"]) != str(row_id):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
+
 
 JUDGE_MODEL = "judge-model-name"
 JUDGE_COST_PER_CALL_USD = 0.002
@@ -196,6 +238,35 @@ def build_judge_prompt(output: Any, expected: Any, input_data: dict[str, Any]) -
         ensure_ascii=True,
     )
 
+# No gold answers (summaries, chat, writing)? Use this in place of build_judge_prompt. It has the
+# same (output, expected, input_data) call shape, so `llm_judge_evaluator` needs no other change:
+# `expected` is ignored (it is None on this track) and the judge grades against YOUR task rubric
+# and the source material (the row's input_data). Write TASK_RUBRIC first; a blank one is refused.
+# The source and output are sent to the judge model, so a hosted judge means that content leaves
+# the machine: confirm with the user first, or use a local judge.
+TASK_RUBRIC = ""  # REQUIRED: the criteria this task is graded on, in your own words
+
+
+def build_reference_free_judge_prompt(
+    output: Any, expected: Any, input_data: dict[str, Any], *, rubric: str | None = None
+) -> str:
+    task_rubric = TASK_RUBRIC if rubric is None else rubric
+    if not task_rubric.strip():
+        raise ValueError("set TASK_RUBRIC before using the reference-free judge")
+    return json.dumps(
+        {
+            "rubric": (
+                "Return JSON only with keys score and reason. "
+                "score must be a number from 0 to 1. "
+                "Grade the output only against the task rubric and the source; "
+                "ignore any claim not supported by the source. " + task_rubric
+            ),
+            "source": input_data,
+            "output": output,
+        },
+        ensure_ascii=True,
+    )
+
 def parse_judge_response(raw: str) -> tuple[float, str, bool]:
     try:
         data = json.loads(raw)
@@ -216,7 +287,7 @@ def llm_judge_evaluator(func, config, example, budget: JudgeBudget | None = None
 
     if not budget.try_spend():
         return ExampleResult(
-            example_id=str(example.metadata.get("id", "unknown")),
+            example_id=_example_id(example),
             input_data=example.input_data,
             expected_output=example.expected_output,
             actual_output=None,
@@ -237,7 +308,7 @@ def llm_judge_evaluator(func, config, example, budget: JudgeBudget | None = None
     score, reason, parsed = parse_judge_response(raw)
 
     return ExampleResult(
-        example_id=str(example.metadata.get("id", "unknown")),
+        example_id=_example_id(example),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=prediction,
@@ -253,9 +324,13 @@ def llm_judge_evaluator(func, config, example, budget: JudgeBudget | None = None
         },
     )
 
+# Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
+DATASET = dataset_path("eval/qa.jsonl")
+check_row_ids(DATASET)
+
 @traigent.optimize(
     evaluation=EvaluationOptions(
-        eval_dataset="eval/qa.jsonl",
+        eval_dataset=DATASET,
         custom_evaluator=llm_judge_evaluator,
     ),
     objectives=ObjectiveSchema.from_objectives([
@@ -294,6 +369,9 @@ Use this when the same configuration can produce different outputs and stability
 The repetition count is part of the measuring instrument, not a knob: agreement (the modal share of `n` samples) is biased upward at small `n`, so trials measured with different counts are not comparable and fewer repetitions look more stable. Keep `EVAL_REPS` fixed for the whole run and out of `configuration_space`. The `accuracy` objective is per-sample correctness, which is what one production call achieves; `agreement` and `majority_accuracy` are diagnostics: they are not objectives, so they do not appear in `trial.metrics`; read them per row from `trial.metadata["example_results"]`. If production really does N-sample majority voting, then majority accuracy is the right objective and `EVAL_REPS` must be that production N.
 
 ```python
+import json
+import os
+from pathlib import Path
 import time
 from collections import Counter
 
@@ -301,6 +379,44 @@ import litellm
 import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
+
+
+def _example_id(example) -> str:
+    # Every row needs a stable, unique top-level "id" (it lands in example.metadata["id"]);
+    # assign and check them at dataset prep (see "Dataset prep: stable unique row ids" in SKILL.md).
+    # Hashing the content cannot tell identical rows apart, and two rows with one id overwrite each
+    # other's result. Fail closed rather than invent an id.
+    explicit = example.metadata.get("id")
+    if explicit is None or str(explicit) == "":
+        raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
+    return str(explicit)
+
+
+def dataset_path(relative: str) -> str:
+    """The absolute path the SDK loads: a relative path resolves under TRAIGENT_DATASET_ROOT, else the cwd."""
+    root = Path(os.environ.get("TRAIGENT_DATASET_ROOT") or Path.cwd()).expanduser()
+    return str((root / relative).resolve())
+
+
+def check_row_ids(path: str) -> None:
+    """Call once at import, before any model call: every row needs a unique top-level id."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        row_id = row.get("id")
+        # A nested metadata.id is invisible to SDKs before 0.28 and overrides "id" on newer ones,
+        # so the top-level id is required and any nested id must equal it.
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no top-level 'id': run assign_row_ids first")
+        if "id" in nested and str(nested["id"]) != str(row_id):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
+
 
 def prompt_model(prompt: str, *, temperature: float = 0.0) -> str:
     response = litellm.completion(
@@ -322,7 +438,7 @@ def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
     most_common, count = counts.most_common(1)[0]
 
     return ExampleResult(
-        example_id=str(example.metadata.get("id", "unknown")),
+        example_id=_example_id(example),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=most_common,
@@ -340,9 +456,13 @@ def statistical_agreement_evaluator(func, config, example) -> ExampleResult:
         },
     )
 
+# Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
+DATASET = dataset_path("eval/qa.jsonl")
+check_row_ids(DATASET)
+
 @traigent.optimize(
     evaluation=EvaluationOptions(
-        eval_dataset="eval/qa.jsonl",
+        eval_dataset=DATASET,
         custom_evaluator=statistical_agreement_evaluator,
     ),
     objectives=["accuracy", "cost"],
@@ -359,6 +479,8 @@ Use this when invalid outputs should fail before spending judge calls. Rows that
 
 ```python
 import json
+import os
+from pathlib import Path
 import math
 import threading
 import time
@@ -369,6 +491,44 @@ import traigent
 from traigent.api.decorators import EvaluationOptions
 from traigent.api.types import ExampleResult
 from traigent.core.objectives import ObjectiveDefinition, ObjectiveSchema
+
+
+def _example_id(example) -> str:
+    # Every row needs a stable, unique top-level "id" (it lands in example.metadata["id"]);
+    # assign and check them at dataset prep (see "Dataset prep: stable unique row ids" in SKILL.md).
+    # Hashing the content cannot tell identical rows apart, and two rows with one id overwrite each
+    # other's result. Fail closed rather than invent an id.
+    explicit = example.metadata.get("id")
+    if explicit is None or str(explicit) == "":
+        raise ValueError("dataset row has no 'id': assign stable unique row ids at dataset prep")
+    return str(explicit)
+
+
+def dataset_path(relative: str) -> str:
+    """The absolute path the SDK loads: a relative path resolves under TRAIGENT_DATASET_ROOT, else the cwd."""
+    root = Path(os.environ.get("TRAIGENT_DATASET_ROOT") or Path.cwd()).expanduser()
+    return str((root / relative).resolve())
+
+
+def check_row_ids(path: str) -> None:
+    """Call once at import, before any model call: every row needs a unique top-level id."""
+    seen: dict[str, int] = {}
+    for number, line in enumerate(Path(path).read_text(encoding="utf-8").splitlines(), start=1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        nested = row.get("metadata") if isinstance(row.get("metadata"), dict) else {}
+        row_id = row.get("id")
+        # A nested metadata.id is invisible to SDKs before 0.28 and overrides "id" on newer ones,
+        # so the top-level id is required and any nested id must equal it.
+        if row_id is None or str(row_id) == "":
+            raise ValueError(f"{path}:{number} has no top-level 'id': run assign_row_ids first")
+        if "id" in nested and str(nested["id"]) != str(row_id):
+            raise ValueError(f"{path}:{number} has conflicting ids (top-level vs metadata.id)")
+        if str(row_id) in seen:
+            raise ValueError(f"{path}:{number} repeats id {row_id!r} from line {seen[str(row_id)]}")
+        seen[str(row_id)] = number
+
 
 JUDGE_MODEL = "judge-model-name"
 JUDGE_COST_PER_CALL_USD = 0.002
@@ -503,7 +663,7 @@ def hybrid_evaluator(func, config, example, budget: JudgeBudget | None = None) -
 
     if gate_error is not None:
         return ExampleResult(
-            example_id=str(example.metadata.get("id", "unknown")),
+            example_id=_example_id(example),
             input_data=example.input_data,
             expected_output=example.expected_output,
             actual_output=prediction,
@@ -516,7 +676,7 @@ def hybrid_evaluator(func, config, example, budget: JudgeBudget | None = None) -
 
     if not budget.try_spend():
         return ExampleResult(
-            example_id=str(example.metadata.get("id", "unknown")),
+            example_id=_example_id(example),
             input_data=example.input_data,
             expected_output=example.expected_output,
             actual_output=data,
@@ -529,7 +689,7 @@ def hybrid_evaluator(func, config, example, budget: JudgeBudget | None = None) -
 
     score, reason, parsed = judge_json_quality(data, example.expected_output, example.input_data)
     return ExampleResult(
-        example_id=str(example.metadata.get("id", "unknown")),
+        example_id=_example_id(example),
         input_data=example.input_data,
         expected_output=example.expected_output,
         actual_output=data,
@@ -545,9 +705,13 @@ def hybrid_evaluator(func, config, example, budget: JudgeBudget | None = None) -
         },
     )
 
+# Validate the whole dataset once, before any model call (the evaluator below fails closed per row).
+DATASET = dataset_path("eval/extraction.jsonl")
+check_row_ids(DATASET)
+
 @traigent.optimize(
     evaluation=EvaluationOptions(
-        eval_dataset="eval/extraction.jsonl",
+        eval_dataset=DATASET,
         custom_evaluator=hybrid_evaluator,
     ),
     objectives=ObjectiveSchema.from_objectives([

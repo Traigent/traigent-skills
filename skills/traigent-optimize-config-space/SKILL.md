@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.12"
+  version: "1.0.14"
 ---
 
 # Traigent Configuration Space
@@ -157,6 +157,8 @@ temperature = Choices([0.0, 0.3, 0.7, 1.0])
 # With a default
 model = Choices(["gpt-6-luna", "gpt-5.6-sol"], default="gpt-6-luna")
 ```
+
+Private prompt text: tune an id, not the text; see traigent-setup-decorator, 'Confidential prompt text or other private tuned values'.
 
 See `references/parameter-types.md` for complete API details.
 
@@ -391,7 +393,7 @@ print(sat)
 # validator only enumerates FINITE spaces of up to 10,000 combinations. Choices and IntRange are
 # finite (an IntRange step defaults to 1); a Range without `step=` (like `temperature` above) is
 # not, and neither is any space above the cap. Either returns SatStatus.UNKNOWN = "not checked".
-from traigent_validation import SatStatus
+from traigent_validation import SatStatus  # ships inside the traigent distribution
 
 if sat.status is SatStatus.UNSAT:
     # Every finite combination is ruled out, so no trial can ever run. `sat.unsat_core` lists

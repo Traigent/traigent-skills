@@ -24,11 +24,12 @@ Proceed only when all applicable checks pass:
    declared inputs. A vote-margin cascade needs a meaningful `key_fn(output) -> hashable` on its
    base `StageRunner`. Raw equality is rarely suitable for free-form text.
 2. **The signal predicts the decision.** On a held-out slice, higher adequacy or margin must separate
-   cases where the early arm is sufficient from cases where escalation helps. Treat AUC near 0.5 as
-   random; the historical prototype used roughly 0.55 only as a screening heuristic, not a product
-   guarantee.
-3. **There is headroom.** The later/stronger arm must outperform the early/cheap arm on the intended
-   metric. If it does not, routing can only add cost.
+   cases where the early arm is sufficient from cases where escalation helps. A signal no better
+   than random at separating them has no value.
+3. **There is headroom.** Verify that escalation improves the selected subset (the cases the gate
+   escalates), and that the whole system's quality, cost and latency meet the task's requirements.
+   A later arm that is worse overall can still help on a reliably identified subset, so do not
+   reject routing on aggregate accuracy alone.
 4. **The full economics work.** Include every base sample, the escalation rate, the expert call,
    evaluator cost, and latency. For a K-sample base and escalation fraction `p`, reason about
    `K * base_cost + p * expert_cost`, not merely `p * expert_cost`.
@@ -72,18 +73,6 @@ Measure at least:
 - total calls, cost, and latency including K-sample overhead;
 - error or abstention rate by selected arm;
 - calibration drift on later data.
-
-## Historical provenance and claim boundary
-
-The retired router prototype reported two different external
-`guided_generation_spider` fixtures:
-
-- a +2.8-point advantage over random escalation at a 20% expert budget across 12 schemas;
-- a separate self-check fixture recovering +3.2 points at a 20% budget.
-
-Those figures motivate the fitness checks; they are not current SDK guarantees and must not be
-presented as evidence for a new user's task. Reproduce the comparison on the user's own evaluator
-before making a routing claim.
 
 ## Limitations
 

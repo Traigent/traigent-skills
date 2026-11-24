@@ -31,8 +31,8 @@ TIER_SECTIONS = dict(
 LADDER_ROWS = dict(re.findall(r"^\| (\d) \| (.*)$", TEXT, re.MULTILINE))
 
 DECORATE_BODY = """
-write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
-write_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
+write_prepared_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+write_prepared_rows("extraction.jsonl", [{"input": {"text": "t"}, "output": {"label": "a"}}])
 import traigent
 ns = load_block(sys.argv[1])
 decorated = [name for name, value in ns.items() if callable(getattr(value, "optimize_sync", None))]
@@ -80,7 +80,7 @@ def test_sdk_still_rejects_a_base_evaluator(tmp_path: Path) -> None:
         async def evaluate(self, func, config, dataset, **kwargs):
             raise NotImplementedError
 
-    write_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
+    write_prepared_rows("qa.jsonl", [{"input": {"question": "q"}, "output": "a"}])
     path = str(Path("eval/qa.jsonl").resolve())
     outcome = {}
 
@@ -129,5 +129,13 @@ def test_sdk_still_rejects_a_base_evaluator(tmp_path: Path) -> None:
         "a public path now accepts a BaseEvaluator: revisit the Tier 5 "
         f"'not wireable' note in traigent-eval-build/SKILL.md. outcome={outcome}"
     )
+    # Released SDKs accept the instance at decoration and fail when the run starts
+    # (``ValueError: custom_evaluator must be callable``); SDK develop validates the flat
+    # kwarg at decoration (a pydantic ``ValidationError`` for ``EvaluationOptions``, a
+    # ``ValueError`` subclass, ``Input should be callable``). Either way it is rejected.
     for label in ("top_level_kwarg", "optimize_sync_kwarg"):
-        assert "custom_evaluator must be callable" in outcome[label], outcome
+        released = outcome[label].startswith("ValueError: custom_evaluator must be callable")
+        develop = outcome[label].startswith("ValidationError: ") and (
+            "custom_evaluator" in outcome[label] and "Input should be callable" in outcome[label]
+        )
+        assert released or develop, outcome
