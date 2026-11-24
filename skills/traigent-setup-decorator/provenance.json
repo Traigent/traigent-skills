@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "b8f16a7cbf1de7e3",
+  "doc_hash": "ba2748a8511c2aa4",
   "reference_hashes": {
     "references/agent-identity.md": "16206658c40f65e2",
     "references/economics-characterization.v0.md": "e6df1645696c6290",
@@ -386,6 +386,17 @@
       "doc_before_hash": "bfe8e8cc10b82aeb",
       "doc_after_hash": "b8f16a7cbf1de7e3",
       "note": "Argon r5: stub scope and responses API, wilson/row-id guards, sync recovery access paths.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "crews-section-2026-11",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-07T00:00:00Z",
+      "doc_before_hash": "b8f16a7cbf1de7e3",
+      "doc_after_hash": "ba2748a8511c2aa4",
+      "note": "Add a short crew/role declaration section (stable keys, portal proposal, crew_binding status, privacy).",
       "source_type": "agent"
     }
   ]

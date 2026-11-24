@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "de5fa392ee3efa31",
+  "doc_hash": "efd0fb47f0086429",
   "entries": [
     {
       "edit_id": "genesis",
@@ -128,6 +128,17 @@
       "doc_before_hash": "a125c90ea80f6358",
       "doc_after_hash": "de5fa392ee3efa31",
       "note": "Removed the obsolete claim that the Python backend path executes only grid/random.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "crews-section-2026-11",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-07T00:00:00Z",
+      "doc_before_hash": "de5fa392ee3efa31",
+      "doc_after_hash": "efd0fb47f0086429",
+      "note": "Add a short crew/role declaration section (stable keys, portal proposal, crew_binding status, privacy).",
       "source_type": "agent"
     }
   ]
