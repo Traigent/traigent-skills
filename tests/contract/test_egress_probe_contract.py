@@ -11,6 +11,9 @@ from .test_audit_355_mock_mode_egress_scope import _import_probe, _probe_lookups
 from .test_runnable_snippets import _offline_mock_env
 
 
+_FAKE_LITELLM = "sys.modules['litellm'] = type(sys)('litellm'); "
+
+
 def _run_probe(script: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-c", script], env=_offline_mock_env(),
@@ -23,8 +26,14 @@ def test_documented_positive_requires_success_without_dns() -> None:
 
 
 def test_own_refused_dns_sentinel_is_accepted_as_negative_control() -> None:
+    script = _import_probe(_FAKE_LITELLM + "socket.getaddrinfo('raw.githubusercontent.com', 443)")
+    assert _probe_lookups(_run_probe(script), True) == ["raw.githubusercontent.com"]
+
+
+def test_unrelated_lookup_without_litellm_is_not_egress() -> None:
     script = _import_probe("socket.getaddrinfo('control.invalid', 443)")
-    assert _probe_lookups(_run_probe(script), True) == ["control.invalid"]
+    with pytest.raises(AssertionError):
+        _probe_lookups(_run_probe(script), True)
 
 
 def test_missing_dns_cannot_pass_negative_control() -> None:
@@ -68,10 +77,11 @@ _REMOTE = {"source": "local", "url": "https://example.invalid/map.json",
            "is_env_forced": False, "fallback_reason": "fetch failed"}
 
 
-def _ledger(source_info, *, lookups=(), connects=(), imported=True):
+def _ledger(source_info, *, lookups=(), connects=(), imported=True, loaded=True):
     ledger = {"lookups": list(lookups), "connects": list(connects), "imported": imported,
               "source_info": source_info,
-              "source_info_unavailable": None if source_info else "module absent in this litellm"}
+              "source_info_unavailable": None if source_info else "module absent in this litellm",
+              "litellm_loaded": loaded, "pricing_host": "raw.githubusercontent.com"}
     return subprocess.CompletedProcess(
         [], 0, stdout="EGRESS_JSON=" + json.dumps(ledger) + "\n", stderr="")
 
@@ -103,3 +113,47 @@ def test_unforced_record_cannot_pass_no_egress() -> None:
     quiet = dict(_FORCED, is_env_forced=False)
     with pytest.raises(AssertionError):
         _probe_lookups(_ledger(quiet), False)
+
+
+def test_unrelated_host_without_record_cannot_pass_egress() -> None:
+    with pytest.raises(AssertionError):
+        _probe_lookups(_ledger(None, lookups=["control.invalid"]), True)
+    assert _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"]), True)
+    with pytest.raises(AssertionError):  # litellm never loaded: no evidence
+        _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"], loaded=False), True)
+
+
+def test_forced_flag_cannot_hide_a_remote_url() -> None:
+    contradictory = dict(_FORCED, url="https://example.invalid/map.json")
+    with pytest.raises(AssertionError, match="contradictory"):
+        _probe_lookups(_ledger(contradictory), False)
+    with pytest.raises(AssertionError, match="contradictory"):
+        _probe_lookups(_ledger(dict(_FORCED, source="remote")), False)
+
+
+_ACCESSORS = {
+    "no_module": (None, 0, "module absent"),
+    "missing": ("x = 1\n", 0, "accessor missing"),
+    "none": ("get_model_cost_map_source_info = None\n", 1, "not callable"),
+    "raises": ("def get_model_cost_map_source_info():\n    raise RuntimeError('boom-control')\n",
+               1, "boom-control"),
+}
+
+
+@pytest.mark.parametrize("case", sorted(_ACCESSORS))
+def test_probe_side_accessor_branches(tmp_path, case: str) -> None:
+    body, rc_nonzero, expect = _ACCESSORS[case]
+    utils = tmp_path / "pkg" / "litellm" / "litellm_core_utils"
+    utils.mkdir(parents=True)
+    (tmp_path / "pkg" / "litellm" / "__init__.py").write_text("")
+    (utils / "__init__.py").write_text("")
+    if body is not None:
+        (utils / "get_model_cost_map.py").write_text(body)
+    env = _offline_mock_env()
+    env["PYTHONPATH"] = str(tmp_path / "pkg")
+    completed = subprocess.run(
+        [sys.executable, "-c", _import_probe("import litellm")], env=env,
+        text=True, capture_output=True, timeout=30, check=False,
+    )
+    assert (completed.returncode != 0) is bool(rc_nonzero), completed.stdout + completed.stderr
+    assert expect in completed.stdout + completed.stderr

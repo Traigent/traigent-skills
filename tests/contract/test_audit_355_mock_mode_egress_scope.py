@@ -53,22 +53,36 @@ else:
 # record; any other failure reading it must fail the probe, not hide evidence.
 source_info = None
 source_info_unavailable = None
-if "litellm" in sys.modules:
+litellm_loaded = "litellm" in sys.modules
+if litellm_loaded:
     import importlib
     import importlib.util
     _mod = "litellm.litellm_core_utils.get_model_cost_map"
-    if importlib.util.find_spec(_mod) is None:
+    try:
+        _spec = importlib.util.find_spec(_mod)
+    except ModuleNotFoundError:  # litellm is not a package here
+        _spec = None
+    if _spec is None:
         source_info_unavailable = "module absent in this litellm"
     else:
-        _accessor = getattr(importlib.import_module(_mod), "get_model_cost_map_source_info", None)
-        if _accessor is None:
+        try:
+            _accessor = getattr(importlib.import_module(_mod), "get_model_cost_map_source_info")
+        except AttributeError:
             source_info_unavailable = "accessor missing on existing module"
         else:
+            if not callable(_accessor):
+                raise TypeError("get_model_cost_map_source_info is not callable")
             source_info = dict(_accessor())
+import os
+from urllib.parse import urlparse
+pricing_host = urlparse(
+    os.environ.get("LITELLM_MODEL_COST_MAP_URL") or "https://raw.githubusercontent.com/"
+).hostname
 print("EGRESS_JSON=" + json.dumps(
     {"lookups": lookups, "connects": connects, "imported": imported,
      "source_info": source_info,
-     "source_info_unavailable": source_info_unavailable}, default=str
+     "source_info_unavailable": source_info_unavailable,
+     "litellm_loaded": litellm_loaded, "pricing_host": pricing_host}, default=str
 ), flush=True)
 """
 
@@ -124,29 +138,38 @@ def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: b
     assert len(lines) == 1, output
     ledger = json.loads(lines[0].removeprefix("EGRESS_JSON="))
     assert set(ledger) == {"lookups", "connects", "imported", "source_info",
-                         "source_info_unavailable"}, output
+                         "source_info_unavailable",
+                         "litellm_loaded", "pricing_host"}, output
     assert isinstance(ledger["lookups"], list), output
     assert all(isinstance(host, str) and host for host in ledger["lookups"]), output
     assert isinstance(ledger["connects"], list), output
     assert isinstance(ledger["imported"], bool), output
     source_info = ledger["source_info"]
     assert ledger["source_info_unavailable"] is None or source_info is None, output
+    host = ledger["pricing_host"]
     sockets = [*ledger["lookups"], *(f"connect {c}" for c in ledger["connects"])]
     remote = _remote_fetch_attempted(source_info)
     if expect_egress:
-        # LiteLLM's own record is authoritative when present; an unrelated
-        # Python lookup must not override a forced-local or bundled-only load.
-        evidence = (
-            [f"litellm tried remote: {source_info}"] if remote else []
-        ) if source_info is not None else sockets
+        if source_info is not None:
+            # LiteLLM's own record is authoritative when present.
+            evidence = [f"litellm tried remote: {source_info}"] if remote else []
+        else:
+            # No record: socket events count only if litellm really loaded (the
+            # accessor is absent, not litellm never imported) and they target
+            # the pricing-map host. Unrelated traffic is not evidence.
+            loaded = ledger["litellm_loaded"] and ledger["source_info_unavailable"]
+            evidence = [e for e in sockets if host and host in e] if loaded else []
         assert evidence, output
     else:
         # Clean means every witness is clean and the import really finished.
         evidence = []
-        assert not remote and not sockets, output
-        assert ledger["imported"] is True, output
         if source_info is not None:
+            assert not (source_info.get("source") == "remote" or source_info.get("url")), (
+                "contradictory record (remote source or url): " + output
+            )
             assert source_info.get("is_env_forced") is True, output
+        assert not sockets, output
+        assert ledger["imported"] is True, output
     return evidence
 
 
