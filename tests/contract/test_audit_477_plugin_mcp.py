@@ -151,7 +151,7 @@ def test_launcher_leaves_inherited_env_when_plugin_values_empty(tmp_path: Path) 
     assert "KEY=envkey" in out.stdout and "URL=https://self.example" in out.stdout
 
 
-def test_launcher_keeps_inherited_backend_when_only_plugin_key_is_set(tmp_path: Path) -> None:
+def test_launcher_refuses_a_plugin_key_without_a_plugin_backend(tmp_path: Path) -> None:
     out = _env_printing_launcher(
         tmp_path,
         {
@@ -160,8 +160,24 @@ def test_launcher_keeps_inherited_backend_when_only_plugin_key_is_set(tmp_path: 
             "TRAIGENT_BACKEND_URL": "https://self.example",
         },
     )
-    assert "KEY=k2" in out.stdout and "URL=https://self.example" in out.stdout
-    assert "https://self.example" in out.stderr and "k2" not in out.stderr
+    assert out.returncode == 1 and out.stdout == ""
+    assert "backend URL is empty; set the backend URL there too" in out.stderr
+    assert "k2" not in out.stderr
+
+
+def test_inherited_backend_is_never_used_with_a_plugin_key(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {
+            "TRAIGENT_PLUGIN_API_KEY": "k4",
+            "TRAIGENT_PLUGIN_BACKEND_URL": "https://plugin.example",
+            "TRAIGENT_BACKEND_URL": "https://self.example",
+            "TRAIGENT_API_KEY": "envkey",
+        },
+    )
+    assert out.returncode == 0
+    assert "KEY=k4" in out.stdout and "URL=https://plugin.example" in out.stdout
+    assert "self.example" not in out.stdout + out.stderr and "envkey" not in out.stdout
 
 
 def test_launcher_refuses_to_send_an_inherited_key_to_a_plugin_backend(tmp_path: Path) -> None:
@@ -184,9 +200,16 @@ def test_launcher_exports_plugin_backend_when_no_key_exists_anywhere(tmp_path: P
     assert "URL=https://plugin.example" in out.stdout and "KEY=unset" in out.stdout
 
 
-def test_launcher_says_cloud_default_when_no_backend_anywhere(tmp_path: Path) -> None:
-    out = _env_printing_launcher(tmp_path, {"TRAIGENT_PLUGIN_API_KEY": "k3"})
-    assert "URL=unset" in out.stdout and "cloud default" in out.stderr
+def test_launcher_with_nothing_set_leaves_the_environment_alone(tmp_path: Path) -> None:
+    out = _env_printing_launcher(tmp_path, {})
+    assert out.returncode == 0 and "KEY=unset" in out.stdout and "URL=unset" in out.stdout
+
+
+def test_backend_url_option_has_a_visible_cloud_default() -> None:
+    manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    opt = manifest["userConfig"]["traigent_backend_url"]
+    assert opt["default"] == "https://portal.traigent.ai"
+    assert "self-hosted" in opt["title"]
 
 
 def test_the_uvx_launcher_is_pinned_to_an_exact_version() -> None:

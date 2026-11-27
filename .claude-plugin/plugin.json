@@ -32,8 +32,9 @@
     },
     "traigent_backend_url": {
       "type": "string",
-      "title": "Traigent backend URL (optional)",
-      "description": "Only for self-hosted or non-default deployments. Leave empty for the Traigent cloud portal."
+      "title": "Traigent backend URL (change for self-hosted)",
+      "description": "Backend that receives your API key. Keep the default for the Traigent cloud portal; change it for a self-hosted deployment. Must be set together with the API key.",
+      "default": "https://portal.traigent.ai"
     }
   }
 }

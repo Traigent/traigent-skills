@@ -2,20 +2,25 @@
 # Starts the Traigent analytics MCP server (stdio) for the plugin's .mcp.json.
 # Order: an installed console script, else uvx from PyPI, else a clear failure.
 # Credentials: the plugin passes its settings as TRAIGENT_PLUGIN_API_KEY /
-# TRAIGENT_PLUGIN_BACKEND_URL. Each is exported as TRAIGENT_API_KEY /
-# TRAIGENT_BACKEND_URL ONLY when non-empty; otherwise the inherited environment is
-# left untouched, so env-based setups keep working and an empty plugin field never
-# overrides (or drops) a self-hosted backend. A plugin backend without a plugin key is
-# refused when an inherited key exists (the pair must not be split). Writes nothing.
+# TRAIGENT_PLUGIN_BACKEND_URL. Key and backend travel as a strict pair:
+#   plugin key + plugin backend -> exactly that pair; inherited values are never mixed in.
+#   plugin key, no plugin backend -> refused (never fall to an inherited or default backend).
+#   plugin backend, no plugin key -> refused when an inherited TRAIGENT_API_KEY exists
+#     (an environment key must not go to a different backend); else the backend is exported.
+#   neither -> the inherited environment is left untouched (env-based setups keep working).
+# Writes nothing.
 # PINNED: bump the uvx version below (exact ==) when a new traigent release is validated;
 # see README heading "Analytics MCP server: API key and pinned version".
 if [ -n "${TRAIGENT_PLUGIN_API_KEY:-}" ]; then
+  if [ -z "${TRAIGENT_PLUGIN_BACKEND_URL:-}" ]; then
+    echo 'Traigent plugin: API key is set in plugin settings but the backend URL is empty; set the backend URL there too' >&2
+    exit 1
+  fi
   TRAIGENT_API_KEY="$TRAIGENT_PLUGIN_API_KEY"
-  export TRAIGENT_API_KEY
-fi
-if [ -n "${TRAIGENT_PLUGIN_BACKEND_URL:-}" ]; then
-  # Key and backend travel as a pair: never send an inherited key to a plugin-chosen backend.
-  if [ -z "${TRAIGENT_PLUGIN_API_KEY:-}" ] && [ -n "${TRAIGENT_API_KEY:-}" ]; then
+  TRAIGENT_BACKEND_URL="$TRAIGENT_PLUGIN_BACKEND_URL"
+  export TRAIGENT_API_KEY TRAIGENT_BACKEND_URL
+elif [ -n "${TRAIGENT_PLUGIN_BACKEND_URL:-}" ]; then
+  if [ -n "${TRAIGENT_API_KEY:-}" ]; then
     echo 'Traigent plugin: a backend URL is set in plugin settings but the API key is not; set the key there too (refusing to send an environment key to a different backend)' >&2
     exit 1
   fi

@@ -184,7 +184,14 @@ The skills *teach your agent to drive the Traigent SDKs*, so to actually run an 
 
 The Claude Code plugin starts the `traigent-analytics` MCP server through `bin/traigent-analytics-launcher`.
 
-**API key and backend (plugin 1.3.1): nothing breaks.** Setting them in the plugin's settings is now the recommended way: when you enable the plugin, Claude Code asks for "Traigent API key" (stored in your system credential store, not in `settings.json`) and an optional "Traigent backend URL". Both can be set there. Existing setups that export `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` in your environment keep working unchanged: the launcher uses a plugin value only when it is non-empty and otherwise leaves your environment as it is. If you set a key in the plugin but no backend, an inherited `TRAIGENT_BACKEND_URL` is used, and the launcher prints one stderr line saying which backend it uses (never the key). Self-hosted users who move the key into the plugin settings must also fill the backend field (or keep the environment variable), otherwise the key is sent to the Traigent cloud default. The reverse is refused: a backend URL in the plugin settings without a plugin key, while `TRAIGENT_API_KEY` is set in your environment, makes the launcher exit with an error instead of sending your environment key to that backend.
+**API key and backend (plugin 1.3.1): existing environment setups keep working.** Plugin settings are the recommended way. When you enable the plugin, Claude Code asks for "Traigent API key" (stored in your system credential store, not in `settings.json`) and "Traigent backend URL (change for self-hosted)", which defaults to `https://portal.traigent.ai`. The key and the backend are a pair:
+
+- Key and backend both set in the plugin: exactly that pair is used. Your environment's `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` are never mixed in.
+- Key set in the plugin but the backend field emptied: the launcher exits with an error ("set the backend URL there too"), so a key never silently goes to the wrong backend.
+- Backend set in the plugin but no plugin key, while `TRAIGENT_API_KEY` is set in your environment: refused for the same reason. With no environment key, the backend is simply used.
+- Nothing set in the plugin: your environment is left untouched, so setups that export `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` work exactly as before.
+
+Self-hosted users moving the key into the plugin settings must change the backend field to their own URL. The launcher prints one stderr line saying which backend it uses (never the key).
 
 **Pinned version.** When no `traigent-analytics-mcp` is installed, the launcher runs `uvx --from 'traigent[mcp,analytics]==0.34.2'`. To bump it, change the exact version in `bin/traigent-analytics-launcher` (one place), update the expected string in `tests/contract/test_audit_477_plugin_mcp.py`, and bump the plugin `version` in `.claude-plugin/plugin.json`.
 

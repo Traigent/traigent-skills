@@ -221,7 +221,7 @@ action verbatim, then send that direction into Mode A as context for a fresh
 service plan.
 
 **Plugin install:** the plugin ships this server in its root `.mcp.json` (Claude Code; it uses an
-installed `traigent-analytics-mcp`, else fetches it with `uvx`, and uses the API key and backend URL from the plugin's settings when set, else your
+installed `traigent-analytics-mcp`, else fetches it with `uvx`, and uses the API key and backend URL pair from the plugin's settings when set, else your
 `TRAIGENT_API_KEY` and `TRAIGENT_BACKEND_URL` environment), so the tools load with the skills and no
 registration or restart is needed. Codex and other clients that do not read it, or a machine with
 neither the SDK nor `uv`, use the manual setup below, or the no-MCP fallback after it.
