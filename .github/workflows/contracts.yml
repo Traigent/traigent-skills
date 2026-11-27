@@ -347,25 +347,37 @@ jobs:
         if: github.event_name == 'schedule' && steps.contracts.outputs.rc != '0'
         env:
           GH_TOKEN: ${{ github.token }}
+          RC: ${{ steps.contracts.outputs.rc }}
           TITLE: Skill contract drift vs SDK develop
         run: |
           set -euo pipefail
           # The issue body and the per-run comment carry only the run URL and
-          # failing test ids; no raw test output is copied. Ids come from
-          # pytest's "FAILED "/"ERROR " summary lines, are cut at the first
-          # space, and must match a strict path pattern.
-          ids="$(grep -E '^(FAILED|ERROR) ' contract-failures.txt \
-            | sed -E 's/^(FAILED|ERROR) //; s/[[:space:]].*$//' \
-            | grep -E '^tests/[A-Za-z0-9_./-]+\.py(::[][A-Za-z0-9_./,=-]+)*$' \
-            | awk '!seen[$0]++' || true)"
-          total="$(printf '%s' "$ids" | grep -c . || true)"
+          # failing test ids; no raw test output is copied. Ids are read only
+          # from pytest's "short test summary info" section, reduced to
+          # path::name (any [params] dropped), de-duplicated, length-capped and
+          # checked against a strict pattern.
+          ids="$(awk '
+              /^=+ short test summary info =+$/ { in_sum = 1; next }
+              in_sum && /^=+ .* =+$/ { in_sum = 0 }
+              in_sum && /^(FAILED|ERROR) / { print }
+            ' contract-failures.txt \
+            | sed -E 's/^(FAILED|ERROR) //; s/[[:space:]].*$//; s/\[.*$//' \
+            | grep -E '^tests/([A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.py(::[A-Za-z_][A-Za-z0-9_]*)*$' \
+            | awk 'length($0) <= 200 && !seen[$0]++' || true)"
+          parsed="$(printf '%s' "$ids" | grep -c . || true)"
+          rc="${RC//[^0-9]/}"
           {
             echo "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo
-            echo "Failing tests (${total}):"
-            printf '%s\n' "$ids" | sed -n '1,20p' | sed '/^$/d; s/^/- /'
-            if [ "$total" -gt 20 ]; then
-              echo "... and $((total - 20)) more"
+            if [ "$parsed" -eq 0 ]; then
+              echo "No test ids could be parsed (pytest exit code ${rc}); see the run."
+            else
+              if [ "$parsed" -gt 20 ]; then
+                echo "Failing tests (20 shown of ${parsed} parsed):"
+              else
+                echo "Failing tests (${parsed}):"
+              fi
+              printf '%s\n' "$ids" | sed -n '1,20p' | sed 's/^\(.*\)$/- `\1`/'
             fi
           } > details.md
           {
@@ -384,7 +396,7 @@ jobs:
             gh issue edit "$issue" --body-file issue-body.md
           else
             url="$(gh issue create --title "$TITLE" --body-file issue-body.md)"
-            issue="${url##*/}"
+            issue="$url"
           fi
           gh issue comment "$issue" --body-file details.md
 
