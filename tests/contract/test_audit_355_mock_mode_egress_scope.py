@@ -12,6 +12,10 @@ from __future__ import annotations
 import json
 import subprocess
 import sys
+import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 
 import pytest
@@ -51,8 +55,47 @@ def _import_probe(import_statement: str) -> str:
     return IMPORT_PROBE.replace("IMPORT_STATEMENT", import_statement)
 
 
-def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: bool) -> list[str]:
-    """Only the probe's deliberate network interruption permits an incomplete import."""
+@contextmanager
+def _cost_map_listener() -> Iterator[tuple[str, list[str]]]:
+    """Loopback stand-in for LiteLLM's pricing-map URL; yields (url, request paths).
+
+    litellm 1.111.0 moved the pricing-map download into a native extension, which
+    resolves and connects below Python's ``socket`` module, so the in-process spy
+    cannot see it (the fetch still happens at import). Pointing
+    ``LITELLM_MODEL_COST_MAP_URL`` at this listener observes the attempt on every
+    litellm version without anything leaving the machine.
+    """
+    hits: list[str] = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_GET(self) -> None:  # noqa: N802 - http.server API
+            hits.append(self.path)
+            self.send_error(404)
+
+        def log_message(self, *args: object) -> None:
+            pass
+
+    server = HTTPServer(("127.0.0.1", 0), Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        yield f"http://127.0.0.1:{server.server_port}/cost-map.json", hits
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=10)
+
+
+def _probe_lookups(
+    completed: subprocess.CompletedProcess[str],
+    expect_egress: bool,
+    native_hits: list[str] | None = None,
+) -> list[str]:
+    """Only the probe's deliberate network interruption permits an incomplete import.
+
+    ``native_hits`` are requests a ``_cost_map_listener`` saw from outside Python's
+    socket layer; they count as egress without interrupting the import.
+    """
     output = completed.stdout + completed.stderr
     assert completed.returncode == 0, output
     lines = [line for line in completed.stdout.splitlines() if line.startswith("EGRESS_JSON=")]
@@ -62,9 +105,10 @@ def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: b
     assert isinstance(ledger["lookups"], list), output
     assert all(isinstance(host, str) and host for host in ledger["lookups"]), output
     assert isinstance(ledger["imported"], bool), output
-    assert bool(ledger["lookups"]) is expect_egress, output
-    assert ledger["imported"] is not expect_egress, output
-    return ledger["lookups"]
+    native = list(native_hits or [])
+    assert bool(ledger["lookups"] or native) is expect_egress, output
+    assert ledger["imported"] is not bool(ledger["lookups"]), output
+    return ledger["lookups"] + native
 
 
 def _text() -> str:
@@ -96,8 +140,10 @@ def test_litellm_import_fetches_its_pricing_map_unless_the_flag_is_set(
     env.pop("LITELLM_LOCAL_MODEL_COST_MAP")
     if flag is not None:
         env["LITELLM_LOCAL_MODEL_COST_MAP"] = flag
-    completed = subprocess.run(
-        [sys.executable, str(script)], cwd=tmp_path, env=env, text=True,
-        capture_output=True, timeout=120, check=False,
-    )
-    _probe_lookups(completed, expect_egress)
+    with _cost_map_listener() as (url, hits):
+        env["LITELLM_MODEL_COST_MAP_URL"] = url
+        completed = subprocess.run(
+            [sys.executable, str(script)], cwd=tmp_path, env=env, text=True,
+            capture_output=True, timeout=120, check=False,
+        )
+    _probe_lookups(completed, expect_egress, hits)
