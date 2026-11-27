@@ -22,9 +22,9 @@ unset TRAIGENT_PLUGIN_API_KEY TRAIGENT_PLUGIN_BACKEND_URL
 _ws=${_pk%%[![:space:]]*}; _pk=${_pk#"$_ws"}; _ws=${_pk##*[![:space:]]}; _pk=${_pk%"$_ws"}
 _ws=${_pb%%[![:space:]]*}; _pb=${_pb#"$_ws"}; _ws=${_pb##*[![:space:]]}; _pb=${_pb%"$_ws"}
 if [ -n "$_pk" ]; then
-  # scheme://<non-empty host>: the character after "//" must not be "/".
+  # scheme://<non-empty host>: the character after "//" must be alphanumeric or "[" (IPv6).
   case "$_pb" in
-    https://[!/]* | http://[!/]*) ;;
+    https://[A-Za-z0-9[]* | http://[A-Za-z0-9[]*) ;;
     *)
       echo 'Traigent plugin: API key is set in plugin settings but the backend URL is empty; set the backend URL there too' >&2
       exit 1

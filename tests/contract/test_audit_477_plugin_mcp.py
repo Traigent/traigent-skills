@@ -174,7 +174,7 @@ def test_plugin_pair_unsets_other_backend_selectors(tmp_path: Path) -> None:
     assert "API_URL=unset" in out.stdout and "JWT=unset" in out.stdout
 
 
-@pytest.mark.parametrize("backend", ["   ", "pb.example", "ftp://pb.example", "https://", "https:///api", "http:///", "\t"])
+@pytest.mark.parametrize("backend", ["   ", "pb.example", "ftp://pb.example", "https://", "https:///api", "http:///", "https://?q", "https://#f", "http://:443", "\t"])
 def test_plugin_key_with_blank_or_schemeless_backend_is_refused(tmp_path: Path, backend: str) -> None:
     out = _env_printing_launcher(
         tmp_path, {"TRAIGENT_PLUGIN_API_KEY": "k", "TRAIGENT_PLUGIN_BACKEND_URL": backend}
