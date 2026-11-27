@@ -8,7 +8,7 @@ metadata:
   traigent-stage: optimize
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.43"
+  version: "1.0.44"
 ---
 
 # Running Traigent Optimization
@@ -317,14 +317,20 @@ results = func.optimize_sync(max_trials=30, algorithm="auto")
 >    failure to investigate, never a result to report. Prove tracking first at $0: a stub function
 >    returning a constant, 1–2 trials, confirm a `cloud_url` comes back.
 
-> ⚠️ **Local `default_config` consumes a `max_trials` slot.** In local SDK execution (`grid`,
-> `random`, and `auto` when it resolves to local random), a supplied `default_config` runs as an
-> extra baseline trial before optimizer suggestions and counts against `max_trials`. This bites
-> hardest on `grid`: to cover an N-point grid, either omit `default_config` and set
-> `max_trials = N`, or keep `default_config` and set `max_trials ≥ N + 1`; otherwise the last grid
-> point is silently dropped. Backend-guided connected `auto` does not run `default_config` as a
-> baseline trial today. (Field-observed on local SDK 0.21.0: a 2-point grid + `default_config` +
-> `max_trials=2` evaluated only `[default, point-1]`.)
+> ⚠️ **`default_config` runs first and consumes a `max_trials` slot.** In a fresh sequential run a
+> usable baseline is trial 1 and counts against `max_trials`. Connected backend-guided `auto` runs
+> use the same path: the first backend suggestion is for trial 2 when the baseline runs and no seed
+> trials come first. If the baseline is skipped, trial 1 comes from a queued seed configuration if there is one, otherwise from the optimizer. Local parallel runs
+> may request the first batch of suggestions before the baseline is evaluated. This bites hardest on
+> `grid`: with an evaluated baseline and `max_trials = N` (the grid size), the baseline leaves grid search one
+> slot fewer, which can reduce its coverage, and a warning is logged, so use `max_trials >= N + 1`. Omitting an explicit
+> `default_config` can still produce a baseline built from the parameters' declared defaults. The
+> baseline is skipped, with one warning, when it cannot be completed into a full configuration (a
+> tuned key has no default and no deterministic fill) or when the completed baseline violates a
+> pre-evaluation constraint. A resumed run does not rerun the baseline when a reused finished trial
+> (one eligible for reuse) or a blocked in-flight configuration already has the same values.
+> (Field-observed on local SDK 0.21.0: a 2-point grid + `default_config` + `max_trials=2`
+> evaluated only `[default, point-1]`.)
 
 Results sync to the portal for every non-offline run, including `grid` and `random`; `offline=True` is the zero Traigent backend egress path and does not sync results. It does not stop provider calls, and LiteLLM fetches its public pricing map at import unless `LITELLM_LOCAL_MODEL_COST_MAP=True` is set before importing it.
 
