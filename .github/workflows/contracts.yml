@@ -333,7 +333,7 @@ jobs:
           TRAIGENT_SCHEMA_REPO: ${{ github.workspace }}/_schema
         run: |
           set +e
-          python -m pytest tests/contract --sdk-version=develop -q > contract-failures.txt 2>&1
+          python -m pytest tests/contract --sdk-version=develop -q --junitxml=contract-junit.xml > contract-failures.txt 2>&1
           rc=$?
           set -e
           cat contract-failures.txt
@@ -352,18 +352,45 @@ jobs:
         run: |
           set -euo pipefail
           # The issue body and the per-run comment carry only the run URL and
-          # failing test ids; no raw test output is copied. Ids are read only
-          # from pytest's "short test summary info" section, reduced to
-          # path::name (any [params] dropped), de-duplicated, length-capped and
-          # checked against a strict pattern.
-          ids="$(awk '
-              /^=+ short test summary info =+$/ { in_sum = 1; next }
-              in_sum && /^=+ .* =+$/ { in_sum = 0 }
-              in_sum && /^(FAILED|ERROR) / { print }
-            ' contract-failures.txt \
-            | sed -E 's/^(FAILED|ERROR) //; s/[[:space:]].*$//; s/\[.*$//' \
-            | grep -E '^tests/([A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.py(::[A-Za-z_][A-Za-z0-9_]*)*$' \
-            | awk 'length($0) <= 200 && !seen[$0]++' || true)"
+          # failing test ids; no raw test output is copied. Ids come ONLY from
+          # the junit XML pytest wrote (never from the combined log, which
+          # test output can forge). Each id is reduced to path::Class::name
+          # (params dropped), strictly pattern-checked, length-capped and
+          # de-duplicated. A DTD/entity declaration or unparsable file fails
+          # closed to "no ids".
+          python3 - > ids.txt <<'PY' || true
+          import re, sys
+          import xml.etree.ElementTree as ET
+
+          try:
+              raw = open("contract-junit.xml", encoding="utf-8").read()
+              if "<!DOCTYPE" in raw or "<!ENTITY" in raw:
+                  raise ValueError("DTD refused")
+              root = ET.fromstring(raw)
+          except Exception:
+              sys.exit(0)
+
+          pat = re.compile(r"^tests/([A-Za-z0-9_-]+/)*[A-Za-z0-9_-]+\.py(::[A-Za-z_][A-Za-z0-9_]*)*$")
+          seen = set()
+          for case in root.iter("testcase"):
+              if not any(c.tag in ("failure", "error") for c in case):
+                  continue
+              dotted = (case.get("classname") or "").strip()
+              name = (case.get("name") or "").split("[", 1)[0].strip()
+              if not dotted:  # collection error: the module is in name
+                  dotted, name = name, ""
+              parts = dotted.split(".")
+              classes = []
+              while len(parts) > 1 and parts[-1][:1].isupper():
+                  classes.insert(0, parts.pop())
+              ident = "/".join(parts) + ".py"
+              for extra in classes + ([name] if name else []):
+                  ident += "::" + extra
+              if len(ident) <= 200 and pat.match(ident) and ident not in seen:
+                  seen.add(ident)
+                  print(ident)
+          PY
+          ids="$(cat ids.txt)"
           parsed="$(printf '%s' "$ids" | grep -c . || true)"
           rc="${RC//[^0-9]/}"
           {
@@ -373,9 +400,9 @@ jobs:
               echo "No test ids could be parsed (pytest exit code ${rc}); see the run."
             else
               if [ "$parsed" -gt 20 ]; then
-                echo "Failing tests (20 shown of ${parsed} parsed):"
+                echo "Parsed failing test ids (20 shown of ${parsed}):"
               else
-                echo "Failing tests (${parsed}):"
+                echo "Parsed failing test ids (${parsed}):"
               fi
               printf '%s\n' "$ids" | sed -n '1,20p' | sed 's/^\(.*\)$/- `\1`/'
             fi
