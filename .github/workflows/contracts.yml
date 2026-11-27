@@ -229,8 +229,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends bubblewrap
           # Ubuntu 24.04+ restricts unprivileged user namespaces; the stock
-          # bwrap AppArmor profile permits them. Prove it works now.
-          bwrap --unshare-net --unshare-user-try --dev-bind / / true
+          # bwrap AppArmor profile permits them. Prove either backend works now,
+          # in the order the tests try them (unshare first, then bwrap).
+          unshare -rn true || bwrap --unshare-net --unshare-user-try --dev-bind / / true
 
       - name: Run released SDK bucket
         env:
@@ -339,8 +340,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends bubblewrap
           # Ubuntu 24.04+ restricts unprivileged user namespaces; the stock
-          # bwrap AppArmor profile permits them. Prove it works now.
-          bwrap --unshare-net --unshare-user-try --dev-bind / / true
+          # bwrap AppArmor profile permits them. Prove either backend works now,
+          # in the order the tests try them (unshare first, then bwrap).
+          unshare -rn true || bwrap --unshare-net --unshare-user-try --dev-bind / / true
 
       - name: Run develop contract drift check
         id: contracts

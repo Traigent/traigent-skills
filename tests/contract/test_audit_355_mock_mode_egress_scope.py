@@ -25,14 +25,17 @@ MOCK_MODE = ROOT / "skills" / "traigent-debugging" / "references" / "mock-mode.m
 IMPORT_PROBE = """
 import json
 import socket
+import sys
 lookups = []
+connects = []
 imported = False
 class ProbeNetworkAttempt(BaseException):
     pass
 def _refuse_dns(host, *args, **kwargs):
     lookups.append(str(host))
     raise ProbeNetworkAttempt()
-def _refuse_connect(*args, **kwargs):
+def _refuse_connect(self, address=None, *args, **kwargs):
+    connects.append(str(address))
     raise ProbeNetworkAttempt()
 socket.getaddrinfo = _refuse_dns
 socket.socket.connect = _refuse_connect
@@ -45,16 +48,22 @@ else:
     imported = True
 # Newer LiteLLM fetches through a native client that never touches Python's
 # socket module, so the patches above cannot see it. LiteLLM's own record of the
-# load is the second witness: a remote URL that was tried while the env flag did
-# not force the bundled map means the import went to the network.
+# load is the second witness. It is read only when litellm is already loaded, so
+# unrelated probes never import it. An absent accessor (older litellm) means no
+# record; any other failure reading it must fail the probe, not hide evidence.
 source_info = None
-try:
-    from litellm.litellm_core_utils.get_model_cost_map import get_model_cost_map_source_info
-    source_info = dict(get_model_cost_map_source_info())
-except Exception:
-    pass
+if "litellm" in sys.modules:
+    try:
+        from litellm.litellm_core_utils.get_model_cost_map import (
+            get_model_cost_map_source_info,
+        )
+    except (ImportError, AttributeError):
+        pass
+    else:
+        source_info = dict(get_model_cost_map_source_info())
 print("EGRESS_JSON=" + json.dumps(
-    {"lookups": lookups, "imported": imported, "source_info": source_info}, default=str
+    {"lookups": lookups, "connects": connects, "imported": imported,
+     "source_info": source_info}, default=str
 ), flush=True)
 """
 
@@ -109,14 +118,25 @@ def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: b
     lines = [line for line in completed.stdout.splitlines() if line.startswith("EGRESS_JSON=")]
     assert len(lines) == 1, output
     ledger = json.loads(lines[0].removeprefix("EGRESS_JSON="))
-    assert set(ledger) == {"lookups", "imported", "source_info"}, output
+    assert set(ledger) == {"lookups", "connects", "imported", "source_info"}, output
     assert isinstance(ledger["lookups"], list), output
     assert all(isinstance(host, str) and host for host in ledger["lookups"]), output
+    assert isinstance(ledger["connects"], list), output
     assert isinstance(ledger["imported"], bool), output
-    evidence = list(ledger["lookups"])
-    if _remote_fetch_attempted(ledger["source_info"]):
-        evidence.append(f"litellm tried remote: {ledger['source_info']}")
+    source_info = ledger["source_info"]
+    if source_info is not None:
+        # LiteLLM's own record is authoritative when present; an unrelated
+        # Python lookup must not override a forced-local or bundled-only load.
+        evidence = (
+            [f"litellm tried remote: {source_info}"]
+            if _remote_fetch_attempted(source_info) else []
+        )
+    else:
+        evidence = [*ledger["lookups"], *(f"connect {c}" for c in ledger["connects"])]
     assert bool(evidence) is expect_egress, output
+    if not expect_egress:
+        # A refused connect or an aborted import is not proof of no egress.
+        assert ledger["imported"] is True, output
     return evidence
 
 
@@ -153,7 +173,7 @@ def test_litellm_import_fetches_its_pricing_map_unless_the_flag_is_set(
     script = tmp_path / "probe.py"
     script.write_text(_import_probe("import litellm"), encoding="utf-8")
     env = _offline_mock_env()
-    env["LITELLM_LOCAL_MODEL_COST_MAP"] = "True" 
+    env.pop("LITELLM_LOCAL_MODEL_COST_MAP", None)
     if flag is not None:
         env["LITELLM_LOCAL_MODEL_COST_MAP"] = flag
     completed = run_probe([sys.executable, str(script)], cwd=tmp_path, env=env, timeout=120)

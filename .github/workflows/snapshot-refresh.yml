@@ -162,6 +162,18 @@ jobs:
           python tools/contract/refresh_python_api.py --sdk-repo upstream/sdk --ref HEAD
           python tools/contract/build_interface_inventory.py
 
+      - name: Install bubblewrap (network isolation, required)
+        # The egress contract tests run code in a network namespace. The tests
+        # fail, never skip, without a working backend, so a failed install must
+        # fail the job here with a clear name.
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bubblewrap
+          # Ubuntu 24.04+ restricts unprivileged user namespaces; the stock
+          # bwrap AppArmor profile permits them. Prove it works now.
+          unshare -rn true || bwrap --unshare-net --unshare-user-try --dev-bind / / true
+
       - name: Validate refreshed contracts
         env:
           TRAIGENT_SCHEMA_REPO: ${{ github.workspace }}/upstream/schema
