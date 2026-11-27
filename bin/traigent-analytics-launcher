@@ -5,7 +5,8 @@
 # TRAIGENT_PLUGIN_BACKEND_URL. Each is exported as TRAIGENT_API_KEY /
 # TRAIGENT_BACKEND_URL ONLY when non-empty; otherwise the inherited environment is
 # left untouched, so env-based setups keep working and an empty plugin field never
-# overrides (or drops) a self-hosted backend. Writes nothing.
+# overrides (or drops) a self-hosted backend. A plugin backend without a plugin key is
+# refused when an inherited key exists (the pair must not be split). Writes nothing.
 # PINNED: bump the uvx version below (exact ==) when a new traigent release is validated;
 # see README heading "Analytics MCP server: API key and pinned version".
 if [ -n "${TRAIGENT_PLUGIN_API_KEY:-}" ]; then
@@ -13,6 +14,11 @@ if [ -n "${TRAIGENT_PLUGIN_API_KEY:-}" ]; then
   export TRAIGENT_API_KEY
 fi
 if [ -n "${TRAIGENT_PLUGIN_BACKEND_URL:-}" ]; then
+  # Key and backend travel as a pair: never send an inherited key to a plugin-chosen backend.
+  if [ -z "${TRAIGENT_PLUGIN_API_KEY:-}" ] && [ -n "${TRAIGENT_API_KEY:-}" ]; then
+    echo 'Traigent plugin: a backend URL is set in plugin settings but the API key is not; set the key there too (refusing to send an environment key to a different backend)' >&2
+    exit 1
+  fi
   TRAIGENT_BACKEND_URL="$TRAIGENT_PLUGIN_BACKEND_URL"
   export TRAIGENT_BACKEND_URL
 fi

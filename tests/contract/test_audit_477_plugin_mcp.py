@@ -164,6 +164,26 @@ def test_launcher_keeps_inherited_backend_when_only_plugin_key_is_set(tmp_path: 
     assert "https://self.example" in out.stderr and "k2" not in out.stderr
 
 
+def test_launcher_refuses_to_send_an_inherited_key_to_a_plugin_backend(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {
+            "TRAIGENT_PLUGIN_BACKEND_URL": "https://plugin.example",
+            "TRAIGENT_API_KEY": "envkey",
+        },
+    )
+    assert out.returncode != 0
+    assert out.stdout == "", "the server must not start"
+    assert "refusing to send an environment key to a different backend" in out.stderr
+    assert "envkey" not in out.stderr
+
+
+def test_launcher_exports_plugin_backend_when_no_key_exists_anywhere(tmp_path: Path) -> None:
+    out = _env_printing_launcher(tmp_path, {"TRAIGENT_PLUGIN_BACKEND_URL": "https://plugin.example"})
+    assert out.returncode == 0
+    assert "URL=https://plugin.example" in out.stdout and "KEY=unset" in out.stdout
+
+
 def test_launcher_says_cloud_default_when_no_backend_anywhere(tmp_path: Path) -> None:
     out = _env_printing_launcher(tmp_path, {"TRAIGENT_PLUGIN_API_KEY": "k3"})
     assert "URL=unset" in out.stdout and "cloud default" in out.stderr
