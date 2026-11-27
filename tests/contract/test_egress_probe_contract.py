@@ -175,3 +175,28 @@ def test_lookalike_host_is_not_the_pricing_host() -> None:
     with pytest.raises(AssertionError):
         _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com.example.invalid"]), True)
     assert _probe_lookups(_ledger(None, lookups=["Raw.GitHubUserContent.com."]), True)
+
+
+def test_find_spec_then_unrelated_lookup_is_not_pricing_evidence(tmp_path) -> None:
+    (tmp_path / "pkg" / "litellm").mkdir(parents=True)
+    (tmp_path / "pkg" / "litellm" / "__init__.py").write_text("")
+    statement = (
+        "import importlib.util\n"
+        "    assert importlib.util.find_spec('litellm') is not None\n"
+        "    socket.getaddrinfo('raw.githubusercontent.com', 443)"
+    )
+    env = _offline_mock_env()
+    env["PYTHONPATH"] = str(tmp_path / "pkg")
+    completed = subprocess.run(
+        [sys.executable, "-c", _import_probe(statement)], env=env,
+        text=True, capture_output=True, timeout=30, check=False,
+    )
+    with pytest.raises(AssertionError):
+        _probe_lookups(completed, True)
+
+
+def test_real_connect_to_pricing_host_is_recorded_as_egress(tmp_path) -> None:
+    completed = _run_probe_with_pkg(
+        _import_probe("import litellm"), tmp_path,
+        "import socket\nsocket.socket().connect(('raw.githubusercontent.com', 443))\n")
+    assert _probe_lookups(completed, True) == ["raw.githubusercontent.com"]

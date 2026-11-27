@@ -41,8 +41,15 @@ class _StartedFinder:
     # Records that litellm was first requested; never loads anything. A failed
     # import is removed from sys.modules, so this is the only lasting witness.
     def find_spec(self, name, path=None, target=None):
+        # Only a real import counts; importlib.util.find_spec("litellm") is an
+        # availability check and never goes through _find_and_load.
         if name == "litellm":
-            litellm_started.append(True)
+            frame = sys._getframe(1)
+            while frame is not None:
+                if frame.f_code.co_name == "_find_and_load" and "importlib" in frame.f_code.co_filename:
+                    litellm_started.append(True)
+                    break
+                frame = frame.f_back
         return None
 litellm_started = []
 sys.meta_path.insert(0, _StartedFinder())
