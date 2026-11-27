@@ -117,7 +117,9 @@ def _env_printing_launcher(tmp_path: Path, env: dict):
     stub.write_text(
         '#!/bin/sh\necho "KEY=${TRAIGENT_API_KEY-unset}"\n'
         'echo "URL=${TRAIGENT_BACKEND_URL-unset}"\n'
-        'echo "PK=${TRAIGENT_PLUGIN_API_KEY-unset}"\n',
+        'echo "PK=${TRAIGENT_PLUGIN_API_KEY-unset}"\n'
+        'echo "API_URL=${TRAIGENT_API_URL-unset}"\n'
+        'echo "JWT=${TRAIGENT_JWT_TOKEN-unset}"\n',
         encoding="utf-8",
     )
     stub.chmod(0o755)
@@ -128,76 +130,64 @@ def _env_printing_launcher(tmp_path: Path, env: dict):
     )
 
 
-def test_launcher_exports_plugin_values_only_when_non_empty(tmp_path: Path) -> None:
-    out = _env_printing_launcher(
-        tmp_path,
-        {"TRAIGENT_PLUGIN_API_KEY": "k1", "TRAIGENT_PLUGIN_BACKEND_URL": "https://be.example"},
-    )
-    assert "KEY=k1" in out.stdout and "URL=https://be.example" in out.stdout
-    assert "PK=unset" in out.stdout
-    assert "https://be.example" in out.stderr and "k1" not in out.stderr
+import itertools
+
+import pytest
+
+_MATRIX = list(itertools.product(("pk", ""), ("https://pb.example", ""), ("ik", ""), ("https://ib.example", "")))
 
 
-def test_launcher_leaves_inherited_env_when_plugin_values_empty(tmp_path: Path) -> None:
+@pytest.mark.parametrize("pk,pb,ik,ib", _MATRIX)
+def test_launcher_pairing_matrix(tmp_path: Path, pk: str, pb: str, ik: str, ib: str) -> None:
+    env = {"TRAIGENT_PLUGIN_API_KEY": pk, "TRAIGENT_PLUGIN_BACKEND_URL": pb}
+    if ik:
+        env["TRAIGENT_API_KEY"] = ik
+    if ib:
+        env["TRAIGENT_BACKEND_URL"] = ib
+    out = _env_printing_launcher(tmp_path, env)
+    if pk and not pb:
+        assert out.returncode == 1 and out.stdout == ""
+        assert "backend URL is empty; set the backend URL there too" in out.stderr
+        assert pk not in out.stderr
+    elif pk:
+        assert out.returncode == 0
+        assert f"KEY={pk}\n" in out.stdout and f"URL={pb}\n" in out.stdout
+        assert "ib.example" not in out.stdout + out.stderr and "KEY=ik" not in out.stdout
+    else:
+        # plugin key empty: plugin backend ignored, inherited env untouched
+        assert out.returncode == 0
+        assert f"KEY={ik or 'unset'}\n" in out.stdout
+        assert f"URL={ib or 'unset'}\n" in out.stdout
+
+
+def test_plugin_pair_unsets_other_backend_selectors(tmp_path: Path) -> None:
     out = _env_printing_launcher(
         tmp_path,
         {
-            "TRAIGENT_PLUGIN_API_KEY": "",
-            "TRAIGENT_PLUGIN_BACKEND_URL": "",
-            "TRAIGENT_API_KEY": "envkey",
-            "TRAIGENT_BACKEND_URL": "https://self.example",
+            "TRAIGENT_PLUGIN_API_KEY": "k",
+            "TRAIGENT_PLUGIN_BACKEND_URL": "https://pb.example",
+            "TRAIGENT_API_URL": "https://other.example",
+            "TRAIGENT_JWT_TOKEN": "jwt",
         },
     )
-    assert "KEY=envkey" in out.stdout and "URL=https://self.example" in out.stdout
+    assert out.returncode == 0
+    assert "API_URL=unset" in out.stdout and "JWT=unset" in out.stdout
 
 
-def test_launcher_refuses_a_plugin_key_without_a_plugin_backend(tmp_path: Path) -> None:
+@pytest.mark.parametrize("backend", ["   ", "pb.example", "ftp://pb.example", "https://", "\t"])
+def test_plugin_key_with_blank_or_schemeless_backend_is_refused(tmp_path: Path, backend: str) -> None:
     out = _env_printing_launcher(
-        tmp_path,
-        {
-            "TRAIGENT_PLUGIN_API_KEY": "k2",
-            "TRAIGENT_PLUGIN_BACKEND_URL": "",
-            "TRAIGENT_BACKEND_URL": "https://self.example",
-        },
+        tmp_path, {"TRAIGENT_PLUGIN_API_KEY": "k", "TRAIGENT_PLUGIN_BACKEND_URL": backend}
     )
     assert out.returncode == 1 and out.stdout == ""
-    assert "backend URL is empty; set the backend URL there too" in out.stderr
-    assert "k2" not in out.stderr
 
 
-def test_inherited_backend_is_never_used_with_a_plugin_key(tmp_path: Path) -> None:
+def test_plugin_values_are_trimmed(tmp_path: Path) -> None:
     out = _env_printing_launcher(
         tmp_path,
-        {
-            "TRAIGENT_PLUGIN_API_KEY": "k4",
-            "TRAIGENT_PLUGIN_BACKEND_URL": "https://plugin.example",
-            "TRAIGENT_BACKEND_URL": "https://self.example",
-            "TRAIGENT_API_KEY": "envkey",
-        },
+        {"TRAIGENT_PLUGIN_API_KEY": " k \n", "TRAIGENT_PLUGIN_BACKEND_URL": " https://pb.example \n"},
     )
-    assert out.returncode == 0
-    assert "KEY=k4" in out.stdout and "URL=https://plugin.example" in out.stdout
-    assert "self.example" not in out.stdout + out.stderr and "envkey" not in out.stdout
-
-
-def test_launcher_refuses_to_send_an_inherited_key_to_a_plugin_backend(tmp_path: Path) -> None:
-    out = _env_printing_launcher(
-        tmp_path,
-        {
-            "TRAIGENT_PLUGIN_BACKEND_URL": "https://plugin.example",
-            "TRAIGENT_API_KEY": "envkey",
-        },
-    )
-    assert out.returncode != 0
-    assert out.stdout == "", "the server must not start"
-    assert "refusing to send an environment key to a different backend" in out.stderr
-    assert "envkey" not in out.stderr
-
-
-def test_launcher_exports_plugin_backend_when_no_key_exists_anywhere(tmp_path: Path) -> None:
-    out = _env_printing_launcher(tmp_path, {"TRAIGENT_PLUGIN_BACKEND_URL": "https://plugin.example"})
-    assert out.returncode == 0
-    assert "URL=https://plugin.example" in out.stdout and "KEY=unset" in out.stdout
+    assert "KEY=k\n" in out.stdout and "URL=https://pb.example\n" in out.stdout
 
 
 def test_launcher_with_nothing_set_leaves_the_environment_alone(tmp_path: Path) -> None:

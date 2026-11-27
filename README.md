@@ -186,10 +186,9 @@ The Claude Code plugin starts the `traigent-analytics` MCP server through `bin/t
 
 **API key and backend (plugin 1.3.1): existing environment setups keep working.** Plugin settings are the recommended way. When you enable the plugin, Claude Code asks for "Traigent API key" (stored in your system credential store, not in `settings.json`) and "Traigent backend URL (change for self-hosted)", which defaults to `https://portal.traigent.ai`. The key and the backend are a pair:
 
-- Key and backend both set in the plugin: exactly that pair is used. Your environment's `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` are never mixed in.
-- Key set in the plugin but the backend field emptied: the launcher exits with an error ("set the backend URL there too"), so a key never silently goes to the wrong backend.
-- Backend set in the plugin but no plugin key, while `TRAIGENT_API_KEY` is set in your environment: refused for the same reason. With no environment key, the backend is simply used.
-- Nothing set in the plugin: your environment is left untouched, so setups that export `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` work exactly as before.
+- Key and backend both set in the plugin (values are trimmed; the backend must start with `https://` or `http://`): exactly that pair is used. Your environment's `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` are never mixed in, and `TRAIGENT_API_URL` and `TRAIGENT_JWT_TOKEN` are removed from the server's environment so nothing inherited can redirect or replace the plugin key. An explicit key always wins over a key saved by `traigent auth login` (checked in SDK v0.34.2: `BackendConfig.get_api_key` and `CredentialManager` read the environment first).
+- Key set in the plugin but the backend field empty or invalid: the launcher exits with an error ("set the backend URL there too"), so a key never silently goes to the wrong backend.
+- No key in the plugin: the plugin backend is ignored and your environment is left exactly as it is, so setups that export `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` work as before.
 
 Self-hosted users moving the key into the plugin settings must change the backend field to their own URL. The launcher prints one stderr line saying which backend it uses (never the key).
 

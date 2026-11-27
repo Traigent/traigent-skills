@@ -2,32 +2,36 @@
 # Starts the Traigent analytics MCP server (stdio) for the plugin's .mcp.json.
 # Order: an installed console script, else uvx from PyPI, else a clear failure.
 # Credentials: the plugin passes its settings as TRAIGENT_PLUGIN_API_KEY /
-# TRAIGENT_PLUGIN_BACKEND_URL. Key and backend travel as a strict pair:
-#   plugin key + plugin backend -> exactly that pair; inherited values are never mixed in.
-#   plugin key, no plugin backend -> refused (never fall to an inherited or default backend).
-#   plugin backend, no plugin key -> refused when an inherited TRAIGENT_API_KEY exists
-#     (an environment key must not go to a different backend); else the backend is exported.
-#   neither -> the inherited environment is left untouched (env-based setups keep working).
+# TRAIGENT_PLUGIN_BACKEND_URL (whitespace trimmed first):
+#   plugin key empty -> the plugin backend is ignored; the inherited environment is left
+#     exactly as it is (pre-plugin-settings behaviour).
+#   plugin key set -> the plugin backend must be non-empty and start with https:// or
+#     http://, else exit 1. Exactly that pair is exported, and every inherited variable
+#     that could redirect or replace it is unset: TRAIGENT_API_URL (the SDK's second
+#     backend selector, traigent/config/backend_config.py v0.34.2) and TRAIGENT_JWT_TOKEN.
+#     An explicit TRAIGENT_API_KEY wins over a saved CLI key (BackendConfig.get_api_key
+#     and CredentialManager: environment first), so no saved key is used.
 # Writes nothing.
 # PINNED: bump the uvx version below (exact ==) when a new traigent release is validated;
 # see README heading "Analytics MCP server: API key and pinned version".
-if [ -n "${TRAIGENT_PLUGIN_API_KEY:-}" ]; then
-  if [ -z "${TRAIGENT_PLUGIN_BACKEND_URL:-}" ]; then
-    echo 'Traigent plugin: API key is set in plugin settings but the backend URL is empty; set the backend URL there too' >&2
-    exit 1
-  fi
-  TRAIGENT_API_KEY="$TRAIGENT_PLUGIN_API_KEY"
-  TRAIGENT_BACKEND_URL="$TRAIGENT_PLUGIN_BACKEND_URL"
-  export TRAIGENT_API_KEY TRAIGENT_BACKEND_URL
-elif [ -n "${TRAIGENT_PLUGIN_BACKEND_URL:-}" ]; then
-  if [ -n "${TRAIGENT_API_KEY:-}" ]; then
-    echo 'Traigent plugin: a backend URL is set in plugin settings but the API key is not; set the key there too (refusing to send an environment key to a different backend)' >&2
-    exit 1
-  fi
-  TRAIGENT_BACKEND_URL="$TRAIGENT_PLUGIN_BACKEND_URL"
-  export TRAIGENT_BACKEND_URL
-fi
+_trim() { printf '%s' "$1" | tr -d ' \t\r\n'; }
+_pk=$(_trim "${TRAIGENT_PLUGIN_API_KEY:-}")
+_pb=$(_trim "${TRAIGENT_PLUGIN_BACKEND_URL:-}")
 unset TRAIGENT_PLUGIN_API_KEY TRAIGENT_PLUGIN_BACKEND_URL
+if [ -n "$_pk" ]; then
+  case "$_pb" in
+    https://?* | http://?*) ;;
+    *)
+      echo 'Traigent plugin: API key is set in plugin settings but the backend URL is empty; set the backend URL there too' >&2
+      exit 1
+      ;;
+  esac
+  TRAIGENT_API_KEY="$_pk"
+  TRAIGENT_BACKEND_URL="$_pb"
+  export TRAIGENT_API_KEY TRAIGENT_BACKEND_URL
+  unset TRAIGENT_API_URL TRAIGENT_JWT_TOKEN
+fi
+unset _pk _pb
 if [ -n "${TRAIGENT_API_KEY:-}" ]; then
   if [ -n "${TRAIGENT_BACKEND_URL:-}" ]; then
     echo "traigent-analytics MCP: using backend ${TRAIGENT_BACKEND_URL}" >&2
