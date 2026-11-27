@@ -8,7 +8,7 @@ metadata:
   traigent-stage: gate-debug
   traigent-maturity: stable
   author: Nimrod
-  version: "1.0.22"
+  version: "1.0.23"
 ---
 
 # Debugging and Troubleshooting Traigent
@@ -423,7 +423,7 @@ The backend's canonical signal is HTTP **429** with `error_code: "quota_exceeded
   than a clean 429, so a run that "looks like bad input" may actually be a quota block. If
   session-create fails right at the start of a cloud run, check quota before assuming the
   config or dataset is malformed.
-- A **connected** mock run (`offline=False` with a key) creates a session and consumes
+- A **connected** mock run (`offline=False` with a key) can create a session and consume
   `optimization_samples` like any other run. An `offline=True` run makes no backend call and
   touches no quota.
 
@@ -458,10 +458,10 @@ pip install "traigent[dev]>=0.24.0"             # Development tools
 ## Mock Mode
 
 <!-- PROTECTED -->
-Test your optimization setup without making real API calls or connecting to the backend. The recommended activation is in-code (production-blocked, visible in code review); the env-var path below remains as a legacy fallback that works in non-production.
+Test your optimization setup without paying for supported model API calls: mock mode intercepts those calls. Mock mode is not a network boundary: with a Traigent API key set and offline mode off, a mock run can contact the backend and create a session; set `offline=True` so the run does not contact the Traigent backend (your own function and evaluator can still reach the network). The recommended activation is in-code (production-blocked, visible in code review); the env-var path below remains as a legacy fallback that works in non-production.
 <!-- /PROTECTED -->
 
-> **Mock is free of LLM spend. It is free of quota only when `offline=True`** (no backend call is made); a connected mock run (`offline=False` with a key) creates a session and consumes `optimization_samples` (see the quota-exhaustion entry above). On SDK 0.31.0+ it is still priced against the cost cap, so a large dataset can raise `CostLimitExceeded` (see that entry). And exact/execution-match scorers read a uniform 0.0 under mock, while a scorer that parses the reply (`json.loads`, JSON-schema) fails every trial — see `references/mock-mode.md` and "Scores are all 0.0" below before concluding the pipeline is broken.
+> **Mock is free of spend on supported model calls. It is free of quota when `offline=True` or when no Traigent API key is set** (no backend session is created); a connected mock run (`offline=False` with a key) can create a session and consume `optimization_samples` (see the quota-exhaustion entry above). On SDK 0.31.0+ it is still priced against the cost cap, so a large dataset can raise `CostLimitExceeded` (see that entry). And exact/execution-match scorers read a uniform 0.0 under mock, while a scorer that parses the reply (`json.loads`, JSON-schema) fails every trial — see `references/mock-mode.md` and "Scores are all 0.0" below before concluding the pipeline is broken.
 
 **Recommended (in-code):**
 
