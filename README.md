@@ -164,7 +164,7 @@ skills/<skill-name>/
   references/    # deeper API docs, loaded on demand
 ```
 
-These skills are Markdown, with three skills that also ship a local script: `traigent-setup-audit` ships local scripts (standard library only; its free local tier reads `.env` text in memory only to detect which key names are set and never prints, stores or sends a value, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read), and `traigent-eval-audit` ships a pure, offline stdlib helper (`equivalence_result.py`: no model calls, no network, no credential read). The remaining skills are instructions and make no calls themselves. The Claude Code plugin also ships `bin/traigent-analytics-launcher`, a short POSIX shell script referenced from `.mcp.json`; it starts an installed `traigent-analytics-mcp`, else `uvx`, and reads `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` only from the environment.
+These skills are Markdown, with three skills that also ship a local script: `traigent-setup-audit` ships local scripts (standard library only; its free local tier reads `.env` text in memory only to detect which key names are set and never prints, stores or sends a value, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read), and `traigent-eval-audit` ships a pure, offline stdlib helper (`equivalence_result.py`: no model calls, no network, no credential read). The remaining skills are instructions and make no calls themselves. The Claude Code plugin also ships `bin/traigent-analytics-launcher`, a short POSIX shell script referenced from `.mcp.json`; it starts an installed `traigent-analytics-mcp`, else `uvx`, and reads `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` only from the environment the plugin sets from its `userConfig` (the API key is a `sensitive` value in your system credential store).
 
 ## Requirements
 
@@ -179,6 +179,14 @@ The skills *teach your agent to drive the Traigent SDKs*, so to actually run an 
 - Node.js 18, 20, or 22
 - Traigent JS SDK — not published on public npm yet; use the source/link flow in
   `skills/traigent-js` until the JS SDK is published to npm.
+
+## Analytics MCP server: API key and pinned version
+
+The Claude Code plugin starts the `traigent-analytics` MCP server through `bin/traigent-analytics-launcher`.
+
+**API key (changed in plugin 1.3.1).** The key is now a plugin setting, not an environment variable. When you enable the plugin, Claude Code asks for "Traigent API key" (stored in your system credential store, not in `settings.json`) and an optional backend URL. The plugin no longer reads `TRAIGENT_API_KEY` or `TRAIGENT_BACKEND_URL` from your shell environment. If you installed an earlier version and relied on the environment variable, enter the key once when prompted (or reconfigure the plugin from `/plugin`), then reconnect the MCP server. The skills themselves and the no-MCP fallback still read `TRAIGENT_API_KEY` from your environment as documented in each skill.
+
+**Pinned version.** When no `traigent-analytics-mcp` is installed, the launcher runs `uvx --from 'traigent[mcp,analytics]==0.34.2'`. To bump it, change the exact version in `bin/traigent-analytics-launcher` (one place), update the expected string in `tests/contract/test_audit_477_plugin_mcp.py`, and bump the plugin `version` in `.claude-plugin/plugin.json`.
 
 ## Maintenance
 

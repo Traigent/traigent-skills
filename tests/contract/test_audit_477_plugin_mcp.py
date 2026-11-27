@@ -69,7 +69,7 @@ def test_the_launcher_prefers_the_installed_console_script(tmp_path: Path) -> No
 def test_the_launcher_falls_back_to_uvx_from_the_mcp_extra(tmp_path: Path) -> None:
     out = _run_launcher(tmp_path, ("uvx",))
     assert out.returncode == 0
-    assert out.stdout.strip() == "ran:uvx:--from traigent[mcp,analytics]>=0.24.0 traigent-analytics-mcp"
+    assert out.stdout.strip() == "ran:uvx:--from traigent[mcp,analytics]==0.34.2 traigent-analytics-mcp"
 
 
 def test_the_launcher_fails_with_a_message_when_neither_exists(tmp_path: Path) -> None:
@@ -99,8 +99,15 @@ def test_the_launcher_is_executable_in_git() -> None:
 
 def test_credentials_are_forwarded_by_reference_never_written_into_the_file() -> None:
     env = _servers()[SERVER_NAME]["env"]
-    assert env["TRAIGENT_API_KEY"].startswith("${TRAIGENT_API_KEY")
-    assert env["TRAIGENT_BACKEND_URL"].startswith("${TRAIGENT_BACKEND_URL")
+    assert env["TRAIGENT_API_KEY"] == "${user_config.traigent_api_key}"
+    assert env["TRAIGENT_BACKEND_URL"] == "${user_config.traigent_backend_url}"
+    manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert manifest["userConfig"]["traigent_api_key"]["sensitive"] is True
+
+
+def test_the_uvx_launcher_is_pinned_to_an_exact_version() -> None:
+    launch = LAUNCHER.read_text(encoding="utf-8")
+    assert re.search(r"traigent\[mcp,analytics\]==\d+\.\d+\.\d+'", launch), "pin uvx with =="
     assert not re.search(r"\btg_[A-Za-z0-9_-]{8,}", MCP_JSON.read_text(encoding="utf-8"))
 
 
