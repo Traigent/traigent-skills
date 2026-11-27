@@ -22,6 +22,7 @@ import pytest
 
 from .test_runnable_snippets import _offline_mock_env
 
+COST_MAP_PATH = "/cost-map.json"
 ROOT = Path(__file__).resolve().parents[2]
 MOCK_MODE = ROOT / "skills" / "traigent-debugging" / "references" / "mock-mode.md"
 
@@ -32,14 +33,27 @@ lookups = []
 imported = False
 class ProbeNetworkAttempt(BaseException):
     pass
+_real_getaddrinfo = socket.getaddrinfo
+_real_connect = socket.socket.connect
+_real_connect_ex = socket.socket.connect_ex
+def _is_loopback(host):
+    return str(host) == "127.0.0.1"
 def _refuse_dns(host, *args, **kwargs):
+    if _is_loopback(host):
+        return _real_getaddrinfo(host, *args, **kwargs)
     lookups.append(str(host))
     raise ProbeNetworkAttempt()
-def _refuse_connect(*args, **kwargs):
+def _refuse_connect(self, address, *args, **kwargs):
+    if isinstance(address, tuple) and _is_loopback(address[0]):
+        return _real_connect(self, address, *args, **kwargs)
+    raise ProbeNetworkAttempt()
+def _refuse_connect_ex(self, address, *args, **kwargs):
+    if isinstance(address, tuple) and _is_loopback(address[0]):
+        return _real_connect_ex(self, address, *args, **kwargs)
     raise ProbeNetworkAttempt()
 socket.getaddrinfo = _refuse_dns
 socket.socket.connect = _refuse_connect
-socket.socket.connect_ex = _refuse_connect
+socket.socket.connect_ex = _refuse_connect_ex
 try:
     IMPORT_STATEMENT
 except ProbeNetworkAttempt:
@@ -75,11 +89,19 @@ def _cost_map_listener() -> Iterator[tuple[str, list[str]]]:
         def log_message(self, *args: object) -> None:
             pass
 
-    server = HTTPServer(("127.0.0.1", 0), Handler)
+    class BoundedServer(HTTPServer):
+        def get_request(self):  # type: ignore[no-untyped-def]
+            conn, addr = super().get_request()
+            # An incomplete request must not wedge serve_forever()/shutdown().
+            conn.settimeout(5)
+            return conn, addr
+
+    # Port 0: the OS picks a free port; the URL is built from server_port.
+    server = BoundedServer(("127.0.0.1", 0), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     try:
-        yield f"http://127.0.0.1:{server.server_port}/cost-map.json", hits
+        yield f"http://127.0.0.1:{server.server_port}{COST_MAP_PATH}", hits
     finally:
         server.shutdown()
         server.server_close()
@@ -93,8 +115,11 @@ def _probe_lookups(
 ) -> list[str]:
     """Only the probe's deliberate network interruption permits an incomplete import.
 
-    ``native_hits`` are requests a ``_cost_map_listener`` saw from outside Python's
-    socket layer; they count as egress without interrupting the import.
+    ``native_hits`` are request paths a ``_cost_map_listener`` saw. Loopback
+    traffic is let through the probe's socket spy so that every litellm version,
+    Python-level or native, can reach the listener; any other host is refused and
+    recorded. When ``native_hits`` is given and egress is expected, the listener
+    must have seen the pricing-map path.
     """
     output = completed.stdout + completed.stderr
     assert completed.returncode == 0, output
@@ -106,6 +131,12 @@ def _probe_lookups(
     assert all(isinstance(host, str) and host for host in ledger["lookups"]), output
     assert isinstance(ledger["imported"], bool), output
     native = list(native_hits or [])
+    if native_hits is not None and expect_egress:
+        # The positive control must prove the pricing-map fetch itself: a request
+        # for the configured listener path, not merely any unrelated DNS lookup.
+        assert COST_MAP_PATH in native, (
+            f"no pricing-map request reached the loopback listener: {native}\n{output}"
+        )
     assert bool(ledger["lookups"] or native) is expect_egress, output
     assert ledger["imported"] is not bool(ledger["lookups"]), output
     return ledger["lookups"] + native
