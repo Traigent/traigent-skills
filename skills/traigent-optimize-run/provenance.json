@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "ee2af1c827735e2d",
+  "doc_hash": "b7ccaa2284458b67",
   "reference_hashes": {
     "references/algorithms.md": "f4038e6bd980731b",
     "references/cost-management.md": "cb123f7353702556",
@@ -566,6 +566,17 @@
       "doc_before_hash": "d78c2f857c522671",
       "doc_after_hash": "ee2af1c827735e2d",
       "note": "Drop the TRAIGENT_LITELLM_LIVE_PRICES name (not in SDK before 0.29.0); state the 0.29.0 floor for the default and tell the reader to set the map variable themselves.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "optimize-run-baseline-runs-first",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-27T00:00:00Z",
+      "doc_before_hash": "ee2af1c827735e2d",
+      "doc_after_hash": "b7ccaa2284458b67",
+      "note": "Correct the default_config note: in a fresh sequential run a usable baseline is trial 1 and counts toward max_trials, connected auto included; grid needs max_trials >= N + 1; resume skips it when a reused or in-flight trial matches.",
       "source_type": "agent"
     }
   ]
