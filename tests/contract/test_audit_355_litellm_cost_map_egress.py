@@ -33,7 +33,11 @@ from pathlib import Path
 from packaging.version import Version
 
 from .test_audit_349_fenced_blocks import skip_unless_current_released_sdk
-from .test_audit_355_mock_mode_egress_scope import _import_probe, _probe_lookups
+from .test_audit_355_mock_mode_egress_scope import (
+    _cost_map_listener,
+    _import_probe,
+    _probe_lookups,
+)
 from .test_runnable_snippets import _offline_mock_env
 
 FIX_VERSION = "0.29.0"
@@ -63,15 +67,17 @@ def _lookups(extra_env: dict[str, str], *, expect_egress: bool) -> list[str]:
     env.pop(VAR)
     env.update(extra_env)
     env["TRAIGENT_OFFLINE_MODE"] = "true"
-    result = subprocess.run(
-        [sys.executable, "-c", SPY],
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=300,
-        check=False,
-    )
-    return _probe_lookups(result, expect_egress)
+    with _cost_map_listener() as (url, hits):
+        env["LITELLM_MODEL_COST_MAP_URL"] = url
+        result = subprocess.run(
+            [sys.executable, "-c", SPY],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=300,
+            check=False,
+        )
+    return _probe_lookups(result, expect_egress, hits)
 
 
 def test_documented_environment_imports_litellm_without_a_lookup(
