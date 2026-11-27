@@ -101,6 +101,13 @@ print("EGRESS_JSON=" + json.dumps(
      "source_info_unavailable": source_info_unavailable,
      "litellm_import_started": bool(litellm_started), "pricing_host": pricing_host}, default=str
 ), flush=True)
+# LiteLLM 1.111's native pricing-map client can abort (SIGABRT/SIGSEGV) at
+# interpreter finalization while its background fetch is still failing. By here
+# the import finished and the ledger is flushed; any earlier failure has already
+# exited non-zero through its traceback, and the verifier requires exit 0 plus a
+# single well-formed ledger. Skipping finalization hides only the teardown crash.
+sys.stderr.flush()
+os._exit(0)
 """
 
 
