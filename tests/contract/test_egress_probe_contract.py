@@ -11,7 +11,15 @@ from .test_audit_355_mock_mode_egress_scope import _import_probe, _probe_lookups
 from .test_runnable_snippets import _offline_mock_env
 
 
-_FAKE_LITELLM = "sys.modules['litellm'] = type(sys)('litellm'); "
+def _run_probe_with_pkg(script: str, tmp_path, init_body: str):
+    """Run ``script`` with a fake ``litellm`` package whose __init__ is ``init_body``."""
+    pkg = tmp_path / "pkg" / "litellm"
+    pkg.mkdir(parents=True, exist_ok=True)
+    (pkg / "__init__.py").write_text(init_body)
+    env = _offline_mock_env()
+    env["PYTHONPATH"] = str(tmp_path / "pkg")
+    return subprocess.run([sys.executable, "-c", script], env=env,
+                          text=True, capture_output=True, timeout=30, check=False)
 
 
 def _run_probe(script: str) -> subprocess.CompletedProcess[str]:
@@ -25,9 +33,11 @@ def test_documented_positive_requires_success_without_dns() -> None:
     assert _probe_lookups(_run_probe(_import_probe("pass")), False) == []
 
 
-def test_own_refused_dns_sentinel_is_accepted_as_negative_control() -> None:
-    script = _import_probe(_FAKE_LITELLM + "socket.getaddrinfo('raw.githubusercontent.com', 443)")
-    assert _probe_lookups(_run_probe(script), True) == ["raw.githubusercontent.com"]
+def test_own_refused_dns_sentinel_is_accepted_as_negative_control(tmp_path) -> None:
+    script = _import_probe("import litellm")
+    completed = _run_probe_with_pkg(
+        script, tmp_path, "import socket\nsocket.getaddrinfo('raw.githubusercontent.com', 443)\n")
+    assert _probe_lookups(completed, True) == ["raw.githubusercontent.com"]
 
 
 def test_unrelated_lookup_without_litellm_is_not_egress() -> None:
@@ -77,11 +87,11 @@ _REMOTE = {"source": "local", "url": "https://example.invalid/map.json",
            "is_env_forced": False, "fallback_reason": "fetch failed"}
 
 
-def _ledger(source_info, *, lookups=(), connects=(), imported=True, loaded=True):
+def _ledger(source_info, *, lookups=(), connects=(), imported=True, started=True):
     ledger = {"lookups": list(lookups), "connects": list(connects), "imported": imported,
               "source_info": source_info,
               "source_info_unavailable": None if source_info else "module absent in this litellm",
-              "litellm_loaded": loaded, "pricing_host": "raw.githubusercontent.com"}
+              "litellm_import_started": started, "pricing_host": "raw.githubusercontent.com"}
     return subprocess.CompletedProcess(
         [], 0, stdout="EGRESS_JSON=" + json.dumps(ledger) + "\n", stderr="")
 
@@ -93,7 +103,7 @@ def test_forced_local_record_with_lookup_fails_no_egress() -> None:
 
 def test_forced_local_record_with_connect_fails_no_egress() -> None:
     with pytest.raises(AssertionError):
-        _probe_lookups(_ledger(_FORCED, connects=["('x', 443)"]), False)
+        _probe_lookups(_ledger(_FORCED, connects=["x"]), False)
 
 
 def test_remote_record_counts_as_egress() -> None:
@@ -120,7 +130,7 @@ def test_unrelated_host_without_record_cannot_pass_egress() -> None:
         _probe_lookups(_ledger(None, lookups=["control.invalid"]), True)
     assert _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"]), True)
     with pytest.raises(AssertionError):  # litellm never loaded: no evidence
-        _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"], loaded=False), True)
+        _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"], started=False), True)
 
 
 def test_forced_flag_cannot_hide_a_remote_url() -> None:
@@ -135,6 +145,8 @@ _ACCESSORS = {
     "no_module": (None, 0, "module absent"),
     "missing": ("x = 1\n", 0, "accessor missing"),
     "none": ("get_model_cost_map_source_info = None\n", 1, "not callable"),
+    "dep_import_error": ("import nonexistent_dep_control\n", 1, "nonexistent_dep_control"),
+    "init_attribute_error": ("raise AttributeError('init-attr-control')\n", 1, "init-attr-control"),
     "raises": ("def get_model_cost_map_source_info():\n    raise RuntimeError('boom-control')\n",
                1, "boom-control"),
 }
@@ -157,3 +169,9 @@ def test_probe_side_accessor_branches(tmp_path, case: str) -> None:
     )
     assert (completed.returncode != 0) is bool(rc_nonzero), completed.stdout + completed.stderr
     assert expect in completed.stdout + completed.stderr
+
+
+def test_lookalike_host_is_not_the_pricing_host() -> None:
+    with pytest.raises(AssertionError):
+        _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com.example.invalid"]), True)
+    assert _probe_lookups(_ledger(None, lookups=["Raw.GitHubUserContent.com."]), True)

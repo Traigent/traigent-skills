@@ -35,8 +35,17 @@ def _refuse_dns(host, *args, **kwargs):
     lookups.append(str(host))
     raise ProbeNetworkAttempt()
 def _refuse_connect(self, address=None, *args, **kwargs):
-    connects.append(str(address))
+    connects.append(str(address[0] if isinstance(address, (tuple, list)) and address else address))
     raise ProbeNetworkAttempt()
+class _StartedFinder:
+    # Records that litellm was first requested; never loads anything. A failed
+    # import is removed from sys.modules, so this is the only lasting witness.
+    def find_spec(self, name, path=None, target=None):
+        if name == "litellm":
+            litellm_started.append(True)
+        return None
+litellm_started = []
+sys.meta_path.insert(0, _StartedFinder())
 socket.getaddrinfo = _refuse_dns
 socket.socket.connect = _refuse_connect
 socket.socket.connect_ex = _refuse_connect
@@ -53,20 +62,19 @@ else:
 # record; any other failure reading it must fail the probe, not hide evidence.
 source_info = None
 source_info_unavailable = None
-litellm_loaded = "litellm" in sys.modules
-if litellm_loaded:
+if "litellm" in sys.modules:
     import importlib
-    import importlib.util
     _mod = "litellm.litellm_core_utils.get_model_cost_map"
+    _absent = {"litellm.litellm_core_utils", _mod}
     try:
-        _spec = importlib.util.find_spec(_mod)
-    except ModuleNotFoundError:  # litellm is not a package here
-        _spec = None
-    if _spec is None:
+        _module = importlib.import_module(_mod)
+    except ModuleNotFoundError as _exc:
+        if _exc.name not in _absent:
+            raise
         source_info_unavailable = "module absent in this litellm"
     else:
         try:
-            _accessor = getattr(importlib.import_module(_mod), "get_model_cost_map_source_info")
+            _accessor = getattr(_module, "get_model_cost_map_source_info")
         except AttributeError:
             source_info_unavailable = "accessor missing on existing module"
         else:
@@ -82,7 +90,7 @@ print("EGRESS_JSON=" + json.dumps(
     {"lookups": lookups, "connects": connects, "imported": imported,
      "source_info": source_info,
      "source_info_unavailable": source_info_unavailable,
-     "litellm_loaded": litellm_loaded, "pricing_host": pricing_host}, default=str
+     "litellm_import_started": bool(litellm_started), "pricing_host": pricing_host}, default=str
 ), flush=True)
 """
 
@@ -139,26 +147,32 @@ def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: b
     ledger = json.loads(lines[0].removeprefix("EGRESS_JSON="))
     assert set(ledger) == {"lookups", "connects", "imported", "source_info",
                          "source_info_unavailable",
-                         "litellm_loaded", "pricing_host"}, output
+                         "litellm_import_started", "pricing_host"}, output
     assert isinstance(ledger["lookups"], list), output
     assert all(isinstance(host, str) and host for host in ledger["lookups"]), output
     assert isinstance(ledger["connects"], list), output
     assert isinstance(ledger["imported"], bool), output
     source_info = ledger["source_info"]
     assert ledger["source_info_unavailable"] is None or source_info is None, output
-    host = ledger["pricing_host"]
-    sockets = [*ledger["lookups"], *(f"connect {c}" for c in ledger["connects"])]
+    def norm(name: str) -> str:
+        name = name.lower()
+        return name[:-1] if name.endswith(".") else name
+
+    host = norm(ledger["pricing_host"] or "")
+    sockets = [*ledger["lookups"], *ledger["connects"]]
     remote = _remote_fetch_attempted(source_info)
     if expect_egress:
         if source_info is not None:
             # LiteLLM's own record is authoritative when present.
             evidence = [f"litellm tried remote: {source_info}"] if remote else []
         else:
-            # No record: socket events count only if litellm really loaded (the
-            # accessor is absent, not litellm never imported) and they target
-            # the pricing-map host. Unrelated traffic is not evidence.
-            loaded = ledger["litellm_loaded"] and ledger["source_info_unavailable"]
-            evidence = [e for e in sockets if host and host in e] if loaded else []
+            # No record: socket events count only if the litellm import was
+            # started (a failed import leaves no module behind) and the
+            # destination is exactly the pricing-map host.
+            evidence = (
+                [e for e in sockets if host and norm(e) == host]
+                if ledger["litellm_import_started"] else []
+            )
         assert evidence, output
     else:
         # Clean means every witness is clean and the import really finished.
