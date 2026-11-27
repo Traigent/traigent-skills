@@ -7,9 +7,12 @@ headless session (no restart possible) could never fetch the decision brief.
 
 from __future__ import annotations
 
+import itertools
 import json
 import re
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "skills"
@@ -69,7 +72,7 @@ def test_the_launcher_prefers_the_installed_console_script(tmp_path: Path) -> No
 def test_the_launcher_falls_back_to_uvx_from_the_mcp_extra(tmp_path: Path) -> None:
     out = _run_launcher(tmp_path, ("uvx",))
     assert out.returncode == 0
-    assert out.stdout.strip() == "ran:uvx:--from traigent[mcp,analytics]>=0.24.0 traigent-analytics-mcp"
+    assert out.stdout.strip() == "ran:uvx:--from traigent[mcp,analytics]==0.34.2 traigent-analytics-mcp"
 
 
 def test_the_launcher_fails_with_a_message_when_neither_exists(tmp_path: Path) -> None:
@@ -99,8 +102,138 @@ def test_the_launcher_is_executable_in_git() -> None:
 
 def test_credentials_are_forwarded_by_reference_never_written_into_the_file() -> None:
     env = _servers()[SERVER_NAME]["env"]
-    assert env["TRAIGENT_API_KEY"].startswith("${TRAIGENT_API_KEY")
-    assert env["TRAIGENT_BACKEND_URL"].startswith("${TRAIGENT_BACKEND_URL")
+    assert env["TRAIGENT_PLUGIN_API_KEY"] == "${user_config.traigent_api_key}"
+    assert env["TRAIGENT_PLUGIN_BACKEND_URL"] == "${user_config.traigent_backend_url}"
+    text = MCP_JSON.read_text(encoding="utf-8")
+    assert not re.search(r"\$\{(?!user_config\.|CLAUDE_PLUGIN_ROOT\})", text), "no ${ENV} refs"
+    assert not re.search(r"\btg_[A-Za-z0-9_-]{8,}", text)
+    manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    assert manifest["userConfig"]["traigent_api_key"]["sensitive"] is True
+
+
+def _env_printing_launcher(tmp_path: Path, env: dict, path_extra: str = ":/usr/bin:/bin"):
+    import subprocess
+
+    bindir = tmp_path / "bin"
+    bindir.mkdir(exist_ok=True)
+    stub = bindir / "uvx"
+    stub.write_text(
+        '#!/bin/sh\necho "KEY=${TRAIGENT_API_KEY-unset}"\n'
+        'echo "URL=${TRAIGENT_BACKEND_URL-unset}"\n'
+        'echo "PK=${TRAIGENT_PLUGIN_API_KEY-unset}"\n'
+        'echo "API_URL=${TRAIGENT_API_URL-unset}"\n'
+        'echo "JWT=${TRAIGENT_JWT_TOKEN-unset}"\n',
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    full = {"PATH": f"{bindir}{path_extra}", **env}
+    return subprocess.run(
+        ["/usr/bin/env", "-i", *[f"{k}={v}" for k, v in full.items()], "/bin/sh", str(LAUNCHER)],
+        capture_output=True, text=True, check=False, timeout=20,
+    )
+
+
+_MATRIX = list(itertools.product(("pk", ""), ("https://pb.example", ""), ("ik", ""), ("https://ib.example", "")))
+
+
+@pytest.mark.parametrize("pk,pb,ik,ib", _MATRIX)
+def test_launcher_pairing_matrix(tmp_path: Path, pk: str, pb: str, ik: str, ib: str) -> None:
+    env = {"TRAIGENT_PLUGIN_API_KEY": pk, "TRAIGENT_PLUGIN_BACKEND_URL": pb}
+    if ik:
+        env["TRAIGENT_API_KEY"] = ik
+    if ib:
+        env["TRAIGENT_BACKEND_URL"] = ib
+    out = _env_printing_launcher(tmp_path, env)
+    if pk and not pb:
+        assert out.returncode == 1 and out.stdout == ""
+        assert "backend URL is empty; set the backend URL there too" in out.stderr
+        assert pk not in out.stderr
+    elif pk:
+        assert out.returncode == 0
+        assert f"KEY={pk}\n" in out.stdout and f"URL={pb}\n" in out.stdout
+        assert "ib.example" not in out.stdout + out.stderr and "KEY=ik" not in out.stdout
+    else:
+        # plugin key empty: plugin backend ignored, inherited env untouched
+        assert out.returncode == 0
+        assert f"KEY={ik or 'unset'}\n" in out.stdout
+        assert f"URL={ib or 'unset'}\n" in out.stdout
+
+
+def test_plugin_pair_unsets_other_backend_selectors(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {
+            "TRAIGENT_PLUGIN_API_KEY": "k",
+            "TRAIGENT_PLUGIN_BACKEND_URL": "https://pb.example",
+            "TRAIGENT_API_URL": "https://other.example",
+            "TRAIGENT_JWT_TOKEN": "jwt",
+        },
+    )
+    assert out.returncode == 0
+    assert "API_URL=unset" in out.stdout and "JWT=unset" in out.stdout
+
+
+@pytest.mark.parametrize("backend", ["   ", "pb.example", "ftp://pb.example", "https://", "https:///api", "http:///", "https://?q", "https://#f", "http://:443", "\t"])
+def test_plugin_key_with_blank_or_schemeless_backend_is_refused(tmp_path: Path, backend: str) -> None:
+    out = _env_printing_launcher(
+        tmp_path, {"TRAIGENT_PLUGIN_API_KEY": "k", "TRAIGENT_PLUGIN_BACKEND_URL": backend}
+    )
+    assert out.returncode == 1 and out.stdout == ""
+
+
+def test_plugin_values_are_trimmed(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {"TRAIGENT_PLUGIN_API_KEY": " k \n", "TRAIGENT_PLUGIN_BACKEND_URL": " https://pb.example \n"},
+    )
+    assert "KEY=k\n" in out.stdout and "URL=https://pb.example\n" in out.stdout
+
+
+def test_interior_whitespace_is_preserved(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {"TRAIGENT_PLUGIN_API_KEY": " a b ", "TRAIGENT_PLUGIN_BACKEND_URL": "https://pb.example/x y"},
+    )
+    assert "KEY=a b\n" in out.stdout and "URL=https://pb.example/x y\n" in out.stdout
+
+
+def test_launcher_needs_no_external_tools_on_path(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {"TRAIGENT_PLUGIN_API_KEY": " k ", "TRAIGENT_PLUGIN_BACKEND_URL": " https://pb.example "},
+        path_extra="",
+    )
+    assert out.returncode == 0, out.stderr
+    assert "KEY=k\n" in out.stdout and "URL=https://pb.example\n" in out.stdout
+
+
+def test_no_key_branch_keeps_api_url_and_jwt(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {
+            "TRAIGENT_PLUGIN_BACKEND_URL": "https://pb.example",
+            "TRAIGENT_API_URL": "https://other.example",
+            "TRAIGENT_JWT_TOKEN": "jwt",
+        },
+    )
+    assert "API_URL=https://other.example\n" in out.stdout and "JWT=jwt\n" in out.stdout
+
+
+def test_launcher_with_nothing_set_leaves_the_environment_alone(tmp_path: Path) -> None:
+    out = _env_printing_launcher(tmp_path, {})
+    assert out.returncode == 0 and "KEY=unset" in out.stdout and "URL=unset" in out.stdout
+
+
+def test_backend_url_option_has_a_visible_cloud_default() -> None:
+    manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
+    opt = manifest["userConfig"]["traigent_backend_url"]
+    assert opt["default"] == "https://portal.traigent.ai"
+    assert "self-hosted" in opt["title"]
+
+
+def test_the_uvx_launcher_is_pinned_to_an_exact_version() -> None:
+    launch = LAUNCHER.read_text(encoding="utf-8")
+    assert re.search(r"traigent\[mcp,analytics\]==\d+\.\d+\.\d+'", launch), "pin uvx with =="
     assert not re.search(r"\btg_[A-Za-z0-9_-]{8,}", MCP_JSON.read_text(encoding="utf-8"))
 
 

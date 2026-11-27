@@ -1,11 +1,52 @@
 #!/bin/sh
 # Starts the Traigent analytics MCP server (stdio) for the plugin's .mcp.json.
 # Order: an installed console script, else uvx from PyPI, else a clear failure.
-# Reads TRAIGENT_API_KEY / TRAIGENT_BACKEND_URL from the environment; writes nothing.
+# Credentials: the plugin passes its settings as TRAIGENT_PLUGIN_API_KEY /
+# TRAIGENT_PLUGIN_BACKEND_URL (whitespace trimmed first):
+#   plugin key empty -> the plugin backend is ignored; the inherited environment is left
+#     exactly as it is (pre-plugin-settings behaviour).
+#   plugin key set -> the plugin backend must be non-empty and start with https:// or
+#     http:// followed by a host, else exit 1; any failure while a key is set exits 1. Exactly that pair is exported, and every inherited variable
+#     that could redirect or replace it is unset: TRAIGENT_API_URL (the SDK's second
+#     backend selector, traigent/config/backend_config.py v0.34.2) and TRAIGENT_JWT_TOKEN.
+#     An explicit TRAIGENT_API_KEY wins over a saved CLI key (BackendConfig.get_api_key
+#     and CredentialManager: environment first), so no saved key is used.
+# Writes nothing.
+# PINNED: bump the uvx version below (exact ==) when a new traigent release is validated;
+# see README heading "Analytics MCP server: API key and pinned version".
+# Trim leading/trailing whitespace with POSIX parameter expansion only (no external tools);
+# interior whitespace is preserved.
+_pk=${TRAIGENT_PLUGIN_API_KEY:-}
+_pb=${TRAIGENT_PLUGIN_BACKEND_URL:-}
+unset TRAIGENT_PLUGIN_API_KEY TRAIGENT_PLUGIN_BACKEND_URL
+_ws=${_pk%%[![:space:]]*}; _pk=${_pk#"$_ws"}; _ws=${_pk##*[![:space:]]}; _pk=${_pk%"$_ws"}
+_ws=${_pb%%[![:space:]]*}; _pb=${_pb#"$_ws"}; _ws=${_pb##*[![:space:]]}; _pb=${_pb%"$_ws"}
+if [ -n "$_pk" ]; then
+  # scheme://<non-empty host>: the character after "//" must be alphanumeric or "[" (IPv6).
+  case "$_pb" in
+    https://[A-Za-z0-9[]* | http://[A-Za-z0-9[]*) ;;
+    *)
+      echo 'Traigent plugin: API key is set in plugin settings but the backend URL is empty; set the backend URL there too' >&2
+      exit 1
+      ;;
+  esac
+  TRAIGENT_API_KEY="$_pk"
+  TRAIGENT_BACKEND_URL="$_pb"
+  export TRAIGENT_API_KEY TRAIGENT_BACKEND_URL || exit 1
+  unset TRAIGENT_API_URL TRAIGENT_JWT_TOKEN || exit 1
+fi
+unset _pk _pb
+if [ -n "${TRAIGENT_API_KEY:-}" ]; then
+  if [ -n "${TRAIGENT_BACKEND_URL:-}" ]; then
+    echo "traigent-analytics MCP: using backend ${TRAIGENT_BACKEND_URL}" >&2
+  else
+    echo "traigent-analytics MCP: no backend URL set, using the Traigent cloud default" >&2
+  fi
+fi
 if command -v traigent-analytics-mcp >/dev/null 2>&1; then
   exec traigent-analytics-mcp
 elif command -v uvx >/dev/null 2>&1; then
-  exec uvx --from 'traigent[mcp,analytics]>=0.24.0' traigent-analytics-mcp
+  exec uvx --from 'traigent[mcp,analytics]==0.34.2' traigent-analytics-mcp
 else
   echo 'traigent-analytics MCP: install traigent[mcp,analytics] or uv, then reconnect (see the traigent-analyze-results skill, Prerequisites)' >&2
   exit 127

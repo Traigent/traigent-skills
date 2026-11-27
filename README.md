@@ -164,7 +164,7 @@ skills/<skill-name>/
   references/    # deeper API docs, loaded on demand
 ```
 
-These skills are Markdown, with three skills that also ship a local script: `traigent-setup-audit` ships local scripts (standard library only; its free local tier reads `.env` text in memory only to detect which key names are set and never prints, stores or sends a value, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read), and `traigent-eval-audit` ships a pure, offline stdlib helper (`equivalence_result.py`: no model calls, no network, no credential read). The remaining skills are instructions and make no calls themselves. The Claude Code plugin also ships `bin/traigent-analytics-launcher`, a short POSIX shell script referenced from `.mcp.json`; it starts an installed `traigent-analytics-mcp`, else `uvx`, and reads `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` only from the environment.
+These skills are Markdown, with three skills that also ship a local script: `traigent-setup-audit` ships local scripts (standard library only; its free local tier reads `.env` text in memory only to detect which key names are set and never prints, stores or sends a value, while the approval-gated tier reads `TRAIGENT_API_KEY` only for the specific check named by `--approve`) `traigent-analyze-variable-importance` ships a local ranking script (optionally imports the SDK, no network and no credential read), and `traigent-eval-audit` ships a pure, offline stdlib helper (`equivalence_result.py`: no model calls, no network, no credential read). The remaining skills are instructions and make no calls themselves. The Claude Code plugin also ships `bin/traigent-analytics-launcher`, a short POSIX shell script referenced from `.mcp.json`; it starts an installed `traigent-analytics-mcp`, else `uvx`, and reads `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` only from the environment the plugin sets from its `userConfig` (the API key is a `sensitive` value in your system credential store).
 
 ## Requirements
 
@@ -179,6 +179,20 @@ The skills *teach your agent to drive the Traigent SDKs*, so to actually run an 
 - Node.js 18, 20, or 22
 - Traigent JS SDK — not published on public npm yet; use the source/link flow in
   `skills/traigent-js` until the JS SDK is published to npm.
+
+## Analytics MCP server: API key and pinned version
+
+The Claude Code plugin starts the `traigent-analytics` MCP server through `bin/traigent-analytics-launcher`.
+
+**API key and backend (plugin 1.3.1): existing environment setups keep working.** Plugin settings are the recommended way. When you enable the plugin, Claude Code asks for "Traigent API key" (stored in your system credential store, not in `settings.json`) and "Traigent backend URL (change for self-hosted)", which defaults to `https://portal.traigent.ai`. The key and the backend are a pair:
+
+- Key and backend both set in the plugin (leading and trailing whitespace is trimmed; the backend must be `https://` or `http://` followed by a host): exactly that pair is used. Your environment's `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` are never mixed in, and `TRAIGENT_API_URL` and `TRAIGENT_JWT_TOKEN` are removed from the server's environment so nothing inherited can redirect or replace the plugin key. An explicit key always wins over a key saved by `traigent auth login` (checked in SDK v0.34.2: `BackendConfig.get_api_key` and `CredentialManager` read the environment first).
+- Key set in the plugin but the backend field empty or invalid: the launcher exits with an error ("set the backend URL there too"), so a key never silently goes to the wrong backend.
+- No key in the plugin: the plugin backend is ignored and your environment (including `TRAIGENT_API_URL` and `TRAIGENT_JWT_TOKEN`) is left exactly as it is, so setups that export `TRAIGENT_API_KEY` / `TRAIGENT_BACKEND_URL` work as before.
+
+Self-hosted users moving the key into the plugin settings must change the backend field to their own URL. The launcher prints one stderr line saying which backend it uses (never the key).
+
+**Pinned version.** When no `traigent-analytics-mcp` is installed, the launcher runs `uvx --from 'traigent[mcp,analytics]==0.34.2'`. To bump it, change the exact version in `bin/traigent-analytics-launcher` (one place), update the expected string in `tests/contract/test_audit_477_plugin_mcp.py`, and bump the plugin `version` in `.claude-plugin/plugin.json`.
 
 ## Maintenance
 
