@@ -7,15 +7,17 @@ import sys
 
 import pytest
 
-from .test_audit_355_mock_mode_egress_scope import _import_probe, _probe_lookups, run_probe
+from .test_audit_355_mock_mode_egress_scope import _import_probe, REQUIRED_LEDGER_KEYS, _probe_lookups, run_probe
 from .test_runnable_snippets import _offline_mock_env
 
 
 def _expect_verifier_failure(completed, expect_egress: bool) -> None:
     """The child must have run cleanly and the VERIFIER (not a crash) must reject it."""
     assert completed.returncode == 0, completed.stdout + completed.stderr
-    assert "EGRESS_JSON=" in completed.stdout, completed.stdout + completed.stderr
-    with pytest.raises(AssertionError, match="EGRESS_JSON"):
+    lines = [x for x in completed.stdout.splitlines() if x.startswith("EGRESS_JSON=")]
+    assert len(lines) == 1, completed.stdout + completed.stderr
+    assert set(json.loads(lines[0].removeprefix("EGRESS_JSON="))) == REQUIRED_LEDGER_KEYS
+    with pytest.raises(AssertionError, match="egress evidence mismatch"):
         _probe_lookups(completed, expect_egress)
 
 
@@ -98,12 +100,12 @@ def _ledger(source_info, *, lookups=(), connects=(), imported=True, started=True
 
 
 def test_forced_local_record_with_lookup_fails_no_egress() -> None:
-    with pytest.raises(AssertionError, match="EGRESS_JSON"):
+    with pytest.raises(AssertionError, match="egress evidence mismatch"):
         _probe_lookups(_ledger(_FORCED, lookups=["x.invalid"]), False)
 
 
 def test_forced_local_record_with_connect_fails_no_egress() -> None:
-    with pytest.raises(AssertionError, match="EGRESS_JSON"):
+    with pytest.raises(AssertionError, match="egress evidence mismatch"):
         _probe_lookups(_ledger(_FORCED, connects=["x"]), False)
 
 
@@ -112,7 +114,7 @@ def test_remote_record_counts_as_egress() -> None:
 
 
 def test_forced_local_record_is_not_egress() -> None:
-    with pytest.raises(AssertionError, match="EGRESS_JSON"):
+    with pytest.raises(AssertionError, match="egress evidence mismatch"):
         _probe_lookups(_ledger(_FORCED), True)
 
 
@@ -122,15 +124,15 @@ def test_clean_forced_local_record_passes_no_egress() -> None:
 
 def test_unforced_record_cannot_pass_no_egress() -> None:
     quiet = dict(_FORCED, is_env_forced=False)
-    with pytest.raises(AssertionError, match="EGRESS_JSON"):
+    with pytest.raises(AssertionError, match="egress evidence mismatch"):
         _probe_lookups(_ledger(quiet), False)
 
 
 def test_unrelated_host_without_record_cannot_pass_egress() -> None:
-    with pytest.raises(AssertionError, match="EGRESS_JSON"):
+    with pytest.raises(AssertionError, match="egress evidence mismatch"):
         _probe_lookups(_ledger(None, lookups=["control.invalid"]), True)
     assert _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"]), True)
-    with pytest.raises(AssertionError, match="EGRESS_JSON"):  # import never started
+    with pytest.raises(AssertionError, match="egress evidence mismatch"):  # import never started
         _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"], started=False), True)
 
 
@@ -170,7 +172,7 @@ def test_probe_side_accessor_branches(tmp_path, case: str) -> None:
 
 
 def test_lookalike_host_is_not_the_pricing_host() -> None:
-    with pytest.raises(AssertionError, match="EGRESS_JSON"):
+    with pytest.raises(AssertionError, match="egress evidence mismatch"):
         _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com.example.invalid"]), True)
     assert _probe_lookups(_ledger(None, lookups=["Raw.GitHubUserContent.com."]), True)
 
@@ -208,3 +210,11 @@ def test_traigent_find_spec_then_lookup_is_not_pricing_evidence(tmp_path) -> Non
     completed = run_probe(
         [sys.executable, "-c", _import_probe("import traigent")], env=env, timeout=30)
     _expect_verifier_failure(completed, True)
+
+
+def test_empty_ledger_is_malformed_not_an_evidence_failure() -> None:
+    completed = subprocess.CompletedProcess([], 0, stdout="EGRESS_JSON={}\n", stderr="")
+    with pytest.raises(AssertionError, match="malformed probe ledger"):
+        _probe_lookups(completed, True)
+    with pytest.raises(AssertionError):  # the helper refuses it too
+        _expect_verifier_failure(completed, True)

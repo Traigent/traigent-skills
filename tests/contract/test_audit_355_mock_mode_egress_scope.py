@@ -147,22 +147,26 @@ def _remote_fetch_attempted(source_info: dict | None) -> bool:
     return source_info.get("source") == "remote" or bool(source_info.get("url"))
 
 
+REQUIRED_LEDGER_KEYS = {
+    "lookups", "connects", "imported", "source_info", "source_info_unavailable",
+    "litellm_import_started", "pricing_host",
+}
+
+
 def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: bool) -> list[str]:
     """Return the egress evidence the probe recorded (empty when none)."""
     output = completed.stdout + completed.stderr
-    assert completed.returncode == 0, output
+    assert completed.returncode == 0, "malformed probe ledger: " + output
     lines = [line for line in completed.stdout.splitlines() if line.startswith("EGRESS_JSON=")]
-    assert len(lines) == 1, output
+    assert len(lines) == 1, "malformed probe ledger: " + output
     ledger = json.loads(lines[0].removeprefix("EGRESS_JSON="))
-    assert set(ledger) == {"lookups", "connects", "imported", "source_info",
-                         "source_info_unavailable",
-                         "litellm_import_started", "pricing_host"}, output
-    assert isinstance(ledger["lookups"], list), output
-    assert all(isinstance(host, str) and host for host in ledger["lookups"]), output
-    assert isinstance(ledger["connects"], list), output
-    assert isinstance(ledger["imported"], bool), output
+    assert set(ledger) == REQUIRED_LEDGER_KEYS, "malformed probe ledger: " + output
+    assert isinstance(ledger["lookups"], list), "malformed probe ledger: " + output
+    assert all(isinstance(host, str) and host for host in ledger["lookups"]), "malformed probe ledger: " + output
+    assert isinstance(ledger["connects"], list), "malformed probe ledger: " + output
+    assert isinstance(ledger["imported"], bool), "malformed probe ledger: " + output
     source_info = ledger["source_info"]
-    assert ledger["source_info_unavailable"] is None or source_info is None, output
+    assert ledger["source_info_unavailable"] is None or source_info is None, "malformed probe ledger: " + output
     def norm(name: str) -> str:
         name = name.lower()
         return name[:-1] if name.endswith(".") else name
@@ -182,17 +186,17 @@ def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: b
                 [e for e in sockets if host and norm(e) == host]
                 if ledger["litellm_import_started"] else []
             )
-        assert evidence, output
+        assert evidence, "egress evidence mismatch: " + output
     else:
         # Clean means every witness is clean and the import really finished.
         evidence = []
         if source_info is not None:
             assert not (source_info.get("source") == "remote" or source_info.get("url")), (
-                "contradictory record (remote source or url): " + output
+                "egress evidence mismatch: contradictory record (remote source or url): " + output
             )
-            assert source_info.get("is_env_forced") is True, output
-        assert not sockets, output
-        assert ledger["imported"] is True, output
+            assert source_info.get("is_env_forced") is True, "egress evidence mismatch: " + output
+        assert not sockets, "egress evidence mismatch: " + output
+        assert ledger["imported"] is True, "egress evidence mismatch: " + output
     return evidence
 
 
