@@ -220,15 +220,17 @@ jobs:
           uv export --frozen --no-emit-project --no-hashes -o harness-requirements.txt
           uv pip install --system -r harness-requirements.txt
 
-      - name: Install bubblewrap (sandbox for the skill network tests)
-        # Gives traigent-setup-audit's probe a real network namespace so its
-        # sandbox cases run instead of self-skipping. Tolerated failure: if the
-        # package or the runner's AppArmor policy refuses, those cases skip
-        # exactly as they did before and nothing else is affected.
+      - name: Install bubblewrap (network isolation, required)
+        # The egress contract tests and traigent-setup-audit's probe run code in
+        # a network namespace. The tests fail, never skip, without a working
+        # backend, so a failed install must fail the job here with a clear name.
         run: |
-          sudo apt-get update -qq \
-            && sudo apt-get install -y --no-install-recommends bubblewrap \
-            || echo "bubblewrap unavailable; sandbox tests will skip"
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bubblewrap
+          # Ubuntu 24.04+ restricts unprivileged user namespaces; the stock
+          # bwrap AppArmor profile permits them. Prove it works now.
+          bwrap --unshare-net --unshare-user-try --dev-bind / / true
 
       - name: Run released SDK bucket
         env:
@@ -327,6 +329,18 @@ jobs:
           uv export --frozen --no-emit-project --no-hashes -o harness-requirements.txt
           uv pip install --system -r harness-requirements.txt
           uv pip install --system "git+https://github.com/Traigent/Traigent@develop"
+
+      - name: Install bubblewrap (network isolation, required)
+        # The egress contract tests and traigent-setup-audit's probe run code in
+        # a network namespace. The tests fail, never skip, without a working
+        # backend, so a failed install must fail the job here with a clear name.
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends bubblewrap
+          # Ubuntu 24.04+ restricts unprivileged user namespaces; the stock
+          # bwrap AppArmor profile permits them. Prove it works now.
+          bwrap --unshare-net --unshare-user-try --dev-bind / / true
 
       - name: Run develop contract drift check
         id: contracts
