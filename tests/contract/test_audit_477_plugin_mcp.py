@@ -99,10 +99,74 @@ def test_the_launcher_is_executable_in_git() -> None:
 
 def test_credentials_are_forwarded_by_reference_never_written_into_the_file() -> None:
     env = _servers()[SERVER_NAME]["env"]
-    assert env["TRAIGENT_API_KEY"] == "${user_config.traigent_api_key}"
-    assert env["TRAIGENT_BACKEND_URL"] == "${user_config.traigent_backend_url}"
+    assert env["TRAIGENT_PLUGIN_API_KEY"] == "${user_config.traigent_api_key}"
+    assert env["TRAIGENT_PLUGIN_BACKEND_URL"] == "${user_config.traigent_backend_url}"
+    text = MCP_JSON.read_text(encoding="utf-8")
+    assert not re.search(r"\$\{(?!user_config\.|CLAUDE_PLUGIN_ROOT\})", text), "no ${ENV} refs"
+    assert not re.search(r"\btg_[A-Za-z0-9_-]{8,}", text)
     manifest = json.loads((ROOT / ".claude-plugin" / "plugin.json").read_text(encoding="utf-8"))
     assert manifest["userConfig"]["traigent_api_key"]["sensitive"] is True
+
+
+def _env_printing_launcher(tmp_path: Path, env: dict):
+    import subprocess
+
+    bindir = tmp_path / "bin"
+    bindir.mkdir(exist_ok=True)
+    stub = bindir / "uvx"
+    stub.write_text(
+        '#!/bin/sh\necho "KEY=${TRAIGENT_API_KEY-unset}"\n'
+        'echo "URL=${TRAIGENT_BACKEND_URL-unset}"\n'
+        'echo "PK=${TRAIGENT_PLUGIN_API_KEY-unset}"\n',
+        encoding="utf-8",
+    )
+    stub.chmod(0o755)
+    full = {"PATH": f"{bindir}:/usr/bin:/bin", **env}
+    return subprocess.run(
+        ["/usr/bin/env", "-i", *[f"{k}={v}" for k, v in full.items()], "/bin/sh", str(LAUNCHER)],
+        capture_output=True, text=True, check=False, timeout=20,
+    )
+
+
+def test_launcher_exports_plugin_values_only_when_non_empty(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {"TRAIGENT_PLUGIN_API_KEY": "k1", "TRAIGENT_PLUGIN_BACKEND_URL": "https://be.example"},
+    )
+    assert "KEY=k1" in out.stdout and "URL=https://be.example" in out.stdout
+    assert "PK=unset" in out.stdout
+    assert "https://be.example" in out.stderr and "k1" not in out.stderr
+
+
+def test_launcher_leaves_inherited_env_when_plugin_values_empty(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {
+            "TRAIGENT_PLUGIN_API_KEY": "",
+            "TRAIGENT_PLUGIN_BACKEND_URL": "",
+            "TRAIGENT_API_KEY": "envkey",
+            "TRAIGENT_BACKEND_URL": "https://self.example",
+        },
+    )
+    assert "KEY=envkey" in out.stdout and "URL=https://self.example" in out.stdout
+
+
+def test_launcher_keeps_inherited_backend_when_only_plugin_key_is_set(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {
+            "TRAIGENT_PLUGIN_API_KEY": "k2",
+            "TRAIGENT_PLUGIN_BACKEND_URL": "",
+            "TRAIGENT_BACKEND_URL": "https://self.example",
+        },
+    )
+    assert "KEY=k2" in out.stdout and "URL=https://self.example" in out.stdout
+    assert "https://self.example" in out.stderr and "k2" not in out.stderr
+
+
+def test_launcher_says_cloud_default_when_no_backend_anywhere(tmp_path: Path) -> None:
+    out = _env_printing_launcher(tmp_path, {"TRAIGENT_PLUGIN_API_KEY": "k3"})
+    assert "URL=unset" in out.stdout and "cloud default" in out.stderr
 
 
 def test_the_uvx_launcher_is_pinned_to_an_exact_version() -> None:

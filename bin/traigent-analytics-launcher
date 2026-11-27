@@ -1,8 +1,29 @@
 #!/bin/sh
 # Starts the Traigent analytics MCP server (stdio) for the plugin's .mcp.json.
 # Order: an installed console script, else uvx from PyPI, else a clear failure.
-# Reads TRAIGENT_API_KEY / TRAIGENT_BACKEND_URL from the environment the plugin sets from its userConfig; writes nothing.
-# PINNED: bump the uvx version below (exact ==) when a new traigent release is validated; see README "Updating the pinned MCP server".
+# Credentials: the plugin passes its settings as TRAIGENT_PLUGIN_API_KEY /
+# TRAIGENT_PLUGIN_BACKEND_URL. Each is exported as TRAIGENT_API_KEY /
+# TRAIGENT_BACKEND_URL ONLY when non-empty; otherwise the inherited environment is
+# left untouched, so env-based setups keep working and an empty plugin field never
+# overrides (or drops) a self-hosted backend. Writes nothing.
+# PINNED: bump the uvx version below (exact ==) when a new traigent release is validated;
+# see README heading "Analytics MCP server: API key and pinned version".
+if [ -n "${TRAIGENT_PLUGIN_API_KEY:-}" ]; then
+  TRAIGENT_API_KEY="$TRAIGENT_PLUGIN_API_KEY"
+  export TRAIGENT_API_KEY
+fi
+if [ -n "${TRAIGENT_PLUGIN_BACKEND_URL:-}" ]; then
+  TRAIGENT_BACKEND_URL="$TRAIGENT_PLUGIN_BACKEND_URL"
+  export TRAIGENT_BACKEND_URL
+fi
+unset TRAIGENT_PLUGIN_API_KEY TRAIGENT_PLUGIN_BACKEND_URL
+if [ -n "${TRAIGENT_API_KEY:-}" ]; then
+  if [ -n "${TRAIGENT_BACKEND_URL:-}" ]; then
+    echo "traigent-analytics MCP: using backend ${TRAIGENT_BACKEND_URL}" >&2
+  else
+    echo "traigent-analytics MCP: no backend URL set, using the Traigent cloud default" >&2
+  fi
+fi
 if command -v traigent-analytics-mcp >/dev/null 2>&1; then
   exec traigent-analytics-mcp
 elif command -v uvx >/dev/null 2>&1; then

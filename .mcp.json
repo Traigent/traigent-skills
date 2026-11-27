@@ -3,8 +3,8 @@
     "traigent-analytics": {
       "command": "${CLAUDE_PLUGIN_ROOT}/bin/traigent-analytics-launcher",
       "env": {
-        "TRAIGENT_API_KEY": "${user_config.traigent_api_key}",
-        "TRAIGENT_BACKEND_URL": "${user_config.traigent_backend_url}"
+        "TRAIGENT_PLUGIN_API_KEY": "${user_config.traigent_api_key}",
+        "TRAIGENT_PLUGIN_BACKEND_URL": "${user_config.traigent_backend_url}"
       }
     }
   }
