@@ -1,6 +1,7 @@
 """Independent controls for the actual egress subprocess and ledger verifier."""
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 
@@ -60,3 +61,45 @@ def test_unexpected_import_error_after_dns_remains_failure() -> None:
     assert "after-DNS-control" in completed.stderr
     with pytest.raises(AssertionError, match="after-DNS-control"):
         _probe_lookups(completed, True)
+
+
+_FORCED = {"source": "local", "url": None, "is_env_forced": True, "fallback_reason": None}
+_REMOTE = {"source": "local", "url": "https://example.invalid/map.json",
+           "is_env_forced": False, "fallback_reason": "fetch failed"}
+
+
+def _ledger(source_info, *, lookups=(), connects=(), imported=True):
+    ledger = {"lookups": list(lookups), "connects": list(connects), "imported": imported,
+              "source_info": source_info,
+              "source_info_unavailable": None if source_info else "module absent in this litellm"}
+    return subprocess.CompletedProcess(
+        [], 0, stdout="EGRESS_JSON=" + json.dumps(ledger) + "\n", stderr="")
+
+
+def test_forced_local_record_with_lookup_fails_no_egress() -> None:
+    with pytest.raises(AssertionError):
+        _probe_lookups(_ledger(_FORCED, lookups=["x.invalid"]), False)
+
+
+def test_forced_local_record_with_connect_fails_no_egress() -> None:
+    with pytest.raises(AssertionError):
+        _probe_lookups(_ledger(_FORCED, connects=["('x', 443)"]), False)
+
+
+def test_remote_record_counts_as_egress() -> None:
+    assert _probe_lookups(_ledger(_REMOTE), True)
+
+
+def test_forced_local_record_is_not_egress() -> None:
+    with pytest.raises(AssertionError):
+        _probe_lookups(_ledger(_FORCED), True)
+
+
+def test_clean_forced_local_record_passes_no_egress() -> None:
+    assert _probe_lookups(_ledger(_FORCED), False) == []
+
+
+def test_unforced_record_cannot_pass_no_egress() -> None:
+    quiet = dict(_FORCED, is_env_forced=False)
+    with pytest.raises(AssertionError):
+        _probe_lookups(_ledger(quiet), False)

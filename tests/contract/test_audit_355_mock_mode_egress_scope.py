@@ -52,18 +52,23 @@ else:
 # unrelated probes never import it. An absent accessor (older litellm) means no
 # record; any other failure reading it must fail the probe, not hide evidence.
 source_info = None
+source_info_unavailable = None
 if "litellm" in sys.modules:
-    try:
-        from litellm.litellm_core_utils.get_model_cost_map import (
-            get_model_cost_map_source_info,
-        )
-    except (ImportError, AttributeError):
-        pass
+    import importlib
+    import importlib.util
+    _mod = "litellm.litellm_core_utils.get_model_cost_map"
+    if importlib.util.find_spec(_mod) is None:
+        source_info_unavailable = "module absent in this litellm"
     else:
-        source_info = dict(get_model_cost_map_source_info())
+        _accessor = getattr(importlib.import_module(_mod), "get_model_cost_map_source_info", None)
+        if _accessor is None:
+            source_info_unavailable = "accessor missing on existing module"
+        else:
+            source_info = dict(_accessor())
 print("EGRESS_JSON=" + json.dumps(
     {"lookups": lookups, "connects": connects, "imported": imported,
-     "source_info": source_info}, default=str
+     "source_info": source_info,
+     "source_info_unavailable": source_info_unavailable}, default=str
 ), flush=True)
 """
 
@@ -118,25 +123,30 @@ def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: b
     lines = [line for line in completed.stdout.splitlines() if line.startswith("EGRESS_JSON=")]
     assert len(lines) == 1, output
     ledger = json.loads(lines[0].removeprefix("EGRESS_JSON="))
-    assert set(ledger) == {"lookups", "connects", "imported", "source_info"}, output
+    assert set(ledger) == {"lookups", "connects", "imported", "source_info",
+                         "source_info_unavailable"}, output
     assert isinstance(ledger["lookups"], list), output
     assert all(isinstance(host, str) and host for host in ledger["lookups"]), output
     assert isinstance(ledger["connects"], list), output
     assert isinstance(ledger["imported"], bool), output
     source_info = ledger["source_info"]
-    if source_info is not None:
+    assert ledger["source_info_unavailable"] is None or source_info is None, output
+    sockets = [*ledger["lookups"], *(f"connect {c}" for c in ledger["connects"])]
+    remote = _remote_fetch_attempted(source_info)
+    if expect_egress:
         # LiteLLM's own record is authoritative when present; an unrelated
         # Python lookup must not override a forced-local or bundled-only load.
         evidence = (
-            [f"litellm tried remote: {source_info}"]
-            if _remote_fetch_attempted(source_info) else []
-        )
+            [f"litellm tried remote: {source_info}"] if remote else []
+        ) if source_info is not None else sockets
+        assert evidence, output
     else:
-        evidence = [*ledger["lookups"], *(f"connect {c}" for c in ledger["connects"])]
-    assert bool(evidence) is expect_egress, output
-    if not expect_egress:
-        # A refused connect or an aborted import is not proof of no egress.
+        # Clean means every witness is clean and the import really finished.
+        evidence = []
+        assert not remote and not sockets, output
         assert ledger["imported"] is True, output
+        if source_info is not None:
+            assert source_info.get("is_env_forced") is True, output
     return evidence
 
 
