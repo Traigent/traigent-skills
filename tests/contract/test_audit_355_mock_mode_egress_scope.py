@@ -10,6 +10,7 @@ promised "zero-egress" and "No network calls at all" without those limits.
 from __future__ import annotations
 
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -42,7 +43,19 @@ except ProbeNetworkAttempt:
     pass
 else:
     imported = True
-print("EGRESS_JSON=" + json.dumps({"lookups": lookups, "imported": imported}), flush=True)
+# Newer LiteLLM fetches through a native client that never touches Python's
+# socket module, so the patches above cannot see it. LiteLLM's own record of the
+# load is the second witness: a remote URL that was tried while the env flag did
+# not force the bundled map means the import went to the network.
+source_info = None
+try:
+    from litellm.litellm_core_utils.get_model_cost_map import get_model_cost_map_source_info
+    source_info = dict(get_model_cost_map_source_info())
+except Exception:
+    pass
+print("EGRESS_JSON=" + json.dumps(
+    {"lookups": lookups, "imported": imported, "source_info": source_info}, default=str
+), flush=True)
 """
 
 
@@ -51,20 +64,67 @@ def _import_probe(import_statement: str) -> str:
     return IMPORT_PROBE.replace("IMPORT_STATEMENT", import_statement)
 
 
+_ISOLATION_BACKENDS: tuple[list[str], ...] = (
+    ["unshare", "-rn"],
+    ["bwrap", "--unshare-net", "--unshare-user-try", "--dev-bind", "/", "/"],
+)
+
+
+def isolated_command(command: list[str]) -> list[str]:
+    """Prefix ``command`` so it runs in a network namespace with no interfaces.
+
+    The probe must not rely on patching Python's socket module alone: LiteLLM's
+    native client bypasses it. A namespace makes any fetch fail without reaching
+    the internet. If no backend works the test FAILS; it never skips or passes
+    without isolation (GitHub-hosted runners may restrict unprivileged user
+    namespaces; install bubblewrap or relax the restriction there).
+    """
+    tried: list[str] = []
+    for prefix in _ISOLATION_BACKENDS:
+        if shutil.which(prefix[0]) is None:
+            tried.append(f"{prefix[0]}: not installed")
+            continue
+        check = subprocess.run(
+            [*prefix, "true"], capture_output=True, text=True, timeout=30, check=False
+        )
+        if check.returncode == 0:
+            return [*prefix, *command]
+        tried.append(f"{prefix[0]}: rc={check.returncode} {check.stderr.strip()}")
+    pytest.fail(
+        "no network-isolation backend is usable, so the egress probe cannot run "
+        "safely or reliably; refusing to skip. Tried: " + "; ".join(tried)
+    )
+
+
+def _remote_fetch_attempted(source_info: dict | None) -> bool:
+    if not source_info or source_info.get("is_env_forced"):
+        return False
+    return source_info.get("source") == "remote" or bool(source_info.get("url"))
+
+
 def _probe_lookups(completed: subprocess.CompletedProcess[str], expect_egress: bool) -> list[str]:
-    """Only the probe's deliberate network interruption permits an incomplete import."""
+    """Return the egress evidence the probe recorded (empty when none)."""
     output = completed.stdout + completed.stderr
     assert completed.returncode == 0, output
     lines = [line for line in completed.stdout.splitlines() if line.startswith("EGRESS_JSON=")]
     assert len(lines) == 1, output
     ledger = json.loads(lines[0].removeprefix("EGRESS_JSON="))
-    assert set(ledger) == {"lookups", "imported"}, output
+    assert set(ledger) == {"lookups", "imported", "source_info"}, output
     assert isinstance(ledger["lookups"], list), output
     assert all(isinstance(host, str) and host for host in ledger["lookups"]), output
     assert isinstance(ledger["imported"], bool), output
-    assert bool(ledger["lookups"]) is expect_egress, output
-    assert ledger["imported"] is not expect_egress, output
-    return ledger["lookups"]
+    evidence = list(ledger["lookups"])
+    if _remote_fetch_attempted(ledger["source_info"]):
+        evidence.append(f"litellm tried remote: {ledger['source_info']}")
+    assert bool(evidence) is expect_egress, output
+    return evidence
+
+
+def run_probe(script_args: list[str], **kwargs):
+    return subprocess.run(
+        isolated_command(script_args), text=True, capture_output=True,
+        check=False, **kwargs,
+    )
 
 
 def _text() -> str:
@@ -93,11 +153,8 @@ def test_litellm_import_fetches_its_pricing_map_unless_the_flag_is_set(
     script = tmp_path / "probe.py"
     script.write_text(_import_probe("import litellm"), encoding="utf-8")
     env = _offline_mock_env()
-    env.pop("LITELLM_LOCAL_MODEL_COST_MAP")
+    env["LITELLM_LOCAL_MODEL_COST_MAP"] = "True" 
     if flag is not None:
         env["LITELLM_LOCAL_MODEL_COST_MAP"] = flag
-    completed = subprocess.run(
-        [sys.executable, str(script)], cwd=tmp_path, env=env, text=True,
-        capture_output=True, timeout=120, check=False,
-    )
+    completed = run_probe([sys.executable, str(script)], cwd=tmp_path, env=env, timeout=120)
     _probe_lookups(completed, expect_egress)

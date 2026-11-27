@@ -11,8 +11,9 @@ as the very first thing ``traigent/__init__.py`` does (provided ``traigent`` is
 imported before ``litellm``).
 
 The test reads the documented environment from the reference's table row and runs
-``import traigent, litellm`` under a ``socket.getaddrinfo`` spy that records the
-lookup and refuses it, so nothing leaves the machine.
+``import traigent, litellm`` in a network namespace with no interfaces, so nothing leaves the
+machine. The lookup is detected by the socket spy and by LiteLLM's own record of
+where it tried to load its pricing map from.
 
 ``test_cost_map_egress_check_has_teeth`` proves the spy mechanism itself still
 detects a real lookup on both sides of the 0.29.0 fix: on traigent <= 0.28.0 an
@@ -26,14 +27,13 @@ would pass for the wrong reason.
 from __future__ import annotations
 
 import re
-import subprocess
 import sys
 from pathlib import Path
 
 from packaging.version import Version
 
 from .test_audit_349_fenced_blocks import skip_unless_current_released_sdk
-from .test_audit_355_mock_mode_egress_scope import _import_probe, _probe_lookups
+from .test_audit_355_mock_mode_egress_scope import _import_probe, _probe_lookups, run_probe
 from .test_runnable_snippets import _offline_mock_env
 
 FIX_VERSION = "0.29.0"
@@ -63,14 +63,7 @@ def _lookups(extra_env: dict[str, str], *, expect_egress: bool) -> list[str]:
     env.pop(VAR)
     env.update(extra_env)
     env["TRAIGENT_OFFLINE_MODE"] = "true"
-    result = subprocess.run(
-        [sys.executable, "-c", SPY],
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=300,
-        check=False,
-    )
+    result = run_probe([sys.executable, "-c", SPY], env=env, timeout=300)
     return _probe_lookups(result, expect_egress)
 
 
