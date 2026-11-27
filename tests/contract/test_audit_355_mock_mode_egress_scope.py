@@ -46,7 +46,9 @@ class _StartedFinder:
         if name == "litellm":
             frame = sys._getframe(1)
             while frame is not None:
-                if frame.f_code.co_name == "_find_and_load" and "importlib" in frame.f_code.co_filename:
+                if (frame.f_code.co_name == "_find_and_load"
+                        and "importlib" in frame.f_code.co_filename
+                        and frame.f_locals.get("name") == "litellm"):
                     litellm_started.append(True)
                     break
                 frame = frame.f_back

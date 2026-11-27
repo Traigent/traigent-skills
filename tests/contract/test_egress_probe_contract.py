@@ -7,8 +7,16 @@ import sys
 
 import pytest
 
-from .test_audit_355_mock_mode_egress_scope import _import_probe, _probe_lookups
+from .test_audit_355_mock_mode_egress_scope import _import_probe, _probe_lookups, run_probe
 from .test_runnable_snippets import _offline_mock_env
+
+
+def _expect_verifier_failure(completed, expect_egress: bool) -> None:
+    """The child must have run cleanly and the VERIFIER (not a crash) must reject it."""
+    assert completed.returncode == 0, completed.stdout + completed.stderr
+    assert "EGRESS_JSON=" in completed.stdout, completed.stdout + completed.stderr
+    with pytest.raises(AssertionError, match="EGRESS_JSON"):
+        _probe_lookups(completed, expect_egress)
 
 
 def _run_probe_with_pkg(script: str, tmp_path, init_body: str):
@@ -18,15 +26,11 @@ def _run_probe_with_pkg(script: str, tmp_path, init_body: str):
     (pkg / "__init__.py").write_text(init_body)
     env = _offline_mock_env()
     env["PYTHONPATH"] = str(tmp_path / "pkg")
-    return subprocess.run([sys.executable, "-c", script], env=env,
-                          text=True, capture_output=True, timeout=30, check=False)
+    return run_probe([sys.executable, "-c", script], env=env, timeout=30)
 
 
 def _run_probe(script: str) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        [sys.executable, "-c", script], env=_offline_mock_env(),
-        text=True, capture_output=True, timeout=30, check=False,
-    )
+    return run_probe([sys.executable, "-c", script], env=_offline_mock_env(), timeout=30)
 
 
 def test_documented_positive_requires_success_without_dns() -> None:
@@ -42,19 +46,16 @@ def test_own_refused_dns_sentinel_is_accepted_as_negative_control(tmp_path) -> N
 
 def test_unrelated_lookup_without_litellm_is_not_egress() -> None:
     script = _import_probe("socket.getaddrinfo('control.invalid', 443)")
-    with pytest.raises(AssertionError):
-        _probe_lookups(_run_probe(script), True)
+    _expect_verifier_failure(_run_probe(script), True)
 
 
 def test_missing_dns_cannot_pass_negative_control() -> None:
-    with pytest.raises(AssertionError):
-        _probe_lookups(_run_probe(_import_probe("pass")), True)
+    _expect_verifier_failure(_run_probe(_import_probe("pass")), True)
 
 
 def test_real_dns_cannot_pass_documented_positive_control() -> None:
     script = _import_probe("socket.getaddrinfo('control.invalid', 443)")
-    with pytest.raises(AssertionError):
-        _probe_lookups(_run_probe(script), False)
+    _expect_verifier_failure(_run_probe(script), False)
 
 
 def test_unexpected_import_error_before_dns_remains_failure() -> None:
@@ -97,12 +98,12 @@ def _ledger(source_info, *, lookups=(), connects=(), imported=True, started=True
 
 
 def test_forced_local_record_with_lookup_fails_no_egress() -> None:
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="EGRESS_JSON"):
         _probe_lookups(_ledger(_FORCED, lookups=["x.invalid"]), False)
 
 
 def test_forced_local_record_with_connect_fails_no_egress() -> None:
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="EGRESS_JSON"):
         _probe_lookups(_ledger(_FORCED, connects=["x"]), False)
 
 
@@ -111,7 +112,7 @@ def test_remote_record_counts_as_egress() -> None:
 
 
 def test_forced_local_record_is_not_egress() -> None:
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="EGRESS_JSON"):
         _probe_lookups(_ledger(_FORCED), True)
 
 
@@ -121,15 +122,15 @@ def test_clean_forced_local_record_passes_no_egress() -> None:
 
 def test_unforced_record_cannot_pass_no_egress() -> None:
     quiet = dict(_FORCED, is_env_forced=False)
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="EGRESS_JSON"):
         _probe_lookups(_ledger(quiet), False)
 
 
 def test_unrelated_host_without_record_cannot_pass_egress() -> None:
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="EGRESS_JSON"):
         _probe_lookups(_ledger(None, lookups=["control.invalid"]), True)
     assert _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"]), True)
-    with pytest.raises(AssertionError):  # litellm never loaded: no evidence
+    with pytest.raises(AssertionError, match="EGRESS_JSON"):  # import never started
         _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"], started=False), True)
 
 
@@ -163,16 +164,13 @@ def test_probe_side_accessor_branches(tmp_path, case: str) -> None:
         (utils / "get_model_cost_map.py").write_text(body)
     env = _offline_mock_env()
     env["PYTHONPATH"] = str(tmp_path / "pkg")
-    completed = subprocess.run(
-        [sys.executable, "-c", _import_probe("import litellm")], env=env,
-        text=True, capture_output=True, timeout=30, check=False,
-    )
+    completed = run_probe([sys.executable, "-c", _import_probe("import litellm")], env=env, timeout=30)
     assert (completed.returncode != 0) is bool(rc_nonzero), completed.stdout + completed.stderr
     assert expect in completed.stdout + completed.stderr
 
 
 def test_lookalike_host_is_not_the_pricing_host() -> None:
-    with pytest.raises(AssertionError):
+    with pytest.raises(AssertionError, match="EGRESS_JSON"):
         _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com.example.invalid"]), True)
     assert _probe_lookups(_ledger(None, lookups=["Raw.GitHubUserContent.com."]), True)
 
@@ -187,12 +185,8 @@ def test_find_spec_then_unrelated_lookup_is_not_pricing_evidence(tmp_path) -> No
     )
     env = _offline_mock_env()
     env["PYTHONPATH"] = str(tmp_path / "pkg")
-    completed = subprocess.run(
-        [sys.executable, "-c", _import_probe(statement)], env=env,
-        text=True, capture_output=True, timeout=30, check=False,
-    )
-    with pytest.raises(AssertionError):
-        _probe_lookups(completed, True)
+    completed = run_probe([sys.executable, "-c", _import_probe(statement)], env=env, timeout=30)
+    _expect_verifier_failure(completed, True)
 
 
 def test_real_connect_to_pricing_host_is_recorded_as_egress(tmp_path) -> None:
@@ -200,3 +194,17 @@ def test_real_connect_to_pricing_host_is_recorded_as_egress(tmp_path) -> None:
         _import_probe("import litellm"), tmp_path,
         "import socket\nsocket.socket().connect(('raw.githubusercontent.com', 443))\n")
     assert _probe_lookups(completed, True) == ["raw.githubusercontent.com"]
+
+
+def test_traigent_find_spec_then_lookup_is_not_pricing_evidence(tmp_path) -> None:
+    for name, body in {"litellm": "", "traigent": (
+        "import importlib.util, socket\n"
+        "assert importlib.util.find_spec('litellm') is not None\n"
+        "socket.getaddrinfo('raw.githubusercontent.com', 443)\n")}.items():
+        (tmp_path / "pkg" / name).mkdir(parents=True)
+        (tmp_path / "pkg" / name / "__init__.py").write_text(body)
+    env = _offline_mock_env()
+    env["PYTHONPATH"] = str(tmp_path / "pkg")
+    completed = run_probe(
+        [sys.executable, "-c", _import_probe("import traigent")], env=env, timeout=30)
+    _expect_verifier_failure(completed, True)
