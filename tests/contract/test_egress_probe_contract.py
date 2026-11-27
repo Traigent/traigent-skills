@@ -1,6 +1,7 @@
 """Independent controls for the actual egress subprocess and ledger verifier."""
 from __future__ import annotations
 
+import contextlib
 import json
 import subprocess
 import sys
@@ -11,13 +12,27 @@ from .test_audit_355_mock_mode_egress_scope import _import_probe, REQUIRED_LEDGE
 from .test_runnable_snippets import _offline_mock_env
 
 
+@contextlib.contextmanager
+def _mismatch():
+    """Expect the verifier's evidence-decision failure, anchored at the message start."""
+    with pytest.raises(AssertionError) as caught:
+        yield
+    assert str(caught.value).startswith("egress evidence mismatch:"), str(caught.value)
+
+
 def _expect_verifier_failure(completed, expect_egress: bool) -> None:
-    """The child must have run cleanly and the VERIFIER (not a crash) must reject it."""
+    """The child must have run cleanly with a well-typed ledger, then the VERIFIER rejects it."""
     assert completed.returncode == 0, completed.stdout + completed.stderr
     lines = [x for x in completed.stdout.splitlines() if x.startswith("EGRESS_JSON=")]
     assert len(lines) == 1, completed.stdout + completed.stderr
-    assert set(json.loads(lines[0].removeprefix("EGRESS_JSON="))) == REQUIRED_LEDGER_KEYS
-    with pytest.raises(AssertionError, match="egress evidence mismatch"):
+    ledger = json.loads(lines[0].removeprefix("EGRESS_JSON="))
+    assert set(ledger) == REQUIRED_LEDGER_KEYS, ledger
+    for key in ("lookups", "connects"):
+        assert isinstance(ledger[key], list) and all(isinstance(x, str) for x in ledger[key]), key
+    for key in ("imported", "litellm_import_started"):
+        assert isinstance(ledger[key], bool), key
+    assert ledger["source_info"] is None or isinstance(ledger["source_info"], dict)
+    with _mismatch():
         _probe_lookups(completed, expect_egress)
 
 
@@ -100,12 +115,12 @@ def _ledger(source_info, *, lookups=(), connects=(), imported=True, started=True
 
 
 def test_forced_local_record_with_lookup_fails_no_egress() -> None:
-    with pytest.raises(AssertionError, match="egress evidence mismatch"):
+    with _mismatch():
         _probe_lookups(_ledger(_FORCED, lookups=["x.invalid"]), False)
 
 
 def test_forced_local_record_with_connect_fails_no_egress() -> None:
-    with pytest.raises(AssertionError, match="egress evidence mismatch"):
+    with _mismatch():
         _probe_lookups(_ledger(_FORCED, connects=["x"]), False)
 
 
@@ -114,7 +129,7 @@ def test_remote_record_counts_as_egress() -> None:
 
 
 def test_forced_local_record_is_not_egress() -> None:
-    with pytest.raises(AssertionError, match="egress evidence mismatch"):
+    with _mismatch():
         _probe_lookups(_ledger(_FORCED), True)
 
 
@@ -124,15 +139,15 @@ def test_clean_forced_local_record_passes_no_egress() -> None:
 
 def test_unforced_record_cannot_pass_no_egress() -> None:
     quiet = dict(_FORCED, is_env_forced=False)
-    with pytest.raises(AssertionError, match="egress evidence mismatch"):
+    with _mismatch():
         _probe_lookups(_ledger(quiet), False)
 
 
 def test_unrelated_host_without_record_cannot_pass_egress() -> None:
-    with pytest.raises(AssertionError, match="egress evidence mismatch"):
+    with _mismatch():
         _probe_lookups(_ledger(None, lookups=["control.invalid"]), True)
     assert _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"]), True)
-    with pytest.raises(AssertionError, match="egress evidence mismatch"):  # import never started
+    with _mismatch():  # import never started
         _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com"], started=False), True)
 
 
@@ -172,7 +187,7 @@ def test_probe_side_accessor_branches(tmp_path, case: str) -> None:
 
 
 def test_lookalike_host_is_not_the_pricing_host() -> None:
-    with pytest.raises(AssertionError, match="egress evidence mismatch"):
+    with _mismatch():
         _probe_lookups(_ledger(None, lookups=["raw.githubusercontent.com.example.invalid"]), True)
     assert _probe_lookups(_ledger(None, lookups=["Raw.GitHubUserContent.com."]), True)
 
@@ -218,3 +233,18 @@ def test_empty_ledger_is_malformed_not_an_evidence_failure() -> None:
         _probe_lookups(completed, True)
     with pytest.raises(AssertionError):  # the helper refuses it too
         _expect_verifier_failure(completed, True)
+
+
+def test_null_lookups_with_phrase_in_stderr_is_malformed_not_a_mismatch() -> None:
+    ledger = {k: None for k in REQUIRED_LEDGER_KEYS}
+    ledger.update(connects=[], imported=True, litellm_import_started=False)
+    completed = subprocess.CompletedProcess(
+        [], 0, stdout="EGRESS_JSON=" + json.dumps(ledger) + "\n",
+        stderr="egress evidence mismatch: forged")
+    with pytest.raises(AssertionError, match="malformed probe ledger"):
+        _probe_lookups(completed, True)
+    with pytest.raises(AssertionError):
+        _expect_verifier_failure(completed, True)
+    with pytest.raises(AssertionError) as caught:
+        _probe_lookups(completed, True)
+    assert not str(caught.value).startswith("egress evidence mismatch:")
