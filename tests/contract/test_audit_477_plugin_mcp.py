@@ -108,7 +108,7 @@ def test_credentials_are_forwarded_by_reference_never_written_into_the_file() ->
     assert manifest["userConfig"]["traigent_api_key"]["sensitive"] is True
 
 
-def _env_printing_launcher(tmp_path: Path, env: dict):
+def _env_printing_launcher(tmp_path: Path, env: dict, path_extra: str = ":/usr/bin:/bin"):
     import subprocess
 
     bindir = tmp_path / "bin"
@@ -123,7 +123,7 @@ def _env_printing_launcher(tmp_path: Path, env: dict):
         encoding="utf-8",
     )
     stub.chmod(0o755)
-    full = {"PATH": f"{bindir}:/usr/bin:/bin", **env}
+    full = {"PATH": f"{bindir}{path_extra}", **env}
     return subprocess.run(
         ["/usr/bin/env", "-i", *[f"{k}={v}" for k, v in full.items()], "/bin/sh", str(LAUNCHER)],
         capture_output=True, text=True, check=False, timeout=20,
@@ -174,7 +174,7 @@ def test_plugin_pair_unsets_other_backend_selectors(tmp_path: Path) -> None:
     assert "API_URL=unset" in out.stdout and "JWT=unset" in out.stdout
 
 
-@pytest.mark.parametrize("backend", ["   ", "pb.example", "ftp://pb.example", "https://", "\t"])
+@pytest.mark.parametrize("backend", ["   ", "pb.example", "ftp://pb.example", "https://", "https:///api", "http:///", "\t"])
 def test_plugin_key_with_blank_or_schemeless_backend_is_refused(tmp_path: Path, backend: str) -> None:
     out = _env_printing_launcher(
         tmp_path, {"TRAIGENT_PLUGIN_API_KEY": "k", "TRAIGENT_PLUGIN_BACKEND_URL": backend}
@@ -188,6 +188,36 @@ def test_plugin_values_are_trimmed(tmp_path: Path) -> None:
         {"TRAIGENT_PLUGIN_API_KEY": " k \n", "TRAIGENT_PLUGIN_BACKEND_URL": " https://pb.example \n"},
     )
     assert "KEY=k\n" in out.stdout and "URL=https://pb.example\n" in out.stdout
+
+
+def test_interior_whitespace_is_preserved(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {"TRAIGENT_PLUGIN_API_KEY": " a b ", "TRAIGENT_PLUGIN_BACKEND_URL": "https://pb.example/x y"},
+    )
+    assert "KEY=a b\n" in out.stdout and "URL=https://pb.example/x y\n" in out.stdout
+
+
+def test_launcher_needs_no_external_tools_on_path(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {"TRAIGENT_PLUGIN_API_KEY": " k ", "TRAIGENT_PLUGIN_BACKEND_URL": " https://pb.example "},
+        path_extra="",
+    )
+    assert out.returncode == 0, out.stderr
+    assert "KEY=k\n" in out.stdout and "URL=https://pb.example\n" in out.stdout
+
+
+def test_no_key_branch_keeps_api_url_and_jwt(tmp_path: Path) -> None:
+    out = _env_printing_launcher(
+        tmp_path,
+        {
+            "TRAIGENT_PLUGIN_BACKEND_URL": "https://pb.example",
+            "TRAIGENT_API_URL": "https://other.example",
+            "TRAIGENT_JWT_TOKEN": "jwt",
+        },
+    )
+    assert "API_URL=https://other.example\n" in out.stdout and "JWT=jwt\n" in out.stdout
 
 
 def test_launcher_with_nothing_set_leaves_the_environment_alone(tmp_path: Path) -> None:
