@@ -1,6 +1,6 @@
 {
   "schema": "skill-provenance/v1",
-  "doc_hash": "576a8a27b69bdb23",
+  "doc_hash": "f76dc855ee7adde5",
   "reference_hashes": {
     "references/economics-characterization.v0.md": "e6df1645696c6290",
     "references/iteration-log-template.md": "9a20df1f1a95e563",
@@ -510,6 +510,17 @@
       "doc_before_hash": "fc117cb1f8181a2e",
       "doc_after_hash": "576a8a27b69bdb23",
       "note": "Lost-sync row: evidence comes from results.metadata/sync_session_id, exc.sync_session_id or a saved export; fields may be missing; portal session id distinct from sync_session_id. Reference hash refreshed.",
+      "source_type": "agent"
+    },
+    {
+      "edit_id": "directory-ready-2026-11-27-mcp-credentials",
+      "op": "manual_edit",
+      "status": "accepted",
+      "run_id": null,
+      "timestamp": "2026-11-27T00:00:00Z",
+      "doc_before_hash": "576a8a27b69bdb23",
+      "doc_after_hash": "f76dc855ee7adde5",
+      "note": "Plugin install paragraph: the analytics MCP server takes the API key and backend URL pair from the plugin settings when set, else the environment (plugin 1.3.1).",
       "source_type": "agent"
     }
   ]

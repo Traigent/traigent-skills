@@ -7,9 +7,12 @@ headless session (no restart possible) could never fetch the decision brief.
 
 from __future__ import annotations
 
+import itertools
 import json
 import re
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
 SKILLS = ROOT / "skills"
@@ -129,10 +132,6 @@ def _env_printing_launcher(tmp_path: Path, env: dict, path_extra: str = ":/usr/b
         capture_output=True, text=True, check=False, timeout=20,
     )
 
-
-import itertools
-
-import pytest
 
 _MATRIX = list(itertools.product(("pk", ""), ("https://pb.example", ""), ("ik", ""), ("https://ib.example", "")))
 
